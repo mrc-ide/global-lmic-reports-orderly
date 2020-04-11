@@ -1,0 +1,7 @@
+#!/usr/bin/env Rscript
+tryCatch(
+  orderly:::main(),
+  orderly_cli_error = function(e) {
+    message(paste("orderly:", e$message))
+    q(save = "no", status = 1)
+  })
