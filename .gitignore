@@ -1,0 +1,10 @@
+data
+archive
+draft
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+*.o
+*.so
+*.dll
