@@ -1,5 +1,16 @@
+if (date == "today") {
+  date <- Sys.Date()
+} else if (date == "yesterday") {
+  date <- Sys.Date() - 1
+} else {
+  date <- as.Date(date, "%Y-%m-%d")
+  if (is.na(date)) {
+    stop("Date must be provided in ISO format (i.e., YYYY-MM-DD)")
+  }
+}
+
 fmt <- "https://www.ecdc.europa.eu/sites/default/files/documents/COVID-19-geographic-disbtribution-worldwide-%s.xlsx"
-date_iso <- as.character(Sys.Date() - date_offset)
+date_iso <- as.character(date)
 url <- sprintf(fmt, date_iso)
 
 url_page <- "https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide"
