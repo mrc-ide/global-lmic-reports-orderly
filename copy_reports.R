@@ -18,14 +18,44 @@ file_copy <- function(from, to) {
 copy_outputs <- function(date = Sys.Date(), is_latest = TRUE) {
   db <- orderly::orderly_db("destination")
 
-  sql <- 'SELECT report_version.id, report_version.date, parameters.value as country
-  FROM report_version
-  JOIN parameters
-    ON parameters.report_version = report_version.id
- WHERE report_version.report = "lmic_reports"'
+  ## TODO: - use date only
 
-  reports <- DBI::dbGetQuery(db, sql)
-  reports <- reports[reports$date >= date & reports$date < date + 1, ]
+  ## First find the id corresponding to the ecdc report with data.  If
+  ## there are more than one, it's not totally clear what you want to
+  ## do as you might want to take the earliest or the latest.
+  ## Probably we want to take *all* and do the join over that, which
+  ## is easy enough to do if you replace the '= $1' and replace with
+  ## 'IN (%s)' and interpolate 'paste(sprintf('"%s"', id), collapse = ", ")'
+  sql <- 'SELECT report_version.id
+            FROM report_version
+            JOIN parameters
+              ON parameters.report_version = report_version.id
+           WHERE report_version.report = "ecdc"
+             AND parameters.value = $1'
+  id <- DBI::dbGetQuery(db, sql, "today")$id
+  if (length(id) == 0L) {
+    stop(sprintf("No 'ecdc' report for '%s'", as.character(date)))
+  } else if (length(id) > 1) {
+    stop(sprintf("Multiple 'ecdc' reports for '%s'", as.character(date)))
+  }
+
+  ## Then find all lmic_reports reports that use files from this ecdc
+  ## report.  This is a bit awful and I might add direct link or a
+  ## view to make this easier at some point.
+  sql <- 'SELECT report_version.id, parameters.value as country
+            FROM report_version_artefact
+            JOIN file_artefact
+              ON file_artefact.artefact = report_version_artefact.id
+            JOIN depends
+              ON depends.use = file_artefact.id
+            JOIN report_version
+              ON report_version.id = depends.report_version
+            JOIN parameters
+              ON parameters.report_version = report_version.id
+           WHERE report_version_artefact.report_version = $1
+             AND report = "lmic_reports"'
+  reports <- DBI::dbGetQuery(db, sql, id)
+  reports$date <- as.character(date)
 
   if (any(duplicated(reports$country))) {
     stop("OJ needs to filter this by most recent per country")
@@ -38,7 +68,7 @@ copy_outputs <- function(date = Sys.Date(), is_latest = TRUE) {
   target <- "gh-pages"
 
   src <- file.path("archive", "lmic_reports", reports$id)
-  dest <- sprintf("gh-pages/%s/%s", reports$country, date)
+  dest <- sprintf("gh-pages/%s/%s", reports$country, reports$date)
   copy <- c("report.html",
             # "figures" # uncomment once it exists
             # "fig1.png", "fig2.png",
