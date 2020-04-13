@@ -9,3 +9,4 @@ draft
 *.so
 *.dll
 gh-pages
+orderly.sqlite
