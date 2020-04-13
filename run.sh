@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -e
-./orderly run ecdc
+./orderly run ecdc date=$(date "+%Y-%m-%d")
 
 ## Fill these in for now manually. Eventually we will use the batch
 ## interface.

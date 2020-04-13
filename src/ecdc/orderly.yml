@@ -9,8 +9,7 @@ script: script.R
 # available as R variables in your script.  For example:
 #
 parameters:
-  date:
-    default: today
+  date: ~
 
 
 # You must list at least one artefact that your report will generate.
