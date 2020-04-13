@@ -17,6 +17,7 @@ file_copy <- function(from, to) {
 ## dir("gh-pages", pattern = "index\\.html$", recursive = TRUE)
 copy_outputs <- function(date = Sys.Date(), is_latest = TRUE) {
   db <- orderly::orderly_db("destination")
+  date <- as.character(date)
 
   ## TODO: - use date only
 
@@ -32,11 +33,11 @@ copy_outputs <- function(date = Sys.Date(), is_latest = TRUE) {
               ON parameters.report_version = report_version.id
            WHERE report_version.report = "ecdc"
              AND parameters.value = $1'
-  id <- DBI::dbGetQuery(db, sql, "today")$id
+  id <- DBI::dbGetQuery(db, sql, date)$id
   if (length(id) == 0L) {
     stop(sprintf("No 'ecdc' report for '%s'", as.character(date)))
   } else if (length(id) > 1) {
-    stop(sprintf("Multiple 'ecdc' reports for '%s'", as.character(date)))
+    message(sprintf("Multiple 'ecdc' reports for '%s'", as.character(date)))
   }
 
   ## Then find all lmic_reports reports that use files from this ecdc
@@ -52,18 +53,22 @@ copy_outputs <- function(date = Sys.Date(), is_latest = TRUE) {
               ON report_version.id = depends.report_version
             JOIN parameters
               ON parameters.report_version = report_version.id
-           WHERE report_version_artefact.report_version = $1
-             AND report = "lmic_reports"'
-  reports <- DBI::dbGetQuery(db, sql, id)
-  reports$date <- as.character(date)
+           WHERE report_version_artefact.report_version IN (%s)
+             AND report = "lmic_reports"
+           ORDER BY country, report_version.id'
+  sql <- sprintf(sql, paste(sprintf('"%s"', id), collapse = ", "))
+  reports <- DBI::dbGetQuery(db, sql)
 
   if (any(duplicated(reports$country))) {
-    stop("OJ needs to filter this by most recent per country")
+    keep <- tapply(seq_len(nrow(reports)), reports$country, max)
+    reports <- reports[keep, ]
+    rownames(reports) <- NULL
   }
 
   ## Remove this once the lmic task takes ISO3
   remap <- c(Angola = "AGO", Senegal = "SEN")
   reports$country <- unname(remap[reports$country])
+  reports$date <- as.character(date)
 
   target <- "gh-pages"
 
@@ -75,13 +80,13 @@ copy_outputs <- function(date = Sys.Date(), is_latest = TRUE) {
             "report.pdf")
 
   for (i in seq_along(dest)) {
-    dir.create(dest, FALSE, TRUE)
+    dir.create(dest[[i]], FALSE, TRUE)
     file_copy(file.path(src[[i]], copy), dest[[i]])
     ## Remove after report.html renamed to index.html
     file.rename(file.path(dest[[i]], "report.html"),
                 file.path(dest[[i]], "index.html"))
     if (is_latest) {
-      dest_latest <- dirname(dest)
+      dest_latest <- dirname(dest[[i]])
       prev <- dir(dest_latest, pattern = "\\.")
       unlink(c(prev, file.path(dest_latest, "figures")), recursive = TRUE)
       file_copy(dir(dest[[i]], full.names = TRUE), dest_latest)
