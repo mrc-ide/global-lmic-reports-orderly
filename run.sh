@@ -5,3 +5,4 @@ set -e
 ## Fill these in for now manually. Eventually we will use the batch
 ## interface.
 ./orderly run lmic_reports country=Angola
+./orderly run lmic_reports country=Senegal
