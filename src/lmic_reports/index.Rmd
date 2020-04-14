@@ -19,7 +19,7 @@ output:
 
 ```{r, echo = FALSE, message=FALSE, warning=FALSE}
 start <- 10
-replicates <- 10
+replicates <- 100
 library(dplyr)
 library(ggplot2)
 ```
