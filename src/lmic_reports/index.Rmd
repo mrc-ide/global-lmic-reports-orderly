@@ -1,5 +1,5 @@
 ---
-title: "Index"
+title: ""
 header-includes: \usepackage{caption}
 date: ""
 output:
@@ -18,6 +18,8 @@ output:
 
 ```{r, echo = FALSE, message=FALSE, warning=FALSE}
 start <- 10
+replicates <- 10
+iso3c <- "NGA"
 library(dplyr)
 library(ggplot2)
 ```
@@ -33,50 +35,52 @@ names(data)[1] <- "date"
 
 data$deaths <- rev(cumsum(rev(data$deaths)))
 data$cases <- rev(cumsum(rev(data$cases)))
+data$date <- as.Date(data$date)
 
-out <- squire::calibrate(data = data, country = country, replicates = 100, 
+out <- squire::calibrate(country = country, deaths = max(data$deaths),
+                         replicates = replicates, 
                          min_seeding_cases = 1, max_seeding_cases = 5,
                          dt = 0.1)
 
 ```
 # MRC Centre for Global Infectious Disease Analysis, Imperial College London
 ## Situation Report for COVID-19: `r country`
-## `r format(Sys.Date(), "%Y-%m-%d")`.
+## `r format(Sys.Date(), "%Y-%m-%d")`
 
 ### Epidemiological Situation
 
 As of `r format(Sys.Date(), "%Y-%m-%d")` there have been `r data$cases[1]` cases and `r data$deaths[1]` deaths reported. The figure below shows the trajectory in deaths to date. The reports are plotted on a log-scale – with the dotted lines indicating the doubling times. 
 
-```{r fig1, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap="Figure 1: Cumulative Deaths since 10 deaths. Note if 10 deaths are yet to be reported, country will not be shown."}
+```{r fig1, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap="**Cumulative Deaths since 10 deaths.** Note if 10 deaths are yet to be reported, country will not be shown."}
 
-plotly_style(country = country)
+cumulative_deaths_plot(country = country)
 
 ```
 
+\newpage
+
 We assume that the deaths reported to date provide a good indication of the stage of the epidemic. We use these data, combined with estimates of the typical times between infection, onset of symptoms and death, and the infection fatality ratio, to estimate the epidemic state in the past. The figure below shows the estimated number of people infected and number of symptomatic cases over the past 4 weeks.
 
-```{r case plot, echo = FALSE, collapse=TRUE, warning=FALSE, fig.cap="Figure 2: Daily Number of Infections estimated by fitting to the current total of deaths. Observed cases are shown in red."}
+```{r case plot, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE,  fig.cap="**Daily Number of Infections estimated by fitting to the current total of deaths.** Observed cases are shown in red.", fig.width=10, fig.height=6}
 
-cases_plot(out)
+suppressMessages(cases_plot(out, data))
 
 ```
 
 ### Short-term Epidemic Projections
 
-The figure below gives projections of the number of symptomatic cases, the number of severe cases (requiring hospitalisation) and the number of cases requiring critical care facilities for the next 2 weeks. We note that these projections are uncertain and may be influenced by any interventions that are employed. 
+The figure below gives projections of the number of severe cases that either require a hospital bed or an intensive care unit (ICU) bed. for the next 2 weeks. We note that these projections are uncertain and may be influenced by any interventions that are employed. 
 
-```{r healthcare plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap="Figure 3: Healthcare demands in the next 2 week. "}
+```{r healthcare plots, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap="**Healthcare demands in the next 2 weeks.**", , fig.width=10, fig.height=6}
 
-
-squire:::plot_calibration_healthcare(out$df,out$data, forecast = 14) + 
-  xlim(c(Sys.Date() - 14, Sys.Date() + 14))
+suppressMessages(healthcare_plot(out, data))
 
 ```
 
-Lastly, the deaths shwon in figure 3.
-```{r death forecast plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap="Figure 4: Daily Deaths estimated by fitting to the current total of deaths. Observed deaths are shown in red." }
+Lastly, the predcited daily death count is shown in figure 4. This assumes that 100% of deaths have been observed.
 
-plot(out, what = "healthcare", forecast = 14) + 
-  xlim(c(Sys.Date() - 14, Sys.Date() + 14))
+```{r death forecast plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap="**Daily Deaths estimated by fitting to the current total of deaths.** Observed deaths are shown in red." , fig.width=10, fig.height=6}
+
+suppressMessages(deaths_plot(out, data))
 
 ```
