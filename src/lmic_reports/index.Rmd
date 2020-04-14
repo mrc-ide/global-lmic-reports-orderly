@@ -5,8 +5,9 @@ date: ""
 output:
   html_document:
     keep_md: yes
-    self_contained: no
-  pdf_document: default
+    self_contained: yes
+  pdf_document: 
+    fig_caption: false
   word_document:
     df_print: kable
     fig_caption: yes
@@ -19,7 +20,6 @@ output:
 ```{r, echo = FALSE, message=FALSE, warning=FALSE}
 start <- 10
 replicates <- 10
-iso3c <- "NGA"
 library(dplyr)
 library(ggplot2)
 ```
@@ -51,6 +51,8 @@ out <- squire::calibrate(country = country, deaths = max(data$deaths),
 
 As of `r format(Sys.Date(), "%Y-%m-%d")` there have been `r data$cases[1]` cases and `r data$deaths[1]` deaths reported. The figure below shows the trajectory in deaths to date. The reports are plotted on a log-scale – with the dotted lines indicating the doubling times. 
 
+<br><br> 
+
 ```{r fig1, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap="**Cumulative Deaths since 10 deaths.** Note if 10 deaths are yet to be reported, country will not be shown."}
 
 cumulative_deaths_plot(country = country)
@@ -59,7 +61,13 @@ cumulative_deaths_plot(country = country)
 
 \newpage
 
-We assume that the deaths reported to date provide a good indication of the stage of the epidemic. We use these data, combined with estimates of the typical times between infection, onset of symptoms and death, and the infection fatality ratio, to estimate the epidemic state in the past. The figure below shows the estimated number of people infected and number of symptomatic cases over the past 4 weeks.
+<br><br> 
+
+We assume that the deaths reported to date provide a good indication of the stage of the epidemic. We use these data, combined with estimates of the typical times between infection, onset of symptoms and death, and the infection fatality ratio, to estimate the epidemic state in the past. In the following analyses, we assume that 100% of deaths have been observed. 
+
+The figure below shows the estimated number of people infected and number of symptomatic cases over the past 4 weeks.
+
+<br><br> 
 
 ```{r case plot, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE,  fig.cap="**Daily Number of Infections estimated by fitting to the current total of deaths.** Observed cases are shown in red.", fig.width=10, fig.height=6}
 
@@ -67,9 +75,15 @@ suppressMessages(cases_plot(out, data))
 
 ```
 
+<br><br> 
+
 ### Short-term Epidemic Projections
 
+<br><br> 
+
 The figure below gives projections of the number of severe cases that either require a hospital bed or an intensive care unit (ICU) bed. for the next 2 weeks. We note that these projections are uncertain and may be influenced by any interventions that are employed. 
+
+<br><br> 
 
 ```{r healthcare plots, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap="**Healthcare demands in the next 2 weeks.**", , fig.width=10, fig.height=6}
 
@@ -77,9 +91,13 @@ suppressMessages(healthcare_plot(out, data))
 
 ```
 
-Lastly, the predcited daily death count is shown in figure 4. This assumes that 100% of deaths have been observed.
+<br><br> 
 
-```{r death forecast plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap="**Daily Deaths estimated by fitting to the current total of deaths.** Observed deaths are shown in red." , fig.width=10, fig.height=6}
+The predicted daily death count is shown in the final figure. 
+
+<br><br> 
+
+```{r death forecast plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap="**Figure 4: Daily Deaths estimated by fitting to the current total of deaths.** Observed deaths are shown in red." , fig.width=10, fig.height=6}
 
 suppressMessages(deaths_plot(out, data))
 

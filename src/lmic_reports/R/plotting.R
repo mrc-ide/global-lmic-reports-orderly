@@ -413,8 +413,8 @@ deaths_plot <- function(out, data) {
   gg_cases <- squire:::plot_calibration_healthcare_barplot(o1, data = data, forecast = 14) 
   gg_cases + geom_label(
       data = data.frame(x = c(as.Date(data$date[max(which(data$deaths == max(data$deaths)))]),Sys.Date()),
-                        y = c(max(o1$y[o1$compartment == "deaths" & o1$date < (Sys.Date()+14)])*0.9,
-                              max(o1$y[o1$compartment == "deaths" & o1$date < (Sys.Date()+14)])*0.8),
+                        y = c(max(o1$y[o1$compartment == "deaths" & o1$date < (Sys.Date()+14)])*0.75,
+                              max(o1$y[o1$compartment == "deaths" & o1$date < (Sys.Date()+14)])*0.65),
                         label=c("Calibration Date","Today")), 
       aes(x=x, y=y, label=label), inherit.aes = FALSE)
   
