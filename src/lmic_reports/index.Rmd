@@ -1,0 +1,82 @@
+---
+title: "Index"
+header-includes: \usepackage{caption}
+date: ""
+output:
+  html_document:
+    keep_md: yes
+    self_contained: no
+  pdf_document: default
+  word_document:
+    df_print: kable
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 6
+    highlight: tango
+    reference_docx: template.docx
+---
+
+```{r, echo = FALSE, message=FALSE, warning=FALSE}
+start <- 10
+library(dplyr)
+library(ggplot2)
+```
+
+```{r ecdc prep, echo = FALSE, collapse=TRUE, warning=FALSE}
+
+ecdc <- readRDS("ecdc_all.rds")
+country <- squire::population$country[match(iso3c, squire::population$iso3c)[1]]
+df <- ecdc[which(ecdc$countryterritoryCode == iso3c),]
+
+data <- df[,c("dateRep", "deaths", "cases")]
+names(data)[1] <- "date"
+
+data$deaths <- rev(cumsum(rev(data$deaths)))
+data$cases <- rev(cumsum(rev(data$cases)))
+
+out <- squire::calibrate(data = data, country = country, replicates = 100, 
+                         min_seeding_cases = 1, max_seeding_cases = 5,
+                         dt = 0.1)
+
+```
+# MRC Centre for Global Infectious Disease Analysis, Imperial College London
+## Situation Report for COVID-19: `r country`
+## `r format(Sys.Date(), "%Y-%m-%d")`.
+
+### Epidemiological Situation
+
+As of `r format(Sys.Date(), "%Y-%m-%d")` there have been `r data$cases[1]` cases and `r data$deaths[1]` deaths reported. The figure below shows the trajectory in deaths to date. The reports are plotted on a log-scale – with the dotted lines indicating the doubling times. 
+
+```{r fig1, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap="Figure 1: Cumulative Deaths since 10 deaths. Note if 10 deaths are yet to be reported, country will not be shown."}
+
+plotly_style(country = country)
+
+```
+
+We assume that the deaths reported to date provide a good indication of the stage of the epidemic. We use these data, combined with estimates of the typical times between infection, onset of symptoms and death, and the infection fatality ratio, to estimate the epidemic state in the past. The figure below shows the estimated number of people infected and number of symptomatic cases over the past 4 weeks.
+
+```{r case plot, echo = FALSE, collapse=TRUE, warning=FALSE, fig.cap="Figure 2: Daily Number of Infections estimated by fitting to the current total of deaths. Observed cases are shown in red."}
+
+cases_plot(out)
+
+```
+
+### Short-term Epidemic Projections
+
+The figure below gives projections of the number of symptomatic cases, the number of severe cases (requiring hospitalisation) and the number of cases requiring critical care facilities for the next 2 weeks. We note that these projections are uncertain and may be influenced by any interventions that are employed. 
+
+```{r healthcare plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap="Figure 3: Healthcare demands in the next 2 week. "}
+
+
+squire:::plot_calibration_healthcare(out$df,out$data, forecast = 14) + 
+  xlim(c(Sys.Date() - 14, Sys.Date() + 14))
+
+```
+
+Lastly, the deaths shwon in figure 3.
+```{r death forecast plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap="Figure 4: Daily Deaths estimated by fitting to the current total of deaths. Observed deaths are shown in red." }
+
+plot(out, what = "healthcare", forecast = 14) + 
+  xlim(c(Sys.Date() - 14, Sys.Date() + 14))
+
+```

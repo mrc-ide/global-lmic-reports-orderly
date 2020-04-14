@@ -34,8 +34,8 @@ script: script.R
 # a parameter of b with no default.
 #
 parameters:
-    country:
-      default: Nigeria
+    iso3c:
+      default: AGO
 
 # You must list at least one artefact that your report will generate.
 # Each artefact consists of one or more files.  The format is to list
@@ -63,8 +63,8 @@ artefacts:
   - report:
       description: Projections report for a single country
       filenames:
-        - report.html
-        - report.pdf
+        - index.html
+        - index.pdf
 
 # An optional name to describe the report in more detail than its
 # directory name (which must be short) but less detail than
@@ -90,6 +90,9 @@ packages:
   - ggrepel
   - magrittr
   - dplyr
+  - plotly
+  - grid
+  - ggforce
 
 # Source files, in addition to the script.  Typically these will
 # contain function definitions.  These will be sourced after loading
@@ -111,8 +114,7 @@ sources:
 # referenced in "views" or "data"
 #
 resources:
-  - report.Rmd
-  - template.docx
+  - index.Rmd
 
 # This section copies the word style over from the global/
 # directory. If you do not want to create a docx, please remove this

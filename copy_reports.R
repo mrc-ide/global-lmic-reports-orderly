@@ -2,7 +2,6 @@
 
 ## TODO:
 ## * overall index page
-## * ISO3 country codes
 ## * figures updated and change below
 ## * filter by most recent run per country
 
@@ -66,8 +65,6 @@ copy_outputs <- function(date = Sys.Date(), is_latest = TRUE) {
   }
 
   ## Remove this once the lmic task takes ISO3
-  remap <- c(Angola = "AGO", Senegal = "SEN")
-  reports$country <- unname(remap[reports$country])
   reports$date <- as.character(date)
 
   target <- "gh-pages"
@@ -75,16 +72,13 @@ copy_outputs <- function(date = Sys.Date(), is_latest = TRUE) {
   src <- file.path("archive", "lmic_reports", reports$id)
   dest <- sprintf("gh-pages/%s/%s", reports$country, reports$date)
   copy <- c("report.html",
-            # "figures" # uncomment once it exists
+            "index_files/figure-html" 
             # "fig1.png", "fig2.png",
             "report.pdf")
 
   for (i in seq_along(dest)) {
     dir.create(dest[[i]], FALSE, TRUE)
     file_copy(file.path(src[[i]], copy), dest[[i]])
-    ## Remove after report.html renamed to index.html
-    file.rename(file.path(dest[[i]], "report.html"),
-                file.path(dest[[i]], "index.html"))
     if (is_latest) {
       dest_latest <- dirname(dest[[i]])
       prev <- dir(dest_latest, pattern = "\\.")
