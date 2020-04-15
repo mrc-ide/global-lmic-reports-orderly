@@ -136,3 +136,7 @@ set -e
 #./orderly run lmic_reports iso3c=YEM
 ./orderly run lmic_reports iso3c=ZMB
 ./orderly run lmic_reports iso3c=ZWE
+
+Rscript copy_reports.R
+
+./orderly run index_page

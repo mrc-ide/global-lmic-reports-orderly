@@ -40,11 +40,11 @@ cumulative_deaths_plot <- function(country) {
   df_deaths_latest <- df_deaths[df_deaths$dateRep == max(df_deaths$dateRep),]
   continent <- unique(df$Continent[df$Region %in% country])
   
-  gg_deaths <- ggplot(df_deaths[which(df_deaths$Continent %in% continent), ], aes(x=day_since, y=Cum_Deaths, group = Region)) + 
+  gg_deaths <- ggplot(df_deaths[df_deaths$Region %in% country,], aes(x=day_since, y=Cum_Deaths, group = Region)) + 
     geom_line(data = doubling_lines_deaths, aes(x=x, y=y, linetype = Doubling),alpha=0.3, inherit.aes = FALSE) +
     geom_line(show.legend = FALSE, color = "grey", alpha = 0.6) +
-    geom_line(data = df_deaths[which(df_deaths$Region %in% country)], lwd = 1.5) +
-    geom_point(data = df_deaths[which(df_deaths$Region %in% country)], lwd = 1.5) +
+    geom_line(data = df_deaths[which(df_deaths$Region %in% country[1:8]),], lwd = 1.5, mapping = aes(color = Continent)) +
+    geom_point(data = df_deaths[which(df_deaths$Region %in% country[1:8]),], lwd = 1.5) +
     geom_point(data = df_deaths_latest[which(df_deaths_latest$Continent %in% continent), ], alpha = 0.5, show.legend = FALSE) + 
     ggrepel::geom_text_repel(data =  df_deaths_latest[which(df_deaths_latest$Continent %in% continent), ],
                              aes(label = Region), show.legend = FALSE, min.segment.length = 1,nudge_x = 1) + 
@@ -321,8 +321,6 @@ deaths_plot <- function(out, data) {
     out, 
     date_0 = as.Date(data$date[max(which(data$deaths == max(data$deaths)))])
   )
-  
-  
   
   gg_cases <- squire:::plot_calibration_healthcare_barplot(o1, data = data, forecast = 14) 
   gg_cases + geom_label(

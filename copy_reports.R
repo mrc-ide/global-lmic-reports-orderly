@@ -71,10 +71,10 @@ copy_outputs <- function(date = Sys.Date(), is_latest = TRUE) {
 
   src <- file.path("archive", "lmic_reports", reports$id)
   dest <- sprintf("gh-pages/%s/%s", reports$country, reports$date)
-  copy <- c("report.html",
+  copy <- c("index.html",
             "index_files/figure-html",
             # "fig1.png", "fig2.png",
-            "report.pdf")
+            "index.pdf")
 
   for (i in seq_along(dest)) {
     dir.create(dest[[i]], FALSE, TRUE)
