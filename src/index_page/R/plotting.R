@@ -38,128 +38,22 @@ cumulative_deaths_plot <- function(country) {
   }))
   
   df_deaths_latest <- df_deaths[df_deaths$dateRep == max(df_deaths$dateRep),]
-  continent <- unique(df$Continent[df$Region == country])
+  continent <- unique(df$Continent[df$Region %in% country])
   
-  gg_deaths <- ggplot(df_deaths[which(df_deaths$Continent == continent), ], aes(x=day_since, y=Cum_Deaths, group = Region)) + 
+  gg_deaths <- ggplot(df_deaths[which(df_deaths$Continent %in% continent), ], aes(x=day_since, y=Cum_Deaths, group = Region)) + 
     geom_line(data = doubling_lines_deaths, aes(x=x, y=y, linetype = Doubling),alpha=0.3, inherit.aes = FALSE) +
     geom_line(show.legend = FALSE, color = "grey", alpha = 0.6) +
-    geom_line(data = df_deaths[which(df_deaths$Region == country), ], color = "red", lwd = 2) +
-    geom_point(data = df_deaths_latest[which(df_deaths_latest$Continent == continent), ], alpha = 0.5, show.legend = FALSE) + 
-    ggrepel::geom_text_repel(data =  df_deaths_latest[which(df_deaths_latest$Continent == continent), ],
+    geom_line(data = df_deaths[which(df_deaths$Region %in% country), ], color = "red", lwd = 2) +
+    geom_point(data = df_deaths_latest[which(df_deaths_latest$Continent %in% continent), ], alpha = 0.5, show.legend = FALSE) + 
+    ggrepel::geom_text_repel(data =  df_deaths_latest[which(df_deaths_latest$Continent %in% continent), ],
                              aes(label = Region), show.legend = FALSE, min.segment.length = 1,nudge_x = 1) + 
-    scale_y_log10(limits=c(start, max(df_deaths$Cum_Deaths[df_deaths$Continent == continent]))) +
-    xlim(limits=c(0, max(df_deaths$day_since[df_deaths$Continent == continent]))) +
+    scale_y_log10(limits=c(start, max(df_deaths$Cum_Deaths[df_deaths$Continent %in% continent]))) +
+    xlim(limits=c(0, max(df_deaths$day_since[df_deaths$Continent %in% continent]))) +
     theme_bw() +
     ylab("Cumulative Deaths (Logarithmic Scale)") +
     xlab(paste("Days Since", start, "Deaths"))
   
   gg_deaths
-  
-}
-
-
-plotly_style <- function(country) {
-  
-  d <- readRDS("ecdc_all.rds")
-  
-  d$Continent <- countrycode::countrycode(d$Region, origin = 'country.name', destination = 'continent')
-  d$Continent[d$Region=="Eswatini"] <- "Africa"
-  d$Continent[d$Region=="United State of America"] <- "Americas"
-  d$Continent[d$Region=="Isle_of_Man"] <- "Europe"             
-  d$Continent[d$Region=="Kosovo"] <- "Europe"                  
-  d$Continent[d$Region=="Netherlands_Antilles"] <- "Americas"    
-  d$Continent[d$Region=="Saint_Lucia"] <- "Americas"             
-  d$Continent[d$Region=="South_Korea"] <- "Asia"             
-  d$Continent[d$Region=="United_States_of_America"] <- "Americas"
-  d$Region <- gsub("_" ," ", d$Region)
-  
-  # to reduce need for user inputs, precalculate for set options
-  d <- group_by(d, Region) %>% 
-    arrange(dateRep) %>% 
-    mutate(Cumulative_Deaths = cumsum(deaths),
-           Cumulative_Cases = cumsum(cases),
-           cc_10 = Cumulative_Cases > 10,
-           cc_100 = Cumulative_Cases > 100,
-           cc_1000 = Cumulative_Cases > 1000,
-           cd_10 = Cumulative_Deaths > 10,
-           cd_100 = Cumulative_Deaths > 100,
-           cd_1000 = Cumulative_Deaths > 1000) %>%
-    ungroup()
-  
-  d <- d %>% group_by(Region, cc_10) %>% 
-    mutate(day_since_cc_10 = seq_len(n())-1) %>% ungroup %>%
-    group_by(Region, cc_100) %>% 
-    mutate(day_since_cc_100 = seq_len(n())-1) %>% ungroup %>%
-    group_by(Region, cc_1000) %>% 
-    mutate(day_since_cc_1000 = seq_len(n())-1) %>% ungroup %>%
-    
-    group_by(Region, cd_10) %>% 
-    mutate(day_since_cd_10 = seq_len(n())-1) %>% ungroup %>%
-    group_by(Region, cd_100) %>% 
-    mutate(day_since_cd_100 = seq_len(n())-1) %>% ungroup %>%
-    group_by(Region, cd_1000) %>% 
-    mutate(day_since_cd_1000 = seq_len(n())-1) %>% ungroup 
-  
-  # doubling function
-  doubling <- function(double = 2, start = 10, xmax = 100, step = 0.1) {
-    
-    x <- seq(0, xmax, step)
-    y <- start * 2^(x/double) 
-    return(data.frame(x= x, y = y, 
-                      Doubling = paste0("Every ", double, " Days"),
-                      Country = NA))
-  }
-  
-  doubling_segment <- function(double = 2, start = 10, xmax = 100, step = 0.1) {
-    
-    x <- seq(0, xmax, step)
-    y <- start * 2^(x/double) 
-    return(data.frame(x= x[1], xend = x[length(x)],
-                      y = y[1], yend = y[length(y)], 
-                      Doubling = paste0("Every ", double, " Days"),
-                      Country = NA))
-  }
-  
-  
-  doubling_lines_10 <- do.call(rbind, lapply(c(1:3,7), function(x){
-    doubling(x, start = 10, xmax = 100)
-  }))
-  
-  
-  gg <- d %>% 
-    group_by(Region) %>% filter(cd_10) %>% ungroup %>% 
-    rename(Days = day_since_cd_10,
-           Deaths = Cumulative_Deaths,
-           Country = Region) %>% 
-    highlight_key(~Country, "Select Countries") %>% 
-    ggplot(aes(x=Days, y = Deaths, color = Continent, group = Country)) +
-    geom_line(data = doubling_lines_10, aes(x=x, y=y, group = Doubling), 
-              alpha = 0.5, color = "grey", linetype = "dashed", inherit.aes = FALSE) +
-    geom_line() +
-    scale_y_log10(limits = c(10, max(d$Cumulative_Deaths)*1.2), 
-                  breaks = c(10,20,100, 200, 500, 1000, 2000, 5000, 10000, 20000),
-                  labels = scales::comma) + 
-    xlab("Days Since 10 Deaths") +
-    ylab("Cumulative Cases Since 10 Deaths") +
-    xlim(c(0, max(d$day_since_cd_10))) +
-    theme_bw() + 
-    scale_color_discrete(name="") +
-    theme(axis.title.y = ggplot2::element_text(margin=ggplot2::margin(10, 200, 10, 10)),
-          axis.title.x = ggplot2::element_text(margin=ggplot2::margin(10, 10, 10, 10)),
-          axis.line = element_line(),
-          panel.border = element_blank())
-  
-  p <- plotly::ggplotly(gg, tooltip = c("Country", "Region", "Cases", "Days"))
-  
-  p_10 <- p %>% 
-    group_by(Country) %>% 
-    plotly::highlight(on = c("plotly_click"), off = "plotly_doubleclick",debounce = 100, 
-                      selected = plotly::attrs_selected(showlegend = FALSE, mode = "lines+markers" ), 
-                      persistent = TRUE,
-                      defaultValues = country,
-                      selectize = TRUE)
-  
-  p_10
   
 }
 
@@ -380,23 +274,42 @@ FacetZoom2 <- ggproto(
 )
 
 
-cases_plot <- function(out, data) {
+summaries_cases_plot <- function(summaries) {
   
-  o1 <- squire:::calibrate_output_parsing(
-    out, 
-    date_0 = as.Date(data$date[max(which(data$deaths == max(data$deaths)))])
-  )
+  ggplot(summaries[!summaries$variable %in% c("hospital_14","icu_14"),], 
+         aes(x = country, y = value, color = variable, fill = variable)) + 
+    geom_bar(stat="identity",position = "dodge") + 
+    scale_y_log10(labels = scales::comma) + 
+    scale_fill_manual("", labels = c("Estimated Infections", "Reported Infections", "Reported Deaths"),
+                      values = viridis::viridis(3)) +
+    scale_color_manual("", labels = c("Estimated Infections", "Reported Infections", "Reported Deaths"),
+                      values = viridis::viridis(3)) + 
+    theme_bw() +
+    xlab("Country") +
+    ylab("") + 
+    theme(legend.key = element_rect(size = 5),
+      legend.key.size = unit(2, 'lines'))
   
+}
+
+
+summaries_forecasts_plot <- function(summaries) {
   
-  
-  gg_cases <- squire:::plot_calibration_cases_barplot(o1, data = data, forecast = 0) + 
-    ggplot2::xlim(c(Sys.Date() - 28, Sys.Date()))
-  
-  gg_cases + ggplot2::theme(legend.position = c(0,1), 
-                            legend.justification = c(0,1), 
-                            legend.direction = "horizontal") + 
-    facet_zoom2(ylim = c(0, max(abs(diff(data$cases))*2)), zoom.size = 0.5) +
-    ggtitle("Plot on right zoomed in on observed cases")
+  ggplot(summaries[summaries$variable %in% c("hospital_14","icu_14"),], 
+         aes(x = country, y = value, color = variable, fill = variable)) + 
+    geom_bar(stat="identity",position = "dodge") + 
+    scale_y_log10(labels = scales::comma) + 
+    scale_fill_manual("", labels = c("Estimated Hospital Beds\nNeeded in 14 days",
+                                     "Estimated ICU Beds\nNeeded in 14 days"),
+                      values = viridis::viridis(2)) +
+    scale_color_manual("", labels = c("Estimated Hospital Beds\nNeeded in 14 days",
+                                      "Estimated ICU Beds\nNeeded in 14 days"),
+                       values = viridis::viridis(2)) + 
+    theme_bw() +
+    xlab("Country") +
+    ylab("") + 
+    theme(legend.key = element_rect(size = 5),
+          legend.key.size = unit(2, 'lines'))
   
 }
 
@@ -413,7 +326,7 @@ deaths_plot <- function(out, data) {
   gg_cases <- squire:::plot_calibration_healthcare_barplot(o1, data = data, forecast = 14) 
   gg_cases + geom_label(
     data = data.frame(x = c(as.Date(data$date[max(which(data$deaths == max(data$deaths)))]),Sys.Date()),
-                      y = c(max(o1$y[o1$compartment == "deaths" & o1$date < (Sys.Date()+14)])*0.90,
+                      y = c(max(o1$y[o1$compartment == "deaths" & o1$date < (Sys.Date()+14)])*0.95,
                             max(o1$y[o1$compartment == "deaths" & o1$date < (Sys.Date()+14)])*0.75),
                       label=c("Calibration Date",as.character(Sys.Date()))), 
     aes(x=x, y=y, label=label), inherit.aes = FALSE)

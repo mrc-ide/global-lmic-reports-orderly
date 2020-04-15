@@ -72,7 +72,7 @@ copy_outputs <- function(date = Sys.Date(), is_latest = TRUE) {
   src <- file.path("archive", "lmic_reports", reports$id)
   dest <- sprintf("gh-pages/%s/%s", reports$country, reports$date)
   copy <- c("report.html",
-            "index_files/figure-html", 
+            "index_files/figure-html",
             # "fig1.png", "fig2.png",
             "report.pdf")
 
@@ -86,6 +86,10 @@ copy_outputs <- function(date = Sys.Date(), is_latest = TRUE) {
       file_copy(dir(dest[[i]], full.names = TRUE), dest_latest)
     }
   }
+  
+  summaries <- do.call(rbind, lapply(file.path(src, "summary_df.rds"), readRDS)) 
+  saveRDS(summaries, file.path(here::here(),"src/index_page/summaries.rds"))
+  
 }
 
 

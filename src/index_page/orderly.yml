@@ -65,7 +65,6 @@ artefacts:
       filenames:
         - index.html
         - index.pdf
-        - summary_df.rds
 
 # An optional name to describe the report in more detail than its
 # directory name (which must be short) but less detail than
@@ -122,6 +121,7 @@ resources:
   - header.html
   - footer.tex
   - logo.jpg
+  - summaries.rds
 
 # This section copies the word style over from the global/
 # directory. If you do not want to create a docx, please remove this
