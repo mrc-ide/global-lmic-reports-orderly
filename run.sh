@@ -21,7 +21,7 @@ set -e
 ./orderly run lmic_reports iso3c=BRA
 ./orderly run lmic_reports iso3c=BGR
 ./orderly run lmic_reports iso3c=BFA
-#./orderly run lmic_reports iso3c=BDI
+./orderly run lmic_reports iso3c=BDI
 ./orderly run lmic_reports iso3c=CPV
 #./orderly run lmic_reports iso3c=KHM
 ./orderly run lmic_reports iso3c=CMR
