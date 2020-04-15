@@ -118,6 +118,8 @@ resources:
   - _site.yml
   - styles.css
   - footer.html
+  - header.html
+  - footer.tex
   - logo.jpg
 
 # This section copies the word style over from the global/

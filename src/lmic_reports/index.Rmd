@@ -8,8 +8,11 @@ output:
     self_contained: yes
     css: styles.css
     theme: cosmo
+    fig_caption: TRUE
   pdf_document: 
-    fig_caption: false
+    fig_caption: true
+    includes: 
+      before_body: footer.tex
   word_document:
     df_print: kable
     fig_caption: yes
@@ -25,6 +28,35 @@ replicates <- 10
 library(dplyr)
 library(ggplot2)
 library(squire)
+
+format <- knitr::opts_knit$get("rmarkdown.pandoc.to")
+saveRDS(format,"/home/oj/Desktop/what.rds")
+figRef <- function(caption) {
+  if(format == "latex") {
+    gsub("Figure \\d: ","",caption)
+  } else {
+    caption
+  }
+}
+
+
+fig_height <- function(pdf = 4, html = 6) {
+    if(format == "latex") {
+    pdf
+  } else {
+    html
+  }
+}
+
+fig_center <- function() {
+    if(format == "latex") {
+    "default"
+  } else {
+    "center"
+  }
+}
+
+
 ```
 
 ```{r ecdc prep, echo = FALSE, collapse=TRUE, warning=FALSE}
@@ -41,9 +73,13 @@ data$deaths <- rev(cumsum(rev(data$deaths)))
 data$cases <- rev(cumsum(rev(data$cases)))
 data$date <- as.Date(data$date)
 
+pop <- get_population(country)
+
 out <- squire::calibrate(country = country, deaths = max(data$deaths),
                          replicates = replicates, 
                          min_seeding_cases = 1, max_seeding_cases = 5,
+                         ICU_bed_capacity = sum(pop$n), 
+                         hosp_bed_capacity = sum(pop$n),
                          dt = 0.1)
 
 ## Summaries
@@ -93,7 +129,7 @@ deaths_14 <- group_by(deaths[deaths$t==14,], replicate) %>%
             i_max = t.test(tot)$conf.int[2])
 
 ```
-# MRC Centre for Global Infectious Disease Analysis, \nImperial College London
+
 ## Situation Report for COVID-19: `r country`, `r format(Sys.Date(), "%Y-%m-%d")`
 
 <br> 
@@ -102,13 +138,15 @@ This report uses data from the ECDC database of COVID-19 deaths reported. We use
 
 The current version of this report does not capture the impact that interventions that have been put in place will have had on the course of the epidemic. The short-term projections may therefore be higher than the actual need for countries that currently have widescale and effective social distancing measures in place.
 
+<br> 
+
 ### Epidemiological Situation
 
 As of `r format(Sys.Date(), "%Y-%m-%d")` there have been `r data$cases[1]` cases and `r data$deaths[1]` deaths reported. The figure below shows the cumulative reported as a function of the time since the 10th death was reported. This figure is not shown for countries that have not yet reported at least 10 deaths. Dashed lines show the expected trajectory for different doubling times of the epidemic. For example, with a doubling time of 3 days, if there are currently a total of 20 deaths reported, we would expect there to be 40 deaths in total reported in 3 days-time, 80 deaths in 6 days-time, 160 deaths in 9 days-time etc. For most epidemics, in the absence of interventions, we expect a doubling time of 3-4 days for this disease.
 
 <br>
 
-```{r fig1, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap="**Figure 1: Cumulative Deaths since 10 deaths.** Note if 10 deaths are yet to be reported, country will not be shown.", fig.align="center"}
+```{r fig1, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 1: Cumulative Deaths since 10 deaths.** Note if 10 deaths are yet to be reported, country will not be shown."), fig.align=fig_center()}
 
 if(data$deaths[1] > 10) {
 cumulative_deaths_plot(country = country)
@@ -126,13 +164,13 @@ We assume that the deaths reported to date provide the best indication of the st
 
 Using our [mathematical model](https://github.com/mrc-ide/squire) that formalises this approach, the figure below shows our estimate of the number of people infected over the past 4 weeks. We estimate that there has been a total of `r form(infs)` infections over the past 4 weeks.
 
-The bar charts show, for comparison, the number of reported cases. **It should be noted** that the estimated infections may include both asymptomatic and mild cases that would not necessarily be identified through surveillance. The right-hand plot shows these data on a different scale as the estimated infections are likely to be much larger than the reported cases.
+The bar charts show, for comparison, the number of reported cases. It should be noted that the estimated infections may include both asymptomatic and mild cases that would not necessarily be identified through surveillance. The right-hand plot shows these data on a different scale as the estimated infections are likely to be much larger than the reported cases.
 
 The figure below shows the estimated number of people infected and number of symptomatic cases over the past 4 weeks.
 
 <br>
 
-```{r case plot, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE,  fig.cap="**Figure 2: Daily number of infections estimated by fitting to the current total of deaths.** Reported cases are shown in red. Model estimated cases are shown in blue, dark blue 50% confidence interval (CI), light blue 95% CI.", fig.width=10, fig.height=6}
+```{r case plot, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE,  fig.cap=figRef("**Figure 2: Daily number of infections estimated by fitting to the current total of deaths.** Reported cases are shown in red. Model estimated cases are shown in blue, dark blue 50% confidence interval (CI), light blue 95% CI."), fig.width=10, fig.height=6}
 
 suppressMessages(cases_plot(out, data))
 
@@ -142,8 +180,6 @@ suppressMessages(cases_plot(out, data))
 
 ### Short-term Epidemic Projections
 
-<br> 
-
 We make the following short-term projections of healthcare demand under the assumption that the epidemic continues to grow exponentially. Conseqently, these predictions have two major caveats:
 
 1. The projections do not capture the effect of interventions that have been put in place
@@ -151,9 +187,7 @@ We make the following short-term projections of healthcare demand under the assu
 
 We estimate that over the next 2 weeks demand for hospital beds will grow from `r form(hosp_today)` at the current date to `r form(hosp_14)` by `r format(Sys.Date() + 14, "%Y-%m-%d")`. Similarly, we estimate that over the next 2 weeks demand for critical care (ICU) beds will grow from `r form(icu_today)` at the current date to `r form(icu_14)` by `r format(Sys.Date() + 14, "%Y-%m-%d")`. These projections assume that approximately 5% of all infections will require hospitalisation and that approximately 30% of hospitalised cases will require critical care (ICU) facilities (based on analysis of ongoing epidemics in Europe). 
 
-<br>
-
-```{r healthcare plots, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap="**Figure 3: Healthcare demands in the next 2 weeks.**", , fig.width=10, fig.height=6}
+```{r healthcare plots, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 3: Healthcare demands in the next 2 weeks.** Individuals needing an ICU bed are predicted to need mechanica ventilation."), fig.width=10, fig.height=fig_height(3,4.5)}
 
 suppressMessages(healthcare_plot(out, data))
 
@@ -163,10 +197,10 @@ suppressMessages(healthcare_plot(out, data))
 
 Assuming a case fatality ratio consistent with that observed in China, Europe and the U.S to date, we estimate that there could be `r form(deaths_14)` deaths by `r format(Sys.Date() + 14, "%Y-%m-%d")`. The expected trajectory for cumulative deaths is shown in the figure below along with the bar chart of reported deaths.
 
-<br>
-
-```{r death forecast plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap="**Figure 4: Daily Deaths estimated by fitting to the current total of deaths.** Reported deaths are shown in red. Model estimated deaths are shown in blue, dark blue 50% confidence interval (CI), light blue 95% CI." , fig.width=10, fig.height=6}
+```{r death forecast plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap=figRef("**Figure 4: Cumulative Deaths estimated by fitting to the current total of deaths.** Reported deaths are shown in red. Model estimated deaths are shown in blue, dark blue 50% confidence interval (CI), light blue 95% CI."), fig.width=10, fig.height=fig_height(4,6)}
 
 suppressMessages(deaths_plot(out, data))
 
 ```
+
+<br>
