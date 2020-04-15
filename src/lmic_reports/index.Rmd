@@ -6,6 +6,8 @@ output:
   html_document:
     keep_md: yes
     self_contained: yes
+    css: styles.css
+    theme: cosmo
   pdf_document: 
     fig_caption: false
   word_document:
@@ -19,7 +21,8 @@ output:
 
 ```{r, echo = FALSE, message=FALSE, warning=FALSE}
 start <- 10
-replicates <- 100
+replicates <- 10
+iso3c <- "AGO"
 library(dplyr)
 library(ggplot2)
 ```

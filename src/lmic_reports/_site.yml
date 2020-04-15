@@ -1,0 +1,28 @@
+name: "lmic-reports"
+output_dir: "."
+navbar:
+  title: "COVID-19 LMIC Reports"
+  left:
+    - text: "Introduction"
+      href: index.html
+    - text: "Countries"
+      menu:
+        - text: "Africa"
+          menu:
+          - text: "Angola"
+            href: "AGO/index.html"
+        - text: "Asia"
+          menu:
+          - text: "Afghanistan"
+            href: "AFG/index.html"
+    - text: "Parameters"
+      href: parameters.html
+    - text: "Source Code"
+      href: https://github.com/mrc-ide/global-lmic-report-orderly
+output:
+  html_document:
+    theme: cosmo
+    highlight: textmate
+    include:
+      after_body: footer.html
+    css: styles.css
