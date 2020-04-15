@@ -176,7 +176,7 @@ The figure below shows the estimated number of people infected and number of sym
 
 <br>
 
-```{r case plot, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE,  fig.cap=figRef("**Figure 2: Daily number of infections estimated by fitting to the current total of deaths.** Reported cases are shown in red. Model estimated cases are shown in blue, dark blue 50% confidence interval (CI), light blue 95% CI."), fig.width=10, fig.height=6}
+```{r case plot, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE,  fig.cap=figRef("**Figure 2: Daily number of infections estimated by fitting to the current total of deaths.** Reported cases are shown in red. Model estimated cases are shown in blue (dark blue 50% interquartile range, light blue 95% quantile)."), fig.width=10, fig.height=6}
 
 suppressMessages(cases_plot(out, data))
 
@@ -191,9 +191,9 @@ We make the following short-term projections of healthcare demand under the assu
 1. The projections do not capture the effect of interventions that have been put in place
 2. The projections assume that 100% of COVID-19 related deaths have been reported.
 
-We estimate that over the next 2 weeks demand for hospital beds will grow from `r form(hosp_today)` at the current date to `r form(hosp_14)` by `r format(Sys.Date() + 14, "%Y-%m-%d")`. Similarly, we estimate that over the next 2 weeks demand for critical care (ICU) beds will grow from `r form(icu_today)` at the current date to `r form(icu_14)` by `r format(Sys.Date() + 14, "%Y-%m-%d")`. These projections assume that approximately 5% of all infections will require hospitalisation and that approximately 30% of hospitalised cases will require critical care (ICU) facilities (based on analysis of ongoing epidemics in Europe). 
+We estimate that over the next 2 weeks demand for hospital beds will grow from `r form(hosp_today)`  patients requiring treatment with high-pressure oxygen at the current date to `r form(hosp_14)` by `r format(Sys.Date() + 14, "%Y-%m-%d")`. Similarly, we estimate that over the next 2 weeks demand for critical care (ICU) beds will grow from `r form(icu_today)` patients requiring treatment with mechanical ventilation at the current date to `r form(icu_14)` by `r format(Sys.Date() + 14, "%Y-%m-%d")`. These projections assume that approximately 5% of all infections will require treatment with high-pressure oxygen  and that approximately 30% of hospitalised cases will require require treatment with mechanical ventilationcritical (based on analysis of ongoing epidemics in Europe). 
 
-```{r healthcare plots, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 3: Healthcare demands in the next 2 weeks.** Individuals needing an ICU bed are predicted to need mechanica ventilation."), fig.width=10, fig.height=fig_height(3,4.5)}
+```{r healthcare plots, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 3: Healthcare demands in the next 2 weeks.** Individuals needing an ICU bed are predicted to need mechanical ventilation."), fig.width=10, fig.height=fig_height(3,4.5)}
 
 suppressMessages(healthcare_plot(out, data))
 
@@ -203,10 +203,6 @@ suppressMessages(healthcare_plot(out, data))
 
 Assuming a case fatality ratio consistent with that observed in China, Europe and the U.S to date, we estimate that there could be `r form(deaths_14)` deaths by `r format(Sys.Date() + 14, "%Y-%m-%d")`. The expected trajectory for cumulative deaths is shown in the figure below along with the bar chart of reported deaths.
 
-```{r death forecast plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap=figRef("**Figure 4: Cumulative Deaths estimated by fitting to the current total of deaths.** Reported deaths are shown in red. Model estimated deaths are shown in blue, dark blue 50% confidence interval (CI), light blue 95% CI."), fig.width=10, fig.height=fig_height(4,6)}
-
+```{r death forecast plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap=figRef("**Figure 4: Cumulative Deaths estimated by fitting to the current total of deaths.** Reported deaths are shown in red. Model estimated deaths are shown in blue (dark blue 50% interquartile range, light blue 95% quantile)."), fig.width=10, fig.height=fig_height(4,6)}
 suppressMessages(deaths_plot(out, data))
-
 ```
-
-<br>

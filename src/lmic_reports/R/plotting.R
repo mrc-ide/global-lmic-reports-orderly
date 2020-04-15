@@ -43,7 +43,8 @@ cumulative_deaths_plot <- function(country) {
   gg_deaths <- ggplot(df_deaths[which(df_deaths$Continent == continent), ], aes(x=day_since, y=Cum_Deaths, group = Region)) + 
     geom_line(data = doubling_lines_deaths, aes(x=x, y=y, linetype = Doubling),alpha=0.3, inherit.aes = FALSE) +
     geom_line(show.legend = FALSE, color = "grey", alpha = 0.6) +
-    geom_line(data = df_deaths[which(df_deaths$Region == country), ], color = "red", lwd = 2) +
+    geom_line(data = df_deaths[which(df_deaths$Region == country), ], color = "red", lwd = 1) +
+    geom_point(data = df_deaths[which(df_deaths$Region == country), ], color = "red") +
     geom_point(data = df_deaths_latest[which(df_deaths_latest$Continent == continent), ], alpha = 0.5, show.legend = FALSE) + 
     ggrepel::geom_text_repel(data =  df_deaths_latest[which(df_deaths_latest$Continent == continent), ],
                              aes(label = Region), show.legend = FALSE, min.segment.length = 1,nudge_x = 1) + 
@@ -410,11 +411,11 @@ deaths_plot <- function(out, data) {
   
   
   
-  gg_cases <- squire:::plot_calibration_healthcare_barplot(o1, data = data, forecast = 14) 
+  gg_cases <- squire:::plot_calibration_deaths_barplot(o1, data = data, forecast = 14, cumulative = TRUE) 
   gg_cases + geom_label(
     data = data.frame(x = c(as.Date(data$date[max(which(data$deaths == max(data$deaths)))]),Sys.Date()),
-                      y = c(max(o1$y[o1$compartment == "deaths" & o1$date < (Sys.Date()+14)])*0.90,
-                            max(o1$y[o1$compartment == "deaths" & o1$date < (Sys.Date()+14)])*0.75),
+                      y = c(max(o1$y[o1$compartment == "cumulative_deaths" & o1$date < (Sys.Date()+14)])*0.85,
+                            max(o1$y[o1$compartment == "cumulative_deaths" & o1$date < (Sys.Date()+14)])*0.75),
                       label=c("Calibration Date",as.character(Sys.Date()))), 
     aes(x=x, y=y, label=label), inherit.aes = FALSE)
   
@@ -429,8 +430,8 @@ healthcare_plot <- function(out, data) {
     date_0 = as.Date(data$date[max(which(data$deaths == max(data$deaths)))])
   )
   
-  cowplot::plot_grid(squire:::plot_calibration_healthcare_individual_barplot(df = o1, data = data, what = "hospital"),
-                     squire:::plot_calibration_healthcare_individual_barplot(df = o1, data = data, what = "ICU"),
+  cowplot::plot_grid(squire:::plot_calibration_healthcare_barplot(df = o1, data = data, what = "hospital"),
+                     squire:::plot_calibration_healthcare_barplot(df = o1, data = data, what = "ICU"),
                      ncol=2)
   
 }
