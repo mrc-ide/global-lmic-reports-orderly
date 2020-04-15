@@ -115,6 +115,10 @@ sources:
 #
 resources:
   - index.Rmd
+  - _site.yml
+  - styles.css
+  - footer.html
+  - logo.jpg
 
 # This section copies the word style over from the global/
 # directory. If you do not want to create a docx, please remove this

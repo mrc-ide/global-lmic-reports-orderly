@@ -4,11 +4,9 @@ set -e
 
 ## Fill these in for now manually. Eventually we will use the batch
 ## interface.
-./orderly run lmic_reports iso3c=AGO
 ./orderly run lmic_reports iso3c=AFG
-./orderly run lmic_reports iso3c=ALB
-./orderly run lmic_reports iso3c=DZA
 ./orderly run lmic_reports iso3c=AGO
+./orderly run lmic_reports iso3c=ALB
 ./orderly run lmic_reports iso3c=ARG
 ./orderly run lmic_reports iso3c=ARM
 ./orderly run lmic_reports iso3c=AZE
@@ -39,6 +37,7 @@ set -e
 #./orderly run lmic_reports iso3c=PRK
 ./orderly run lmic_reports iso3c=COD
 ./orderly run lmic_reports iso3c=DJI
+./orderly run lmic_reports iso3c=DZA
 ./orderly run lmic_reports iso3c=DOM
 ./orderly run lmic_reports iso3c=ECU
 ./orderly run lmic_reports iso3c=EGY

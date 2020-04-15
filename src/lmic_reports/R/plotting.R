@@ -1,60 +1,60 @@
 
 cumulative_deaths_plot <- function(country) {
   
-d <- readRDS("ecdc_all.rds")
-start <- 10
-
-d$Continent <- countrycode::countrycode(d$Region, origin = 'country.name', destination = 'continent')
-d$Continent[d$Region=="Eswatini"] <- "Africa"
-d$Continent[d$Region=="United State of America"] <- "Americas"
-d$Continent[d$Region=="Isle_of_Man"] <- "Europe"             
-d$Continent[d$Region=="Kosovo"] <- "Europe"                  
-d$Continent[d$Region=="Netherlands_Antilles"] <- "Americas"    
-d$Continent[d$Region=="Saint_Lucia"] <- "Americas"             
-d$Continent[d$Region=="South_Korea"] <- "Asia"             
-d$Continent[d$Region=="United_States_of_America"] <- "Americas"
-
-doubling <- function(double = 2, start = 10, xmax = 100) {
+  d <- readRDS("ecdc_all.rds")
+  start <- 10
   
-  x <- seq(0, xmax, 0.1)
-  y <- start * 2^(x/double) 
-  return(data.frame(x= x, y = y, 
-                    Doubling = paste0("Every ", double, " Days")))
-}
-
-df <- group_by(d, Region) %>% 
-  arrange(dateRep) %>% 
-  mutate(Cum_Deaths = cumsum(deaths),
-         Cum_Cases = cumsum(cases))
-
-df$Region <- gsub("_" ," ", df$Region)
-
-df_deaths <- df %>% 
-  filter(Cum_Deaths > start) %>% 
-  mutate(day_since = seq_len(n())-1)
-
-doubling_lines_deaths <- do.call(rbind, lapply(c(2, 3, 5, 7), function(x){
-  doubling(x, start = start, xmax = max(df_deaths$day_since))
-}))
-
-df_deaths_latest <- df_deaths[df_deaths$dateRep == max(df_deaths$dateRep),]
-continent <- unique(df$Continent[df$Region == country])
-
-gg_deaths <- ggplot(df_deaths[which(df_deaths$Continent == continent), ], aes(x=day_since, y=Cum_Deaths, group = Region)) + 
-  geom_line(data = doubling_lines_deaths, aes(x=x, y=y, linetype = Doubling),alpha=0.3, inherit.aes = FALSE) +
-  geom_line(show.legend = FALSE, color = "grey", alpha = 0.6) +
-  geom_line(data = df_deaths[which(df_deaths$Region == country), ], color = "red", lwd = 2) +
-  geom_point(data = df_deaths_latest[which(df_deaths_latest$Continent == continent), ], alpha = 0.5, show.legend = FALSE) + 
-  ggrepel::geom_text_repel(data =  df_deaths_latest[which(df_deaths_latest$Continent == continent), ],
-                           aes(label = Region), show.legend = FALSE, min.segment.length = 1,nudge_x = 1) + 
-  scale_y_log10(limits=c(start, max(df_deaths$Cum_Deaths[df_deaths$Continent == continent]))) +
-  xlim(limits=c(0, max(df_deaths$day_since[df_deaths$Continent == continent]))) +
-  theme_bw() +
-  ylab("Cumulative Deaths (Logarithmic Scale)") +
-  xlab(paste("Days Since", start, "Deaths"))
-
-gg_deaths
-
+  d$Continent <- countrycode::countrycode(d$Region, origin = 'country.name', destination = 'continent')
+  d$Continent[d$Region=="Eswatini"] <- "Africa"
+  d$Continent[d$Region=="United State of America"] <- "Americas"
+  d$Continent[d$Region=="Isle_of_Man"] <- "Europe"             
+  d$Continent[d$Region=="Kosovo"] <- "Europe"                  
+  d$Continent[d$Region=="Netherlands_Antilles"] <- "Americas"    
+  d$Continent[d$Region=="Saint_Lucia"] <- "Americas"             
+  d$Continent[d$Region=="South_Korea"] <- "Asia"             
+  d$Continent[d$Region=="United_States_of_America"] <- "Americas"
+  
+  doubling <- function(double = 2, start = 10, xmax = 100) {
+    
+    x <- seq(0, xmax, 0.1)
+    y <- start * 2^(x/double) 
+    return(data.frame(x= x, y = y, 
+                      Doubling = paste0("Every ", double, " Days")))
+  }
+  
+  df <- group_by(d, Region) %>% 
+    arrange(dateRep) %>% 
+    mutate(Cum_Deaths = cumsum(deaths),
+           Cum_Cases = cumsum(cases))
+  
+  df$Region <- gsub("_" ," ", df$Region)
+  
+  df_deaths <- df %>% 
+    filter(Cum_Deaths > start) %>% 
+    mutate(day_since = seq_len(n())-1)
+  
+  doubling_lines_deaths <- do.call(rbind, lapply(c(2, 3, 5, 7), function(x){
+    doubling(x, start = start, xmax = max(df_deaths$day_since))
+  }))
+  
+  df_deaths_latest <- df_deaths[df_deaths$dateRep == max(df_deaths$dateRep),]
+  continent <- unique(df$Continent[df$Region == country])
+  
+  gg_deaths <- ggplot(df_deaths[which(df_deaths$Continent == continent), ], aes(x=day_since, y=Cum_Deaths, group = Region)) + 
+    geom_line(data = doubling_lines_deaths, aes(x=x, y=y, linetype = Doubling),alpha=0.3, inherit.aes = FALSE) +
+    geom_line(show.legend = FALSE, color = "grey", alpha = 0.6) +
+    geom_line(data = df_deaths[which(df_deaths$Region == country), ], color = "red", lwd = 2) +
+    geom_point(data = df_deaths_latest[which(df_deaths_latest$Continent == continent), ], alpha = 0.5, show.legend = FALSE) + 
+    ggrepel::geom_text_repel(data =  df_deaths_latest[which(df_deaths_latest$Continent == continent), ],
+                             aes(label = Region), show.legend = FALSE, min.segment.length = 1,nudge_x = 1) + 
+    scale_y_log10(limits=c(start, max(df_deaths$Cum_Deaths[df_deaths$Continent == continent]))) +
+    xlim(limits=c(0, max(df_deaths$day_since[df_deaths$Continent == continent]))) +
+    theme_bw() +
+    ylab("Cumulative Deaths (Logarithmic Scale)") +
+    xlab(paste("Days Since", start, "Deaths"))
+  
+  gg_deaths
+  
 }
 
 
@@ -392,7 +392,7 @@ cases_plot <- function(out, data) {
   gg_cases <- squire:::plot_calibration_cases_barplot(o1, data = data, forecast = 0) + 
     ggplot2::xlim(c(Sys.Date() - 28, Sys.Date()))
   
-    gg_cases + ggplot2::theme(legend.position = c(0,1), 
+  gg_cases + ggplot2::theme(legend.position = c(0,1), 
                             legend.justification = c(0,1), 
                             legend.direction = "horizontal") + 
     facet_zoom2(ylim = c(0, max(abs(diff(data$cases))*2)), zoom.size = 0.5) +
@@ -412,11 +412,11 @@ deaths_plot <- function(out, data) {
   
   gg_cases <- squire:::plot_calibration_healthcare_barplot(o1, data = data, forecast = 14) 
   gg_cases + geom_label(
-      data = data.frame(x = c(as.Date(data$date[max(which(data$deaths == max(data$deaths)))]),Sys.Date()),
-                        y = c(max(o1$y[o1$compartment == "deaths" & o1$date < (Sys.Date()+14)])*0.75,
-                              max(o1$y[o1$compartment == "deaths" & o1$date < (Sys.Date()+14)])*0.65),
-                        label=c("Calibration Date","Today")), 
-      aes(x=x, y=y, label=label), inherit.aes = FALSE)
+    data = data.frame(x = c(as.Date(data$date[max(which(data$deaths == max(data$deaths)))]),Sys.Date()),
+                      y = c(max(o1$y[o1$compartment == "deaths" & o1$date < (Sys.Date()+14)])*0.75,
+                            max(o1$y[o1$compartment == "deaths" & o1$date < (Sys.Date()+14)])*0.65),
+                      label=c("Calibration Date","Today")), 
+    aes(x=x, y=y, label=label), inherit.aes = FALSE)
   
   
 }
@@ -429,6 +429,8 @@ healthcare_plot <- function(out, data) {
     date_0 = as.Date(data$date[max(which(data$deaths == max(data$deaths)))])
   )
   
-squire:::plot_calibration_healthcare(o1, data, forecast = 14) 
-
+  cowplot::plot_grid(squire:::plot_calibration_healthcare_individual_barplot(df = o1, data = data, what = "hospital"),
+                     squire:::plot_calibration_healthcare_individual_barplot(df = o1, data = data, what = "ICU"),
+                     ncol=2)
+  
 }
