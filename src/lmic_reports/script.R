@@ -3,7 +3,7 @@ orderly_id <- tryCatch(orderly::orderly_run_info()$id,
 
 # prepare fitting first
 start <- 10
-replicates <- 200
+replicates <- 20
 library(dplyr)
 library(ggplot2)
 library(squire)
