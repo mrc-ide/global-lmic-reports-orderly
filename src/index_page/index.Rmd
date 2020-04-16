@@ -73,7 +73,7 @@ data$date <- as.Date(data$date)
 countries_less_100 <- length(unique(df$Region[!df$Region %in% unique(df$Region[df$deaths > 100])]))
 
 ## summaries
-sum_df <- readRDS("summaries.rds")
+summaries <- readRDS("summaries.rds")
 
 ```
 
@@ -85,14 +85,16 @@ COVID-19 is currently causing large-scale outbreaks in many countries, particula
 
 <br> 
 
-```{r fig1, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 1: Cumulative Deaths since 10 deaths.**"), fig.align=fig_center(),fig.width=8, fig.height=8}
+```{r fig1, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 1: Cumulative Deaths since 10 deaths.**"), fig.align=fig_center(),fig.width=6, fig.height=fig_height(4,5)}
 
 # [FIGURE SHOWING TRAJECTORIES AND CASES OF EARLY-STAGE LMIC COUNTRIES RELATIVE TO HICS?]
+suppressMessages(suppressWarnings(
 cumulative_deaths_plot(country = c("Algeria", "Brazil", "Ecuador", "Mexico",
                                    "Morocco", "Philippines", "India",
-                                   "Turkey", "United Kingdom", "Italy", 
+                                   "United Kingdom", "Italy", 
+                                   "South Korea",
                                    "United States of America"))
-
+))
 
 ```
 
@@ -102,7 +104,7 @@ Meanwhile there are many countries, particularly Lower or Middle Income countrie
 
 As in our projections for high-income settings at more advanced stages of the epidemic, rather than relying upon reported cases which are likely to be subject to a high and varying degree of under-ascertainment, we use reported deaths as a more reliable indicator of disease spread. These data are then used to back-calculate an ‘inferred number of COVID-19 infections’ that we estimate have occurred within each country up to the current day, adjusted for the demographics and representative patterns of social mixing within each country.
 
-```{r case plot, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE,  fig.cap=figRef("**Figure 2: Estimated vs Reported Cases and Deaths.**"), fig.width=10, fig.height=6}
+```{r case plot, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE,  fig.cap=figRef("**Figure 2: Estimated vs Reported Cases and Deaths.**"), fig.width=10, fig.height=12}
 
 # [FIGURE SHOWING TOTAL DEATHS AND TOTAL CASES [OBSERVED AND INFERRED FOR SUB-SAHARAN AFRICA]
 suppressMessages(summaries_cases_plot(summaries))
@@ -111,7 +113,7 @@ suppressMessages(summaries_cases_plot(summaries))
 
 Then, using data on the risk of requiring hospitalisation, oxygen and mechanical ventilation by age observed in other countries to date, we use our model to project forwards the likely demand for healthcare over the coming two weeks.
 
-```{r healthcare plots, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 3: Estimated Healthcare demands in 2 weeks time.**"), fig.width=10, fig.height=fig_height(3,4.5)}
+```{r healthcare plots, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 3: Estimated Healthcare demands in 2 weeks time.** Individuals needing an ICU bed are predicted to need mechanical ventilation."), fig.width=10, fig.height=fig_height(9,12)}
 
 # [FIGURE SHOWING PROJECTIONS OF HOSP/ICU/DEATHS IN NEXT TWO WEEKS IN SSA]
 suppressMessages(summaries_forecasts_plot(summaries))

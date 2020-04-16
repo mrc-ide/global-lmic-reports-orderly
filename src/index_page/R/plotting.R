@@ -43,11 +43,11 @@ cumulative_deaths_plot <- function(country) {
   gg_deaths <- ggplot(df_deaths[df_deaths$Region %in% country,], aes(x=day_since, y=Cum_Deaths, group = Region)) + 
     geom_line(data = doubling_lines_deaths, aes(x=x, y=y, linetype = Doubling),alpha=0.3, inherit.aes = FALSE) +
     geom_line(show.legend = FALSE, color = "grey", alpha = 0.6) +
-    geom_line(data = df_deaths[which(df_deaths$Region %in% country[1:8]),], lwd = 1.5, mapping = aes(color = Continent)) +
-    geom_point(data = df_deaths[which(df_deaths$Region %in% country[1:8]),], lwd = 1.5) +
-    geom_point(data = df_deaths_latest[which(df_deaths_latest$Continent %in% continent), ], alpha = 0.5, show.legend = FALSE) + 
-    ggrepel::geom_text_repel(data =  df_deaths_latest[which(df_deaths_latest$Continent %in% continent), ],
-                             aes(label = Region), show.legend = FALSE, min.segment.length = 1,nudge_x = 1) + 
+    geom_line(data = df_deaths[which(df_deaths$Region %in% country[1:7]),], mapping = aes(color = Continent)) +
+    #geom_point(data = df_deaths[which(df_deaths$Region %in% country[1:7]),], mapping = aes(color = Continent)) +
+    geom_point(data = df_deaths_latest[which(df_deaths_latest$Region %in% country), ], alpha = 0.5, show.legend = FALSE) + 
+    ggrepel::geom_text_repel(data =  df_deaths_latest[which(df_deaths_latest$Region %in% country), ],
+                             aes(label = Region), show.legend = FALSE, min.segment.length = 2,nudge_x = 1) + 
     scale_y_log10(limits=c(start, max(df_deaths$Cum_Deaths[df_deaths$Continent %in% continent]))) +
     xlim(limits=c(0, max(df_deaths$day_since[df_deaths$Continent %in% continent]))) +
     theme_bw() +
@@ -277,19 +277,21 @@ FacetZoom2 <- ggproto(
 
 summaries_cases_plot <- function(summaries) {
   
-  ggplot(summaries[!summaries$variable %in% c("hospital_14","icu_14"),], 
+  ggplot(summaries[!summaries$variable %in% c("hospital_14","icu_14", "report_deaths"),], 
          aes(x = country, y = value, color = variable, fill = variable)) + 
-    geom_bar(stat="identity",position = "dodge") + 
+    geom_bar(stat="identity",position = position_dodge2(preserve = "single"), width = 0.4) + 
     scale_y_log10(labels = scales::comma) + 
     scale_fill_manual("", labels = c("Estimated Infections", "Reported Infections", "Reported Deaths"),
                       values = viridis::viridis(3)) +
     scale_color_manual("", labels = c("Estimated Infections", "Reported Infections", "Reported Deaths"),
                       values = viridis::viridis(3)) + 
     theme_bw() +
-    xlab("Country") +
+    xlab("") +
     ylab("") + 
+    facet_wrap(~continent, scales = "free_y") +
     theme(legend.key = element_rect(size = 5),
-      legend.key.size = unit(2, 'lines'))
+      legend.key.size = unit(2, 'lines')) + 
+    coord_flip()
   
 }
 
@@ -298,19 +300,21 @@ summaries_forecasts_plot <- function(summaries) {
   
   ggplot(summaries[summaries$variable %in% c("hospital_14","icu_14"),], 
          aes(x = country, y = value, color = variable, fill = variable)) + 
-    geom_bar(stat="identity",position = "dodge") + 
-    scale_y_log10(labels = scales::comma) + 
+    geom_bar(stat="identity",position = "dodge", width = 0.5) + 
+    scale_y_continuous(labels = scales::comma) + 
     scale_fill_manual("", labels = c("Estimated Hospital Beds\nNeeded in 14 days",
                                      "Estimated ICU Beds\nNeeded in 14 days"),
-                      values = viridis::viridis(2)) +
+                      values = viridis::viridis(3)) +
     scale_color_manual("", labels = c("Estimated Hospital Beds\nNeeded in 14 days",
                                       "Estimated ICU Beds\nNeeded in 14 days"),
-                       values = viridis::viridis(2)) + 
+                       values = viridis::viridis(3)) + 
     theme_bw() +
-    xlab("Country") +
+    xlab("") +
     ylab("") + 
+    facet_wrap(~continent,scales="free_y") +
     theme(legend.key = element_rect(size = 5),
-          legend.key.size = unit(2, 'lines'))
+          legend.key.size = unit(2, 'lines')) + 
+    coord_flip()
   
 }
 

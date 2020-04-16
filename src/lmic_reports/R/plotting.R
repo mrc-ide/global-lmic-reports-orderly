@@ -410,17 +410,19 @@ deaths_plot <- function(out, data) {
   )
   
   gg_deaths <- squire:::plot_calibration_deaths_barplot(o1, data = data, forecast = 14, cumulative = FALSE) 
-  gg_deaths + geom_label(
-    data = data.frame(x = c(as.Date(data$date[max(which(data$deaths == max(data$deaths)))]),Sys.Date()),
-                      y = c(max(o1$y[o1$compartment == "deaths" & o1$date < (Sys.Date()+14)])*0.85,
-                            max(o1$y[o1$compartment == "deaths" & o1$date < (Sys.Date()+14)])*0.75),
-                      label=c("Calibration Date",as.character(Sys.Date()))), 
-    aes(x=x, y=y, label=label), inherit.aes = FALSE) +
-    ggplot2::theme(legend.position = c(0,1), 
-                                                                        legend.justification = c(0,1), 
-                                                                        legend.direction = "horizontal") + 
-
-    ggtitle("Plot on right zoomed in on reported deaths")
+  gg_deaths 
+    
+  # geom_label(
+  #   data = data.frame(x = c(as.Date(data$date[max(which(data$deaths == max(data$deaths)))]),Sys.Date()),
+  #                     y = c(max(o1$y[o1$compartment == "deaths" & o1$date < (Sys.Date()+14)])*0.85,
+  #                           max(o1$y[o1$compartment == "deaths" & o1$date < (Sys.Date()+14)])*0.75),
+  #                     label=c("Calibration Date",as.character(Sys.Date()))), 
+  #   aes(x=x, y=y, label=label), inherit.aes = FALSE) +
+  #   ggplot2::theme(legend.position = c(0,1), 
+  #                  legend.justification = c(0,1), 
+  #                  legend.direction = "horizontal") + 
+  #   
+  #   
   
   
 }

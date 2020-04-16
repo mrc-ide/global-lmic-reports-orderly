@@ -1,10 +1,5 @@
 #!/usr/bin/env Rscript
 
-## TODO:
-## * overall index page
-## * figures updated and change below
-## * filter by most recent run per country
-
 file_copy <- function(from, to) {
   ok <- file.copy(from, to, overwrite = TRUE, recursive = TRUE)
   if (any(!ok)) {

@@ -90,7 +90,9 @@ out <- squire::calibrate(country = country, deaths = max(data$deaths),
 
 ## Summaries
 form <- function(x) {
-  paste0(round(x[[1]]), " (95% CI: ", round(x[[2]]),"-",round(x[[3]]),")")
+  paste0(format(round(x[[1]]), big.mark=","),
+         " (95% CI: ", format(round(x[[2]]), big.mark=","),
+         "-", format(round(x[[3]]), big.mark=","),")")
   }
 
 infections <- format_output(out, "infections")
@@ -154,15 +156,13 @@ The current version of this report does not capture the impact that intervention
 
 ### Epidemiological Situation
 
-As of `r format(Sys.Date(), "%Y-%m-%d")` there have been `r data$cases[1]` cases and `r data$deaths[1]` deaths reported. The figure below shows the cumulative reported as a function of the time since the 10th death was reported. Dashed lines show the expected trajectory for different doubling times of the epidemic. For example, with a doubling time of 3 days, if there are currently a total of 20 deaths reported, we would expect there to be 40 deaths in total reported in 3 days-time, 80 deaths in 6 days-time, 160 deaths in 9 days-time etc. For most epidemics, in the absence of interventions, we expect a doubling time of 3-4 days for this disease. `r show_sentence`
+As of `r format(Sys.Date(), "%Y-%m-%d")` there have been `r format(data$cases[1], big.mark=",")` cases and `r format(data$deaths[1], big.mark=",")` deaths reported. The figure below shows the cumulative reported as a function of the time since the 10th death was reported. Dashed lines show the expected trajectory for different doubling times of the epidemic. For example, with a doubling time of 3 days, if there are currently a total of 20 deaths reported, we would expect there to be 40 deaths in total reported in 3 days-time, 80 deaths in 6 days-time, 160 deaths in 9 days-time etc. For most epidemics, in the absence of interventions, we expect a doubling time of 3-4 days for this disease. `r show_sentence`
 
 <br>
 
 ```{r fig1, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 1: Cumulative Deaths since 10 deaths.** Note if 10 deaths are yet to be reported, country will not be shown."), fig.align=fig_center()}
 
-if(data$deaths[1] > 10) {
 cumulative_deaths_plot(country = country)
-}
 
 ```
 
@@ -209,6 +209,8 @@ suppressMessages(healthcare_plot(out, data))
 
 Assuming a severity pattern by age that is consistent with that observed in China, Europe and the U.S to date, we estimate that there could be `r form(deaths_14)` deaths on `r format(Sys.Date() + 14, "%Y-%m-%d")`. The expected trajectory for cumulative deaths is shown in the figure below along with the bar chart of reported deaths.
 
-```{r death forecast plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap=figRef("**Figure 4: Cumulative Deaths estimated by fitting to the current total of deaths.** Reported deaths are shown in red. Model estimated deaths are shown in blue (dark blue 50% interquartile range, light blue 95% quantile)."), fig.width=10, fig.height=fig_height(4,6)}
+```{r death forecast plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap=figRef("**Figure 4: Cumulative Deaths estimated by fitting to the current total of deaths.** Reported deaths are shown in red. Model estimated deaths are shown in blue (dark blue 50% interquartile range, light blue 95% quantile)."), fig.width=10, fig.height=fig_height(3.75,6)}
 suppressMessages(deaths_plot(out, data))
 ```
+
+<br>

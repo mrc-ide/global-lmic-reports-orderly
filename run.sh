@@ -27,7 +27,6 @@ set -e
 ./orderly run lmic_reports iso3c=CMR
 #./orderly run lmic_reports iso3c=CAF
 #./orderly run lmic_reports iso3c=TCD
-./orderly run lmic_reports iso3c=CHN
 ./orderly run lmic_reports iso3c=COL
 #./orderly run lmic_reports iso3c=COM
 ./orderly run lmic_reports iso3c=COG
@@ -60,7 +59,6 @@ set -e
 ./orderly run lmic_reports iso3c=HND
 ./orderly run lmic_reports iso3c=IND
 ./orderly run lmic_reports iso3c=IDN
-./orderly run lmic_reports iso3c=IRN
 ./orderly run lmic_reports iso3c=IRQ
 ./orderly run lmic_reports iso3c=JAM
 ./orderly run lmic_reports iso3c=JOR
@@ -140,3 +138,6 @@ set -e
 Rscript copy_reports.R
 
 ./orderly run index_page
+./orderly run parameters
+
+Rscript copy_index.R

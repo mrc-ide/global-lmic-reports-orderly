@@ -180,8 +180,6 @@ navbar:
         href: https://mrc-ide.github.io/global-lmic-reports/BTN
       - text: Cambodia
         href: https://mrc-ide.github.io/global-lmic-reports/KHM
-      - text: China
-        href: https://mrc-ide.github.io/global-lmic-reports/CHN
       - text: North Korea
         href: https://mrc-ide.github.io/global-lmic-reports/PRK
       - text: Georgia
@@ -190,8 +188,6 @@ navbar:
         href: https://mrc-ide.github.io/global-lmic-reports/IND
       - text: Indonesia
         href: https://mrc-ide.github.io/global-lmic-reports/IDN
-      - text: Iran
-        href: https://mrc-ide.github.io/global-lmic-reports/IRN
       - text: Iraq
         href: https://mrc-ide.github.io/global-lmic-reports/IRQ
       - text: Jordan
