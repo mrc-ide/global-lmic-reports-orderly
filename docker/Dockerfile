@@ -11,12 +11,14 @@ RUN install_packages --repo=https://ncov-ic.github.io/drat \
         curl \
         dde \
         dplyr \
+        ggforce \
         ggplot2 \
         ggrepel \
         knitr \
         lubridate \
         magrittr \
         odin \
+        plotly \
         purrr \
         readxl \
         tidyr
