@@ -114,14 +114,15 @@ sources:
 # referenced in "views" or "data"
 #
 resources:
-  - index.Rmd
-  - _site.yml
-  - styles.css
-  - footer.html
-  - header.html
-  - footer.tex
-  - logo.jpg
-  - summaries.rds
+  - parameters.Rmd
+
+global_resources:
+  _site.yml: _site.yml
+  styles.css: styles.css
+  footer.html: footer.html
+  footer.tex: footer.tex
+  logo.jpg: logo.jpg
+  header.html: header.html
 
 # This section copies the word style over from the global/
 # directory. If you do not want to create a docx, please remove this

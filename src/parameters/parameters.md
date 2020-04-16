@@ -22,6 +22,39 @@ output:
     reference_docx: template.docx
 ---
 
+<script type="text/javascript">
+
+if ($(window).width() < 768) {
+  $('.dropdown-menu a.dropdown-toggle').on('click', function(e) {
+    if (!$(this).next().hasClass('show')) {
+      $(this).parents('.dropdown-menu').first().find('.show').removeClass("show");
+    }
+
+ 
+
+    var $subMenu = $(this).next(".dropdown-menu");
+    if (!$subMenu.hasClass('show')) {
+      $subMenu.addClass('show');
+      $subMenu.show();
+    } else {
+      $subMenu.removeClass('show');
+      $subMenu.hide();
+    }
+
+ 
+
+    $(this).parents('li.nav-item.dropdown.show').on('hidden.bs.dropdown', function(e) {
+      $('.dropdown-submenu .show').removeClass("show");
+    });
+
+ 
+
+    return false;
+  });
+}
+
+</script>
+
 
 
 ## Parameters

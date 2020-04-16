@@ -20,17 +20,52 @@ output:
     fig_width: 6
     highlight: tango
     reference_docx: template.docx
+params:
+   out: NA
+   replicates: 10
 ---
 
+```{js, echo = FALSE}
+
+if ($(window).width() < 768) {
+  $('.dropdown-menu a.dropdown-toggle').on('click', function(e) {
+    if (!$(this).next().hasClass('show')) {
+      $(this).parents('.dropdown-menu').first().find('.show').removeClass("show");
+    }
+
+ 
+
+    var $subMenu = $(this).next(".dropdown-menu");
+    if (!$subMenu.hasClass('show')) {
+      $subMenu.addClass('show');
+      $subMenu.show();
+    } else {
+      $subMenu.removeClass('show');
+      $subMenu.hide();
+    }
+
+ 
+
+    $(this).parents('li.nav-item.dropdown.show').on('hidden.bs.dropdown', function(e) {
+      $('.dropdown-submenu .show').removeClass("show");
+    });
+
+ 
+
+    return false;
+  });
+}
+
+```
+
 ```{r, echo = FALSE, message=FALSE, warning=FALSE}
+
+# grab inputs
 start <- 10
-replicates <- 10
-library(dplyr)
-library(ggplot2)
-library(squire)
+replicates <- params$replicates
+out <- params$out
 
 format <- knitr::opts_knit$get("rmarkdown.pandoc.to")
-saveRDS(format,"/home/oj/Desktop/what.rds")
 figRef <- function(caption) {
   if(format == "latex") {
     gsub("Figure \\d: ","",caption)
@@ -60,33 +95,6 @@ fig_center <- function() {
 ```
 
 ```{r ecdc prep, echo = FALSE, collapse=TRUE, warning=FALSE}
-
-## Simulations
-ecdc <- readRDS("ecdc_all.rds")
-country <- squire::population$country[match(iso3c, squire::population$iso3c)[1]]
-df <- ecdc[which(ecdc$countryterritoryCode == iso3c),]
-
-data <- df[,c("dateRep", "deaths", "cases")]
-names(data)[1] <- "date"
-
-data$deaths <- rev(cumsum(rev(data$deaths)))
-data$cases <- rev(cumsum(rev(data$cases)))
-data$date <- as.Date(data$date)
-
-if(data$deaths[1] >= 10) {
-  show_sentence <- "" 
-  } else  {
-  show_sentence <-  paste("**N.B. ", country, " is not shown in the following plot as only ", data$deaths[1]," have been reported to date**")
-  }
-
-pop <- get_population(country)
-
-out <- squire::calibrate(country = country, deaths = max(data$deaths),
-                         replicates = replicates, 
-                         min_seeding_cases = 1, max_seeding_cases = 5,
-                         ICU_bed_capacity = sum(pop$n), 
-                         hosp_bed_capacity = sum(pop$n),
-                         dt = 0.1)
 
 ## Summaries
 form <- function(x) {
