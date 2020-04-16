@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 set -e
+# ./orderly migrate
+# ./orderly rebuild
+
 ./orderly run ecdc date=$(date "+%Y-%m-%d")
 
 ## Fill these in for now manually. Eventually we will use the batch

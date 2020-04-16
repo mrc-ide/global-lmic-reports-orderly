@@ -10,9 +10,9 @@ USER_UID=`id -u`
 USER_GID=`id -g`
 USER_STR="${USER_UID}:${USER_GID}"
 
-docer run -d --rm \
-      -u $USER_STR \
-      -v $PACKAGE_ROOT:/orderly \
-      -w /orderly \
-      --entrypoint /orderly/run.sh \
-      $TAG_SHA
+docker run --rm \
+        -u $USER_STR \
+        -v $PACKAGE_ROOT:/orderly \
+        -w /orderly \
+        --entrypoint /orderly/run.sh \
+        $TAG_SHA
