@@ -2,7 +2,8 @@ FROM vimc/orderly:master
 
 RUN apt-get update && apt-get -y install \
         libcurl4-openssl-dev \
-        libv8-dev
+        libv8-dev \
+        zlib1g-dev
 
 COPY bin /usr/local/bin/
 
