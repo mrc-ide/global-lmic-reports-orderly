@@ -82,6 +82,7 @@ copy_outputs <- function(date = Sys.Date(), is_latest = TRUE) {
     }
   }
   
+  system(paste(c("pdfunite ", grep("pdf",file.path(src, copy),value=TRUE), " gh-pages/combined_reports.pdf"),collapse = " "))
   summaries <- do.call(rbind, lapply(file.path(src, "summary_df.rds"), readRDS)) 
   saveRDS(summaries, file.path(here::here(),"src/index_page/summaries.rds"))
   

@@ -16,6 +16,7 @@ file_copy <- function(from, to) {
 ## dir("gh-pages", pattern = "index\\.html$", recursive = TRUE)
 copy_index <- function(date = Sys.Date(), is_latest = TRUE) {
   
+  db <- orderly::orderly_db("destination")
   index <- orderly:::get_ids_by_name(db, "index_page")
   params <- orderly:::get_ids_by_name(db, "parameters")
   

@@ -141,3 +141,5 @@ Rscript copy_reports.R
 ./orderly run parameters
 
 Rscript copy_index.R
+
+./publish.sh
