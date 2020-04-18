@@ -14,26 +14,50 @@ file_copy <- function(from, to) {
 
 ## Possibly useful:
 ## dir("gh-pages", pattern = "index\\.html$", recursive = TRUE)
-copy_index <- function(date = Sys.Date(), is_latest = TRUE) {
-  
+copy_index <- function(date = NULL, is_latest = TRUE) {
+  if (is.null(date)) {
+    date <- as.character(Sys.Date())
+  }
+
+  sql <- 'SELECT report_version.id, report_version.report
+            FROM report_version
+            JOIN parameters
+              ON parameters.report_version = report_version.id
+           WHERE report_version.report IN ("index_page", "parameters")
+             AND parameters.name = \'date\'
+             AND parameters.value = $1
+           ORDER BY report_version.id'
   db <- orderly::orderly_db("destination")
-  index <- orderly:::get_ids_by_name(db, "index_page")
-  params <- orderly:::get_ids_by_name(db, "parameters")
+  on.exit(DBI::dbDisconnect(db))
+  res <- DBI::dbGetQuery(db, sql, date)
+
+  if (any(duplicated(res$report))) {
+    keep <- tapply(seq_len(nrow(res)), res$report, max)
+    res <- res[keep, ]
+    rownames(res) <- NULL
+  }
+
+  msg <- setdiff(c("index_page", "parameters"), res$report)
+  if (length(msg) > 0) {
+    stop("Did not find report for ", paste(msg, collapse = ", "))
+  }
+  
+  id_index <- res$id[res$report == "index_page"]
+  id_params <- res$id[res$report == "parameters"]
+
+  message(sprintf("Copying index (%s) and parameters (%s) pages",
+                  id_index, id_params))
   
   target <- "gh-pages"
-  
-  src_index <- file.path("archive", "index_page", index$id[which.max(as.Date(index$date))],"index.html")
-  src_params <- file.path("archive", "parameters", params$id[which.max(as.Date(params$date))],"parameters.html")
-  src <- c(src_index, src_params)
-  dest <- c(sprintf("gh-pages/%s","index.html"),
-            sprintf("gh-pages/%s","parameters.html") )
-            
-    file_copy(file.path(src), dest)
-  
+  src_index <- file.path("archive", "index_page", id_index,"index.html")
+  src_params <- file.path("archive", "parameters", id_params, "parameters.html")
+  file_copy(c(src_index, src_params), target)
 }
 
 
 if (!interactive()) {
-  copy_index()
+  usage <- "Usage:\n./copy_index.R [<date>]"
+  args <- docopt::docopt(usage)
+  copy_index(args$date)
 }
 
