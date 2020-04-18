@@ -10,12 +10,15 @@ echo "*** ECDC data"
 # ./orderly run ecdc date=$DATE
 
 COUNTRIES=$(grep -E '^[A-Z]{3}\s*' countries)
-echo $COUNTRIES
 
-for ISO in $COUNTRIES; do
-    echo "*** $ISO"
-    ./orderly run lmic_reports iso3c=$ISO date=$DATE
-done
+# Parallel
+echo $COUNTRIES | parallel -j 4 ./orderly run lmic_reports iso3c={} date=$DATE
+
+# Serial
+# for ISO in $COUNTRIES; do
+#     echo "*** $ISO"
+#     ./orderly run lmic_reports iso3c=$ISO date=$DATE
+# done
 
 echo "*** Copying reports"
 ./copy_reports.R $DATE
