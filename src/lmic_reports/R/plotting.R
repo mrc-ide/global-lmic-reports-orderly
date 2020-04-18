@@ -381,11 +381,11 @@ FacetZoom2 <- ggproto(
 )
 
 
-cases_plot <- function(out, data) {
+cases_plot <- function(out, data, date_0) {
   
   o1 <- squire:::calibrate_output_parsing(
     out, 
-    date_0 = as.Date(data$date[max(which(data$deaths == max(data$deaths)))])
+    date_0 = date_0
   )
   
   
@@ -402,11 +402,11 @@ cases_plot <- function(out, data) {
 }
 
 
-deaths_plot <- function(out, data) {
+deaths_plot <- function(out, data,date_0) {
   
   o1 <- squire:::calibrate_output_parsing(
     out, 
-    date_0 = as.Date(data$date[max(which(data$deaths == max(data$deaths)))])
+    date_0 = date_0
   )
   
   gg_deaths <- squire:::plot_calibration_deaths_barplot(o1, data = data, forecast = 14, cumulative = FALSE) 
@@ -432,7 +432,7 @@ healthcare_plot <- function(out, data) {
   
   o1 <- squire:::calibrate_output_parsing(
     out, 
-    date_0 = as.Date(data$date[max(which(data$deaths == max(data$deaths)))])
+    date_0 = date_0
   )
   
   cowplot::plot_grid(squire:::plot_calibration_healthcare_barplot(df = o1, data = data, what = "hospital"),
