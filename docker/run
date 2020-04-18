@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -ex
+HERE=$(dirname $0)
+. $HERE/common
+
+# In case we switch agents between steps
+[ ! -z $(docker images -q $TAG_SHA) ] || docker pull $TAG_SHA
+
+USER_UID=`id -u`
+USER_GID=`id -g`
+USER_STR="${USER_UID}:${USER_GID}"
+
+docker run --rm \
+        -u $USER_STR \
+        -v $PACKAGE_ROOT:/orderly \
+        -w /orderly \
+        --entrypoint /orderly/run.sh \
+        $TAG_SHA

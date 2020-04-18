@@ -59,6 +59,7 @@ if ($(window).width() < 768) {
 ```
 
 ```{r, echo = FALSE, message=FALSE, warning=FALSE}
+date <- as.Date(date)
 
 # grab inputs
 start <- 10
@@ -152,7 +153,7 @@ saveRDS(summary_number_df, "summary_df.rds")
 
 ```
 
-## Situation Report for COVID-19: `r country`, `r format(Sys.Date(), "%Y-%m-%d")`
+## Situation Report for COVID-19: `r country`, `r format(date, "%Y-%m-%d")`
 
 <br> 
 
@@ -164,7 +165,7 @@ The current version of this report does not capture the impact that intervention
 
 ### Epidemiological Situation
 
-As of `r format(Sys.Date(), "%Y-%m-%d")` there have been `r format(data$cases[1], big.mark=",")` cases and `r format(data$deaths[1], big.mark=",")` deaths reported. The figure below shows the cumulative reported as a function of the time since the 10th death was reported. Dashed lines show the expected trajectory for different doubling times of the epidemic. For example, with a doubling time of 3 days, if there are currently a total of 20 deaths reported, we would expect there to be 40 deaths in total reported in 3 days-time, 80 deaths in 6 days-time, 160 deaths in 9 days-time etc. For most epidemics, in the absence of interventions, we expect a doubling time of 3-4 days for this disease. `r show_sentence`
+As of `r format(date, "%Y-%m-%d")` there have been `r format(data$cases[1], big.mark=",")` cases and `r format(data$deaths[1], big.mark=",")` deaths reported. The figure below shows the cumulative reported as a function of the time since the 10th death was reported. Dashed lines show the expected trajectory for different doubling times of the epidemic. For example, with a doubling time of 3 days, if there are currently a total of 20 deaths reported, we would expect there to be 40 deaths in total reported in 3 days-time, 80 deaths in 6 days-time, 160 deaths in 9 days-time etc. For most epidemics, in the absence of interventions, we expect a doubling time of 3-4 days for this disease. `r show_sentence`
 
 <br>
 
@@ -192,7 +193,7 @@ The figure below shows the estimated number of people infected and number of sym
 
 ```{r case plot, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE,  fig.cap=figRef("**Figure 2: Daily number of infections estimated by fitting to the current total of deaths.** Reported cases are shown in red. Model estimated cases are shown in blue (dark blue 50% interquartile range, light blue 95% quantile)."), fig.width=10, fig.height=6}
 
-suppressMessages(cases_plot(out, data))
+suppressMessages(cases_plot(out, data, date))
 
 ```
 
@@ -205,7 +206,7 @@ We make the following short-term projections of healthcare demand under the assu
 1. The projections do not capture the effect of interventions that have been put in place
 2. The projections assume that 100% of COVID-19 related deaths have been reported.
 
-We estimate that over the next 2 weeks demand for hospital beds will grow from `r form(hosp_today)`  patients requiring treatment with high-pressure oxygen at the current date to `r form(hosp_14)` by `r format(Sys.Date() + 14, "%Y-%m-%d")`. Similarly, we estimate that over the next 2 weeks demand for critical care (ICU) beds will grow from `r form(icu_today)` patients requiring treatment with mechanical ventilation at the current date to `r form(icu_14)` by `r format(Sys.Date() + 14, "%Y-%m-%d")`. These projections assume that approximately 5% of all infections will require treatment with high-pressure oxygen  and that approximately 30% of hospitalised cases will require require treatment with mechanical ventilation (based on analysis of ongoing epidemics in Europe). 
+We estimate that over the next 2 weeks demand for hospital beds will grow from `r form(hosp_today)`  patients requiring treatment with high-pressure oxygen at the current date to `r form(hosp_14)` by `r format(date + 14, "%Y-%m-%d")`. Similarly, we estimate that over the next 2 weeks demand for critical care (ICU) beds will grow from `r form(icu_today)` patients requiring treatment with mechanical ventilation at the current date to `r form(icu_14)` by `r format(date + 14, "%Y-%m-%d")`. These projections assume that approximately 5% of all infections will require treatment with high-pressure oxygen  and that approximately 30% of hospitalised cases will require require treatment with mechanical ventilation (based on analysis of ongoing epidemics in Europe). 
 
 ```{r healthcare plots, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 3: Healthcare demands in the next 2 weeks.** Individuals needing an ICU bed are predicted to need mechanical ventilation."), fig.width=10, fig.height=fig_height(3,4.5)}
 
@@ -215,10 +216,10 @@ suppressMessages(healthcare_plot(out, data))
 
 <br>
 
-Assuming a severity pattern by age that is consistent with that observed in China, Europe and the U.S to date, we estimate that there could be `r form(deaths_14)` deaths on `r format(Sys.Date() + 14, "%Y-%m-%d")`. The expected trajectory for cumulative deaths is shown in the figure below along with the bar chart of reported deaths.
+Assuming a severity pattern by age that is consistent with that observed in China, Europe and the U.S to date, we estimate that there could be `r form(deaths_14)` deaths on `r format(date + 14, "%Y-%m-%d")`. The expected trajectory for cumulative deaths is shown in the figure below along with the bar chart of reported deaths.
 
 ```{r death forecast plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap=figRef("**Figure 4: Cumulative Deaths estimated by fitting to the current total of deaths.** Reported deaths are shown in red. Model estimated deaths are shown in blue (dark blue 50% interquartile range, light blue 95% quantile)."), fig.width=10, fig.height=fig_height(3.75,6)}
-suppressMessages(deaths_plot(out, data))
+suppressMessages(deaths_plot(out, data, date))
 ```
 
 <br>

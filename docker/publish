@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -ex
+HERE=$(dirname $0)
+. $HERE/common
+
+# In case we switch agents between steps
+[ ! -z $(docker images -q $TAG_SHA) ] || docker pull $TAG_SHA
+
+USER_UID=`id -u`
+USER_GID=`id -g`
+USER_STR="${USER_UID}:${USER_GID}"
+
+# Should do this with a deploy key
+PATH_SSH=$HOME/.ssh
+
+docker run --rm \
+        -u $USER_STR \
+        -v $PACKAGE_ROOT:/orderly \
+        -v $PATH_SSH:/root/.ssh:ro
+        -w /orderly \
+        --entrypoint /orderly/publish.sh \
+        $TAG_SHA

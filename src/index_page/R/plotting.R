@@ -319,7 +319,7 @@ summaries_forecasts_plot <- function(summaries) {
 }
 
 
-deaths_plot <- function(out, data) {
+deaths_plot <- function(out, data, date = Sys.Date()) {
   
   o1 <- squire:::calibrate_output_parsing(
     out, 
@@ -328,10 +328,10 @@ deaths_plot <- function(out, data) {
   
   gg_cases <- squire:::plot_calibration_healthcare_barplot(o1, data = data, forecast = 14) 
   gg_cases + geom_label(
-    data = data.frame(x = c(as.Date(data$date[max(which(data$deaths == max(data$deaths)))]),Sys.Date()),
-                      y = c(max(o1$y[o1$compartment == "deaths" & o1$date < (Sys.Date()+14)])*0.95,
-                            max(o1$y[o1$compartment == "deaths" & o1$date < (Sys.Date()+14)])*0.75),
-                      label=c("Calibration Date",as.character(Sys.Date()))), 
+    data = data.frame(x = c(as.Date(data$date[max(which(data$deaths == max(data$deaths)))]),date),
+                      y = c(max(o1$y[o1$compartment == "deaths" & o1$date < (date+14)])*0.95,
+                            max(o1$y[o1$compartment == "deaths" & o1$date < (date+14)])*0.75),
+                      label=c("Calibration Date",as.character(date))), 
     aes(x=x, y=y, label=label), inherit.aes = FALSE)
   
   

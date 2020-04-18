@@ -9,11 +9,11 @@ file_copy <- function(from, to) {
 
 ## Possibly useful:
 ## dir("gh-pages", pattern = "index\\.html$", recursive = TRUE)
-copy_outputs <- function(date = Sys.Date(), is_latest = TRUE) {
+copy_outputs <- function(date = NULL, is_latest = TRUE) {
   db <- orderly::orderly_db("destination")
-  date <- as.character(date)
-
-  ## TODO: - use date only
+  if (is.null(date)) {
+    date <- as.character(Sys.Date())
+  }
 
   ## First find the id corresponding to the ecdc report with data.  If
   ## there are more than one, it's not totally clear what you want to
@@ -49,6 +49,7 @@ copy_outputs <- function(date = Sys.Date(), is_latest = TRUE) {
               ON parameters.report_version = report_version.id
            WHERE report_version_artefact.report_version IN (%s)
              AND report = "lmic_reports"
+             AND parameters.name = "iso3c"
            ORDER BY country, report_version.id'
   sql <- sprintf(sql, paste(sprintf('"%s"', id), collapse = ", "))
   reports <- DBI::dbGetQuery(db, sql)
@@ -59,7 +60,6 @@ copy_outputs <- function(date = Sys.Date(), is_latest = TRUE) {
     rownames(reports) <- NULL
   }
 
-  ## Remove this once the lmic task takes ISO3
   reports$date <- as.character(date)
 
   target <- "gh-pages"
@@ -72,6 +72,7 @@ copy_outputs <- function(date = Sys.Date(), is_latest = TRUE) {
             "index.pdf")
 
   for (i in seq_along(dest)) {
+    message(sprintf("Copying %s (%s)", dest[[i]], reports$id[[i]]))
     dir.create(dest[[i]], FALSE, TRUE)
     file_copy(file.path(src[[i]], copy), dest[[i]])
     if (is_latest) {
@@ -82,13 +83,21 @@ copy_outputs <- function(date = Sys.Date(), is_latest = TRUE) {
     }
   }
   
-  system(paste(c("pdfunite ", grep("pdf",file.path(src, copy),value=TRUE), " gh-pages/combined_reports.pdf"),collapse = " "))
-  summaries <- do.call(rbind, lapply(file.path(src, "summary_df.rds"), readRDS)) 
-  saveRDS(summaries, file.path(here::here(),"src/index_page/summaries.rds"))
-  
+  pdf_input <- file.path(src, "index.pdf")
+  message(sprintf("Building combined pdf from %d files", length(pdf_input)))
+  qpdf::pdf_combine(pdf_input, "gh-pages/combined_reports.pdf")
+
+  ## Aha, this is so naughty, but probably a reasonable shout given
+  ## the situation.  The alternative is to depend on _all_ the country
+  ## tasks for that date.
+  summaries <- do.call(rbind,
+                       lapply(file.path(src, "summary_df.rds"), readRDS))
+  saveRDS(summaries, "src/index_page/summaries.rds")
 }
 
 
 if (!interactive()) {
-  copy_outputs()
+  usage <- "Usage:\n./copy_outputs.R [<date>]"
+  args <- docopt::docopt(usage)
+  copy_outputs(args$date)
 }

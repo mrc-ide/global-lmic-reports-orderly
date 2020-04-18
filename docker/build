@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -ex
+HERE=$(dirname $0)
+. $HERE/common
+
+# In case we switch agents between steps
+[ ! -z $(docker images -q $TAG_BASE) ] || docker pull $TAG_BASE
+
+docker build --pull --no-cache \
+       --build-arg BASE_VERSION=$TAG_BASE \
+       --tag $TAG_SHA \
+       -f docker/Dockerfile \
+       $HERE
+
+# We always push the SHA tagged versions, for debugging if the tests
+# after this step fail
+docker push $TAG_SHA
