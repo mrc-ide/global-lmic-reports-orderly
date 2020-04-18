@@ -20,3 +20,16 @@ src/parameters/logo.jpg
 src/parameters/header.html
 src/parameters/index.html
 src/parameters/parameters.md
+
+src/index_page/_site.yml
+src/index_page/styles.css
+src/index_page/footer.html
+src/index_page/footer.tex
+src/index_page/logo.jpg
+src/index_page/header.html
+src/index_page/index.html
+src/index_page/index.md
+
+src/lmic_reports/index.html
+src/lmic_reports/index.md
+src/lmic_reports/index.pdf
