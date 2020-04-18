@@ -12,3 +12,11 @@ draft
 gh-pages
 orderly.sqlite
 index_files
+src/parameters/_site.yml
+src/parameters/styles.css
+src/parameters/footer.html
+src/parameters/footer.tex
+src/parameters/logo.jpg
+src/parameters/header.html
+src/parameters/index.html
+src/parameters/parameters.md
