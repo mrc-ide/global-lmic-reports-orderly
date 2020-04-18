@@ -285,7 +285,7 @@ navbar:
 output:
   html_document:
     highlight: textmate
-    include:
+    includes:
       before_body: header.html
       after_body: footer.html
     css: styles.css
