@@ -9,14 +9,12 @@ DATE="2020-04-16"
 echo "*** ECDC data"
 ./orderly run ecdc date=$DATE
 
-COUNTRIES=$(grep -E '^[A-Z]{3}\s*' countries)
-
 # Parallel
-echo $COUNTRIES |
-    parallel --citation -j 4 ./orderly run lmic_reports iso3c={} date=$DATE
+grep -E '^[A-Z]{3}\s*' countries | \
+    parallel -j 4 ./orderly run lmic_reports iso3c={} date=$DATE
 
-# Serial
-# for ISO in $COUNTRIES; do
+# Serial (useful if debugging)
+# for ISO in $(grep -E '^[A-Z]{3}\s*' countries); do
 #     echo "*** $ISO"
 #     ./orderly run lmic_reports iso3c=$ISO date=$DATE
 # done
