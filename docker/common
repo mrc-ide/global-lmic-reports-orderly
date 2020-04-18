@@ -13,14 +13,13 @@ else
 fi
 
 
-if [ "$TRAVIS" = "true" ]; then
-    GIT_BRANCH=$TRAVIS_BRANCH
-elif [ "$BUILDKITE" = "true" ]; then
+if [ "$BUILDKITE" = "true" ]; then
     GIT_BRANCH=$BUILDKITE_BRANCH
 else
     GIT_BRANCH=$(git -C "$PACKAGE_ROOT" symbolic-ref --short HEAD)
 fi
 
+TAG_BASE="${PACKAGE_ORG}/${PACKAGE_NAME}-base:${GIT_SHA}"
 TAG_SHA="${PACKAGE_ORG}/${PACKAGE_NAME}:${GIT_SHA}"
 TAG_BRANCH="${PACKAGE_ORG}/${PACKAGE_NAME}:${GIT_BRANCH}"
 TAG_LATEST="${PACKAGE_ORG}/${PACKAGE_NAME}:latest"
