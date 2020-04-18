@@ -57,6 +57,10 @@ if ($(window).width() < 768) {
 
 
 ```{r, echo = FALSE, message=FALSE, warning=FALSE}
+if (!exists("date")) { # running outside of orderly
+  date <- Sys.Date()
+}
+
 start <- 10
 replicates <- 10
 library(dplyr)
@@ -64,7 +68,6 @@ library(ggplot2)
 library(squire)
 
 format <- knitr::opts_knit$get("rmarkdown.pandoc.to")
-saveRDS(format,"/home/oj/Desktop/what.rds")
 figRef <- function(caption) {
   if(format == "latex") {
     gsub("Figure \\d: ","",caption)

@@ -25,17 +25,8 @@ script: script.R
 # Optional parameters for the task. Things listed here will be
 # available as R variables in your script.  For example:
 #
-# parameters:
-#   a:
-#     default: 1
-#   b: ~
-#
-# would declare a parameter called 'a' with a default value of 1, and
-# a parameter of b with no default.
-#
-#parameters:
-#    iso3c:
-#      default: AGO
+parameters:
+  date: ~
 
 # You must list at least one artefact that your report will generate.
 # Each artefact consists of one or more files.  The format is to list
@@ -114,7 +105,8 @@ sources:
 # referenced in "views" or "data"
 #
 resources:
-  - parameters.Rmd
+  - index.Rmd
+  - summaries.rds
 
 global_resources:
   _site.yml: _site.yml
