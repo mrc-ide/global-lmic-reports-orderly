@@ -4,7 +4,6 @@ set -e
 # ./orderly rebuild
 
 DATE=$(date "+%Y-%m-%d")
-DATE="2020-04-16"
 
 echo "*** ECDC data"
 ./orderly run ecdc date=$DATE
