@@ -103,7 +103,10 @@ fig_center <- function() {
 if(data$deaths[1] >= 10) {
   show_sentence <- "" 
 } else  {
-  show_sentence <-  paste("**N.B. ", country, " is not shown in the following plot as only ", data$deaths[1]," deaths have been reported to date**")
+  show_sentence <-  paste("**N.B. ", country, 
+                          " is not shown in the following plot as only ", 
+                          data$deaths[1],
+                          " deaths have been reported to date**")
 }
 
 

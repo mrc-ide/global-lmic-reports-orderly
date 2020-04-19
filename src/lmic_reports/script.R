@@ -1,6 +1,8 @@
 orderly_id <- tryCatch(orderly::orderly_run_info()$id,
                        error = function(e) "<id>") # bury this in the html, docx
 
+date <- as.Date(date)
+
 # prepare fitting first
 start <- 10
 replicates <- 20
@@ -21,34 +23,42 @@ data$deaths <- rev(cumsum(rev(data$deaths)))
 data$cases <- rev(cumsum(rev(data$cases)))
 data$date <- as.Date(data$date)
 
-# conduct unmitigated
-pop <- get_population(country)
-out <- squire::calibrate(country = country, deaths = min(10, max(data$deaths)),
-                         replicates = replicates, 
-                         min_seeding_cases = 1, max_seeding_cases = 5,
-                         ICU_bed_capacity = sum(pop$n), 
-                         hosp_bed_capacity = sum(pop$n),
-                         dt = 0.1)
-
-# conduct scnearios
+# what was the date being calibrated to
 if(max(data$deaths) < 10) {
-  mit <- squire::projections(out, R0_change = 0.5, tt_R0 = 0)
-  r_list <- list(out, mit)
+date_0 <- date
 } else {
-  mit1 <- squire::projections(out, R0_change = 0.5, tt_R0 = 0)
-  mit2 <- squire::projections(out, 
-                              R0_change = c(0.5,0.3), 
-                              tt_R0 = c(0,as.numeric(Sys.Date()-data$date[max(which(data$deaths>=10))])))
-  r_list <- list(mit1, mit2)
+date_0 <- data$date[tail(which(data$deaths==max(data$deaths)),1)]
 }
 
+# get country data
+oxford_grt <- readRDS("oxford_grt.rds")
+# conduct unmitigated
+pop <- get_population(country)
+# conduct unmitigated
+pop <- squire::get_population(country)
+out <- squire::calibrate(country = country, deaths = max(data$deaths),
+                         replicates = replicates,
+                         min_seeding_cases = 1, max_seeding_cases = 5,
+                         ICU_bed_capacity = sum(pop$n),
+                         hosp_bed_capacity = sum(pop$n),
+                         tt_R0 = oxford_grt[[iso3c]]$tt_R0,
+                         R0 = oxford_grt[[iso3c]]$R0,
+                         dt = 0.1)
+# conduct scnearios
+mit <- squire::projections(out, R0_change = 0.5, tt_R0 = 0)
+r_list <- list(out, mit)
+o_list <- lapply(r_list, squire::format_output,
+                 var_select = c("infections","deaths","hospital_demand","ICU_demand", "D"),
+                 date_0 = date_0)
 
 # prepare reports
 rmarkdown::render("index.Rmd", 
                   output_format = c("html_document","pdf_document"), 
                   params = list("r_list" = r_list,
+                                "o_list" = o_list,
                                 "replicates" = replicates, 
                                 "data" = data,
+                                "date_0" = date_0,
                                 "country" = country))
 
 

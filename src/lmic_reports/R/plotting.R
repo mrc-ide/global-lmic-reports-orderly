@@ -411,7 +411,8 @@ deaths_plot <- function(out, data,date_0, date = Sys.Date()) {
 }
 
 
-deaths_plot_contrast <- function(o1, o2, data, date_0, date = Sys.Date(), forecast = 14) {
+deaths_plot_contrast <- function(o1, o2, data, date_0, date = Sys.Date(), 
+                                 forecast = 14, cumulative = TRUE) {
   
   o1$Scenario <- "No change to epidemic"
   o2$Scenario <- "Mitigation (50% reduction from today)"
@@ -537,9 +538,9 @@ healthcare_plot_contrast <- function(o1, o2, data, date_0, date = Sys.Date(), fo
                      ymax = .data$quants[[1]][3])
   
   # y axis
-  if (what == "ICU") {
+  if (what == "ICU_demand") {
     title <- "ICU Demand"
-  } else if(what == "hospital") {
+  } else if(what == "hospital_demand") {
     title <- "Hospital Bed Demand"
   }
   
@@ -552,7 +553,7 @@ healthcare_plot_contrast <- function(o1, o2, data, date_0, date = Sys.Date(), fo
                       stat = "identity",
                       show.legend = TRUE,
                       inherit.aes = FALSE) +
-    ggplot2::geom_vline(xintercept = Sys.Date(), linetype = "dashed") +
+    ggplot2::geom_vline(xintercept = date, linetype = "dashed") +
     ggplot2::ylab(title) +
     ggplot2::theme_bw()  +
     ggplot2::scale_y_continuous(expand = c(0,0)) +
