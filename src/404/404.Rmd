@@ -1,0 +1,72 @@
+---
+title: ""
+header-includes: \usepackage{caption}
+date: ""
+output:
+  html_document:
+    keep_md: yes
+    self_contained: yes
+    css: styles.css
+    theme: cosmo
+    fig_caption: TRUE
+  pdf_document: 
+    fig_caption: true
+    includes: 
+      before_body: footer.tex
+  word_document:
+    df_print: kable
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 6
+    highlight: tango
+    reference_docx: template.docx
+params:
+   r_list: NA
+   o_list: NA
+   replicates: 10
+   data: NA
+   date_0: NA
+   country: NA
+---
+
+```{js, echo = FALSE}
+
+if ($(window).width() < 768) {
+$('.dropdown-menu a.dropdown-toggle').on('click', function(e) {
+if (!$(this).next().hasClass('show')) {
+$(this).parents('.dropdown-menu').first().find('.show').removeClass("show");
+}
+
+
+
+var $subMenu = $(this).next(".dropdown-menu");
+if (!$subMenu.hasClass('show')) {
+$subMenu.addClass('show');
+$subMenu.show();
+} else {
+$subMenu.removeClass('show');
+$subMenu.hide();
+}
+
+
+
+$(this).parents('li.nav-item.dropdown.show').on('hidden.bs.dropdown', function(e) {
+$('.dropdown-submenu .show').removeClass("show");
+});
+
+
+
+return false;
+});
+}
+
+```
+
+---
+
+The country you have requested has not recorded any deaths by `r date` due to COVID-19 according to the [ECDC](https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide) data. 
+
+If this is incorrect or you are aware of reported deaths due to COVID-19 please reach out so we can use a better source of data to calibrate our models. 
+
+
+---

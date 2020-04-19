@@ -28,6 +28,9 @@ echo "*** Index page"
 ./orderly run index_page date=$DATE
 echo "*** Parameters page"
 ./orderly run parameters date=$DATE
+echo "*** 404 page"
+./orderly run 404 date=$DATE
+
 
 echo "*** Copying files"
 ./copy_index.R $DATE
