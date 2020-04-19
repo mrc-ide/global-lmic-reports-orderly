@@ -1,5 +1,5 @@
 ---
-title: ""
+title: "Imperial College COVID-19 LMIC Reports"
 header-includes: \usepackage{caption}
 date: ""
 output:

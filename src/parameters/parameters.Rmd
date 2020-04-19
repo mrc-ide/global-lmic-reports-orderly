@@ -1,5 +1,5 @@
 ---
-title: ""
+title: "COVID-19 Parameters"
 header-includes: \usepackage{caption}
 date: ""
 output:
@@ -91,9 +91,31 @@ fig_center <- function() {
 
 ```
 
-## Parameters
+## Model Structure
+
+The LMIC reports are generated using an age-structured SEIR model, with the infectious class divided into different stages reflecting progression through different disease severity pathways. These compartments are:
+
+* S = Susceptibles 
+* E = Exposed (Latent Infection) 
+* IMild = Mild Infections (Not Requiring Hospitalisation) – including asymptomatic infection 
+* ICase = Infections that will subsequently require hospitalisation 
+* IHospital = Hospitalised Infection (Requires General Hospital Bed) 
+* IICU = Hospitalised Infection in critical care/ICU (Requires critical care/ICU Bed) 
+* IRec = Hospitalised Infection Recovering from critical care/ICU Stay (Requires General Hospital Bed) 
+* R = Recovered 
+* D = Dead
+
+<center>
+![](structure.JPG){width=75%}
+</center>
+<br>
+
+Given initial inputs of hospital/ICU bed capacity and the average time cases spend in hospital, the model dynamically tracks available hospital and ICU beds over time. Individuals newly requiring hospitalisation (either a hospital or ICU bed) are then assigned to either receive care (if the relevant bed is available) or not (if maximum capacity would be exceeded otherwise). Whether or not an individual receives the required care modifies their probability of dying.
 
 <br> 
+
+## Model Parameters
+
 The parameter table below summarises the current best estimates incorporated in the package as of `r date`. These will be updated as our understanding of the epidemic develops.
 
 | **Parameter** | **Value** | **Reference** |

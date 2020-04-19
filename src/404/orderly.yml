@@ -111,11 +111,12 @@ resources:
   - 404.Rmd
 
 global_resources:
+  _navbar.html: _navbar.html
   _site.yml: _site.yml
   styles.css: styles.css
   footer.html: footer.html
   footer.tex: footer.tex
-  logo.jpg: logo.jpg
+  logo.png: logo.png
   header.html: header.html
 
 # Optional name of a variable to make the SQL connection available to

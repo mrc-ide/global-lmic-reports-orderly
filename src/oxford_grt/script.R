@@ -29,19 +29,14 @@ ind <- function(x) {
 
 # overall movement reduction
 s <- group_by(d, CountryCode, Date) %>% 
-  summarise(C_SW = 1-(((0.15*ind(S1_School.closing)) + ((0.75*0.6)*ind(S2_Workplace.closing)))),
+  summarise(C_SW = 1-(((0.15/0.75*ind(S1_School.closing)) + ((0.75*0.6/0.75)*ind(S2_Workplace.closing)))),
             C_GM = 1-(if(ind(S6_Restrictions.on.internal.movement)) {0.75} else {0.1*ind(S3_Cancel.public.events)}),
-            C_H = if(ind(S6_Restrictions.on.internal.movement)) { 
-              1.2 
-            } else {
-              1 + 0.2*((0.15*ind(S1_School.closing)) + (0.6*ind(S2_Workplace.closing)))
-            },
-            C = (C_SW + C_GM + C_H)/3)
+            C = (C_SW + C_GM)/2)
 
-# summarise these per country
+# summarise these per country to make an assumed start of 1st February.
 tt <- lapply(unique(s$CountryCode), function(x){
   
-  if(length(unique(s$C[s$CountryCode==x]))) {
+  if(length(unique(s$C[s$CountryCode==x])) == 1) {
     return(data.frame("iso3c"=x, 
                       tt_R0 = 0, 
                       R0 = 3))  
@@ -54,6 +49,8 @@ tt <- lapply(unique(s$CountryCode), function(x){
              R0 = c*3))
   }
 })
+names(tt) <- unique(s$CountryCode)
+
 
 # add blanks 
 nms <- unique(squire::population$iso3c)

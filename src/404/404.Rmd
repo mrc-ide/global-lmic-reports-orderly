@@ -1,5 +1,5 @@
 ---
-title: ""
+title: "404"
 header-includes: \usepackage{caption}
 date: ""
 output:
@@ -44,7 +44,7 @@ return false;
 
 ```
 
----
+## 
 
 The country you have requested has not recorded any deaths by `r date` due to COVID-19 according to the [ECDC](https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide) data. 
 

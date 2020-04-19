@@ -19,6 +19,7 @@ src/*/footer.tex
 src/*/logo.jpg
 src/*/header.html
 src/*/_navbar.html
+src/*/logo.png
 
 src/parameters/parameters.html
 src/parameters/parameters.md
