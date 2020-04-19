@@ -276,10 +276,10 @@ navbar:
       href: https://mrc-ide.github.io/global-lmic-reports/TON
     - text: Vanuatu
       href: https://mrc-ide.github.io/global-lmic-reports/VUT
-    - text: Parameters
-      href: https://mrc-ide.github.io/global-lmic-reports/parameters.html
-    - text: Source Code
-      href: https://github.com/mrc-ide/global-lmic-report-orderly
+  - text: Parameters
+    href: https://mrc-ide.github.io/global-lmic-reports/parameters.html
+  - text: Source Code
+    href: https://github.com/mrc-ide/global-lmic-report-orderly
 output:
   html_document:
     highlight: textmate

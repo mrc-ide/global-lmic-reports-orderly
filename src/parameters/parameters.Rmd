@@ -94,7 +94,7 @@ fig_center <- function() {
 ## Parameters
 
 <br> 
-The parameter table below summarises the current best estimates incorporated in the package as of 2020-04-19. These will be updated as our understanding of the epidemic develops.
+The parameter table below summarises the current best estimates incorporated in the package as of `r date`. These will be updated as our understanding of the epidemic develops.
 
 | **Parameter** | **Value** | **Reference** |
 | --- | --- | --- |

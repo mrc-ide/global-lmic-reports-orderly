@@ -14,7 +14,7 @@ d <- read.csv(tf)
 
 # max date
 max_date <- as.Date(as.character(max(d$Date)), "%Y%m%d")
-if(max_date == date) {
+if(max_date != date) {
   stop("Oxford Goverment Tracker Dataset Not Updated for Today")
 }
 

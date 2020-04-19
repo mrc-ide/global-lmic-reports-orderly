@@ -23,7 +23,7 @@ copy_index <- function(date = NULL, is_latest = TRUE) {
             FROM report_version
             JOIN parameters
               ON parameters.report_version = report_version.id
-           WHERE report_version.report IN ("index_page", "parameters")
+           WHERE report_version.report IN ("index_page", "parameters", "404")
              AND parameters.name = \'date\'
              AND parameters.value = $1
            ORDER BY report_version.id'
@@ -52,8 +52,8 @@ copy_index <- function(date = NULL, is_latest = TRUE) {
   target <- "gh-pages"
   src_index <- file.path("archive", "index_page", id_index,"index.html")
   src_params <- file.path("archive", "parameters", id_params, "parameters.html")
-  src_404 <- file.path("archive", "404", id_params, "404.html")
-  file_copy(c(src_index, src_params), target)
+  src_404 <- file.path("archive", "404", id_404, "404.html")
+  file_copy(c(src_index, src_params, src_404), target)
 }
 
 
