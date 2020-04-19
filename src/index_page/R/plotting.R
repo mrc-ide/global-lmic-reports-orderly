@@ -277,7 +277,9 @@ FacetZoom2 <- ggproto(
 
 summaries_cases_plot <- function(summaries) {
   
-  ggplot(summaries[!summaries$variable %in% c("hospital_14","icu_14", "report_deaths"),], 
+  sub <- summaries[!summaries$variable %in% c("hospital_14","icu_14", "hospital_14_mit","icu_14_mit","report_deaths"),]
+  levels(sub$country) <- rev(levels(sub$country))
+  ggplot(sub, 
          aes(x = country, y = value, color = variable, fill = variable)) + 
     geom_bar(stat="identity",position = position_dodge2(preserve = "single"), width = 0.4) + 
     scale_y_log10(labels = scales::comma) + 
@@ -288,10 +290,10 @@ summaries_cases_plot <- function(summaries) {
     theme_bw() +
     xlab("") +
     ylab("") + 
-    facet_wrap(~continent, scales = "free_y") +
+    facet_wrap(~continent, scales = "free") +
     theme(legend.key = element_rect(size = 5),
       legend.key.size = unit(2, 'lines')) + 
-    coord_flip()
+    coord_flip() 
   
 }
 
@@ -311,7 +313,7 @@ summaries_forecasts_plot <- function(summaries) {
     theme_bw() +
     xlab("") +
     ylab("") + 
-    facet_wrap(~continent,scales="free_y") +
+    facet_wrap(~continent,scales="free") +
     theme(legend.key = element_rect(size = 5),
           legend.key.size = unit(2, 'lines')) + 
     coord_flip()
