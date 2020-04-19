@@ -36,6 +36,7 @@ script: script.R
 parameters:
     iso3c:
       default: AGO
+    date: ~
 
 # You must list at least one artefact that your report will generate.
 # Each artefact consists of one or more files.  The format is to list
@@ -93,6 +94,8 @@ packages:
   - plotly
   - grid
   - ggforce
+  - countrycode
+  - cowplot
 
 # Source files, in addition to the script.  Typically these will
 # contain function definitions.  These will be sourced after loading
@@ -150,7 +153,7 @@ global_resources:
 #
 depends:
   ecdc:
-    id: latest
+    id: latest(parameter:date == date)
     use:
       ecdc_all.rds: ecdc_all.rds
 

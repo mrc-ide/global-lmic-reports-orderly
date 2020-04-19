@@ -1,0 +1,26 @@
+steps:
+  - label: ":whale: Build base image"
+    command: docker/build-base
+
+  - wait
+
+  - label: ":whale: Build squire image"
+    command: docker/build
+
+  - wait
+
+  - label: ":construction_worker: Create reports"
+    command: docker/run
+    artifact_paths:
+      - orderly.sqlite
+      - archive
+
+  - wait
+
+  - label: ":spider_web: Create website"
+    command: docker/build_website
+
+  - wait
+
+  - label: ":shipit: Push images"
+    command: docker/push

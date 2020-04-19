@@ -1,0 +1,52 @@
+FROM vimc/orderly:master
+
+RUN apt-get update && apt-get -y install --no-install-recommends \
+        libcurl4-openssl-dev \
+        libjpeg-dev \
+        libv8-dev \
+        parallel \
+        zlib1g-dev
+
+# Install LaTeX
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+    ghostscript \
+    imagemagick \
+    lmodern \
+    texlive-fonts-recommended \
+    texlive-humanities \
+    texlive-latex-extra \
+    texinfo \
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/ \
+  && cd /usr/share/texlive/texmf-dist \
+  && wget http://mirrors.ctan.org/install/fonts/inconsolata.tds.zip \
+  && unzip inconsolata.tds.zip \
+  && rm inconsolata.tds.zip \
+  && echo "Map zi4.map" >> /usr/share/texlive/texmf-dist/web2c/updmap.cfg \
+  && mktexlsr \
+  && updmap-sys
+
+COPY bin /usr/local/bin/
+
+RUN install_packages --repo=https://ncov-ic.github.io/drat \
+        V8 \
+        countrycode \
+        cowplot \
+        curl \
+        dde \
+        dplyr \
+        ggforce \
+        ggplot2 \
+        ggrepel \
+        knitr \
+        lubridate \
+        magrittr \
+        odin \
+        plotly \
+        purrr \
+        qpdf \
+        readxl \
+        tidyr
+
+ENTRYPOINT ["bash"]

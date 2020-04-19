@@ -381,8 +381,9 @@ FacetZoom2 <- ggproto(
 )
 
 
-cases_plot <- function(out, data, date_0) {
-  
+
+cases_plot <- function(out, data, date = Sys.Date(), date_0) {
+
   o1 <- squire:::calibrate_output_parsing(
     out, 
     date_0 = date_0
@@ -391,7 +392,7 @@ cases_plot <- function(out, data, date_0) {
   
   
   gg_cases <- squire:::plot_calibration_cases_barplot(o1, data = data, forecast = 0) + 
-    ggplot2::xlim(c(Sys.Date() - 28, Sys.Date()))
+    ggplot2::xlim(c(date - 28, date))
   
   gg_cases + ggplot2::theme(legend.position = c(0,1), 
                             legend.justification = c(0,1), 
@@ -402,8 +403,9 @@ cases_plot <- function(out, data, date_0) {
 }
 
 
-deaths_plot <- function(out, data,date_0) {
-  
+
+deaths_plot <- function(out, data,date_0, date = Sys.Date()) {
+
   o1 <- squire:::calibrate_output_parsing(
     out, 
     date_0 = date_0
@@ -413,10 +415,10 @@ deaths_plot <- function(out, data,date_0) {
   gg_deaths 
     
   # geom_label(
-  #   data = data.frame(x = c(as.Date(data$date[max(which(data$deaths == max(data$deaths)))]),Sys.Date()),
-  #                     y = c(max(o1$y[o1$compartment == "deaths" & o1$date < (Sys.Date()+14)])*0.85,
-  #                           max(o1$y[o1$compartment == "deaths" & o1$date < (Sys.Date()+14)])*0.75),
-  #                     label=c("Calibration Date",as.character(Sys.Date()))), 
+  #   data = data.frame(x = c(as.Date(data$date[max(which(data$deaths == max(data$deaths)))]),date),
+  #                     y = c(max(o1$y[o1$compartment == "deaths" & o1$date < (date+14)])*0.85,
+  #                           max(o1$y[o1$compartment == "deaths" & o1$date < (date+14)])*0.75),
+  #                     label=c("Calibration Date",as.character(date))), 
   #   aes(x=x, y=y, label=label), inherit.aes = FALSE) +
   #   ggplot2::theme(legend.position = c(0,1), 
   #                  legend.justification = c(0,1), 

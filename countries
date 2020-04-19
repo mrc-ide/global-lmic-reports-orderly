@@ -1,0 +1,136 @@
+# Countries to run over - see the bottom of the file for ignored countries.
+#
+# The only things that will be run are lines that match 3 upper case
+# letters with nothing else on the line
+AFG
+AGO
+ALB
+ARG
+ARM
+AZE
+BDI
+BEN
+BFA
+BGD
+BGR
+BIH
+BLR
+BLZ
+BOL
+BRA
+BWA
+CIV
+CMR
+COD
+COG
+COL
+CPV
+CRI
+CUB
+DJI
+DOM
+DZA
+ECU
+EGY
+ETH
+GAB
+GEO
+GHA
+GMB
+GTM
+GUY
+HND
+HTI
+IDN
+IND
+IRQ
+JAM
+JOR
+KAZ
+KEN
+KGZ
+LBN
+LBR
+LBY
+LKA
+MAR
+MDA
+MEX
+MKD
+MLI
+MMR
+MNE
+MRT
+MUS
+MWI
+MYS
+NER
+NGA
+NIC
+PAK
+PER
+PHL
+PRY
+PSE
+ROU
+RUS
+SDN
+SEN
+SLV
+SOM
+SRB
+SUR
+SYR
+TGO
+THA
+TUN
+TUR
+TZA
+UKR
+UZB
+VEN
+ZAF
+ZMB
+ZWE
+
+# Disabled for now:
+# BTN
+# CAF
+# COM
+# ERI
+# FJI
+# FSM
+# GIN
+# GNB
+# GNQ
+# GRD
+# KHM
+# KIR
+# LAO
+# LCA
+# LSO
+# MDG
+# MDV
+# MNG
+# MOZ
+# NAM
+# NPL
+# PNG
+# PRK
+# RWA
+# SLB
+# SLE
+# SSD
+# STP
+# SWZ
+# TCD
+# TJK
+# TKM
+# TLS
+# TON
+# UGA
+# VCT
+# VNM
+# VUT
+# WSM
+# YEM
