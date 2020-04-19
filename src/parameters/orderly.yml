@@ -33,8 +33,7 @@ script: script.R
 # would declare a parameter called 'a' with a default value of 1, and
 # a parameter of b with no default.
 #
-parameters:
-    date: ~
+parameters: ~
 
 # You must list at least one artefact that your report will generate.
 # Each artefact consists of one or more files.  The format is to list
