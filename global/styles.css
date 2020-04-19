@@ -16,6 +16,22 @@ body {
   padding-bottom: 0 !important;
 }
 
+h2 {
+  padding-right: 2% !important;
+  padding-left: 2% !important;
+}
+
+
+h3 {
+  padding-right: 2% !important;
+  padding-left: 2% !important;
+}
+
+p {
+  padding-right: 2% !important;
+  padding-left: 2% !important;
+}
+
 .navbar-default .navbar-nav>.active>a, .navbar-default .navbar-nav>.active>a:hover, .navbar-default .navbar-nav>.active>a:focus {
   color: #8793a1;
   background-color: #003b73 !important;

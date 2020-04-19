@@ -114,7 +114,7 @@ The parameter table below summarises the current best estimates incorporated in 
 | Probability of death if require hospitalisation but do not receive it | 60% | Working assumption based on expert clinical opinion |
 | Multiplier of duration of stay for LIC and LMIC settings compared to HIC | 50% | Working assumption based on expert clinical opinion |
 
-Age-Specific Parameters
+### Age-Specific Parameters
 
 | **Age-Group** | **Proportion of Infections Hospitalised** | **Proportion of hospitalised cases requiring critical care** | **Proportion of non-critical care cases dying** |
 | --- | --- | --- | --- |
