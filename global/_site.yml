@@ -1,11 +1,9 @@
 name: lmic-reports
 output_dir: '.'
 navbar:
-  title: COVID-19 LMIC Reports
-  href: https://mrc-ide.github.io/global-lmic-reports/index.html
+  title: "COVID-19 LMIC Reports"
+  href: "https://mrc-ide.github.io/global-lmic-reports"
   left:
-  - text: Introduction
-    href: https://mrc-ide.github.io/global-lmic-reports/index.html
   - text: Africa
     menu:
     - text: Angola
