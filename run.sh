@@ -8,6 +8,9 @@ DATE=$(date "+%Y-%m-%d")
 echo "*** ECDC data"
 ./orderly run ecdc date=$DATE
 
+echo "*** Oxford GRT data"
+./orderly run oxford_grt date=$DATE
+
 # Parallel
 grep -E '^[A-Z]{3}\s*' countries | \
     parallel -j 4 ./orderly run lmic_reports iso3c={} date=$DATE

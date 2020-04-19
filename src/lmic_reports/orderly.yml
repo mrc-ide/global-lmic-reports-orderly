@@ -156,4 +156,7 @@ depends:
     id: latest(parameter:date == date)
     use:
       ecdc_all.rds: ecdc_all.rds
-
+  oxford_grt:
+    id: latest(parameter:date == date)
+    use:
+      oxford_grt.rds: oxford_grt.rds
