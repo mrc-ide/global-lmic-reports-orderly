@@ -11,8 +11,9 @@ output:
     fig_caption: TRUE
   pdf_document: 
     fig_caption: true
+    toc: false
     includes: 
-      before_body: footer.tex
+      after_body: footer.tex
   word_document:
     df_print: kable
     fig_caption: yes
@@ -82,7 +83,6 @@ figRef <- function(caption) {
   }
 }
 
-
 fig_height <- function(pdf = 4, html = 6) {
   if(format == "latex") {
     pdf
@@ -99,6 +99,12 @@ fig_center <- function() {
   }
 }
 
+pagebreak <- function() {
+  if(knitr::is_latex_output())
+    return("\\newpage")
+  else
+    return('<div style="page-break-before: always;" />')
+}
 
 if(data$deaths[1] >= 10) {
   show_sentence <- "" 
@@ -229,17 +235,15 @@ saveRDS(summary_number_df, "summary_df.rds")
 
 This report uses data from the ECDC database of COVID-19 deaths reported. We use mathematical modelling techniques (see [Report 12](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-12-global-impact-covid-19/) for further details) to estimate the number of people that have been infected and to make short-term projections for future healthcare needs.
 
-The current version of this report does not capture the impact that interventions that have been put in place will have had on the course of the epidemic. The short-term projections may therefore be higher than the actual need for countries that currently have widescale and effective social distancing measures in place.
-
 <br> 
 
 ### Epidemiological Situation
 
-As of `r format(date, "%Y-%m-%d")` there have been `r format(data$cases[1], big.mark=",")` cases and `r format(data$deaths[1], big.mark=",")` deaths reported. The figure below shows the cumulative reported as a function of the time since the 10th death was reported. Dashed lines show the expected trajectory for different doubling times of the epidemic. For example, with a doubling time of 3 days, if there are currently a total of 20 deaths reported, we would expect there to be 40 deaths in total reported in 3 days-time, 80 deaths in 6 days-time, 160 deaths in 9 days-time etc. For most epidemics, in the absence of interventions, we expect a doubling time of 3-4 days for this disease. `r show_sentence`
+As of `r format(date, "%Y-%m-%d")` there have been `r format(data$cases[1], big.mark=",")` cases and `r format(data$deaths[1], big.mark=",")` deaths reported. The figure below shows the cumulative reported deaths as a function of the time since the 10th death was reported. Dashed lines show the expected trajectory for different doubling times of the epidemic. For example, with a doubling time of 3 days, if there are currently a total of 20 deaths reported, we would expect there to be 40 deaths in total reported in 3 days-time, 80 deaths in 6 days-time, 160 deaths in 9 days-time etc. For most epidemics, in the absence of interventions, we expect a doubling time of 3-4 days for this disease. `r show_sentence`
 
 <br>
 
-```{r fig1, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 1: Cumulative Deaths since 10 deaths.** Note if 10 deaths are yet to be reported, country will not be shown."), fig.align=fig_center()}
+```{r fig1, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 1: Cumulative Deaths since 10 deaths.** Note if 10 deaths are yet to be reported, country will not be shown."), fig.height=fig_height(4.25,6), fig.width=fig_height(6,8), fig.align=fig_center()}
 
 suppressWarnings(cumulative_deaths_plot(country = country))
 
@@ -251,7 +255,7 @@ suppressWarnings(cumulative_deaths_plot(country = country))
 
 ### COVID-19 Transmission Modelling
 
-We assume that the deaths reported to date provide the best indication of the stage of the epidemic. Our current working estimate is that 1 death indicates that approximately 100 people will have been infected with the other 99 recovering (based on an infection fatality ratio of ~1%). These infections will have happened approximately 15 days previously – capturing a 5-day period from infection to onset of symptoms (the incubation period), 4 days from onset of symptoms to hospitalisation, and 6 days in hospital before death. With a 3-day doubling time, 100 infections that occurred 15 days ago will have generated 200 infections 12 days ago, 400 infections 9 days ago, 800 infections 6 days ago and 1,600 infections 3 days ago resulting in approximately 3,200 infections at the time the first death is observed.
+We assume that the deaths reported to date provide the best indication of the stage of the epidemic. Our current working estimate is that 1 death indicates that approximately 100 people will have been infected with the other 99 recovering (based on an infection fatality ratio of ~1%). These infections will have happened approximately 21 days previously – capturing a 5-day period from infection to onset of symptoms (the incubation period), 4 days from onset of symptoms to hospitalisation, and 12 days in hospital before death. With a 3-day doubling time, 100 infections that occurred 15 days ago will have generated 200 infections 12 days ago, 400 infections 9 days ago, 800 infections 6 days ago and 1,600 infections 3 days ago resulting in approximately 3,200 infections at the time the first death is observed.
 
 To explore this, we explore two scenarios:
 
@@ -266,7 +270,7 @@ The figure below shows the estimated number of people infected and number of sym
 
 <br>
 
-```{r case plot, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE,  fig.cap=figRef("**Figure 2: Daily number of infections estimated by fitting to the current total of deaths.** Reported cases are shown in red. Model estimated cases are shown in blue (dark blue 50% interquartile range, light blue 95% quantile)."), fig.width=10, fig.height=6}
+```{r case plot, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE,  fig.cap=figRef("**Figure 2: Daily number of infections estimated by fitting to the current total of deaths.** Reported cases are shown in red. Model estimated cases are shown in blue (dark blue 50% interquartile range, light blue 95% quantile)."), fig.width=10, fig.height=fig_height(5,5.5)}
 
 suppressWarnings(suppressMessages(cases_plot(params$o_list[[1]], data = data, date = date, date_0 = date_0)))
 
@@ -278,19 +282,19 @@ suppressWarnings(suppressMessages(cases_plot(params$o_list[[1]], data = data, da
 
 We make the following short-term projections of healthcare demand under the the following three scenarios:
 
-* Scenario 1. The epidemic continues to grow exponentially at the current rate. 
-* Scenario 2. Countries will scale up interventions leading to a 50% reduction in transmission.
+* Scenario 1. The epidemic continues to grow at the current rate. 
+* Scenario 2. Countries will furher scale up interventions leading to a further 50% reduction in transmission.
 
 Conseqently, these predictions have two major caveats:
 
 * The projections do not consider that more interventions may be put in place in the coming weeks. 
 * The projections assume that 100% of COVID-19 related deaths have been reported.
 
-We estimate that over the next 2 weeks demand for hospital beds will grow from `r form(hosp_today)` patients requiring treatment with high-pressure oxygen at the current date to `r form(hosp_14)` by `r format(date + 14, "%Y-%m-%d")` if no interventions are introduced (Scenario 1). Similarly, we estimate that over the next 2 weeks demand for critical care (ICU) beds will grow from `r form(icu_today)` patients requiring treatment with mechanical ventilation at the current date to `r form(icu_14)` by `r format(date + 14, "%Y-%m-%d")`. These projections assume that approximately 5% of all infections will require treatment with high-pressure oxygen  and that approximately 30% of hospitalised cases will require require treatment with mechanical ventilation (based on analysis of ongoing epidemics in Europe). 
+We estimate that over the next 2 weeks demand for hospital beds will grow from `r form(hosp_today)` patients requiring treatment with high-pressure oxygen at the current date to `r form(hosp_14)` by `r format(date + 14, "%Y-%m-%d")` if no further interventions are introduced (Scenario 1). Similarly, we estimate that over the next 2 weeks demand for critical care (ICU) beds will grow from `r form(icu_today)` patients requiring treatment with mechanical ventilation at the current date to `r form(icu_14)` by `r format(date + 14, "%Y-%m-%d")`. These projections assume that approximately 5% of all infections will require treatment with high-pressure oxygen and that approximately 30% of hospitalised cases will require require treatment with mechanical ventilation (based on analysis of ongoing epidemics in Europe). 
 
 If interventions are scaled up (Scenario 2), the demand for hospital beds will grow from `r form(hosp_today_mit)` patients requiring treatment with high-pressure oxygen at the current date to `r form(hosp_14_mit)` by `r format(date + 14, "%Y-%m-%d")`. Similarly, we estimate that over the next 2 weeks demand for critical care (ICU) beds will grow from `r form(icu_today_mit)` patients requiring treatment with mechanical ventilation at the current date to `r form(icu_14_mit)` by `r format(date + 14, "%Y-%m-%d")`. 
 
-```{r healthcare plots, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 3: Healthcare demands in the next 2 weeks.** Individuals needing an ICU bed are predicted to need mechanical ventilation. Projected demand for an unmitigated scenario (Scenario 1) is shown in red and projections for a mitigation scenario with 50% reduction in transmission starting today (Scenario 2) are shown in blue."), fig.width=10, fig.height=fig_height(3,4.5)}
+```{r healthcare plots, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 3: Healthcare demands in the next 2 weeks.** Individuals needing an ICU bed are predicted to need mechanical ventilation. Projected demand for an unmitigated scenario (Scenario 1) is shown in red and projections for a mitigation scenario with 50% reduction in transmission starting today (Scenario 2) are shown in blue."), fig.width=10, fig.height=fig_height(5,5.5)}
 
 #suppressMessages(healthcare_plot(r_list[[1]], data))
 
@@ -305,11 +309,12 @@ If interventions are scaled up (Scenario 2), the demand for hospital beds will g
 
 ```
 
+`r pagebreak()`
 <br>
 
-Assuming a severity pattern by age that is consistent with that observed in China, Europe and the U.S to date, we estimate that there could be `r form(deaths_14)` deaths on `r format(date + 14, "%Y-%m-%d")`. The expected trajectory for cumulative deaths is shown in the figure below along with the bar chart of reported deaths.
+The expected trajectory for cumulative deaths is shown in the figure below. This assumes a severity pattern by age that is consistent with that observed in China, Europe and the U.S to date.
 
-```{r death forecast plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap=figRef("**Figure 4: Cumulative Deaths estimated by fitting to the current total of deaths.** Projected deaths for an unmitigated scenario (Scenario 1) are shown in red (dark red 50% interquartile range, light red 95% quantile) and projections for a mitigation scenario with 50% reduction in transmission starting today (Scenario 2) are shown in blue. Model estimated deaths are shown in blue (dark blue 50% interquartile range, light blue 95% quantile)."), fig.width=10, fig.height=fig_height(3.75,6)}
+```{r death forecast plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap=figRef("**Figure 4: Cumulative Deaths estimated by fitting to the current total of deaths.** Projected deaths for an unmitigated scenario (Scenario 1) are shown in red (dark red 50% interquartile range, light red 95% quantile) and projections for a mitigation scenario with 50% reduction in transmission starting today (Scenario 2) are shown in blue. Model estimated deaths are shown in blue (dark blue 50% interquartile range, light blue 95% quantile)."), fig.width=10, fig.height=fig_height(4.5,5.5)}
 
 
 suppressWarnings(suppressMessages(deaths_plot_contrast(params$o_list[[1]], params$o_list[[2]], 
@@ -318,3 +323,5 @@ suppressWarnings(suppressMessages(deaths_plot_contrast(params$o_list[[1]], param
 ```
 
 <br>
+
+---

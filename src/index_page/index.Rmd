@@ -4,7 +4,7 @@ header-includes: \usepackage{caption}
 date: ""
 output:
   html_document:
-    keep_md: yes
+    keep_md: no
     self_contained: yes
     css: styles.css
     theme: cosmo
@@ -122,41 +122,44 @@ COVID-19 is currently causing large-scale outbreaks in many countries, particula
 
 <br> 
 
-```{r fig1, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 1: Cumulative Deaths since 10 deaths.**"), fig.align=fig_center(),fig.width=6, fig.height=fig_height(4,5)}
+```{r fig1, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.align=fig_center(),fig.width=7, fig.height=fig_height(4,5)}
 
 # [FIGURE SHOWING TRAJECTORIES AND CASES OF EARLY-STAGE LMIC COUNTRIES RELATIVE TO HICS?]
 suppressMessages(suppressWarnings(
 cumulative_deaths_plot(country = c("Algeria", "Brazil", "Ecuador", "Mexico",
-                                   "Morocco", "Philippines", "India",
-                                   "United Kingdom", "Italy", 
+                                   "Morocco", "Philippines", "India", "Nigeria",
+                                   "United Kingdom", "Italy", "Afghanistan",
                                    "South Korea",
                                    "United States of America"))
 ))
 
 ```
+<br>
 
 Meanwhile there are many countries, particularly Lower or Middle Income countries (LMICs) which, as a likely function of global movement patterns, are at an early stage of the epidemic where major healthcare demand and mortality has yet to be reported: there are a total of `r countries_less_100` countries who are either yet to report 100 COVID-19 deaths and where the total COVID-19 deaths represent less than 10/million of their population. The following short-term forecasts are designed to provide these countries with an indication of where they are in the epidemic in terms of the likely number of infections within there country and the future trajectory in the next two weeks of the number of individuals likely to require hospitalisation and whether these individuals will require high-pressure oxygen or mechanical ventilation in order to survive.
 
+<br>
+
 ### METHODOLOGY 
 
-As in our projections for high-income settings at more advanced stages of the epidemic, rather than relying upon reported cases which are likely to be subject to a high and varying degree of under-ascertainment, we use reported deaths as a more reliable indicator of disease spread. These data are then used to back-calculate an ‘inferred number of COVID-19 infections’ that we estimate have occurred within each country up to the current day, adjusted for the demographics and representative patterns of social mixing within each country.
+As in our projections for high-income settings at more advanced stages of the epidemic, rather than relying upon reported cases which are likely to be subject to a high and varying degree of under-ascertainment, we use reported deaths as a more reliable indicator of disease spread. These data are then used to back-calculate an ‘inferred number of COVID-19 infections’ that we estimate have occurred within each country up to the current day, adjusted for the demographics and representative patterns of social mixing within each country. Then, using data on the risk of requiring hospitalisation, oxygen and mechanical ventilation by age observed in other countries to date, we use our model to project forwards the likely demand for healthcare over the coming two weeks.
+
+We have attempted to capture the impact of interventions that have been put in place using data from the [Oxford Coronavirus Government Response Tracker](https://www.bsg.ox.ac.uk/research/research-projects/coronavirus-government-response-tracker). We currently make assumptions about the efficacy of these interventions and so the projections should be interpreted as scenarios rather than predictions. Work is ongoing to integrate formal statistical fitting to improve these projections. 
 
 ```{r case plot, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE,  fig.cap=figRef("**Figure 2: Estimated vs Reported Cases and Deaths.**"), fig.width=10, fig.height=12}
 
 # [FIGURE SHOWING TOTAL DEATHS AND TOTAL CASES [OBSERVED AND INFERRED FOR SUB-SAHARAN AFRICA]
-suppressMessages(summaries_cases_plot(summaries))
+# suppressMessages(summaries_cases_plot(summaries))
 
 ```
 
-Then, using data on the risk of requiring hospitalisation, oxygen and mechanical ventilation by age observed in other countries to date, we use our model to project forwards the likely demand for healthcare over the coming two weeks.
+
 
 ```{r healthcare plots, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 3: Estimated Healthcare demands in 2 weeks time.** Individuals needing an ICU bed are predicted to need mechanical ventilation."), fig.width=10, fig.height=fig_height(9,12)}
 
 # [FIGURE SHOWING PROJECTIONS OF HOSP/ICU/DEATHS IN NEXT TWO WEEKS IN SSA]
-suppressMessages(summaries_forecasts_plot(summaries))
+# suppressMessages(summaries_forecasts_plot(summaries))
 
 ```
-
-It should be noted that these projections do not currently take into account the effects of any non-pharmaceutical interventions that have been put in place within a country so may lead to over-projections in such countries, though we predict, given the observed delay between infection and severe disease, that interventions implemented in recent days would have little impact on our projections.
 
 <br>

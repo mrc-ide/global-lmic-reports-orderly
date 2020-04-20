@@ -1,5 +1,5 @@
 ---
-title: "COVID-19 Parameters"
+title: "COVID-19 Methods & Parameters"
 header-includes: \usepackage{caption}
 date: ""
 output:
@@ -111,6 +111,8 @@ The LMIC reports are generated using an age-structured SEIR model, with the infe
 <br>
 
 Given initial inputs of hospital/ICU bed capacity and the average time cases spend in hospital, the model dynamically tracks available hospital and ICU beds over time. Individuals newly requiring hospitalisation (either a hospital or ICU bed) are then assigned to either receive care (if the relevant bed is available) or not (if maximum capacity would be exceeded otherwise). Whether or not an individual receives the required care modifies their probability of dying.
+
+We have incorporated the impact of interventions that have been put in place using data from the [Oxford Coronavirus Government Response Tracker](https://www.bsg.ox.ac.uk/research/research-projects/coronavirus-government-response-tracker). We currently make assumptions about the efficacy of these interventions. We assume that  and so the projections should be interpreted as scenarios rather than predictions. Work is ongoing to integrate formal statistical fitting to improve these projections. In summary, school closures are assumed to cause a 10% reduction in contacts. Work closure is assumed to cause 30% reduction in contacts. Banning of public events is assumed to lead to a 5% reduction in contacts while a lockdown is not in force. A lockdown is assumed to cause an additional 37.5% reduction in contacts on top of the 40% reduction due to school and work closure, leading to a total 77.5% reduction.
 
 <br> 
 

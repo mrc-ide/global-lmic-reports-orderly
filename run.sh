@@ -13,7 +13,7 @@ echo "*** Oxford GRT data"
 
 # Parallel
 grep -E '^[A-Z]{3}\s*' countries | \
-    parallel -j 4 ./orderly run lmic_reports iso3c={} date=$DATE
+    parallel -j 3 ./orderly run lmic_reports iso3c={} date=$DATE
 
 # Serial (useful if debugging)
 # for ISO in $(grep -E '^[A-Z]{3}\s*' countries); do

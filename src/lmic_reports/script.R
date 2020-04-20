@@ -1,12 +1,13 @@
 orderly_id <- tryCatch(orderly::orderly_run_info()$id,
                        error = function(e) "<id>") # bury this in the html, docx
 
+set.seed(123)
 date <- as.Date(date)
-saveRDS("unfinished", paste0("/home/oj/GoogleDrive/AcademicWork/covid/githubs/global-lmic-reports-orderly/scripts/",iso3c,".rds"))
+# saveRDS("unfinished", paste0("/home/oj/GoogleDrive/AcademicWork/covid/githubs/global-lmic-reports-orderly/scripts/",iso3c,".rds"))
 
 # prepare fitting first
 start <- 10
-replicates <- 20
+replicates <- 50
 
 library(dplyr)
 library(ggplot2)
@@ -33,8 +34,7 @@ date_0 <- data$date[tail(which(data$deaths==max(data$deaths)),1)]
 
 # get country data
 oxford_grt <- readRDS("oxford_grt.rds")
-# conduct unmitigated
-pop <- get_population(country)
+
 # conduct unmitigated
 pop <- squire::get_population(country)
 out <- squire::calibrate(country = country, deaths = max(data$deaths),
@@ -52,7 +52,7 @@ o_list <- lapply(r_list, squire::format_output,
                  var_select = c("infections","deaths","hospital_demand","ICU_demand", "D"),
                  date_0 = date_0)
 
-saveRDS("finished", paste0("/home/oj/GoogleDrive/AcademicWork/covid/githubs/global-lmic-reports-orderly/scripts/",iso3c,".rds"))
+
 
 
 # prepare reports
@@ -66,6 +66,7 @@ rmarkdown::render("index.Rmd",
                                 "country" = country),
                   output_options = list(pandoc_args = paste0("--metadata=title:\"",country," COVID-19 report\"")))
 
+# saveRDS("finished", paste0("/home/oj/GoogleDrive/AcademicWork/covid/githubs/global-lmic-reports-orderly/scripts/",iso3c,".rds"))
 
 # url_structure: /<iso_date>/<iso_country>/report.html
 # url_latest: /latest/<iso_country>/report.html

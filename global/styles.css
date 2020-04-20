@@ -47,7 +47,7 @@ p {
   display: none;
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1000px) {
   .navbar-header {
       float: none;
   }
@@ -107,6 +107,7 @@ h1 {
 
 #footer {
   padding: 20px;
+  margin-bottom: 0px !important;
   color: white;
   background-color: #333;
 }

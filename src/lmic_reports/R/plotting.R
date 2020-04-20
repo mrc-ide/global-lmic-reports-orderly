@@ -1,8 +1,28 @@
+match_clean <- function(a,b, quiet=TRUE){
+  a <- gsub("[[:punct:][:space:]]","",tolower(stringi::stri_trans_general(a, "latin-ascii")))
+  b <- gsub("[[:punct:][:space:]]","",tolower(stringi::stri_trans_general(b, "latin-ascii")))
+  ret <- match(a,b)
+  if(sum(is.na(ret)>0)){
+    dists <- stringdist::seq_distmatrix(lapply(a,utf8ToInt),lapply(b,utf8ToInt))
+    ret[is.na(ret)] <- apply(dists[which(is.na(ret)),,drop=FALSE],1,which.min)
+    if(!quiet){
+      return(unique(cbind(a,b[ret])))
+    }
+  }
+  return(ret)
+}
+
 
 cumulative_deaths_plot <- function(country) {
   
   d <- readRDS("ecdc_all.rds")
+  d$Region[d$Region=="Congo"] <- "Republic of Congo"
+  d$Region[d$Region=="United_Republic_of_Tanzania"] <- "Tanzania"
   start <- 10
+  
+  country <- gsub("[[:punct:]]", "", country)
+  country <- gsub(" ", "_", country)
+  country <- d$Region[match_clean(country, d$Region)]
   
   suppressWarnings(d$Continent <- countrycode::countrycode(d$Region, origin = 'country.name', destination = 'continent'))
   d$Continent[d$Region=="Eswatini"] <- "Africa"
@@ -27,6 +47,7 @@ cumulative_deaths_plot <- function(country) {
     mutate(Cum_Deaths = cumsum(deaths),
            Cum_Cases = cumsum(cases))
   
+  country <- gsub("_" ," ", country)
   df$Region <- gsub("_" ," ", df$Region)
   
   df_deaths <- df %>% 
@@ -426,7 +447,7 @@ deaths_plot_contrast <- function(o1, o2, data, date_0, date = Sys.Date(),
     sub <- df[df$compartment == "deaths" &
                 df$date <=  date + forecast + 1,]  %>%
       dplyr::group_by(.data$day, .data$replicate, .data$Scenario) %>%
-      dplyr::summarise(y = sum(.data$y), n=dplyr::n()) %>%
+      dplyr::summarise(y = mean(.data$y), n=dplyr::n()) %>%
       dplyr::filter(.data$day <= date + forecast)
     
     title <- "Daily Deaths"
@@ -481,7 +502,7 @@ deaths_plot_contrast <- function(o1, o2, data, date_0, date = Sys.Date(),
     ggplot2::scale_y_continuous(expand = c(0,0)) +
     ggplot2::scale_x_date(date_breaks = "1 week", date_labels = "%b %d",
                           limits = c(date - 7, date + forecast)) +
-    ggplot2::scale_fill_manual(name = "", labels = (c("Mitigated", "Unmitigated")),
+    ggplot2::scale_fill_manual(name = "", labels = rev(c("Maintain Status Quo", "Additional 50% Reduction")),
                                values = (c("#3f8ea7","#c59e96"))) +
     ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, colour = "black"),
                    axis.title.x = ggplot2::element_blank(),
@@ -490,7 +511,7 @@ deaths_plot_contrast <- function(o1, o2, data, date_0, date = Sys.Date(),
                    panel.border = ggplot2::element_blank(),
                    panel.background = ggplot2::element_blank(),
                    axis.line = ggplot2::element_line(colour = "black"),
-                   legend.position = c(0,1), 
+                   legend.position = "top", 
                    legend.justification = c(0,1), 
                    legend.direction = "horizontal") 
   
@@ -558,15 +579,15 @@ healthcare_plot_contrast <- function(o1, o2, data, date_0, date = Sys.Date(), fo
     ggplot2::ylab(title) +
     ggplot2::theme_bw()  +
     ggplot2::scale_y_continuous(expand = c(0,0)) +
-    ggplot2::scale_fill_manual(name = "", labels = (c("Unmitigated", "Mitigated")),
+    ggplot2::scale_fill_manual(name = "", labels = (c("Maintain Status Quo", "Additional 50% Reduction")),
                                values = rev(c("#3f8ea7","#c59e96"))) +
     ggplot2::scale_x_date(date_breaks = "1 week", date_labels = "%b %d", limits = c(Sys.Date()-7, Sys.Date() + forecast)) +
     ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, colour = "black"),
                    axis.title.x = ggplot2::element_blank(),
                    panel.grid.major.x = ggplot2::element_blank(),
                    panel.grid.minor.x = ggplot2::element_blank(),
-                   legend.position = c(0,1), 
-                   legend.justification = c(0,1), 
+                   legend.position = "top", 
+                   legend.justification = c(0,1),
                    legend.direction = "horizontal",
                    panel.border = ggplot2::element_blank(),
                    panel.background = ggplot2::element_blank(),
