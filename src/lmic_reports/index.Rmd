@@ -241,7 +241,7 @@ As of `r format(date, "%Y-%m-%d")` there have been `r format(data$cases[1], big.
 
 ```{r fig1, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 1: Cumulative Deaths since 10 deaths.** Note if 10 deaths are yet to be reported, country will not be shown."), fig.align=fig_center()}
 
-cumulative_deaths_plot(country = country)
+suppressWarnings(cumulative_deaths_plot(country = country))
 
 ```
 
@@ -268,7 +268,7 @@ The figure below shows the estimated number of people infected and number of sym
 
 ```{r case plot, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE,  fig.cap=figRef("**Figure 2: Daily number of infections estimated by fitting to the current total of deaths.** Reported cases are shown in red. Model estimated cases are shown in blue (dark blue 50% interquartile range, light blue 95% quantile)."), fig.width=10, fig.height=6}
 
-suppressMessages(cases_plot(params$o_list[[1]], data = data, date = date, date_0 = date_0))
+suppressWarnings(suppressMessages(cases_plot(params$o_list[[1]], data = data, date = date, date_0 = date_0)))
 
 ```
 
@@ -294,14 +294,14 @@ If interventions are scaled up (Scenario 2), the demand for hospital beds will g
 
 #suppressMessages(healthcare_plot(r_list[[1]], data))
 
-  suppressMessages(cowplot::plot_grid(
+  suppressWarnings(suppressMessages(cowplot::plot_grid(
     healthcare_plot_contrast(o1 = params$o_list[[1]], o2 = params$o_list[[2]], 
                              data = data, date_0 = date_0, date = date, 
                              forecast = 14, what = "hospital_demand"),
     healthcare_plot_contrast(o1 = params$o_list[[1]], o2 = params$o_list[[2]], 
                              data = data, date_0 = date_0, date = date, 
                              forecast = 14, what = "ICU_demand"),
-                     ncol=2))
+                     ncol=2)))
 
 ```
 
@@ -312,8 +312,8 @@ Assuming a severity pattern by age that is consistent with that observed in Chin
 ```{r death forecast plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap=figRef("**Figure 4: Cumulative Deaths estimated by fitting to the current total of deaths.** Projected deaths for an unmitigated scenario (Scenario 1) are shown in red (dark red 50% interquartile range, light red 95% quantile) and projections for a mitigation scenario with 50% reduction in transmission starting today (Scenario 2) are shown in blue. Model estimated deaths are shown in blue (dark blue 50% interquartile range, light blue 95% quantile)."), fig.width=10, fig.height=fig_height(3.75,6)}
 
 
-suppressMessages(deaths_plot_contrast(params$o_list[[1]], params$o_list[[2]], 
-                     data = data, date_0 = date0, date = date))
+suppressWarnings(suppressMessages(deaths_plot_contrast(params$o_list[[1]], params$o_list[[2]], 
+                     data = data, date_0 = date0, date = date)))
 
 ```
 

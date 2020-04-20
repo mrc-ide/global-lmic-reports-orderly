@@ -4,7 +4,7 @@ cumulative_deaths_plot <- function(country) {
   d <- readRDS("ecdc_all.rds")
   start <- 10
   
-  d$Continent <- countrycode::countrycode(d$Region, origin = 'country.name', destination = 'continent')
+  suppressWarnings(d$Continent <- countrycode::countrycode(d$Region, origin = 'country.name', destination = 'continent'))
   d$Continent[d$Region=="Eswatini"] <- "Africa"
   d$Continent[d$Region=="United State of America"] <- "Americas"
   d$Continent[d$Region=="Isle_of_Man"] <- "Europe"             
@@ -438,7 +438,7 @@ deaths_plot_contrast <- function(o1, o2, data, date_0, date = Sys.Date(),
     sub <- df[df$compartment == "D" &
                 df$date <=  date + forecast + 1,]  %>%
       dplyr::group_by(.data$day, .data$replicate, .data$Scenario) %>%
-      dplyr::summarise(y = sum(.data$y), n=dplyr::n()) %>%
+      dplyr::summarise(y = mean(.data$y), n=dplyr::n()) %>%
       dplyr::filter(.data$day <= date + forecast)
     
     title <- "Cumulative Deaths"
@@ -528,7 +528,7 @@ healthcare_plot_contrast <- function(o1, o2, data, date_0, date = Sys.Date(), fo
   sub <- df[df$compartment %in% what &
               df$date <=  date + forecast + 1,] %>%
     dplyr::group_by(.data$day, .data$replicate, .data$Scenario) %>%
-    dplyr::summarise(y = sum(.data$y), n=dplyr::n()) %>%
+    dplyr::summarise(y = mean(.data$y), n=dplyr::n()) %>%
     dplyr::filter(.data$day <= Sys.Date() + forecast)
   
   pd_group <- dplyr::group_by(sub, .data$day, .data$Scenario) %>%
@@ -545,6 +545,7 @@ healthcare_plot_contrast <- function(o1, o2, data, date_0, date = Sys.Date(), fo
   }
   
   # Plot
+  suppressMessages(suppressWarnings(
   gg_healthcare <- ggplot2::ggplot(sub, ggplot2::aes(x = .data$day,
                                                      y = .data$y, 
                                                      fill = .data$Scenario)) +
@@ -570,7 +571,7 @@ healthcare_plot_contrast <- function(o1, o2, data, date_0, date = Sys.Date(), fo
                    panel.border = ggplot2::element_blank(),
                    panel.background = ggplot2::element_blank(),
                    axis.line = ggplot2::element_line(colour = "black"))
-  
+  ))
   gg_healthcare
   
 }

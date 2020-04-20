@@ -111,6 +111,7 @@ packages:
 #
 resources:
   - parameters.Rmd
+  - structure.JPG
 
 global_resources:
   _navbar.html: _navbar.html

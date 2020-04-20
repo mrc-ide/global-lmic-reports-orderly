@@ -2,6 +2,7 @@ orderly_id <- tryCatch(orderly::orderly_run_info()$id,
                        error = function(e) "<id>") # bury this in the html, docx
 
 date <- as.Date(date)
+saveRDS("unfinished", paste0("/home/oj/GoogleDrive/AcademicWork/covid/githubs/global-lmic-reports-orderly/scripts/",iso3c,".rds"))
 
 # prepare fitting first
 start <- 10
@@ -51,6 +52,9 @@ o_list <- lapply(r_list, squire::format_output,
                  var_select = c("infections","deaths","hospital_demand","ICU_demand", "D"),
                  date_0 = date_0)
 
+saveRDS("finished", paste0("/home/oj/GoogleDrive/AcademicWork/covid/githubs/global-lmic-reports-orderly/scripts/",iso3c,".rds"))
+
+
 # prepare reports
 rmarkdown::render("index.Rmd", 
                   output_format = c("html_document","pdf_document"), 
@@ -59,7 +63,8 @@ rmarkdown::render("index.Rmd",
                                 "replicates" = replicates, 
                                 "data" = data,
                                 "date_0" = date_0,
-                                "country" = country))
+                                "country" = country),
+                  output_options = list(pandoc_args = paste0("--metadata=title:\"",country," COVID-19 report\"")))
 
 
 # url_structure: /<iso_date>/<iso_country>/report.html
