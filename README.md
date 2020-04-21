@@ -8,16 +8,20 @@ This is an [`orderly`](https://github.com/vimc/orderly) project.  The directorie
 
 (you can delete or edit this file safely)
 
-## Instructions
+## Instructions on the server
 
 Currently somewhat manual, we'll move to an automated system once the data sources fully settle down.
 
 If there are code changes, then the images will take a while to build. These are separated into two components "base", which takes quite a while to build, and another image built on top of this that includes the fast moving packages.
 
+These are built automatically on [buildkite](https://buildkite.com/mrc-ide/global-lmic-report) but will take a number of minutes to complete.  You can do this manually with:
+
 ```
 ./docker/build-base
 ./docker/build
 ```
+
+Typically the second will be enough unless new packages have been added to the base dockerfile, and that step runs in a few seconds.
 
 Run all the reports and build index pages
 
@@ -42,6 +46,8 @@ Deploy to staging with
 ```
 ./scripts/publish_website staging
 ```
+
+Check the [staging website](https://mrc-ide.github.io/global-lmic-reports-staging/)
 
 Deploy to production with
 
