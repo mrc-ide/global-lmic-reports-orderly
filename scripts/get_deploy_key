@@ -15,6 +15,7 @@ mkdir -p $ROOT/.ssh
 vault read -field key \
       secret/ncov/deploy-keys/mrc-ide/global-lmic-reports > \
       $ROOT/.ssh/id_rsa
+chmod 600 $ROOT/.ssh/id_rsa
 vault read -field pub \
       secret/ncov/deploy-keys/mrc-ide/global-lmic-reports > \
       $ROOT/.ssh/id_rsa.pub
