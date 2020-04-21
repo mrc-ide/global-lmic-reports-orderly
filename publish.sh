@@ -14,7 +14,7 @@ else
     exit 1
 fi
 
-if [ -f .ssh/id_rsa ]; then
+if [ -f .ssh/$WHERE/id_rsa ]; then
     echo "Using deploy key"
     ## NOTE, uses one directory above the root
     export GIT_SSH_COMMAND="ssh -i ../.ssh/$WHERE/id_rsa"
