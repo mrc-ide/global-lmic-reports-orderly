@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -ex
+HERE=$(dirname $0)
+ROOT=$(realpath $HERE/..)
+
+if [ -f $ROOT/.ssh/id_rsa ]; then
+    echo "deploy key already exists"
+    exit 0
+fi
+
+export VAULT_ADDR=https://vault.dide.ic.ac.uk:8200
+vault login -method=github
+
+mkdir -p $ROOT/.ssh
+vault read -field key \
+      secret/ncov/deploy-keys/mrc-ide/global-lmic-reports > \
+      $ROOT/.ssh/id_rsa
+vault read -field pub \
+      secret/ncov/deploy-keys/mrc-ide/global-lmic-reports > \
+      $ROOT/.ssh/id_rsa.pub
