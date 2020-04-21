@@ -10,7 +10,7 @@ USER_UID=`id -u`
 USER_GID=`id -g`
 USER_STR="${USER_UID}:${USER_GID}"
 
-docker run --rm \
+docker run -it --rm \
         -u $USER_STR \
         -v $PACKAGE_ROOT:/orderly \
         -w /orderly \
