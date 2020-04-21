@@ -146,6 +146,8 @@ As in our projections for high-income settings at more advanced stages of the ep
 
 We have attempted to capture the impact of interventions that have been put in place using data from the [Oxford Coronavirus Government Response Tracker](https://www.bsg.ox.ac.uk/research/research-projects/coronavirus-government-response-tracker). We currently make assumptions about the efficacy of these interventions and so the projections should be interpreted as scenarios rather than predictions. Work is ongoing to integrate formal statistical fitting to improve these projections. 
 
+The combined reports can be downloaded from [here](https://github.com/mrc-ide/global-lmic-reports/blob/master/combined_reports.pdf)
+
 ```{r case plot, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE,  fig.cap=figRef("**Figure 2: Estimated vs Reported Cases and Deaths.**"), fig.width=10, fig.height=12}
 
 # [FIGURE SHOWING TOTAL DEATHS AND TOTAL CASES [OBSERVED AND INFERRED FOR SUB-SAHARAN AFRICA]

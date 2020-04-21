@@ -496,7 +496,7 @@ deaths_plot_contrast <- function(o1, o2, data, date_0, date = Sys.Date(),
                          alpha = 0.8,
                          size = 0,
                          show.legend = TRUE) +
-    ggplot2::geom_vline(xintercept = Sys.Date(), linetype = "dashed") +
+    ggplot2::geom_vline(xintercept = date, linetype = "dashed") +
     ggplot2::theme_bw()  +
     ggplot2::ylab(title) +
     ggplot2::scale_y_continuous(expand = c(0,0)) +
