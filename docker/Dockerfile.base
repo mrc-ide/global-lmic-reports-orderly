@@ -5,10 +5,7 @@ RUN apt-get update && apt-get -y install --no-install-recommends \
         libjpeg-dev \
         libv8-dev \
         parallel \
-        ssh \
         zlib1g-dev
-
-RUN ssh-keyscan github.com >> /etc/ssh/ssh_known_hosts
 
 # Install LaTeX
 RUN apt-get update \
