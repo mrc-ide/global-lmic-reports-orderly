@@ -10,8 +10,13 @@ USER_UID=`id -u`
 USER_GID=`id -g`
 USER_STR="${USER_UID}:${USER_GID}"
 
-# Should do this with a deploy key
-PATH_SSH=$HOME/.ssh
+if [ -f $PACKAGE_ROOT/.ssh/id_rsa ]; then
+    echo "Using deploy key"
+    PATH_SSH=$PACKAGE_ROOT/.ssh
+else
+    echo "Using personal key"
+    PATH_SSH=$HOME/.ssh
+fi
 
 docker run --rm \
         -u $USER_STR \
