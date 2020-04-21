@@ -22,7 +22,7 @@ fi
 
 rm -rf ${DOCS_DIR}/.git
 git init ${DOCS_DIR}
-if [ -z git -C ${DOCS_DIR} config --get user.email ]; then
+if [ -z $(git -C ${DOCS_DIR} config --get user.email) ]; then
     git -C ${DOCS_DIR} config user.email "oj.watson@hotmail.co.uk"
     git -C ${DOCS_DIR} config user.name "OJWatson"
 fi
