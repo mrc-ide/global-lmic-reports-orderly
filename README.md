@@ -12,6 +12,31 @@ This is an [`orderly`](https://github.com/vimc/orderly) project.  The directorie
 
 Currently somewhat manual, we'll move to an automated system once the data sources fully settle down.
 
+Running everything takes a while so you really probably want to run this under screen:
+
+```
+screen
+```
+
+if your network connection is disrupted then things will continue.  You can connect to an existing screen using:
+
+```
+screen -r
+```
+
+You will probably end up with a surplus of old screen commands around, which you can see with
+
+```
+screen -list
+```
+
+These commands might be useful to clean them out:
+
+```
+screen -X -S [session # you want to kill] quit
+screen -wipe
+```
+
 If there are code changes, then the images will take a while to build. These are separated into two components "base", which takes quite a while to build, and another image built on top of this that includes the fast moving packages.
 
 These are built automatically on [buildkite](https://buildkite.com/mrc-ide/global-lmic-report) but will take a number of minutes to complete.  You can do this manually with:
