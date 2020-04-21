@@ -47,6 +47,7 @@ RUN install_packages --repo=https://ncov-ic.github.io/drat \
         purrr \
         qpdf \
         readxl \
+        stringdist \
         tidyr
 
 ENTRYPOINT ["bash"]
