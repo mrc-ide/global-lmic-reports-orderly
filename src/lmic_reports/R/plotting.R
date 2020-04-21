@@ -538,8 +538,8 @@ healthcare_plot <- function(out, data) {
 
 healthcare_plot_contrast <- function(o1, o2, data, date_0, date = Sys.Date(), forecast = 14, what = "ICU_demand") {
   
-  o1$Scenario <- "No change to epidemic"
-  o2$Scenario <- "Mitigation (50% reduction from today)"
+  o1$Scenario <- "No"
+  o2$Scenario <- "Yes"
   df <- rbind(o1,o2)
   
   # day
@@ -552,11 +552,13 @@ healthcare_plot_contrast <- function(o1, o2, data, date_0, date = Sys.Date(), fo
     dplyr::summarise(y = mean(.data$y), n=dplyr::n()) %>%
     dplyr::filter(.data$day <= Sys.Date() + forecast)
   
+  sub$Scenario <- factor(sub$Scenario, levels = c("No","Yes"))
   pd_group <- dplyr::group_by(sub, .data$day, .data$Scenario) %>%
-    dplyr::summarise(quants = list(quantile(.data$y, c(0.025, 0.5, 0.975))),
+    dplyr::summarise(quants = list(quantile(.data$y, c(0.25, 0.5, 0.75))),
                      ymin = .data$quants[[1]][1],
                      y = median(.data$y),
                      ymax = .data$quants[[1]][3])
+  
   
   # y axis
   if (what == "ICU_demand") {
@@ -570,12 +572,18 @@ healthcare_plot_contrast <- function(o1, o2, data, date_0, date = Sys.Date(), fo
   gg_healthcare <- ggplot2::ggplot(sub, ggplot2::aes(x = .data$day,
                                                      y = .data$y, 
                                                      fill = .data$Scenario)) +
-    ggplot2::geom_bar(data = pd_group,
+    ggplot2::geom_bar(data = pd_group[pd_group$Scenario=="No",],
                       mapping = ggplot2::aes(x = .data$day, y = .data$y, fill = .data$Scenario),
                       stat = "identity",
+                      position = "identity",
                       show.legend = TRUE,
                       inherit.aes = FALSE) +
-    ggplot2::geom_vline(xintercept = date, linetype = "dashed") +
+    ggplot2::geom_bar(data = pd_group[pd_group$Scenario=="Yes",],
+                      mapping = ggplot2::aes(x = .data$day, y = .data$y, fill = .data$Scenario),
+                      stat = "identity",
+                      position = "identity",
+                      show.legend = TRUE,
+                      inherit.aes = FALSE) +
     ggplot2::ylab(title) +
     ggplot2::theme_bw()  +
     ggplot2::scale_y_continuous(expand = c(0,0)) +
@@ -591,8 +599,100 @@ healthcare_plot_contrast <- function(o1, o2, data, date_0, date = Sys.Date(), fo
                    legend.direction = "horizontal",
                    panel.border = ggplot2::element_blank(),
                    panel.background = ggplot2::element_blank(),
-                   axis.line = ggplot2::element_line(colour = "black"))
+                   axis.line = ggplot2::element_line(colour = "black")) +
+    geom_vline(xintercept = date, linetype = "dashed")
   ))
   gg_healthcare
+  
+}
+
+healthcare_plot_contrast_lines <- function(o1, o2, data, date_0, date = Sys.Date(), forecast = 14, what = "ICU_demand") {
+  
+  o1$Scenario <- "No change to epidemic"
+  o2$Scenario <- "Mitigation (50% reduction from today)"
+  df <- rbind(o1,o2)
+  
+  # day
+  df$day <- as.Date(as.character(df$date))
+  
+  # split to correct dates
+  sub <- df[df$compartment %in% what &
+              df$date <=  date + forecast + 1,] %>%
+    dplyr::group_by(.data$day, .data$replicate, .data$Scenario) %>%
+    dplyr::summarise(y = mean(.data$y), n=dplyr::n()) %>%
+    dplyr::filter(.data$day <= Sys.Date() + forecast)
+  
+  pd_group <- dplyr::group_by(sub[sub$day>Sys.Date()-7,], .data$day, .data$Scenario) %>%
+    dplyr::summarise(quants = list(quantile(.data$y, c(0.25, 0.5, 0.75))),
+                     ymin = .data$quants[[1]][1],
+                     ymin_t = t.test(.data$y)$conf.int[1],
+                     y = median(.data$y),
+                     ymax = .data$quants[[1]][3],
+                     ymin_t = t.test(.data$y)$conf.int[2])
+  
+  # y axis
+  if (what == "ICU_demand") {
+    title <- "ICU Demand"
+  } else if(what == "hospital_demand") {
+    title <- "Hospital Bed Demand"
+  }
+  
+  # Plot
+  suppressMessages(suppressWarnings(
+    gg_healthcare <- ggplot2::ggplot(sub, ggplot2::aes(x = .data$day,
+                                                       y = .data$y, 
+                                                       fill = .data$Scenario)) +
+      ggplot2::geom_line(data = pd_group,
+                        mapping = ggplot2::aes(x = .data$day, y = .data$y, fill = .data$Scenario),
+                        show.legend = TRUE,
+                        inherit.aes = FALSE) +
+      ggplot2::geom_errorbar(data = pd_group,
+                             mapping = ggplot2::aes(x = .data$day, ymin = .data$ymin,ymax=.data$ymax, fill = .data$Scenario),
+                             stat = "identity",
+                             show.legend = TRUE,
+                             inherit.aes = FALSE) +
+      ggplot2::geom_vline(xintercept = date, linetype = "dashed") +
+      ggplot2::ylab(title) +
+      ggplot2::theme_bw()  +
+      ggplot2::scale_y_continuous(expand = c(0,0)) +
+      ggplot2::scale_fill_manual(name = "", labels = rev(c("Maintain Status Quo", "Additional 50% Reduction")),
+                                 values = rev(c("#3f8ea7","#c59e96"))) +
+      ggplot2::scale_x_date(date_breaks = "1 week", date_labels = "%b %d", limits = c(Sys.Date()-7, Sys.Date() + forecast)) +
+      ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, colour = "black"),
+                     axis.title.x = ggplot2::element_blank(),
+                     panel.grid.major.x = ggplot2::element_blank(),
+                     panel.grid.minor.x = ggplot2::element_blank(),
+                     legend.position = "top", 
+                     legend.justification = c(0,1),
+                     legend.direction = "horizontal",
+                     panel.border = ggplot2::element_blank(),
+                     panel.background = ggplot2::element_blank(),
+                     axis.line = ggplot2::element_line(colour = "black"))
+  ))
+  gg_healthcare
+  
+}
+
+
+intervention_plot <- function(res) {
+  
+  res %>% rename("School Closure" = S1,
+                     "Work Closure" = S2,
+                     "Public Events\nBanned" = S3,
+                     "Lockdown" = S6) %>%  
+    tidyr::pivot_longer(cols = c("School Closure", "Work Closure", 
+                                 "Public Events\nBanned", "Lockdown")) %>% 
+    ggplot(aes(x=as.Date(as.character(date),"%Y%m%d"),
+               y=as.factor(name),fill=as.factor(value>0))) + 
+    geom_tile(color="black") + 
+    ylab("") + 
+    xlab("Date") + 
+    scale_fill_manual(name="Intervention Active", values = rev(c("#3f8ea7","#c59e96"))) +
+    ggplot2::scale_x_date(date_breaks = "2 weeks", date_labels = "%b %d",
+                          expand = c(0,0)) +
+    scale_y_discrete(expand = c(0,0)) +
+    theme_bw() + 
+    theme(legend.position = "top")
+  
   
 }

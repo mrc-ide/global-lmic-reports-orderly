@@ -93,7 +93,7 @@ fig_center <- function() {
 
 ## Model Structure
 
-The LMIC reports are generated using an age-structured SEIR model, with the infectious class divided into different stages reflecting progression through different disease severity pathways. These compartments are:
+The LMIC reports are generated using an age-structured SEIR model. The developed model is an extension of the model used in our previous report (see [Report 12](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-12-global-impact-covid-19/)) and the source code for the model can be found at [https://github.com/mrc-ide/squire](https://github.com/mrc-ide/squire). In this model, the infectious class is divided into different stages reflecting progression through different disease severity pathways. These compartments are:
 
 * S = Susceptibles 
 * E = Exposed (Latent Infection) 
@@ -113,8 +113,6 @@ The LMIC reports are generated using an age-structured SEIR model, with the infe
 Given initial inputs of hospital/ICU bed capacity and the average time cases spend in hospital, the model dynamically tracks available hospital and ICU beds over time. Individuals newly requiring hospitalisation (either a hospital or ICU bed) are then assigned to either receive care (if the relevant bed is available) or not (if maximum capacity would be exceeded otherwise). Whether or not an individual receives the required care modifies their probability of dying.
 
 We have incorporated the impact of interventions that have been put in place using data from the [Oxford Coronavirus Government Response Tracker](https://www.bsg.ox.ac.uk/research/research-projects/coronavirus-government-response-tracker). We currently make assumptions about the efficacy of these interventions. We assume that  and so the projections should be interpreted as scenarios rather than predictions. Work is ongoing to integrate formal statistical fitting to improve these projections. In summary, school closures are assumed to cause a 10% reduction in contacts. Work closure is assumed to cause 30% reduction in contacts. Banning of public events is assumed to lead to a 5% reduction in contacts while a lockdown is not in force. A lockdown is assumed to cause an additional 37.5% reduction in contacts on top of the 40% reduction due to school and work closure, leading to a total 77.5% reduction.
-
-<br> 
 
 ## Model Parameters
 
