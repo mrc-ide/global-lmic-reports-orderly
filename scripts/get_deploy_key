@@ -1,21 +1,33 @@
 #!/usr/bin/env bash
-set -ex
+set -e
 HERE=$(dirname $0)
 ROOT=$(realpath $HERE/..)
-
-if [ -f $ROOT/.ssh/id_rsa ]; then
-    echo "deploy key already exists"
-    exit 0
-fi
 
 export VAULT_ADDR=https://vault.dide.ic.ac.uk:8200
 vault login -method=github
 
-mkdir -p $ROOT/.ssh
-vault read -field key \
-      secret/ncov/deploy-keys/mrc-ide/global-lmic-reports > \
-      $ROOT/.ssh/id_rsa
-chmod 600 $ROOT/.ssh/id_rsa
-vault read -field pub \
-      secret/ncov/deploy-keys/mrc-ide/global-lmic-reports > \
-      $ROOT/.ssh/id_rsa.pub
+if [ -f $ROOT/.ssh/production/id_rsa ]; then
+    echo "production deploy key already exists"
+else
+    mkdir -p $ROOT/.ssh/production
+    vault read -field key \
+          secret/ncov/deploy-keys/mrc-ide/global-lmic-reports > \
+          $ROOT/.ssh/production/id_rsa
+    chmod 600 $ROOT/.ssh/production/id_rsa
+    vault read -field pub \
+          secret/ncov/deploy-keys/mrc-ide/global-lmic-reports > \
+          $ROOT/.ssh/production/id_rsa.pub
+fi
+
+if [ -f $ROOT/.ssh/staging/id_rsa ]; then
+    echo "staging deploy key already exists"
+else
+    mkdir -p $ROOT/.ssh/staging
+    vault read -field key \
+          secret/ncov/deploy-keys/mrc-ide/global-lmic-reports-staging > \
+          $ROOT/.ssh/staging/id_rsa
+    chmod 600 $ROOT/.ssh/staging/id_rsa
+    vault read -field pub \
+          secret/ncov/deploy-keys/mrc-ide/global-lmic-reports-staging > \
+          $ROOT/.ssh/staging/id_rsa.pub
+fi

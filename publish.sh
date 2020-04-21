@@ -17,7 +17,7 @@ fi
 if [ -f .ssh/id_rsa ]; then
     echo "Using deploy key"
     ## NOTE, uses one directory above the root
-    export GIT_SSH_COMMAND="ssh -i ../.ssh/id_rsa"
+    export GIT_SSH_COMMAND="ssh -i ../.ssh/$WHERE/id_rsa"
 fi
 
 rm -rf ${DOCS_DIR}/.git

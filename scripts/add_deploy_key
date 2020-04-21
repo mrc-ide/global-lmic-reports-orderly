@@ -7,9 +7,8 @@ Sys.setenv(VAULT_SERVER = "https://vault.dide.ic.ac.uk",
 user <- "mrc-ide/global-lmic-reports"
 
 
-add_deploy_key <- function(overwrite = FALSE) {
+add_deploy_key <- function(repo, overwrite = FALSE) {
   user <- "mrc-ide"
-  repo <- "global-lmic-reports"
   user_repo <- paste(user, repo, sep = "/")
 
   url_key <- sprintf("https://github.com/%s/settings/keys/new", user_repo)
@@ -40,7 +39,8 @@ add_deploy_key <- function(overwrite = FALSE) {
 
 
 main <- function() {
-  add_deploy_key()
+  add_deploy_key("global-lmic-reports")
+  add_deploy_key("global-lmic-reports-staging")
   invisible()
 }
 
