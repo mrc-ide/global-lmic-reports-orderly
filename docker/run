@@ -15,4 +15,4 @@ docker run --rm \
         -v $PACKAGE_ROOT:/orderly \
         -w /orderly \
         --entrypoint /orderly/run.sh \
-        $TAG_SHA
+        $TAG_SHA $*

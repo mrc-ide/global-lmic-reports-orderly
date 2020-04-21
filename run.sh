@@ -3,7 +3,10 @@ set -e
 # ./orderly migrate
 # ./orderly rebuild
 
-DATE=$(date "+%Y-%m-%d")
+TODAY=$(date "+%Y-%m-%d")
+DATE=${1:-$TODAY}
+
+echo "*** Date: $DATE"
 
 echo "*** ECDC data"
 ./orderly run ecdc date=$DATE
