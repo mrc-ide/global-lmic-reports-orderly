@@ -49,7 +49,8 @@ start <- "20200201"
 early_start <- "20200115"
 
 ## different starts
-earlys <- c("BRA","DOM","DZA","ECU","IDN","IND","MEX","PER","PHL","ROU","RUS","TUR", "COL","IRQ","JAM","LKA", "PAK", "PSE")
+earlys <- c("BRA","DOM","DZA","ECU","IDN","IND","MEX","PER","PHL",
+            "ROU","RUS","TUR", "COL","IRQ","JAM","LKA", "PAK", "PSE")
 
 # summarise these per country to make an assumed start of 1st February.
 tt <- lapply(unique(s$CountryCode), function(x){

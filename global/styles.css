@@ -107,7 +107,10 @@ h1 {
 
 #footer {
   padding: 20px;
-  margin-bottom: 0px !important;
   color: white;
   background-color: #333;
+}
+
+.outro {
+  margin-bottom: 5px !important;
 }
