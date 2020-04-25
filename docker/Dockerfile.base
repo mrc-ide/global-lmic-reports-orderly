@@ -45,6 +45,7 @@ RUN install_packages --repo=https://ncov-ic.github.io/drat \
         odin \
         plotly \
         purrr \
+        future \
         qpdf \
         readxl \
         stringdist \
