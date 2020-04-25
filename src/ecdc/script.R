@@ -20,10 +20,8 @@ error = function(e) {
 })
 
 
-keep <- c("Italy", "Germany", "France", "United_Kingdom",
-          "United_States_of_America", "South_Korea")
-
 d <- readxl::read_excel("ecdc.xlsx", progress = FALSE)
+names(d)[1] <- "dateRep"
 
 names(d)[names(d) %in% c("Countries and territories", "countriesAndTerritories")] <- "Region"
 saveRDS(d, "ecdc_all.rds")

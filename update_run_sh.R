@@ -1,91 +1,33 @@
 
 update_run_sh <- function() {
-rl <- readLines(file.path(here::here(),"run.sh"))
+rl <- readLines(file.path(here::here(),"countries"))
 
-currently <- strsplit(grep("iso3c",rl,value=TRUE),"") %>% 
-  lapply(function(x) {paste0(tail(x,3),collapse="")}) %>% 
-  unlist
+currently <- seq_along(rl)[-grep("#", rl)]
+currently_iso <- rl[currently]
+not <- tail(currently,1) + grep("#", rl[tail(currently,1):length(rl)])
+not <- head(not, -1)
+not_iso <- gsub("# ", "", rl[not])
 
 ecdc <- readRDS(file.path(here::here(),"archive","ecdc",tail(list.files(file.path(here::here(),"archive/ecdc/")),1),"ecdc_all.rds"))
-
 with_deaths <- ecdc$countryterritoryCode[ecdc$deaths>0] %>% unique()
 
-comment <- grep(paste0(currently[which(!currently %in% with_deaths)],collapse="|"),rl)
+# any to change
+to_uncomment <- which(not_iso %in% with_deaths)
+to_comment <- which(!currently_iso %in% with_deaths)
 
-comment_func <- function(x, comment = TRUE) {
-  
-  if(substr(x,1,1) == "#") {
-  x_comment <- x  
-  x_no <- substr(x,2,nchar(x))
-  } else {
-    x_no <- x
-    x_comment <- paste0("#", x, collapse = "")
-  }
-  
-  if(comment) {
-    return(x_comment)
-  } else  {
-    return(x_no)
-  }
-  
+# change them 
+if(length(to_uncomment) > 0) {
+rl[not[to_uncomment]] <- not_iso[to_uncomment]
 }
 
-lines <- grep("iso3c",rl)
-rl[lines] <- sapply(lines, function(x) {
-  comment_func(rl[x], x %in% comment)
-}) 
-
-writeLines(rl, file.path(here::here(),"run.sh"))
-
+if(length(to_comment) > 0) {
+rl[currently[to_comment]] <- paste0("# ", currently_iso[to_comment])
 }
 
-update_for_dummy <- function(x){
-  
-  rl <- readLines(file.path(here::here(),"run.sh"))
-  
-  currently <- strsplit(grep("iso3c",rl,value=TRUE),"") %>% 
-    lapply(function(x) {paste0(tail(x,3),collapse="")}) %>% 
-    unlist
-  
-  ecdc <- readRDS(file.path(here::here(),"archive","ecdc",tail(list.files(file.path(here::here(),"archive/ecdc/")),1),"ecdc_all.rds"))
-  
-  with_deaths <- ecdc$countryterritoryCode[ecdc$deaths>0] %>% unique()
-  
-  comment <- grep(paste0(currently[which(!currently %in% with_deaths)],collapse="|"),rl)
-  
-  comment_func <- function(x, comment = TRUE) {
-    
-    if(substr(x,1,1) == "#") {
-      x_comment <- x  
-      x_no <- substr(x,2,nchar(x))
-    } else {
-      x_no <- x
-      x_comment <- paste0("#", x, collapse = "")
-    }
-    
-    if(comment) {
-      return(x_comment)
-    } else  {
-      return(x_no)
-    }
-    
-  }
-  
-  lines <- grep("iso3c",rl)
-  rl[lines] <- sapply(lines, function(x) {
-    comment_func(rl[x], x > 8)
-  }) 
-  
-  writeLines(rl, file.path(here::here(),"run.sh"))
-  
-  
+writeLines(rl, file.path(here::here(),"countries"))
+
 }
 
 if(!interactive()) {
   update_run_sh()
-}
-
-
-if(!interactive()) {
-  update_for_dummy()
 }

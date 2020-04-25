@@ -257,16 +257,14 @@ suppressWarnings(cumulative_deaths_plot(country = country))
 
 We assume that the deaths reported to date provide the best indication of the stage of the epidemic. Our current working estimate is that 1 death indicates that approximately 100 people will have been infected with the other 99 recovering (based on an infection fatality ratio of ~1%). These infections will have happened approximately 21 days previously – capturing a 5-day period from infection to onset of symptoms (the incubation period), 4 days from onset of symptoms to hospitalisation, and 12 days in hospital before death. With a 3-day doubling time, 100 infections that occurred 15 days ago will have generated 200 infections 12 days ago, 400 infections 9 days ago, 800 infections 6 days ago and 1,600 infections 3 days ago resulting in approximately 3,200 infections at the time the first death is observed.
 
-To explore this, we explore two scenarios:
+To explore this, we explore two scenarios using our age-structured SEIR model (see [Methods](https://mrc-ide.github.io/global-lmic-reports/parameters.html)):
 
-1. Countries with less than 10 deaths are likely experiencing stuttering transmission. In these countries we calibrate the model to match to this cumulative total as of the current date;
-2. Countries with more than 10 deaths are more likely to be entering their epidemic phase. In these countries we calibrate the model to match to the cumulative number of deaths on the date on which the last death was reported.
+1. Countries with **less than 10 deaths** are likely experiencing stuttering transmission. In these countries we calibrate the model to match to this cumulative total as of the current date;
+2. Countries with **more than 10 deaths** are more likely to be entering their epidemic phase. In these countries we calibrate the model to match to the cumulative number of deaths on the date on which the last death was reported.
 
-In both scenarios we assume that 100% of COVID-19 related deaths have been reported. Using our [mathematical model](https://github.com/mrc-ide/squire) that formalises this approach, the figure below shows our estimate of the number of people infected over the past 4 weeks. We estimate that there has been a total of `r form(infs)` infections over the past 4 weeks.
+In both scenarios we assume that 100% of COVID-19 related deaths have been reported. We have also included the impact of interventions that have been put in place using data from the [Oxford Coronavirus Government Response Tracker](https://www.bsg.ox.ac.uk/research/research-projects/coronavirus-government-response-tracker). We currently make assumptions about the efficacy of these interventions and so the projections should be interpreted as scenarios rather than predictions. Using our [mathematical model](https://github.com/mrc-ide/squire) that formalises this approach, we estimate that there has been a total of `r form(infs)` infections over the past 4 weeks.
 
-The bar charts show, for comparison, the number of reported cases. It should be noted that the estimated infections may include both asymptomatic and mild cases that would not necessarily be identified through surveillance. The right-hand plot shows these data on a different scale as the estimated infections are likely to be much larger than the reported cases.
-
-The figure below shows the estimated number of people infected and number of symptomatic cases over the past 4 weeks.
+The figure below shows the estimated number of people infected and number of symptomatic cases over the past 4 weeks. The bar charts show, for comparison, the number of reported cases. It should be noted that the estimated infections may include both asymptomatic and mild cases that would not necessarily be identified through surveillance. The right-hand plot shows these data on a different scale as the estimated infections are likely to be much larger than the reported cases.
 
 <br>
 
@@ -282,27 +280,38 @@ suppressWarnings(suppressMessages(cases_plot(params$o_list[[1]], data = data, da
 
 We make the following short-term projections of healthcare demand under the the following three scenarios:
 
-* Scenario 1. The epidemic continues to grow at the current rate. 
-* Scenario 2. Countries will furher scale up interventions leading to a further 50% reduction in transmission.
+* **Scenario 1.** The epidemic continues to grow at the current rate. 
+* **Scenario 2.** Countries will further scale up interventions (either increasing current strategies or implementing new interventions) leading to a further 50% reduction in transmission.
 
 Conseqently, these predictions have two major caveats:
 
 * The projections do not consider that more interventions may be put in place in the coming weeks. 
 * The projections assume that 100% of COVID-19 related deaths have been reported.
 
-We estimate that over the next 2 weeks demand for hospital beds will grow from `r form(hosp_today)` patients requiring treatment with high-pressure oxygen at the current date to `r form(hosp_14)` by `r format(date + 14, "%Y-%m-%d")` if no further interventions are introduced (Scenario 1). Similarly, we estimate that over the next 2 weeks demand for critical care (ICU) beds will grow from `r form(icu_today)` patients requiring treatment with mechanical ventilation at the current date to `r form(icu_14)` by `r format(date + 14, "%Y-%m-%d")`. These projections assume that approximately 5% of all infections will require treatment with high-pressure oxygen and that approximately 30% of hospitalised cases will require require treatment with mechanical ventilation (based on analysis of ongoing epidemics in Europe). 
+We estimate that over the next 2 weeks demand for hospital beds will change from `r form(hosp_today)` patients requiring treatment with high-pressure oxygen at the current date to `r form(hosp_14)` by `r format(date + 14, "%Y-%m-%d")` if no further interventions are introduced (Scenario 1). Similarly, we estimate that over the next 2 weeks demand for critical care (ICU) beds will change from `r form(icu_today)` patients requiring treatment with mechanical ventilation at the current date to `r form(icu_14)` by `r format(date + 14, "%Y-%m-%d")`. These projections assume that approximately 5% of all infections will require treatment with high-pressure oxygen and that approximately 30% of hospitalised cases will require require treatment with mechanical ventilation (based on analysis of ongoing epidemics in Europe). 
 
-If interventions are scaled up (Scenario 2), the demand for hospital beds will grow from `r form(hosp_today_mit)` patients requiring treatment with high-pressure oxygen at the current date to `r form(hosp_14_mit)` by `r format(date + 14, "%Y-%m-%d")`. Similarly, we estimate that over the next 2 weeks demand for critical care (ICU) beds will grow from `r form(icu_today_mit)` patients requiring treatment with mechanical ventilation at the current date to `r form(icu_14_mit)` by `r format(date + 14, "%Y-%m-%d")`. 
+If interventions are scaled up (Scenario 2), the demand for hospital beds will change from `r form(hosp_today_mit)` patients requiring treatment with high-pressure oxygen at the current date to `r form(hosp_14_mit)` by `r format(date + 14, "%Y-%m-%d")`. Similarly, we estimate that over the next 2 weeks demand for critical care (ICU) beds will grow from `r form(icu_today_mit)` patients requiring treatment with mechanical ventilation at the current date to `r form(icu_14_mit)` by `r format(date + 14, "%Y-%m-%d")`. 
 
-```{r healthcare plots, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 3: Healthcare demands in the next 2 weeks.** Individuals needing an ICU bed are predicted to need mechanical ventilation. Projected demand for an unmitigated scenario (Scenario 1) is shown in red and projections for a mitigation scenario with 50% reduction in transmission starting today (Scenario 2) are shown in blue."), fig.width=10, fig.height=fig_height(5,5.5)}
+```{r healthcare plots, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 3: Healthcare demands in the next 2 weeks.** Individuals needing an ICU bed are predicted to need mechanical ventilation. Projected demand for Scenario 1 (the epidemic continues to grow at the current rate) are shown in green (Maintain Staus Quo). Projections for Scenario 2 (a further 50% reduction in transmission) are shown in blue. Projections for Scenario 3 (relaxing interventions by 50%) are shown in red."), fig.width=10, fig.height=fig_height(5,5.5)}
 
-#suppressMessages(healthcare_plot(r_list[[1]], data))
+  # suppressWarnings(suppressMessages(cowplot::plot_grid(
+  #   healthcare_plot_contrast(o1 = params$o_list[[1]], o2 = params$o_list[[2]], 
+  #                            data = data, date_0 = date_0, date = date, 
+  #                            forecast = 14, what = "hospital_demand"),
+  #   healthcare_plot_contrast(o1 = params$o_list[[1]], o2 = params$o_list[[2]], 
+  #                            data = data, date_0 = date_0, date = date, 
+  #                            forecast = 14, what = "ICU_demand"),
+  #                    ncol=2)))
 
   suppressWarnings(suppressMessages(cowplot::plot_grid(
-    healthcare_plot_contrast(o1 = params$o_list[[1]], o2 = params$o_list[[2]], 
+    healthcare_plot_contrast_tripe(o1 = params$o_list[[1]], 
+                                   o2 = params$o_list[[2]], 
+                                   o3 = params$o_list[[3]], 
                              data = data, date_0 = date_0, date = date, 
                              forecast = 14, what = "hospital_demand"),
-    healthcare_plot_contrast(o1 = params$o_list[[1]], o2 = params$o_list[[2]], 
+   healthcare_plot_contrast_tripe(o1 = params$o_list[[1]], 
+                                   o2 = params$o_list[[2]], 
+                                   o3 = params$o_list[[3]], 
                              data = data, date_0 = date_0, date = date, 
                              forecast = 14, what = "ICU_demand"),
                      ncol=2)))
@@ -314,7 +323,7 @@ If interventions are scaled up (Scenario 2), the demand for hospital beds will g
 
 The expected trajectory for cumulative deaths is shown in the figure below. This assumes a severity pattern by age that is consistent with that observed in China, Europe and the U.S to date.
 
-```{r death forecast plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap=figRef("**Figure 4: Cumulative Deaths estimated by fitting to the current total of deaths.** Projected deaths for an unmitigated scenario (Scenario 1) are shown in red (dark red 50% interquartile range, light red 95% quantile) and projections for a mitigation scenario with 50% reduction in transmission starting today (Scenario 2) are shown in blue. Model estimated deaths are shown in blue (dark blue 50% interquartile range, light blue 95% quantile)."), fig.width=10, fig.height=fig_height(4.5,5.5)}
+```{r death forecast plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap=figRef("**Figure 4: Cumulative Deaths estimated by fitting to the current total of deaths.** Projected deaths for Scenario 1 (the epidemic continues to grow at the current rate) are shown in red (dark red 50% interquartile range, light red 95% quantile). Projections for Scenario 2 (a further 50% reduction in transmission) are shown in blue (dark blue 50% interquartile range, light blue 95% quantile)."), fig.width=10, fig.height=fig_height(4.5,5.5)}
 
 
 suppressWarnings(suppressMessages(deaths_plot_contrast(params$o_list[[1]], params$o_list[[2]], 
