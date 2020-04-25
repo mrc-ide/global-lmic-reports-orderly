@@ -292,15 +292,26 @@ We estimate that over the next 2 weeks demand for hospital beds will change from
 
 If interventions are scaled up (Scenario 2), the demand for hospital beds will change from `r form(hosp_today_mit)` patients requiring treatment with high-pressure oxygen at the current date to `r form(hosp_14_mit)` by `r format(date + 14, "%Y-%m-%d")`. Similarly, we estimate that over the next 2 weeks demand for critical care (ICU) beds will grow from `r form(icu_today_mit)` patients requiring treatment with mechanical ventilation at the current date to `r form(icu_14_mit)` by `r format(date + 14, "%Y-%m-%d")`. 
 
-```{r healthcare plots, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 3: Healthcare demands in the next 2 weeks.** Individuals needing an ICU bed are predicted to need mechanical ventilation. Projected demand for Scenario 1 (the epidemic continues to grow at the current rate) are shown in red. Projections for Scenario 2 (a further 50% reduction in transmission) are shown in blue."), fig.width=10, fig.height=fig_height(5,5.5)}
+```{r healthcare plots, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 3: Healthcare demands in the next 2 weeks.** Individuals needing an ICU bed are predicted to need mechanical ventilation. Projected demand for Scenario 1 (the epidemic continues to grow at the current rate) are shown in green (Maintain Staus Quo). Projections for Scenario 2 (a further 50% reduction in transmission) are shown in blue. Projections for Scenario 3 (relaxing interventions by 50%) are shown in red."), fig.width=10, fig.height=fig_height(5,5.5)}
 
-#suppressMessages(healthcare_plot(r_list[[1]], data))
+  # suppressWarnings(suppressMessages(cowplot::plot_grid(
+  #   healthcare_plot_contrast(o1 = params$o_list[[1]], o2 = params$o_list[[2]], 
+  #                            data = data, date_0 = date_0, date = date, 
+  #                            forecast = 14, what = "hospital_demand"),
+  #   healthcare_plot_contrast(o1 = params$o_list[[1]], o2 = params$o_list[[2]], 
+  #                            data = data, date_0 = date_0, date = date, 
+  #                            forecast = 14, what = "ICU_demand"),
+  #                    ncol=2)))
 
   suppressWarnings(suppressMessages(cowplot::plot_grid(
-    healthcare_plot_contrast(o1 = params$o_list[[1]], o2 = params$o_list[[2]], 
+    healthcare_plot_contrast_tripe(o1 = params$o_list[[1]], 
+                                   o2 = params$o_list[[2]], 
+                                   o3 = params$o_list[[3]], 
                              data = data, date_0 = date_0, date = date, 
                              forecast = 14, what = "hospital_demand"),
-    healthcare_plot_contrast(o1 = params$o_list[[1]], o2 = params$o_list[[2]], 
+   healthcare_plot_contrast_tripe(o1 = params$o_list[[1]], 
+                                   o2 = params$o_list[[2]], 
+                                   o3 = params$o_list[[3]], 
                              data = data, date_0 = date_0, date = date, 
                              forecast = 14, what = "ICU_demand"),
                      ncol=2)))
