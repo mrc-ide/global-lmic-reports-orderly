@@ -1,7 +1,7 @@
 orderly_id <- tryCatch(orderly::orderly_run_info()$id,
                        error = function(e) "<id>") # bury this in the html, docx
 
-rmarkdown::render("index.Rmd", output_format = c("html_document","pdf_document"))
+rmarkdown::render("index.Rmd", output_format = c("html_document"))
 #rmarkdown::render_site("index.Rmd")
 
 

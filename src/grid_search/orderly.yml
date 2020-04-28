@@ -65,6 +65,7 @@ artefacts:
       description: Projections report for a single country
       filenames:
         - grid_out.rds
+        - input_params.json
 
 # An optional name to describe the report in more detail than its
 # directory name (which must be short) but less detail than
@@ -114,15 +115,6 @@ packages:
 # referenced in "views" or "data"
 #
 resources: ~
-
-global_resources:
-  _navbar.html: _navbar.html
-  _site.yml: _site.yml
-  styles.css: styles.css
-  footer.html: footer.html
-  footer.tex: footer.tex
-  logo.png: logo.png
-  header.html: header.html
 
 # Indicate which reports your report depends on.  You can use this to
 # pull in artefacts from previous reports.  You can depend in multiple

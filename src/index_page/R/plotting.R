@@ -275,6 +275,35 @@ FacetZoom2 <- ggproto(
 )
 
 
+summaries_cases_continets_plot <- function(summaries) {
+  
+  sub <- summaries[!summaries$variable %in% c("hospital_14","icu_14",
+                                              "hospital_14_mit","icu_14_mit",
+                                              "hospital_14_rev","icu_14_rev",
+                                              "report_deaths","report_deaths"),]
+  
+  sub$continent[is.na(sub$continent)] <- "Africa"
+  sub <- group_by(sub, continent,variable) %>% 
+    summarise(value=sum(value))
+  
+  ggplot(sub, 
+         aes(x = continent, y = value, color = variable, fill = variable)) + 
+    geom_bar(stat="identity",position = position_dodge2(preserve = "single"), width = 0.4) + 
+    scale_y_log10(labels = scales::comma,breaks = c(10*(10^(0:8))),limits=c(1,10^7)) + 
+    scale_fill_manual("", labels = c("Estimated Infections", "Reported Infections"),
+                      values = viridis::viridis(3)) +
+    scale_color_manual("", labels = c("Estimated Infections", "Reported Infections"),
+                       values = viridis::viridis(3)) + 
+    theme_bw() +
+    xlab("") +
+    ylab("") + 
+    theme(legend.key = element_rect(size = 5),
+          legend.key.size = unit(2, 'lines')) + 
+    coord_flip() 
+  
+}
+
+
 summaries_cases_plot <- function(summaries) {
   
   sub <- summaries[!summaries$variable %in% c("hospital_14","icu_14", "hospital_14_mit","icu_14_mit","report_deaths"),]
