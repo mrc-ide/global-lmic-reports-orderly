@@ -38,6 +38,7 @@ src/lmic_reports/index.pdf
 src/lmic_reports/index.html
 src/lmic_reports/index.md
 src/lmic_reports/index.pdf
+src/test
 .ssh
 src/lmic_reports/ecdc.xlsx
 dummy
