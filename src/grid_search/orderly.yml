@@ -25,8 +25,18 @@ script: script.R
 # Optional parameters for the task. Things listed here will be
 # available as R variables in your script.  For example:
 #
+# parameters:
+#   a:
+#     default: 1
+#   b: ~
+#
+# would declare a parameter called 'a' with a default value of 1, and
+# a parameter of b with no default.
+#
 parameters:
-  date: ~
+    iso3c:
+      default: AGO
+    date: ~
 
 # You must list at least one artefact that your report will generate.
 # Each artefact consists of one or more files.  The format is to list
@@ -54,8 +64,8 @@ artefacts:
   - report:
       description: Projections report for a single country
       filenames:
-        - index.html
-#        - index.pdf
+        - grid_out.rds
+        - input_params.json
 
 # An optional name to describe the report in more detail than its
 # directory name (which must be short) but less detail than
@@ -84,6 +94,8 @@ packages:
   - plotly
   - grid
   - ggforce
+  - countrycode
+  - cowplot
 
 # Source files, in addition to the script.  Typically these will
 # contain function definitions.  These will be sourced after loading
@@ -92,8 +104,6 @@ packages:
 # otherwise you will have to add them to "resources" (see below)
 #
 # sources:
-sources:
-  - R/plotting.R
 
 # Resources that the script needs to run; this is an array of strings
 # representing filenames *relative to, and below, this directory*.
@@ -104,22 +114,7 @@ sources:
 # to list files already listed in "sources" here, or any .sql files
 # referenced in "views" or "data"
 #
-resources:
-  - index.Rmd
-  - summaries.rds
-
-global_resources:
-  _navbar.html: _navbar.html
-  _site.yml: _site.yml
-  styles.css: styles.css
-  footer.html: footer.html
-  footer.tex: footer.tex
-  logo.png: logo.png
-  header.html: header.html
-
-# This section copies the word style over from the global/
-# directory. If you do not want to create a docx, please remove this
-# section.
+resources: ~
 
 # Indicate which reports your report depends on.  You can use this to
 # pull in artefacts from previous reports.  You can depend in multiple
@@ -147,7 +142,10 @@ global_resources:
 #
 depends:
   ecdc:
-    id: latest
+    id: latest(parameter:date == date)
     use:
       ecdc_all.rds: ecdc_all.rds
-
+  oxford_grt:
+    id: latest(parameter:date == date)
+    use:
+      oxford_grt.rds: oxford_grt.rds

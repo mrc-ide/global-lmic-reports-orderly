@@ -7,18 +7,18 @@ steps:
   - label: ":whale: Build squire image"
     command: docker/build
 
-  - wait
+  # - wait
 
-  - label: ":construction_worker: Create reports"
-    command: docker/run
-    artifact_paths:
-      - orderly.sqlite
-      - archive
+  # - label: ":construction_worker: Create reports"
+  #   command: docker/run
+  #   artifact_paths:
+  #     - orderly.sqlite
+  #     - archive
 
-  - wait
+  # - wait
 
-  - label: ":spider_web: Create website"
-    command: docker/build_website
+  # - label: ":spider_web: Create website"
+  #   command: docker/build_website
 
   - wait
 

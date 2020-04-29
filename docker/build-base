@@ -4,10 +4,12 @@ HERE=$(dirname $0)
 . $HERE/common
 
 docker build --pull \
-       --tag $TAG_BASE \
+       --tag $TAG_BASE_SHA \
+       --tag $TAG_BASE_BRANCH \
        -f docker/Dockerfile.base \
        $HERE
 
 # We always push the SHA tagged versions, for debugging if the tests
 # after this step fail
-docker push $TAG_BASE
+docker push $TAG_BASE_SHA
+docker push $TAG_BASE_BRANCH

@@ -3,7 +3,10 @@ set -e
 # ./orderly migrate
 # ./orderly rebuild
 
-DATE=$(date "+%Y-%m-%d")
+TODAY=$(date "+%Y-%m-%d")
+DATE=${1:-$TODAY}
+
+echo "*** Date: $DATE"
 
 echo "*** ECDC data"
 ./orderly run ecdc date=$DATE
@@ -11,13 +14,15 @@ echo "*** ECDC data"
 echo "*** Oxford GRT data"
 ./orderly run oxford_grt date=$DATE
 
+echo "*** Running country reports"
+
 # Parallel
 grep -E '^[A-Z]{3}\s*' countries | \
-    parallel -j 3 ./orderly run lmic_reports iso3c={} date=$DATE
+    parallel --progress -j 8 ./orderly run lmic_reports iso3c={} date=$DATE
 
 # Serial (useful if debugging)
 # for ISO in $(grep -E '^[A-Z]{3}\s*' countries); do
-#     echo "*** $ISO"
+#     echo "*** `- $ISO"
 #     ./orderly run lmic_reports iso3c=$ISO date=$DATE
 # done
 

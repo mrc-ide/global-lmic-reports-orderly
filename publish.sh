@@ -1,17 +1,31 @@
-#!/bin/sh
+#!/usr/bin/env bash
 set -e
 DOCS_DIR=gh-pages
 VERSION=$(git rev-parse --short HEAD)
-REMOTE_URL=git@github.com:mrc-ide/global-lmic-reports.git
 
-if [ -d $DOCS_DIR ]; then
-    git -C $DOCS_DIR pull
+WHERE=$1
+
+if [[ $WHERE == "staging" ]]; then
+    REMOTE_URL=git@github.com:mrc-ide/global-lmic-reports-staging.git
+elif [[ $WHERE == "production" ]]; then
+    REMOTE_URL=git@github.com:mrc-ide/global-lmic-reports.git
 else
-    git clone $REMOTE_URL $DOCS_DIR
+    echo "Usage: ./publish.sh staging|production"
+    exit 1
+fi
+
+if [ -f .ssh/$WHERE/id_rsa ]; then
+    echo "Using deploy key"
+    ## NOTE, uses one directory above the root
+    export GIT_SSH_COMMAND="ssh -i ../.ssh/$WHERE/id_rsa"
 fi
 
 rm -rf ${DOCS_DIR}/.git
 git init ${DOCS_DIR}
+if [ -z $(git -C ${DOCS_DIR} config --get user.email) ]; then
+    git -C ${DOCS_DIR} config user.email "oj.watson@hotmail.co.uk"
+    git -C ${DOCS_DIR} config user.name "OJWatson"
+fi
 git -C ${DOCS_DIR} add .
 git -C ${DOCS_DIR} commit --no-verify -m "Update pages for version ${VERSION}"
 git -C ${DOCS_DIR} remote add origin ${REMOTE_URL}
