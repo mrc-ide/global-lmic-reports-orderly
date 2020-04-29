@@ -7,7 +7,7 @@ if (is.na(date)) {
 }
 
 # download
-url <- "https://ocgptweb.azurewebsites.net/CSVDownload"
+url <- "https://oxcgrtportal.azurewebsites.net/api/CSVDownload"
 tf <- tempfile()
 download.file(url, tf)
 d <- read.csv(tf)
@@ -18,10 +18,10 @@ if(max_date < date) {
   #  stop("Oxford Goverment Tracker Dataset Not Updated for Today")
 }
 
-names(d)[names(d) %in% c("S1_School.closing",
-                         "S2_Workplace.closing",
-                         "S3_Cancel.public.events",
-                         "S6_Restrictions.on.internal.movement")] <- c("S1","S2","S3","S6")
+names(d)[names(d) %in% c("C1_School.closing",
+                         "C2_Workplace.closing",
+                         "C3_Cancel.public.events",
+                         "C6_Stay.at.home.requirements")] <- c("S1","S2","S3","S6")
 vars <- names(d)[c(1,2,3,4,7,10,13,16,19,38,39)]
 
 # cleaning
