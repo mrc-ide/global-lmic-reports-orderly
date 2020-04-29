@@ -4,7 +4,7 @@ orderly_id <- tryCatch(orderly::orderly_run_info()$id,
 ## -----------------------------------------------------------------------------
 ## Step 1: Incoming Date
 ## -----------------------------------------------------------------------------
-
+system(paste0("echo ",iso3c))
 set.seed(123)
 date <- as.Date(date)
 
@@ -46,17 +46,17 @@ pop <- squire::get_population(country)
 
 # calibration arguments
 reporting_fraction = 1
-R0_min = 2.4
-R0_max = 4.5
+R0_min = 2.0
+R0_max = 5.0
 R0_step = 0.2
-day_step = 2
+day_step = 1
 int_unique <- squire:::interventions_unique(oxford_grt[[iso3c]], "C")
 R0_change <- int_unique$change
 date_R0_change <- int_unique$dates_change
 date_contact_matrix_set_change <- NULL
 squire_model <- explicit_model()
 pars_obs <- NULL
-n_particles <- 100
+n_particles <- 10
 
 # sort out missing dates etc
 null_na <- function(x) {if(is.null(x)) {NA} else {x}}
@@ -147,9 +147,16 @@ start_date <- out$scan_results$y[pos[2]]
 
 # compare this to actual deaths as deterministic solution that uses these start
 # dates cannot bring in stuttering chains
-start_date <- max(start_date, data$date[which(zoo::rollmean(data$deaths,7) > 3/7)][1]-30)
+roll_d <- 3
+alt_start_date <- which(zoo::rollmean(data$deaths,7) >= (roll_d/7))
+while(length(alt_start_date) == 0) {
+  roll_d <- roll_d - 1
+  alt_start_date <- which(zoo::rollmean(data$deaths,7) >= (roll_d/7))
+}
+start_date <- max(start_date, data$date[alt_start_date][1]-30)
 
 if(!is.null(date_R0_change)) {
+  start_date <- min(start_date, date_R0_change-1)
   tt_beta <- c(0, squire:::intervention_dates_for_odin(dates = date_R0_change,
                                                        start_date = start_date,
                                                        steps_per_day = 1))
