@@ -21,7 +21,7 @@ if(max_date < date) {
 names(d)[names(d) %in% c("C1_School.closing",
                          "C2_Workplace.closing",
                          "C3_Cancel.public.events",
-                         "C6_Stay.at.home.requirements")] <- c("S1","S2","S3","S6")
+                         "C7_Restrictions.on.internal.movement")] <- c("S1","S2","S3","S6")
 vars <- names(d)[c(1,2,3,4,7,10,13,16,19,38,39)]
 
 # cleaning

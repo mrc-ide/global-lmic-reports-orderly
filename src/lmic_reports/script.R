@@ -56,7 +56,7 @@ date_R0_change <- int_unique$dates_change
 date_contact_matrix_set_change <- NULL
 squire_model <- explicit_model()
 pars_obs <- NULL
-n_particles <- 10
+n_particles <- 100
 
 # sort out missing dates etc
 null_na <- function(x) {if(is.null(x)) {NA} else {x}}
@@ -64,7 +64,7 @@ min_death_date <- data$date[which(data$deaths>0)][1]
 last_start_date <- min(as.Date(null_na(date_R0_change[1]))-2, as.Date(null_na(min_death_date))-10, na.rm = TRUE)
 first_start_date <- max(as.Date("2020-01-04"),last_start_date - 30, na.rm = TRUE)
 
-future::plan(future::multiprocess())
+#future::plan(future::multiprocess())
 
 out <- squire::calibrate_particle(
   data = data,
