@@ -42,3 +42,4 @@ src/test
 .ssh
 src/lmic_reports/ecdc.xlsx
 dummy
+todo.txt
