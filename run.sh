@@ -18,7 +18,7 @@ echo "*** Running country reports"
 
 # Parallel
 grep -E '^[A-Z]{3}\s*' countries | \
-    parallel --progress -j 16 ./orderly run lmic_reports iso3c={} date=$DATE
+    parallel --progress -j 32 ./orderly run lmic_reports iso3c={} date=$DATE
 
 # Serial (useful if debugging)
 # for ISO in $(grep -E '^[A-Z]{3}\s*' countries); do
