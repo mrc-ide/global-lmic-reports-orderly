@@ -994,7 +994,7 @@ plot_scan <- function(x, what = "likelihood", log = TRUE) {
   if (what == "likelihood") {
     
     # create df
-    df <- reshape2::melt(x$mat_log_ll, c("x", "y"), value.name = "z")
+    df <- data.frame("z" = as.numeric(x$mat_log_ll))
     df$x <- x$x
     df$y <- sort(rep(x$y, length(x$x)))
     
