@@ -409,11 +409,72 @@ FacetZoom2 <- ggproto(
 
 
 
-cases_plot <- function(out, data, date = Sys.Date(), date_0) {
+cases_plot <- function(df, data, date = Sys.Date(), date_0) {
   
-  gg_cases <- squire:::plot_calibration_cases_barplot(out, data = data, forecast = 0) + 
-    ggplot2::xlim(c(date - 28, date))
+  # day
+  df$day <- as.Date(as.character(df$date))
   
+  # split to correct dates
+  sub <- df[df$compartment %in% c("infections") &
+              df$date <=  date + 1,] %>%
+    dplyr::group_by(.data$day, .data$replicate) %>%
+    dplyr::summarise(y = sum(.data$y)) %>%
+    dplyr::filter(.data$day <= Sys.Date()) %>% 
+    dplyr::filter(!is.na(.data$y))
+  
+  
+  pd_group <- dplyr::group_by(sub, .data$day) %>%
+    dplyr::summarise(quants = list(quantile(.data$y, c(0.025, 0.25, 0.5, 0.75, 0.975))),
+                     ymin = .data$quants[[1]][1],
+                     ymax = .data$quants[[1]][5],
+                     yinner_min = .data$quants[[1]][2],
+                     yinner_max = .data$quants[[1]][4],
+                     y = median(.data$y))
+  
+  # format cases
+  data$cases <- rev(c(tail(data$cases,1), diff(rev(data$cases))))
+  
+  # Plot
+  gg_cases <- ggplot2::ggplot(sub, ggplot2::aes(x = .data$day,
+                                                y = .data$y,
+                                                col = .data$compartment)) +
+    ggplot2::geom_ribbon(data = pd_group,
+                         mapping = ggplot2::aes(ymin = .data$ymin,
+                                                ymax = .data$ymax,
+                                                fill = "Estimated"),
+                         color = "white",
+                         alpha = 0.2,
+                         size = 0,
+                         show.legend = TRUE) +
+    ggplot2::geom_ribbon(data = pd_group,
+                         mapping = ggplot2::aes(ymin = .data$yinner_min,
+                                                ymax = .data$yinner_max,
+                                                fill = "Estimated"),
+                         color = "white",
+                         alpha = 0.8,
+                         size = 0,
+                         show.legend = TRUE) +
+    ggplot2::geom_bar(data = data,
+                      mapping = ggplot2::aes(x = .data$date, y = .data$cases,
+                                             fill = "Reported"),
+                      stat = "identity",
+                      show.legend = TRUE,
+                      inherit.aes = FALSE) +
+    ggplot2::ylab("Daily Number of Infections") +
+    ggplot2::theme_bw()  +
+    ggplot2::scale_y_continuous(expand = c(0,0)) +
+    ggplot2::scale_fill_manual(name = "", labels = (c("Estimated", "Reported")),
+                               values = (c("#3f8ea7","#c59e96"))) +
+    ggplot2::scale_x_date(date_breaks = "2 week", date_labels = "%b %d") +
+    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, colour = "black"),
+                   axis.title.x = ggplot2::element_blank(),
+                   panel.grid.major.x = ggplot2::element_blank(),
+                   panel.grid.minor.x = ggplot2::element_blank(),
+                   panel.border = ggplot2::element_blank(),
+                   panel.background = ggplot2::element_blank(),
+                   axis.line = ggplot2::element_line(colour = "black")
+    )
+
   gg_cases + ggplot2::theme(legend.position = "top", 
                             legend.justification = c(0,1),
                             legend.direction = "horizontal") + 
@@ -422,21 +483,6 @@ cases_plot <- function(out, data, date = Sys.Date(), date_0) {
     geom_vline(xintercept = date, linetype = "dashed")
   
 }
-
-
-
-deaths_plot <- function(out, data,date_0, date = Sys.Date()) {
-  
-  o1 <- squire:::calibrate_output_parsing(
-    out, 
-    date_0 = date_0
-  )
-  
-  gg_deaths <- squire:::plot_calibration_deaths_barplot(o1, data = data, forecast = 14, cumulative = FALSE) 
-  gg_deaths 
-  
-}
-
 
 deaths_plot_single <- function(out, data, date_0, date = Sys.Date(), 
                                forecast = 14) {
@@ -497,7 +543,8 @@ deaths_plot_contrast_triple <- function(o1, o2, o3, data, date_0, date = Sys.Dat
                 df$date <=  date + forecast + 1,]  %>%
       dplyr::group_by(.data$day, .data$replicate, .data$Scenario) %>%
       dplyr::summarise(y = mean(.data$y), n=dplyr::n()) %>%
-      dplyr::filter(.data$day <= date + forecast)
+      dplyr::filter(.data$day <= date + forecast) %>% 
+      dplyr::filter(!is.na(.data$y))
     
     title <- "Daily Deaths"
     
@@ -509,7 +556,8 @@ deaths_plot_contrast_triple <- function(o1, o2, o3, data, date_0, date = Sys.Dat
                 df$date <=  date + forecast + 1,]  %>%
       dplyr::group_by(.data$day, .data$replicate, .data$Scenario) %>%
       dplyr::summarise(y = mean(.data$y), n=dplyr::n()) %>%
-      dplyr::filter(.data$day <= date + forecast)
+      dplyr::filter(.data$day <= date + forecast) %>% 
+      dplyr::filter(!is.na(.data$y))
     
     title <- "Cumulative Deaths"
   }
@@ -585,7 +633,8 @@ cases_contrast_triple <- function(o1, o2, o3, data, date_0, date = Sys.Date(),
                 df$date <=  date + forecast + 1,]  %>%
       dplyr::group_by(.data$day, .data$replicate, .data$Scenario) %>%
       dplyr::summarise(y = mean(.data$y), n=dplyr::n()) %>%
-      dplyr::filter(.data$day <= date + forecast)
+      dplyr::filter(.data$day <= date + forecast) %>% 
+      dplyr::filter(!is.na(.data$y))
     
     title <- "Daily Cases"
     
@@ -665,7 +714,8 @@ cases_contrast_triple_bars <- function(o1, o2, o3, data, date_0, date = Sys.Date
               df$date <=  date + forecast + 1,] %>%
     dplyr::group_by(.data$day, .data$replicate, .data$Scenario) %>%
     dplyr::summarise(y = mean(.data$y), n=dplyr::n()) %>%
-    dplyr::filter(.data$day <= Sys.Date() + forecast)
+    dplyr::filter(.data$day <= Sys.Date() + forecast) %>% 
+    dplyr::filter(!is.na(.data$y))
   
   sub$Scenario <- factor(sub$Scenario, levels = c( "No","Worse", "Yes"))
   pd_group <- dplyr::group_by(sub, .data$day, .data$Scenario) %>%
@@ -699,7 +749,7 @@ cases_contrast_triple_bars <- function(o1, o2, o3, data, date_0, date = Sys.Date
                         show.legend = TRUE,
                         inherit.aes = FALSE) +
       ggplot2::theme_bw()  +
-      ggplot2::ylab("Daily Deaths") +
+      ggplot2::ylab("Daily Cases") +
       ggplot2::scale_y_continuous(expand = c(0,0), limits = c(0, ymax)) +
       ggplot2::scale_fill_manual(name = "", labels = (c( "Maintain Status Quo","Relax Interventions 50%","Additional 50% Reduction")),
                                  values = (c("#9eeccd","#c59e96","#3f8ea7"))) +
@@ -721,19 +771,6 @@ cases_contrast_triple_bars <- function(o1, o2, o3, data, date_0, date = Sys.Date
   
 }
 
-healthcare_plot <- function(out, data) {
-  
-  o1 <- squire:::calibrate_output_parsing(
-    out, 
-    date_0 = date_0
-  )
-  
-  cowplot::plot_grid(squire:::plot_calibration_healthcare_barplot(df = o1, data = data, what = "hospital"),
-                     squire:::plot_calibration_healthcare_barplot(df = o1, data = data, what = "ICU"),
-                     ncol=2)
-  
-}
-
 healthcare_plot_contrast <- function(o1, o2, data, date_0, date = Sys.Date(), forecast = 14, what = "ICU_demand") {
   
   o1$Scenario <- "No"
@@ -748,7 +785,8 @@ healthcare_plot_contrast <- function(o1, o2, data, date_0, date = Sys.Date(), fo
               df$date <=  date + forecast + 1,] %>%
     dplyr::group_by(.data$day, .data$replicate, .data$Scenario) %>%
     dplyr::summarise(y = mean(.data$y), n=dplyr::n()) %>%
-    dplyr::filter(.data$day <= Sys.Date() + forecast)
+    dplyr::filter(.data$day <= Sys.Date() + forecast) %>% 
+    dplyr::filter(!is.na(.data$y))
   
   sub$Scenario <- factor(sub$Scenario, levels = c("No","Yes"))
   pd_group <- dplyr::group_by(sub, .data$day, .data$Scenario) %>%
@@ -818,7 +856,8 @@ healthcare_plot_contrast_lines <- function(o1, o2, data, date_0, date = Sys.Date
               df$date <=  date + forecast + 1,] %>%
     dplyr::group_by(.data$day, .data$replicate, .data$Scenario) %>%
     dplyr::summarise(y = mean(.data$y), n=dplyr::n()) %>%
-    dplyr::filter(.data$day <= Sys.Date() + forecast)
+    dplyr::filter(.data$day <= Sys.Date() + forecast) %>% 
+    dplyr::filter(!is.na(.data$y))
   
   pd_group <- dplyr::group_by(sub[sub$day>Sys.Date()-7,], .data$day, .data$Scenario) %>%
     dplyr::summarise(quants = list(quantile(.data$y, c(0.25, 0.5, 0.75))),
@@ -886,7 +925,8 @@ healthcare_plot_contrast_triple <- function(o1, o2, o3, data, date_0, date = Sys
               df$date <=  date + forecast + 1,] %>%
     dplyr::group_by(.data$day, .data$replicate, .data$Scenario) %>%
     dplyr::summarise(y = mean(.data$y), n=dplyr::n()) %>%
-    dplyr::filter(.data$day <= Sys.Date() + forecast)
+    dplyr::filter(.data$day <= Sys.Date() + forecast) %>% 
+    dplyr::filter(!is.na(.data$y))
   
   sub$Scenario <- factor(sub$Scenario, levels = c( "No","Worse", "Yes"))
   pd_group <- dplyr::group_by(sub, .data$day, .data$Scenario) %>%

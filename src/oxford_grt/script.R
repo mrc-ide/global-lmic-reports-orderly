@@ -30,7 +30,14 @@ vars <- names(d)[c(1,2,3,4,7,10,13,16,19,38,39)]
 
 # indicator function
 ind <- function(x) {
-  as.integer(x %in% 1:2)
+  if(is.na(x)) {
+    return(0)
+  }
+  if(x==0) {
+    return(0)
+  } else {
+    return(1)
+  }
 }
 
 # overall movement reduction

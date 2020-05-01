@@ -1,6 +1,11 @@
 orderly_id <- tryCatch(orderly::orderly_run_info()$id,
                        error = function(e) "<id>") # bury this in the html, docx
 
+version_min <- "0.4.0"
+if(packageVersion("squire") < version_min) {
+  stop("squire needs to be updated to ", version_min)
+}
+
 ## -----------------------------------------------------------------------------
 ## Step 1: Incoming Date
 ## -----------------------------------------------------------------------------
@@ -66,7 +71,7 @@ first_start_date <- max(as.Date("2020-01-04"),last_start_date - 30, na.rm = TRUE
 
 #future::plan(future::multiprocess())
 
-out <- squire::calibrate_particle(
+out <- squire::calibrate(
   data = data,
   R0_min = R0_min,
   R0_max = R0_max,
@@ -84,6 +89,7 @@ out <- squire::calibrate_particle(
   country = country,
   forecast = 28
 )
+
 saveRDS(out, "grid_out.rds")
 
 ## summarise what we have
@@ -189,6 +195,7 @@ if(!is.null(out$interventions$R0_change)) {
   rev_change <- 1
 }
 rev <- squire::projections(out, R0 = mean(out$replicate_parameters$R0)*rev_change, tt_R0 = 0)
+
 r_list <- list(out, mit, rev)
 o_list <- lapply(r_list, squire::format_output,
                  var_select = c("infections","deaths","hospital_demand","ICU_demand", "D"),
