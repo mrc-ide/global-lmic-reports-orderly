@@ -3,8 +3,9 @@ set -ex
 HERE=$(dirname $0)
 . $HERE/common
 
-# In case we switch agents between steps
-[ ! -z $(docker images -q $TAG_SHA) ] || docker pull $TAG_SHA
+## NOTE: if using buildkite for the run, we probably should put this
+## back to be TAG_SHA and make the pull optional.
+docker pull $TAG_BRANCH
 
 USER_UID=`id -u`
 USER_GID=`id -g`
@@ -15,4 +16,4 @@ docker run -it --rm \
         -v $PACKAGE_ROOT:/orderly \
         -w /orderly \
         --entrypoint /orderly/run.sh \
-        $TAG_SHA $*
+        $TAG_BRANCH $*
