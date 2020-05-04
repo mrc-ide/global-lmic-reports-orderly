@@ -61,6 +61,8 @@ if (!exists("date")) { # running outside of orderly
   date <- Sys.Date()
 }
 
+data_url <- paste0("https://github.com/mrc-ide/global-lmic-reports/raw/master/data/",date,".csv")
+
 start <- 10
 replicates <- 10
 library(dplyr)
@@ -133,17 +135,13 @@ COVID-19 is currently causing large-scale outbreaks in many countries, particula
 
 # [FIGURE SHOWING TRAJECTORIES AND CASES OF EARLY-STAGE LMIC COUNTRIES RELATIVE TO HICS?]
 suppressMessages(suppressWarnings(
-cumulative_deaths_plot(country = c("Algeria", "Brazil", "Ecuador", "Mexico",
-                                   "Morocco", "Philippines", "India", "Nigeria",
-                                   "United Kingdom", "Italy", "Afghanistan",
-                                   "South Korea",
-                                   "United States of America"))
+full_plot()
 ))
 
 ```
 <br>
 
-Meanwhile there are many countries, particularly Lower or Middle Income countries (LMICs) which, as a likely function of global movement patterns, are at an earlier stage of the epidemic, where major healthcare demand and mortality has yet to be reported. We define countries as being in the early stage of the epidemic if they satisfy the following criteria: yet to report 100 COVID-19 deaths and where the total COVID-19 deaths represent less than 10/million of their population. There are a total of `r countries_less_100` countries who have reported less than 100 COVID-19 deaths, with `r countries_less_pop` where the total COVID-19 deaths also represents less than 10/million of their population. 
+Meanwhile there are many countries, particularly Lower or Middle Income countries (LMICs) (shown above) which, as a likely function of global movement patterns, are at an earlier stage of the epidemic and major healthcare demand and mortality are yet to be reported. We define countries as being in the early stage of the epidemic if they satisfy the following criteria: yet to report 100 COVID-19 deaths and where the total COVID-19 deaths represent less than 10/million of their population. There are a total of `r countries_less_100` countries who have reported less than 100 COVID-19 deaths, with `r countries_less_pop` where the total COVID-19 deaths also represents less than 10/million of their population. 
 
 The following short-term forecasts are designed to provide these countries with an indication of where they are in their epidemic in terms of the likely number of infections within their country and the short-term future trajectory. We present two-week trajectories of the number of individuals likely to require hospitalisation and the expected number of patients requiring high-pressure oxygen or mechanical ventilation in order to survive. These reports will be updated daily using the latest publicly available data on COVID-19 from the [European Centre for Disease Prevention and Control](https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide). These reports will aim to help countries understand:
 
@@ -162,7 +160,13 @@ As in our projections for high-income settings at more advanced stages of the ep
 
 We have also attempted to capture the impact of interventions that have been put in place using data from the [Oxford Coronavirus Government Response Tracker](https://www.bsg.ox.ac.uk/research/research-projects/coronavirus-government-response-tracker). We currently make assumptions about the efficacy of these interventions and so the projections should be interpreted as scenarios rather than predictions. Work is ongoing to integrate formal statistical fitting to improve these projections. 
 
-The combined reports can be downloaded from [here](https://github.com/mrc-ide/global-lmic-reports/blob/master/combined_reports.pdf)
+---
+
+#### For further guidance and questions about the methodology and caveats, please see the [Frequently Asked Questions](https://mrc-ide.github.io/global-lmic-reports/FAQ.html)
+
+#### The combined reports can be downloaded from [here](https://github.com/mrc-ide/global-lmic-reports/blob/master/combined_reports.pdf)
+
+#### Raw projection data can be downloaded from [here](`r url`)
 
 ```{r case plot, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE,  fig.cap=figRef("**Figure 2: Estimated vs Reported Cases and Deaths.**"), fig.width=10, fig.height=12}
 

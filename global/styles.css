@@ -37,6 +37,11 @@ p {
   padding-left: 2% !important;
 }
 
+.dropdown-toggle {
+  padding-right: 10px !important;
+  padding-left: 10px !important;
+}
+
 .table {
   margin-right: 2% !important;
   margin-left: 2% !important;

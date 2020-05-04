@@ -69,7 +69,7 @@ min_death_date <- data$date[which(data$deaths>0)][1]
 last_start_date <- min(as.Date(null_na(date_R0_change[1]))-2, as.Date(null_na(min_death_date))-10, na.rm = TRUE)
 first_start_date <- max(as.Date("2020-01-04"),last_start_date - 30, na.rm = TRUE)
 
-#future::plan(future::multiprocess())
+future::plan(future::multiprocess())
 
 out <- squire::calibrate(
   data = data,
@@ -236,7 +236,35 @@ rmarkdown::render("index.Rmd",
                                 "data" = data,
                                 "date_0" = date_0,
                                 "country" = country),
-                  output_options = list(pandoc_args = paste0("--metadata=title:\"",country," COVID-19 report\"")))
+                  output_options = list(pandoc_args = paste0("--metadata=title:",country," COVID-19 report")))
+
+data_sum <- lapply(o_list, function(pd){
+  
+  # remove any NA rows (due to different start dates)
+  if(sum(is.na(pd$t) | is.na(pd$y))>0) {
+    pd <- pd[-which(is.na(pd$t) | is.na(pd$y)),]
+  }
+  
+  # Format summary data
+  pds <- pd %>%
+    dplyr::group_by(.data$date, .data$compartment) %>%
+    dplyr::summarise(y_025 = stats::quantile(.data$y, 0.025),
+                     y_25 = stats::quantile(.data$y, 0.25),
+                     y_median = median(.data$y),
+                     y_mean = mean(.data$y),
+                     y_75 = stats::quantile(.data$y, 0.75),
+                     y_975 = stats::quantile(.data$y, 0.975))
+  
+  return(as.data.frame(pds, stringsAsFactors = FALSE))
+})
+data_sum[[1]]$scenario <- "Maintain Status Quo"
+data_sum[[2]]$scenario <- "Additional 50% Reduction"
+data_sum[[3]]$scenario <- "Relax Interventions 50%"
+data_sum <- do.call(rbind, data_sum)
+data_sum$country <- country
+data_sum$iso3c <- iso3c
+data_sum$report_date <- date
+write_csv(data_sum, "projections.csv")
 
 # saveRDS("finished", paste0("/home/oj/GoogleDrive/AcademicWork/covid/githubs/global-lmic-reports-orderly/scripts/",iso3c,".rds"))
 

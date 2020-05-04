@@ -68,7 +68,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   dest <- sprintf("gh-pages/%s/%s", reports$country, reports$date)
   copy <- c("index.html",
             "index_files/figure-html",
-            # "fig1.png", "fig2.png",
+            "projections.csv",
             "index.pdf",
             "input_params.json")
 
@@ -94,6 +94,11 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   summaries <- do.call(rbind,
                        lapply(file.path(src, "summary_df.rds"), readRDS))
   saveRDS(summaries, "src/index_page/summaries.rds")
+  
+  projections <- do.call(rbind,
+                         lapply(file.path(src, "projections.csv"), read_csv))
+  dir.create("gh-pages/data", FALSE, TRUE)
+  write_csv(projections, paste0("gh-pages/data/",date,".csv"))
 }
 
 

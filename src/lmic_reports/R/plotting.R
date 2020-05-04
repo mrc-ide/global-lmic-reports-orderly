@@ -18,12 +18,29 @@ match_clean <- function(a,b, quiet=TRUE){
   return(ret)
 }
 
+continent_match <- function(region) {
+  
+  suppressWarnings(continent <- countrycode::countrycode(region, origin = 'country.name', destination = 'continent'))
+  
+  if(region=="Eswatini") continent <- "Africa"
+  if(region=="United State of America") continent <- "Americas"
+  if(region=="Isle_of_Man") continent <- "Europe"             
+  if(region=="Kosovo") continent <- "Europe"                  
+  if(region=="Netherlands_Antilles") continent <- "Americas"    
+  if(region=="Saint_Lucia") continent <- "Americas"             
+  if(region=="South_Korea") continent <- "Asia"             
+  if(region=="United_States_of_America") continent <- "Americas"
+  
+  return(continent)
+  
+}
 
 cumulative_deaths_plot <- function(country) {
   
   d <- readRDS("ecdc_all.rds")
   d$Region[d$Region=="Congo"] <- "Republic of Congo"
   d$Region[d$Region=="United_Republic_of_Tanzania"] <- "Tanzania"
+  d$Region[d$Region=="CuraÃ§ao"] <- "Curacao"
   start <- 10
   
   country <- gsub("[[:punct:]]", "", country)
@@ -749,7 +766,7 @@ cases_contrast_triple_bars <- function(o1, o2, o3, data, date_0, date = Sys.Date
                         show.legend = TRUE,
                         inherit.aes = FALSE) +
       ggplot2::theme_bw()  +
-      ggplot2::ylab("Daily Cases") +
+      ggplot2::ylab("Daily Infections") +
       ggplot2::scale_y_continuous(expand = c(0,0), limits = c(0, ymax)) +
       ggplot2::scale_fill_manual(name = "", labels = (c( "Maintain Status Quo","Relax Interventions 50%","Additional 50% Reduction")),
                                  values = (c("#9eeccd","#c59e96","#3f8ea7"))) +
