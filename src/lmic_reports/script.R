@@ -3,7 +3,7 @@ orderly_id <- tryCatch(orderly::orderly_run_info()$id,
 
 version_min <- "0.4.4"
 if(packageVersion("squire") < version_min) {
-  stop("squire needs to be updated to ", version_min)
+  stop("squire needs to be updated to at least", version_min)
 }
 
 ## -----------------------------------------------------------------------------
