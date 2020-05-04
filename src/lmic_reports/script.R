@@ -1,7 +1,7 @@
 orderly_id <- tryCatch(orderly::orderly_run_info()$id,
                        error = function(e) "<id>") # bury this in the html, docx
 
-version_min <- "0.4.0"
+version_min <- "0.4.4"
 if(packageVersion("squire") < version_min) {
   stop("squire needs to be updated to ", version_min)
 }
@@ -141,25 +141,35 @@ dev.off()
 
 
 ## -----------------------------------------------------------------------------
-## Step 3: Process filter data
+## Step 3: Work out start and R0 for the interface
 ## -----------------------------------------------------------------------------
 
+out_det <- squire::calibrate(
+  data = data,
+  R0_min = R0_min,
+  R0_max = R0_max,
+  R0_step = 0.05,
+  first_start_date = max(as.Date("2020-01-04"),last_start_date - 40, na.rm = TRUE),
+  last_start_date = last_start_date,
+  day_step = day_step,
+  squire_model = squire:::deterministic_model(),
+  pars_obs = pars_obs,
+  n_particles = n_particles,
+  reporting_fraction = reporting_fraction,
+  R0_change = R0_change,
+  date_R0_change = date_R0_change,
+  replicates = replicates,
+  country = country,
+  forecast = 28,
+  seeding_cases = 5
+)
+
 ## and save the info for the interface
-pos <- which(out$scan_results$mat_log_ll == max(out$scan_results$mat_log_ll), arr.ind = TRUE)
+pos <- which(out_det$scan_results$mat_log_ll == max(out_det$scan_results$mat_log_ll), arr.ind = TRUE)
 
 # get tthe R0, betas and times into a data frame
-R0 <- out$scan_results$x[pos[1]]
-start_date <- out$scan_results$y[pos[2]]
-
-# compare this to actual deaths as deterministic solution that uses these start
-# dates cannot bring in stuttering chains
-roll_d <- 3
-alt_start_date <- which(zoo::rollmean(data$deaths,7) >= (roll_d/7))
-while(length(alt_start_date) == 0) {
-  roll_d <- roll_d - 1
-  alt_start_date <- which(zoo::rollmean(data$deaths,7) >= (roll_d/7))
-}
-start_date <- max(start_date, data$date[alt_start_date][1]-30)
+R0 <- out_det$scan_results$x[pos[1]]
+start_date <- out_det$scan_results$y[pos[2]]
 
 if(!is.null(date_R0_change)) {
   start_date <- min(start_date, date_R0_change-1)
