@@ -49,6 +49,7 @@ RUN install_packages --repo=https://ncov-ic.github.io/drat \
         qpdf \
         readxl \
         stringdist \
+        scales \
         tidyr \
         zoo
 

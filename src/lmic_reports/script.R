@@ -61,7 +61,7 @@ date_R0_change <- int_unique$dates_change
 date_contact_matrix_set_change <- NULL
 squire_model <- explicit_model()
 pars_obs <- NULL
-n_particles <- 100
+n_particles <- 2
 
 # sort out missing dates etc
 null_na <- function(x) {if(is.null(x)) {NA} else {x}}
@@ -264,6 +264,7 @@ data_sum <- do.call(rbind, data_sum)
 data_sum$country <- country
 data_sum$iso3c <- iso3c
 data_sum$report_date <- date
+data_sum[data_sum$compartment != "D",] <- data_sum
 write_csv(data_sum, "projections.csv")
 
 # saveRDS("finished", paste0("/home/oj/GoogleDrive/AcademicWork/covid/githubs/global-lmic-reports-orderly/scripts/",iso3c,".rds"))

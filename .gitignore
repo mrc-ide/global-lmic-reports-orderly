@@ -39,8 +39,12 @@ src/lmic_reports/index.html
 src/lmic_reports/index.md
 src/lmic_reports/index.pdf
 src/lmic_reports/projections.csv
+src/FAQ/FAQ.html
+src/FAQ/FAQ.md
+src/FAQ/structure.JPG
 src/test
 .ssh
 src/lmic_reports/ecdc.xlsx
+ecdc.xlsx
 dummy
 todo.txt
