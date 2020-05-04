@@ -4,11 +4,11 @@ rl <- readLines(file.path(here::here(),"countries"))
 
 currently <- seq_along(rl)[-grep("#", rl)]
 currently_iso <- rl[currently]
-not <- tail(currently,1) + grep("#", rl[tail(currently,1):length(rl)])
-not <- head(not, -1)
+not <- seq_along(rl)[grepl("#", rl) & nchar(rl)<6]
+not <- not[-1]
 not_iso <- gsub("# ", "", rl[not])
 
-ecdc <- readRDS(file.path(here::here(),"archive","ecdc",tail(list.files(file.path(here::here(),"archive/ecdc/")),1),"ecdc_all.rds"))
+ecdc <- roxer::ecdc(Sys.Date())
 with_deaths <- ecdc$countryterritoryCode[ecdc$deaths>0] %>% unique()
 
 # any to change

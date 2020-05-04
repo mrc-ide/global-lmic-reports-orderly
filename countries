@@ -100,8 +100,8 @@ ZWE
 # FJI
 # FSM
 GIN
-# GNB
-# GNQ
+GNB
+GNQ
 # GRD
 # KHM
 # KIR
@@ -109,7 +109,7 @@ GIN
 # LCA
 # LSO
 # MDG
-# MDV
+MDV
 # MNG
 # MOZ
 # NAM
@@ -118,12 +118,12 @@ GIN
 # PRK
 # RWA
 # SLB
-# SLE
+SLE
 # SSD
-# STP
+STP
 SWZ
-# TCD
-# TJK
+TCD
+TJK
 # TKM
 # TLS
 # TON
@@ -132,4 +132,4 @@ SWZ
 # VNM
 # VUT
 # WSM
-# YEM
+YEM
