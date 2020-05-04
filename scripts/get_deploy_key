@@ -3,8 +3,8 @@ set -e
 HERE=$(dirname $0)
 ROOT=$(realpath $HERE/..)
 
-export VAULT_ADDR=https://vault.dide.ic.ac.uk:8200
-vault login -method=github
+export VAULT_ADDR="https://$(hostname):8200"
+export VAULT_TOKEN=$(vault login -method=github -token-only)
 
 if [ -f $ROOT/.ssh/production/id_rsa ]; then
     echo "production deploy key already exists"
