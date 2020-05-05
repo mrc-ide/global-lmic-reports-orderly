@@ -14,11 +14,14 @@ echo "*** ECDC data"
 echo "*** Oxford GRT data"
 ./orderly run oxford_grt date=$DATE
 
+echo "*** Updating country list"
+./update_run_sh.R $DATE
+
 echo "*** Running country reports"
 
 # Parallel
 grep -E '^[A-Z]{3}\s*' countries | \
-    parallel --progress -j 16 ./orderly run lmic_reports iso3c={} date=$DATE
+    parallel --progress -j 8 ./orderly run lmic_reports iso3c={} date=$DATE
 
 # Serial (useful if debugging)
 # for ISO in $(grep -E '^[A-Z]{3}\s*' countries); do
@@ -37,9 +40,6 @@ echo "*** 404 page"
 ./orderly run 404 date=$DATE
 echo "*** FAQ page"
 ./orderly run FAQ
-echo "*** 404 page"
-./orderly run 404 date=$DATE
-
 
 echo "*** Copying files"
 ./copy_index.R $DATE

@@ -45,15 +45,17 @@ copy_index <- function(date = NULL, is_latest = TRUE) {
   id_index <- res$id[res$report == "index_page"]
   id_params <- res$id[res$report == "parameters"]
   id_404 <- res$id[res$report == "404"]
+  id_FAQ <- res$id[res$report == "FAQ"]
 
-  message(sprintf("Copying index (%s), parameters (%s) and 404 (%s) pages",
-                  id_index, id_params, id_404))
+  message(sprintf("Copying index (%s), parameters (%s), 404 (%s) and FAQ (%s) pages",
+                  id_index, id_params, id_404, id_FAQ))
   
   target <- "gh-pages"
   src_index <- file.path("archive", "index_page", id_index,"index.html")
   src_params <- file.path("archive", "parameters", id_params, "parameters.html")
   src_404 <- file.path("archive", "404", id_404, "404.html")
-  file_copy(c(src_index, src_params, src_404), target)
+  src_FAQ <- file.path("archive", "FAQ", id_FAQ, "FAQ.html")
+  file_copy(c(src_index, src_params, src_404, src_FAQ), target)
 }
 
 

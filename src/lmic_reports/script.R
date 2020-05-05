@@ -33,7 +33,11 @@ first_report <- which(data$deaths>0)[1]
 missing <- which(data$deaths == 0 | is.na(data$deaths))
 to_remove <- missing[missing<first_report]
 if(length(to_remove) > 0) {
+  if(length(to_remove) == (nrow(data)-1)) {
+    data <- data[-head(to_remove,-1),]
+  } else {
   data <- data[-to_remove,]
+  }
 }
 
 # dat_0 is just the current date now
@@ -53,15 +57,15 @@ pop <- squire::get_population(country)
 reporting_fraction = 1
 R0_min = 2.0
 R0_max = 5.0
-R0_step = 0.2
-day_step = 1
 int_unique <- squire:::interventions_unique(oxford_grt[[iso3c]], "C")
 R0_change <- int_unique$change
 date_R0_change <- int_unique$dates_change
 date_contact_matrix_set_change <- NULL
 squire_model <- explicit_model()
 pars_obs <- NULL
-n_particles <- 2
+day_step = 1
+R0_step = 0.2
+n_particles <- 100
 
 # sort out missing dates etc
 null_na <- function(x) {if(is.null(x)) {NA} else {x}}
@@ -101,7 +105,7 @@ forecast <- 7
 ymax <- max(
   vapply(seq_len(dim(out$output)[3]), 
          function(x) {
-           quantile(vapply(seq(-28,forecast+1), function(y){
+           quantile(vapply(seq(max(out$output[1,"time",],-28),forecast+1), function(y){
              sum(out$output[as.character(date+y),index$D,x]-
                    out$output[as.character(date+y-1),index$D,x])
            }, numeric(1)),na.rm=TRUE,probs = 0.975)},
@@ -265,7 +269,7 @@ data_sum$country <- country
 data_sum$iso3c <- iso3c
 data_sum$report_date <- date
 data_sum[data_sum$compartment != "D",] <- data_sum
-write_csv(data_sum, "projections.csv")
+write.csv(data_sum, "projections.csv", row.names = FALSE, quote = FALSE)
 
 # saveRDS("finished", paste0("/home/oj/GoogleDrive/AcademicWork/covid/githubs/global-lmic-reports-orderly/scripts/",iso3c,".rds"))
 
