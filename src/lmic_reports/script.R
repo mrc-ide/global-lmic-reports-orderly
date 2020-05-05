@@ -105,8 +105,8 @@ forecast <- 7
 ymax <- max(
   vapply(seq_len(dim(out$output)[3]), 
          function(x) {
-           quantile(vapply(seq(max(out$output[1,"time",],-28),forecast+1), function(y){
-             sum(out$output[as.character(date+y),index$D,x]-
+           quantile(vapply(seq(max(out$output[1,"time",],-28, na.rm = TRUE),forecast+1), function(y){
+             sum(out$output[as.character(date+y),index$D,x] -
                    out$output[as.character(date+y-1),index$D,x])
            }, numeric(1)),na.rm=TRUE,probs = 0.975)},
          numeric(1)),na.rm=TRUE)
