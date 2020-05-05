@@ -73,7 +73,7 @@ min_death_date <- data$date[which(data$deaths>0)][1]
 last_start_date <- min(as.Date(null_na(date_R0_change[1]))-2, as.Date(null_na(min_death_date))-10, na.rm = TRUE)
 first_start_date <- max(as.Date("2020-01-04"),last_start_date - 30, na.rm = TRUE)
 
-future::plan(future::multiprocess())
+# future::plan(future::multiprocess())
 
 out <- squire::calibrate(
   data = data,
