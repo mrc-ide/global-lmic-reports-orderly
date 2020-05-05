@@ -55,12 +55,6 @@ if ($(window).width() < 768) {
 
 ```
 
-```{r setup, include=FALSE} 
-knitr::opts_chunk$set(echo = TRUE)
-devtools::source_gist("c83e078bf8c81b035e32c3fc0cf04ee8", 
-                      filename = 'render_toc.R')
-```
-
 ```{r, echo = FALSE, message=FALSE, warning=FALSE}
 start <- 10
 replicates <- 10
