@@ -4,12 +4,8 @@ conflict_prefer("select", "dplyr")
 conflict_prefer("filter", "dplyr")
 conflict_prefer("area", "patchwork")
 
-# Set Working Directory
-setwd("COVID_2019/LMIC_Impact_Projection/mobility_data/")
-
 # Loading Google Mobility Data
-mob <- read.csv("Data/Global_Mobility_Report_New.csv",
-                stringsAsFactors = FALSE) %>%
+mob <- read.csv("data/Google_Mobility_Data.csv", stringsAsFactors = FALSE) %>%
   filter(sub_region_1 == "") %>%
   mutate(overall = 1/4 * retail_and_recreation_percent_change_from_baseline +
            1/4 * grocery_and_pharmacy_percent_change_from_baseline + 
@@ -19,13 +15,13 @@ mob <- read.csv("Data/Global_Mobility_Report_New.csv",
   select(country_region, date, overall)
 
 # Loading World Bank Metadata
-wb_metadata <- read.csv("Data/World_Bank_Country_Metadata.csv") %>%
+wb_metadata <- read.csv("data/World_Bank_Country_Metadata.csv") %>%
   rename(ISO = ï..country_code) %>%
   select(ISO, income_group, region) %>%
   filter(region != "")
 
 # Loading in ACAPs Data
-ACAPs_measure <- read.csv("Data/ACAPS_Most_Recent.csv") %>%
+ACAPs_measure <- read.csv("data/ACAPS_Intervention_Data.csv") %>%
   rename(country = COUNTRY, measure = MEASURE, type = LOG_TYPE, date = DATE_IMPLEMENTED) %>%
   select(country, ISO, measure, type, date) %>%
   filter(country != "", measure != "", type != "") %>%
@@ -84,30 +80,28 @@ brt <- gbm.step(data = x,
                 learning.rate = learning_rate, 
                 bag.fraction = bag_fraction, 
                 max.trees = max_trees, n.folds = 5)
-gbm.plot(brt)
-summary(brt)
 
-predicted <- predict.gbm(brt, x[, c(2:66)], n.trees = brt$gbm.call$best.trees, type = "response")
-plot(overall$overall, predicted, ylim = c(-100, 20), xlim = c(-100, 20), pch = 20, cex = 2, ylab = "")
+# predicted <- predict.gbm(brt, x[, c(2:66)], n.trees = brt$gbm.call$best.trees, type = "response")
+# plot(overall$overall, predicted, ylim = c(-100, 20), xlim = c(-100, 20), pch = 20, cex = 2, ylab = "")
 
+# Get Countries Present in ACAPs But Missing From Google, Infer Google Mobility from ACAPs
 google_country_codes <- unique(overall$ISO)
 ACAPs_country_codes <- as.character(unique(ACAPs_measure$ISO))
 non_google_country_codes <- ACAPs_country_codes[!(ACAPs_country_codes %in% google_country_codes)]
-
 ACAPs_subset <- new_ACAPs_cat[new_ACAPs_cat$ISO %in% non_google_country_codes, ] %>%
   left_join(wb_metadata, by = "ISO")
 predicted <- predict.gbm(brt, ACAPs_subset[, c(4:68)], n.trees = brt$gbm.call$best.trees, type = "response")
 
-par(mfrow = c(5, 5), mar = c(5, 3, 1, 1))
-ACAPs_subset$pred_mob <- predicted
-predicted_countries <- as.character(unique(ACAPs_subset$country))
-for (i in 1:length(predicted_countries)) {
-  country <- predicted_countries[i]
-  country_index <- which(ACAPs_subset$country == country)
-  plot(ACAPs_subset$date[country_index], ACAPs_subset$pred_mob[country_index], 
-       type = "l", lwd = 2, ylim = c(-100, 10), ylab = "", xlab = country, las = 1)
-}
-
+# Plot Predicted Countries' Google Mobility
+# par(mfrow = c(5, 5), mar = c(5, 3, 1, 1))
+# ACAPs_subset$pred_mob <- predicted
+# predicted_countries <- as.character(unique(ACAPs_subset$country))
+# for (i in 1:length(predicted_countries)) {
+#   country <- predicted_countries[i]
+#   country_index <- which(ACAPs_subset$country == country)
+#   plot(ACAPs_subset$date[country_index], ACAPs_subset$pred_mob[country_index], 
+#        type = "l", lwd = 2, ylim = c(-100, 10), ylab = "", xlab = country, las = 1)
+# }
 
 ### Supplementary Code for Cross-Validation ###
 
