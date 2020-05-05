@@ -76,10 +76,6 @@ cumulative_deaths_plot_continent <- function(continent) {
   d$Region[d$Region=="CuraÃ§ao"] <- "Curacao"
   start <- 10
   
-  country <- gsub("[[:punct:]]", "", country)
-  country <- gsub(" ", "_", country)
-  country <- d$Region[match_clean(country, d$Region)]
-  
   suppressWarnings(d$Continent <- countrycode::countrycode(d$Region, origin = 'country.name', destination = 'continent'))
   d$Continent[d$Region=="Eswatini"] <- "Africa"
   d$Continent[d$Region=="United State of America"] <- "Americas"
