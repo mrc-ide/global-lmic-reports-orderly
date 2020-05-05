@@ -23,7 +23,7 @@ copy_index <- function(date = NULL, is_latest = TRUE) {
             FROM report_version
             JOIN parameters
               ON parameters.report_version = report_version.id
-           WHERE report_version.report IN ("index_page", "parameters", "404")
+           WHERE report_version.report IN ("index_page", "parameters", "404", "FAQ)
              AND parameters.name = \'date\'
              AND parameters.value = $1
            ORDER BY report_version.id'
