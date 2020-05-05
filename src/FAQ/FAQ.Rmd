@@ -140,7 +140,7 @@ render_toc <- function(
   for(i in seq_len(length(x))) {
     x[i] <- gsub("- ", paste0(i-1,". "), x[i])
     x[i] <- gsub("\\?)$",")", x[i])
-    
+    x[i] <- gsub("?-/-","-",x[i],fixed=TRUE)
   }
   
   knitr::asis_output(paste(stringr::str_trim(x[-mains]), collapse = " \n"))
