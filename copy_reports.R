@@ -96,9 +96,9 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   saveRDS(summaries, "src/index_page/summaries.rds")
   
   projections <- do.call(rbind,
-                         lapply(file.path(src, "projections.csv"), read_csv))
+                         lapply(file.path(src, "projections.csv"), readr::read_csv))
   dir.create("gh-pages/data", FALSE, TRUE)
-  write_csv(projections, paste0("gh-pages/data/",date,".csv"))
+  readr::write_csv(projections, paste0("gh-pages/data/",date,".csv"))
 }
 
 
