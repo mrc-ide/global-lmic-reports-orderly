@@ -39,7 +39,7 @@ echo "*** Parameters page"
 echo "*** 404 page"
 ./orderly run 404 date=$DATE
 echo "*** FAQ page"
-./orderly run FAQ
+./orderly run FAQ date=$DATE
 
 echo "*** Copying files"
 ./copy_index.R $DATE
