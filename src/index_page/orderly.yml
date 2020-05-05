@@ -108,6 +108,8 @@ sources:
 resources:
   - index.Rmd
   - summaries.rds
+  - wellcome.png
+  - ukaid.jpg
 
 global_resources:
   _navbar.html: _navbar.html
