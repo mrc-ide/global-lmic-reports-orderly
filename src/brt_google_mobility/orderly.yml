@@ -8,8 +8,6 @@ script: script.R
 # Optional parameters for the task. Things listed here will be
 # available as R variables in your script.  For example:
 #
-parameters:
-  date: ~
 
 
 resources:

@@ -15,8 +15,8 @@ mob <- read.csv("data/Google_Mobility_Data.csv", stringsAsFactors = FALSE) %>%
   select(country_region, date, overall)
 
 # Loading World Bank Metadata
-wb_metadata <- read.csv("data/World_Bank_Country_Metadata.csv") %>%
-  rename(ISO = ï..country_code) %>%
+wb_metadata <- read.csv("data/World_Bank_Country_Metadata.csv", fileEncoding="UTF-8-BOM") %>%
+  rename(ISO = country_code) %>%
   select(ISO, income_group, region) %>%
   filter(region != "")
 
@@ -39,7 +39,7 @@ for (i in 1:length(measures)) {
   ACAPs_measure[, index] <- unlist(lapply(seq_along(ACAPs_measure$country), function(x) {
     length <- length(ACAPs_measure[, index][[1]][[x]])
   }))
-  print(i)
+  # print(i)
 }
 
 # Tracking Cumulative Number of Each Type of Measure Implemented and Creating New Rows for Dates 
