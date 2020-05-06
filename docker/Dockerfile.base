@@ -39,6 +39,7 @@ RUN install_packages --repo=https://ncov-ic.github.io/drat \
         ggforce \
         ggplot2 \
         ggrepel \
+        here \
         knitr \
         jsonlite \
         lubridate \
@@ -49,6 +50,7 @@ RUN install_packages --repo=https://ncov-ic.github.io/drat \
         qpdf \
         readxl \
         stringdist \
+        scales \
         tidyr \
         zoo
 

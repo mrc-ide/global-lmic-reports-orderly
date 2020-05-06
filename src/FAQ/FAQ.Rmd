@@ -1,0 +1,223 @@
+---
+title: FAQ
+header-includes: \usepackage{caption}
+date: ""
+output:
+  html_document:
+    keep_md: yes
+    self_contained: yes
+    css: styles.css
+    theme: cosmo
+    fig_caption: TRUE
+  pdf_document: 
+    fig_caption: true
+    includes: 
+      before_body: footer.tex
+  word_document:
+    df_print: kable
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 6
+    highlight: tango
+    reference_docx: template.docx
+---
+
+```{js, echo = FALSE}
+
+if ($(window).width() < 768) {
+  $('.dropdown-menu a.dropdown-toggle').on('click', function(e) {
+    if (!$(this).next().hasClass('show')) {
+      $(this).parents('.dropdown-menu').first().find('.show').removeClass("show");
+    }
+
+ 
+
+    var $subMenu = $(this).next(".dropdown-menu");
+    if (!$subMenu.hasClass('show')) {
+      $subMenu.addClass('show');
+      $subMenu.show();
+    } else {
+      $subMenu.removeClass('show');
+      $subMenu.hide();
+    }
+
+ 
+
+    $(this).parents('li.nav-item.dropdown.show').on('hidden.bs.dropdown', function(e) {
+      $('.dropdown-submenu .show').removeClass("show");
+    });
+
+ 
+
+    return false;
+  });
+}
+
+```
+
+```{r, echo = FALSE, message=FALSE, warning=FALSE}
+start <- 10
+replicates <- 10
+library(dplyr)
+library(ggplot2)
+library(squire)
+
+format <- knitr::opts_knit$get("rmarkdown.pandoc.to")
+figRef <- function(caption) {
+  if(format == "latex") {
+    gsub("Figure \\d: ","",caption)
+  } else {
+    caption
+  }
+}
+
+
+fig_height <- function(pdf = 4, html = 6) {
+    if(format == "latex") {
+    pdf
+  } else {
+    html
+  }
+}
+
+fig_center <- function() {
+    if(format == "latex") {
+    "default"
+  } else {
+    "center"
+  }
+}
+
+
+```
+
+```{r, echo = FALSE, message=FALSE, warning=FALSE}
+render_toc <- function(
+  filename, 
+  toc_header_name = "Table of Contents",
+  base_level = NULL,
+  toc_depth = 3,
+  section = "Questions"
+) {
+  x <- readLines(filename, warn = FALSE)
+  x <- paste(x, collapse = "\n")
+  x <- paste0("\n", x, "\n")
+  for (i in 5:3) {
+    regex_code_fence <- paste0("\n[`]{", i, "}.+?[`]{", i, "}\n")
+    x <- gsub(regex_code_fence, "", x)
+  }
+  x <- strsplit(x, "\n")[[1]]
+  x <- x[grepl("^#+", x)]
+  if (!is.null(toc_header_name)) 
+    x <- x[!grepl(paste0("^#+ ", toc_header_name), x)]
+  if (is.null(base_level))
+    base_level <- min(sapply(gsub("(#+).+", "\\1", x), nchar))
+  start_at_base_level <- FALSE
+  x <- sapply(x, function(h) {
+    level <- nchar(gsub("(#+).+", "\\1", h)) - base_level
+    if (level < 0) {
+      stop("Cannot have negative header levels. Problematic header \"", h, '" ',
+           "was considered level ", level, ". Please adjust `base_level`.")
+    }
+    if (level > toc_depth - 1) return("")
+    if (!start_at_base_level && level == 0) start_at_base_level <<- TRUE
+    if (!start_at_base_level) return("")
+    if (grepl("\\{#.+\\}(\\s+)?$", h)) {
+      # has special header slug
+      header_text <- gsub("#+ (.+)\\s+?\\{.+$", "\\1", h)
+      header_slug <- gsub(".+\\{\\s?#([-_.a-zA-Z]+).+", "\\1", h)
+    } else {
+      header_text <- gsub("#+\\s+?", "", h)
+      header_text <- gsub("\\s+?\\{.+\\}\\s*$", "", header_text) # strip { .tabset ... }
+      header_text <- gsub("^[^[:alpha:]]*\\s*", "", header_text) # remove up to first alpha char
+      header_slug <- paste(strsplit(header_text, " ")[[1]], collapse="-")
+      header_slug <- tolower(header_slug)
+    }
+    paste0(strrep(" ", level * 4), "- [", header_text, "](#", header_slug, ")")
+  })
+  x <- x[x != ""]
+  mains <- grep("^-",x)
+  for(i in seq_len(length(x))) {
+    x[i] <- gsub("- ", paste0(i-1,". "), x[i])
+    x[i] <- gsub("\\?)$",")", x[i])
+    x[i] <- gsub("?-/-","-",x[i],fixed=TRUE)
+  }
+  
+  knitr::asis_output(paste(stringr::str_trim(x[-mains]), collapse = " \n"))
+}
+```
+
+
+## Frequently Asked Questions
+
+```{r toc, echo=FALSE}
+render_toc("FAQ.Rmd")
+```
+
+---
+
+#### 1. How reliable are the data?
+  
+We use two sources of data to calibrate the model. The first is the reported numbers of deaths by date as available in the European Centre for Disease Control database. These data are updated daily and whilst there may be a short delay, they are generally consistent with Ministry reports. However, as noted below, it is not clear what proportion of deaths are reported.
+
+The second data source is information on the interventions that have been implemented. We currently capture this in a relatively simplistic way and so this may not fully represent the different interventions that are in place, nor any regional differences in these. We are actively working to improve this aspect of our forecasts.
+
+<br>
+
+#### 2. How have you accounted for unreported deaths?
+  
+As noted above, the extent to which reported deaths capture the true mortality is unclear, and will vary from one country to another depending on their vital registration system and surveillance methods. We do not therefore attempt to make any adjustment at present for under-reporting and it is likely that our projections are a minimum compared to the true overall mortality.
+
+<br>
+
+#### 3. Why are the estimated infections so much higher than the reported cases?
+  
+To estimate the total number of infections, we use detailed information collated from ongoing epidemics to “back-calculate” from the reported deaths. This includes information on the proportion of infections that require hospitalisation as well as distributions for the time from infection to onset of symptoms (i.e. the incubation period), from onset of symptoms to hospitalisation, and from hospitalisation to outcome.
+
+A significant proportion of infections are likely to be either completely asymptomatic, or sufficiently mild as to not seek care. From our early analysis of data from China, we estimate this to be approximately 40-50% of all infections.
+
+Of those infections that are symptomatic and would seek care, the surveillance underway in each country is likely to pick up a fraction of these. In countries that are testing widely in the community, we would expect this fraction to be much higher than in countries that are focusing testing in hospitals. The difference in the estimated infections and reported cases should be interpreted with this in mind; however, the scale gives a sense of the likely potential for ongoing transmission in the community.
+
+<br>
+
+#### 4. What have you assumed about comorbidities?
+  
+Our current model is based on estimates of severity based on data from China and Europe. These estimates of the infection fatality ratio are then incorporated into the model and modified as a result of the different demography, social contact patterns and health systems in each country. As a result, the “average” IFR can range from 0.5% through to 1.5% depending on these factors.
+
+At the current time we do not explicitly take into account the role of comorbidities in each country, although they are implicit in the underlying IFR patterns obtained from China and Europe. We are actively working to improve inputs for currently identified co-morbidities.
+
+<br>
+
+#### 5. Why are most of the model parameters based on UK data?
+  
+The model parameters were initially based on an early analysis of data from China and have more recently been updated based on data from the epidemic in the UK. The reason for using these parameters is that we have extensively analysed data in the UK and believe it represents the best current estimate of the key epidemiological parameters driving the transmission and severity of the disease.
+
+As data emerge from other countries, we will continue to review these parameters and move to geography-specific parameters if differences emerge.
+
+<br>
+
+#### 6. Can heterogeneity reduce the spread of the infection and so result in lower final attack rates?
+  
+Heterogeneity is known to slow the spread of respiratory pathogens, thereby resulting in a “less-peaked” epidemic. Whilst in some cases it is possible that this heterogeneity could result in lower overall attack rates, this is not often observed for highly transmissible respiratory pathogens.
+
+<br>
+
+#### 7. Do your projections change if you modelled subnationally?
+  
+There are many aspects of populations that vary at a smaller spatial scale and could therefore differ between sub-national units. Our outputs are therefore representative of “average” patterns for a given country. Whilst sub-national estimates can help to determine local responses, we note that for the most part respiratory pathogens tend to spread quite rapidly across populations and so differences between sub-national areas are likely to primarily relate to the timescale of the epidemic rather than the overall attack rate. Differences in underlying demography and risk factors could however give rise to different overall mortality rates at the sub-national level.
+
+<br>
+
+#### 8. Why do your models only consider direct COVID-19 deaths? / How do your predictions account for excess mortality?
+  
+As our epidemiological model was developed to understand the transmission of SARS-CoV-2 virus, we can only capture the direct mortality from COVID-19. Although we do capture the potential impact of lack of healthcare on this direct mortality, we do not capture the indirect mortality that may occur due to either lack of healthcare for other health conditions or the wider impact of mitigation and suppression interventions on health.
+
+Our outputs should therefore be considered as inputs into wider discussion about the appropriate balance between mitigation/suppression of SARS-CoV-2 virus transmission and the impact of these interventions on wider health.
+
+<br>
+
+#### 9. How should a national response respond in light of these findings and in the context of the secondary impact of COVID-19 interventions on other health systems?
+  
+Our outputs are provided to help support decision makers to interpret their current epidemiological situation and to provide short-term projections of the likely trajectory of the COVID-19 epidemic. They are, however, only one input to be considered prior to deciding on the most appropriate actions to take in response to this epidemic. It is important to note that our model only provides an estimate of the direct mortality due to COVID-19 disease and not any indirect mortality that could occur as a result of either limited healthcare capacity or the wider response taken. Equally, it is likely that any actions taken to mitigate the spread of SARS-CoV-2 virus could impact in other ways that could impact both the health and livelihoods of populations. All of these factors should be considered in tandem to decide the appropriate national response.
+  
+<br>

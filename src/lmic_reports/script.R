@@ -1,9 +1,9 @@
 orderly_id <- tryCatch(orderly::orderly_run_info()$id,
                        error = function(e) "<id>") # bury this in the html, docx
 
-version_min <- "0.4.0"
+version_min <- "0.4.4"
 if(packageVersion("squire") < version_min) {
-  stop("squire needs to be updated to ", version_min)
+  stop("squire needs to be updated to at least", version_min)
 }
 
 ## -----------------------------------------------------------------------------
@@ -33,7 +33,11 @@ first_report <- which(data$deaths>0)[1]
 missing <- which(data$deaths == 0 | is.na(data$deaths))
 to_remove <- missing[missing<first_report]
 if(length(to_remove) > 0) {
+  if(length(to_remove) == (nrow(data)-1)) {
+    data <- data[-head(to_remove,-1),]
+  } else {
   data <- data[-to_remove,]
+  }
 }
 
 # dat_0 is just the current date now
@@ -53,14 +57,14 @@ pop <- squire::get_population(country)
 reporting_fraction = 1
 R0_min = 2.0
 R0_max = 5.0
-R0_step = 0.2
-day_step = 1
 int_unique <- squire:::interventions_unique(oxford_grt[[iso3c]], "C")
 R0_change <- int_unique$change
 date_R0_change <- int_unique$dates_change
 date_contact_matrix_set_change <- NULL
 squire_model <- explicit_model()
 pars_obs <- NULL
+day_step = 1
+R0_step = 0.2
 n_particles <- 100
 
 # sort out missing dates etc
@@ -69,7 +73,7 @@ min_death_date <- data$date[which(data$deaths>0)][1]
 last_start_date <- min(as.Date(null_na(date_R0_change[1]))-2, as.Date(null_na(min_death_date))-10, na.rm = TRUE)
 first_start_date <- max(as.Date("2020-01-04"),last_start_date - 30, na.rm = TRUE)
 
-#future::plan(future::multiprocess())
+# future::plan(future::multiprocess())
 
 out <- squire::calibrate(
   data = data,
@@ -101,8 +105,8 @@ forecast <- 7
 ymax <- max(
   vapply(seq_len(dim(out$output)[3]), 
          function(x) {
-           quantile(vapply(seq(-28,forecast+1), function(y){
-             sum(out$output[as.character(date+y),index$D,x]-
+           quantile(vapply(seq(max(out$output[1,"time",],-28, na.rm = TRUE),forecast+1), function(y){
+             sum(out$output[as.character(date+y),index$D,x] -
                    out$output[as.character(date+y-1),index$D,x])
            }, numeric(1)),na.rm=TRUE,probs = 0.975)},
          numeric(1)),na.rm=TRUE)
@@ -141,25 +145,35 @@ dev.off()
 
 
 ## -----------------------------------------------------------------------------
-## Step 3: Process filter data
+## Step 3: Work out start and R0 for the interface
 ## -----------------------------------------------------------------------------
 
+out_det <- squire::calibrate(
+  data = data,
+  R0_min = R0_min,
+  R0_max = R0_max,
+  R0_step = 0.05,
+  first_start_date = max(as.Date("2020-01-04"),last_start_date - 40, na.rm = TRUE),
+  last_start_date = last_start_date,
+  day_step = day_step,
+  squire_model = squire:::deterministic_model(),
+  pars_obs = pars_obs,
+  n_particles = n_particles,
+  reporting_fraction = reporting_fraction,
+  R0_change = R0_change,
+  date_R0_change = date_R0_change,
+  replicates = replicates,
+  country = country,
+  forecast = 28,
+  seeding_cases = 5
+)
+
 ## and save the info for the interface
-pos <- which(out$scan_results$mat_log_ll == max(out$scan_results$mat_log_ll), arr.ind = TRUE)
+pos <- which(out_det$scan_results$mat_log_ll == max(out_det$scan_results$mat_log_ll), arr.ind = TRUE)
 
 # get tthe R0, betas and times into a data frame
-R0 <- out$scan_results$x[pos[1]]
-start_date <- out$scan_results$y[pos[2]]
-
-# compare this to actual deaths as deterministic solution that uses these start
-# dates cannot bring in stuttering chains
-roll_d <- 3
-alt_start_date <- which(zoo::rollmean(data$deaths,7) >= (roll_d/7))
-while(length(alt_start_date) == 0) {
-  roll_d <- roll_d - 1
-  alt_start_date <- which(zoo::rollmean(data$deaths,7) >= (roll_d/7))
-}
-start_date <- max(start_date, data$date[alt_start_date][1]-30)
+R0 <- out_det$scan_results$x[pos[1]]
+start_date <- out_det$scan_results$y[pos[2]]
 
 if(!is.null(date_R0_change)) {
   start_date <- min(start_date, date_R0_change-1)
@@ -226,7 +240,36 @@ rmarkdown::render("index.Rmd",
                                 "data" = data,
                                 "date_0" = date_0,
                                 "country" = country),
-                  output_options = list(pandoc_args = paste0("--metadata=title:\"",country," COVID-19 report\"")))
+                  output_options = list(pandoc_args = paste0("--metadata=title:",country," COVID-19 report")))
+
+data_sum <- lapply(o_list, function(pd){
+  
+  # remove any NA rows (due to different start dates)
+  if(sum(is.na(pd$t) | is.na(pd$y))>0) {
+    pd <- pd[-which(is.na(pd$t) | is.na(pd$y)),]
+  }
+  
+  # Format summary data
+  pds <- pd %>%
+    dplyr::group_by(.data$date, .data$compartment) %>%
+    dplyr::summarise(y_025 = stats::quantile(.data$y, 0.025),
+                     y_25 = stats::quantile(.data$y, 0.25),
+                     y_median = median(.data$y),
+                     y_mean = mean(.data$y),
+                     y_75 = stats::quantile(.data$y, 0.75),
+                     y_975 = stats::quantile(.data$y, 0.975))
+  
+  return(as.data.frame(pds, stringsAsFactors = FALSE))
+})
+data_sum[[1]]$scenario <- "Maintain Status Quo"
+data_sum[[2]]$scenario <- "Additional 50% Reduction"
+data_sum[[3]]$scenario <- "Relax Interventions 50%"
+data_sum <- do.call(rbind, data_sum)
+data_sum$country <- country
+data_sum$iso3c <- iso3c
+data_sum$report_date <- date
+data_sum[data_sum$compartment != "D",] <- data_sum
+write.csv(data_sum, "projections.csv", row.names = FALSE, quote = FALSE)
 
 # saveRDS("finished", paste0("/home/oj/GoogleDrive/AcademicWork/covid/githubs/global-lmic-reports-orderly/scripts/",iso3c,".rds"))
 

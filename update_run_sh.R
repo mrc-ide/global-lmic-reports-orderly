@@ -1,15 +1,40 @@
+#!/usr/bin/env Rscript
 
-update_run_sh <- function() {
+update_run_sh <- function(date) {
 rl <- readLines(file.path(here::here(),"countries"))
 
 currently <- seq_along(rl)[-grep("#", rl)]
 currently_iso <- rl[currently]
-not <- tail(currently,1) + grep("#", rl[tail(currently,1):length(rl)])
-not <- head(not, -1)
+not <- seq_along(rl)[grepl("#", rl) & nchar(rl)<6]
+not <- not[-1]
 not_iso <- gsub("# ", "", rl[not])
 
-ecdc <- readRDS(file.path(here::here(),"archive","ecdc",tail(list.files(file.path(here::here(),"archive/ecdc/")),1),"ecdc_all.rds"))
-with_deaths <- ecdc$countryterritoryCode[ecdc$deaths>0] %>% unique()
+db <- orderly::orderly_db("destination")
+if (is.null(date)) {
+  date <- as.character(Sys.Date())
+}
+
+## First find the id corresponding to the ecdc report with data.  If
+## there are more than one, it's not totally clear what you want to
+## do as you might want to take the earliest or the latest.
+## Probably we want to take *all* and do the join over that, which
+## is easy enough to do if you replace the '= $1' and replace with
+## 'IN (%s)' and interpolate 'paste(sprintf('"%s"', id), collapse = ", ")'
+sql <- 'SELECT report_version.id
+            FROM report_version
+            JOIN parameters
+              ON parameters.report_version = report_version.id
+           WHERE report_version.report = "ecdc"
+             AND parameters.value = $1'
+id <- DBI::dbGetQuery(db, sql, date)$id
+if (length(id) == 0L) {
+  stop(sprintf("No 'ecdc' report for '%s'", as.character(date)))
+} else if (length(id) > 1) {
+  message(sprintf("Multiple 'ecdc' reports for '%s'", as.character(date)))
+}
+
+ecdc <- readRDS(paste0(here::here(),"/archive/ecdc/",tail(id,1),"/ecdc_all.rds"))
+with_deaths <- unique(ecdc$countryterritoryCode[ecdc$deaths>0])
 
 # any to change
 to_uncomment <- which(not_iso %in% with_deaths)
@@ -29,5 +54,7 @@ writeLines(rl, file.path(here::here(),"countries"))
 }
 
 if(!interactive()) {
-  update_run_sh()
+  usage <- "Usage:\n./update_run_sh.R [<date>]"
+  args <- docopt::docopt(usage)
+  update_run_sh(args$date)
 }

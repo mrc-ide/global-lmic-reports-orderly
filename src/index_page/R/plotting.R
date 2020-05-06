@@ -41,8 +41,8 @@ cumulative_deaths_plot <- function(country) {
   continent <- unique(df$Continent[df$Region %in% country])
   
   gg_deaths <- ggplot(df_deaths[df_deaths$Region %in% country,], aes(x=day_since, y=Cum_Deaths, group = Region)) + 
-    geom_line(data = doubling_lines_deaths, aes(x=x, y=y, linetype = Doubling),alpha=0.3, inherit.aes = FALSE) +
-    geom_line(show.legend = FALSE, color = "grey", alpha = 0.6) +
+    geom_line(data = doubling_lines_deaths, aes(x=x, y=y, linetype = Doubling), inherit.aes = FALSE, color = "black") +
+    geom_line(data = df_deaths, show.legend = FALSE, color = "grey", alpha = 0.6) +
     geom_line(data = df_deaths[which(df_deaths$Region %in% country[1:7]),], mapping = aes(color = Continent)) +
     #geom_point(data = df_deaths[which(df_deaths$Region %in% country[1:7]),], mapping = aes(color = Continent)) +
     geom_point(data = df_deaths_latest[which(df_deaths_latest$Region %in% country), ], alpha = 0.5, show.legend = FALSE) + 
@@ -56,6 +56,90 @@ cumulative_deaths_plot <- function(country) {
   
   gg_deaths
   
+}
+
+cumulative_deaths_plot_continent <- function(continent) {
+  
+  if(!continent %in% c("Asia","Europe","Africa","Americas","Oceania")) {
+    stop("continent not matched")
+  }
+  
+  rl <- readLines("_navbar.html")
+  lmics <- gsub("(.*reports/)(\\w\\w\\w)(\".*)","\\2",grep("reports/(\\w\\w\\w)\"",rl, value =TRUE))
+  
+  colors <- c("#003b73","#e4572e","#BB750D","#003844","#925e78")
+  col <- colors[match(continent, c("Asia","Europe","Africa","Americas","Oceania"))]
+  
+  d <- readRDS("ecdc_all.rds")
+  d$Region[d$Region=="Congo"] <- "Republic of Congo"
+  d$Region[d$Region=="United_Republic_of_Tanzania"] <- "Tanzania"
+  d$Region[d$Region=="CuraÃ§ao"] <- "Curacao"
+  start <- 10
+  
+  suppressWarnings(d$Continent <- countrycode::countrycode(d$Region, origin = 'country.name', destination = 'continent'))
+  d$Continent[d$Region=="Eswatini"] <- "Africa"
+  d$Continent[d$Region=="United State of America"] <- "Americas"
+  d$Continent[d$Region=="Isle_of_Man"] <- "Europe"             
+  d$Continent[d$Region=="Kosovo"] <- "Europe"                  
+  d$Continent[d$Region=="Netherlands_Antilles"] <- "Americas"    
+  d$Continent[d$Region=="Saint_Lucia"] <- "Americas"             
+  d$Continent[d$Region=="South_Korea"] <- "Asia"             
+  d$Continent[d$Region=="United_States_of_America"] <- "Americas"
+  
+  doubling <- function(double = 2, start = 10, xmax = 100) {
+    
+    x <- seq(0, xmax, 0.1)
+    y <- start * 2^(x/double) 
+    return(data.frame(x= x, y = y, 
+                      Doubling = paste0("Every ", double, " Days")))
+  }
+  
+  df <- group_by(d, Region) %>% 
+    arrange(dateRep) %>% 
+    mutate(Cum_Deaths = cumsum(deaths),
+           Cum_Cases = cumsum(cases))
+  
+  df$Region <- gsub("_" ," ", df$Region)
+  
+  df_deaths <- df %>% 
+    filter(Cum_Deaths > start) %>% 
+    mutate(day_since = seq_len(n())-1)
+  
+  doubling_lines_deaths <- do.call(rbind, lapply(c(2, 3, 5, 7), function(x){
+    doubling(x, start = start, xmax = max(df_deaths$day_since))
+  }))
+  
+  df_deaths_latest <- df_deaths[df_deaths$dateRep == max(df_deaths$dateRep),]
+  
+  
+  gg_deaths <- ggplot(df_deaths, aes(x=day_since, y=Cum_Deaths, group = Region)) + 
+    geom_line(data = doubling_lines_deaths, aes(x=x, y=y, linetype = Doubling), inherit.aes = FALSE, color = "black") +
+    geom_line(show.legend = FALSE, color = "grey", alpha = 0.3) +
+    geom_line(data = df_deaths[which(df_deaths$Continent %in% continent & df_deaths$countryterritoryCode %in% lmics),], color = col) +
+    #geom_point(data = df_deaths[which(df_deaths$Region %in% country[1:7]),], mapping = aes(color = Continent)) +
+    geom_point(data = df_deaths_latest[which(df_deaths_latest$Continent %in% continent & df_deaths_latest$countryterritoryCode %in% lmics), ], alpha = 0.5, show.legend = FALSE) + 
+    ggrepel::geom_text_repel(data =  df_deaths_latest[which(df_deaths_latest$Continent %in% continent & df_deaths_latest$countryterritoryCode %in% lmics), ],
+                             aes(label = Region), show.legend = FALSE, min.segment.length = 0.1,nudge_x = 1,nudge_y = -0.1) + 
+    scale_y_log10(limits=c(start, max(df_deaths$Cum_Deaths[df_deaths$Continent %in% continent & df_deaths$countryterritoryCode %in% lmics])), labels = scales::comma) +
+    xlim(limits=c(0, max(df_deaths$day_since[df_deaths$Continent %in% continent & df_deaths$countryterritoryCode %in% lmics]))) +
+    theme_bw() +
+    scale_linetype(name = "Doubling Time:") +
+    ylab("Cumulative Deaths (Logarithmic Scale)") +
+    xlab(paste("Days Since", start, "Deaths")) + 
+    ggtitle(continent)
+  
+  gg_deaths
+  
+}
+
+full_plot <- function() {
+
+plots <- lapply(c("Asia","Europe","Africa","Americas","Oceania"), cumulative_deaths_plot_continent)
+plotted <- lapply(plots[1:4], function(x){x+theme(legend.position = "none")})
+leg <- cowplot::get_legend(plots[[1]] + theme(legend.position = "top"))
+main <- cowplot::plot_grid(plotlist = plotted[1:4], ncol = 2)
+get <- cowplot::plot_grid(main,leg,ncol=1,rel_heights = c(1, 0.05))
+get
 }
 
 # define facet_zoom2 function to use FacetZoom2 instead of FacetZoom

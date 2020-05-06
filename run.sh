@@ -14,6 +14,9 @@ echo "*** ECDC data"
 echo "*** Oxford GRT data"
 ./orderly run oxford_grt date=$DATE
 
+echo "*** Updating country list"
+./update_run_sh.R $DATE
+
 echo "*** Running country reports"
 
 # Parallel
@@ -35,7 +38,8 @@ echo "*** Parameters page"
 ./orderly run parameters date=$DATE
 echo "*** 404 page"
 ./orderly run 404 date=$DATE
-
+echo "*** FAQ page"
+./orderly run FAQ date=$DATE
 
 echo "*** Copying files"
 ./copy_index.R $DATE

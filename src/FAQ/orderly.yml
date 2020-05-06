@@ -25,6 +25,14 @@ script: script.R
 # Optional parameters for the task. Things listed here will be
 # available as R variables in your script.  For example:
 #
+# parameters:
+#   a:
+#     default: 1
+#   b: ~
+#
+# would declare a parameter called 'a' with a default value of 1, and
+# a parameter of b with no default.
+#
 parameters:
   date: ~
 
@@ -52,10 +60,9 @@ parameters:
 # would be the same as the .Rmd, with the extension changed to .docx)
 artefacts:
   - report:
-      description: Projections report for a single country
+      description: FAQ
       filenames:
-        - index.html
-#        - index.pdf
+        - FAQ.html
 
 # An optional name to describe the report in more detail than its
 # directory name (which must be short) but less detail than
@@ -84,7 +91,6 @@ packages:
   - plotly
   - grid
   - ggforce
-  - scales
 
 # Source files, in addition to the script.  Typically these will
 # contain function definitions.  These will be sourced after loading
@@ -93,8 +99,6 @@ packages:
 # otherwise you will have to add them to "resources" (see below)
 #
 # sources:
-sources:
-  - R/plotting.R
 
 # Resources that the script needs to run; this is an array of strings
 # representing filenames *relative to, and below, this directory*.
@@ -106,10 +110,7 @@ sources:
 # referenced in "views" or "data"
 #
 resources:
-  - index.Rmd
-  - summaries.rds
-  - wellcome.png
-  - ukaid.jpg
+  - FAQ.Rmd
 
 global_resources:
   _navbar.html: _navbar.html
@@ -148,9 +149,9 @@ global_resources:
 #   * before the colon is what the file will be called in your new directory
 #   * after the colon is what the file is called in the existing task
 #
-depends:
-  ecdc:
-    id: latest
-    use:
-      ecdc_all.rds: ecdc_all.rds
+#depends:
+#  ecdc:
+#    id: latest
+#    use:
+#      ecdc_all.rds: ecdc_all.rds
 
