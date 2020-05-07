@@ -166,7 +166,12 @@ res <- select(output_data, ISO, date, overall, all_overall, observed, income_gro
     C/mean(C[which(observed)[1:5]])
   } else {
     C/mean(C[date < as.Date("2020-03-01")])  
-  } ,
+  } , 
+  C_predict = if(sum(observed)>0) {
+    C_predict/mean(C_predict[which(observed)[1:5]])
+  } else {
+    C_predict/mean(C_predict[date < as.Date("2020-03-01")])  
+  }, 
   continent = countrycode::countrycode(iso3c, "iso3c","continent"))
 
 res <- split.data.frame(res, res$iso3c)

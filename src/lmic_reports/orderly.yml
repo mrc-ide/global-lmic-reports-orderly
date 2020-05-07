@@ -166,3 +166,7 @@ depends:
     id: latest(parameter:date == date)
     use:
       oxford_grt.rds: oxford_grt.rds
+  brt_google_mobility:
+    id: latest(parameter:date == date)
+    use:
+      google_brt.rds: google_brt.rds

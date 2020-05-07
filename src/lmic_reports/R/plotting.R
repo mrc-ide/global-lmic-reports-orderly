@@ -1006,12 +1006,12 @@ healthcare_plot_contrast_triple <- function(o1, o2, o3, data, date_0, date = Sys
     
 }
 
-plot_scan <- function(x, what = "likelihood", log = TRUE) {
+plot_scan <- function(x, what = "likelihood", log = TRUE, n = 1) {
   
   if (what == "likelihood") {
     
     # create df
-    df <- data.frame("z" = as.numeric(x$mat_log_ll))
+    df <- data.frame("z" = as.numeric(x$mat_log_ll[,,n]))
     df$x <- x$x
     df$y <- sort(rep(x$y, length(x$x)))
     
@@ -1035,7 +1035,7 @@ plot_scan <- function(x, what = "likelihood", log = TRUE) {
   } else if (what == "probability") {
     
     # create df
-    df <- data.frame("z" = as.numeric(x$renorm_mat_LL))
+    df <- data.frame("z" = as.numeric(x$renorm_mat_LL[,,n]))
     df$x <- x$x
     df$y <- sort(rep(x$y, length(x$x)))
     
@@ -1088,3 +1088,13 @@ intervention_plot <- function(res, date) {
   
 }
   
+
+intervention_plot_google <- function(res, date) {
+  
+  ggplot(res, aes(x = date, y = C, color = observed)) + 
+    geom_point() + 
+    theme_bw() + 
+    ylab("% Mobility") + 
+    xlab("Date")
+  
+}

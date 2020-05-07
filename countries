@@ -95,7 +95,7 @@ ZWE
 # Disabled for now:
 # BTN
 # CAF
-# COM
+COM
 # ERI
 # FJI
 # FSM
@@ -109,7 +109,7 @@ GNQ
 # LCA
 # LSO
 # MDG
-# MDV
+MDV
 # MNG
 # MOZ
 # NAM
@@ -120,10 +120,10 @@ GNQ
 # SLB
 SLE
 # SSD
-# STP
+STP
 SWZ
-# TCD
-# TJK
+TCD
+TJK
 # TKM
 # TLS
 # TON
@@ -132,4 +132,4 @@ SWZ
 # VNM
 # VUT
 # WSM
-# YEM
+YEM

@@ -36,7 +36,7 @@ if(length(to_remove) > 0) {
   if(length(to_remove) == (nrow(data)-1)) {
     data <- data[-head(to_remove,-1),]
   } else {
-  data <- data[-to_remove,]
+    data <- data[-to_remove,]
   }
 }
 
@@ -45,6 +45,7 @@ date_0 <- date
 
 # get country data
 oxford_grt <- readRDS("oxford_grt.rds")
+google_brt <- readRDS("google_brt.rds")
 
 # conduct unmitigated
 pop <- squire::get_population(country)
@@ -57,15 +58,18 @@ pop <- squire::get_population(country)
 reporting_fraction = 1
 R0_min = 2.0
 R0_max = 5.0
-int_unique <- squire:::interventions_unique(oxford_grt[[iso3c]], "C")
+Meff_min = 0.4
+Meff_max = 1
+Meff_step = 0.3
+int_unique <- squire:::interventions_unique(google_brt[[iso3c]], "C")
 R0_change <- int_unique$change
 date_R0_change <- int_unique$dates_change
 date_contact_matrix_set_change <- NULL
 squire_model <- explicit_model()
 pars_obs <- NULL
-day_step = 1
+day_step = 2
 R0_step = 0.2
-n_particles <- 100
+n_particles <- 20
 
 # sort out missing dates etc
 null_na <- function(x) {if(is.null(x)) {NA} else {x}}
@@ -73,13 +77,16 @@ min_death_date <- data$date[which(data$deaths>0)][1]
 last_start_date <- min(as.Date(null_na(date_R0_change[1]))-2, as.Date(null_na(min_death_date))-10, na.rm = TRUE)
 first_start_date <- max(as.Date("2020-01-04"),last_start_date - 30, na.rm = TRUE)
 
-# future::plan(future::multiprocess())
+#future::plan(future::multiprocess())
 
 out <- squire::calibrate(
   data = data,
   R0_min = R0_min,
   R0_max = R0_max,
   R0_step = R0_step,
+  Meff_min = Meff_min,
+  Meff_max = Meff_max,
+  Meff_step = Meff_step,
   first_start_date = first_start_date,
   last_start_date = last_start_date,
   day_step = day_step,
@@ -97,8 +104,12 @@ out <- squire::calibrate(
 saveRDS(out, "grid_out.rds")
 
 ## summarise what we have
-prob <- plot_scan(out$scan_results, what="probability", log = FALSE)
-ll <- plot_scan(out$scan_results, log = FALSE)
+prob <- lapply(seq_len(length(out$scan_results$z)), 
+               function(x) {plot_scan(out$scan_results, what="probability", log = FALSE, n=x)})
+prob <- cowplot::plot_grid(plotlist = lapply(prob,function(x){ x +
+    scale_fill_continuous(labels = scales::label_scientific(digits = 1)) + 
+    theme(legend.position = "top", legend.text = element_text(angle=45))}), nrow = 1)
+#ll <- plot_scan(out$scan_results, log = FALSE)
 
 index <- squire:::odin_index(out$model)
 forecast <- 7
@@ -122,7 +133,8 @@ d <- d + geom_point(data = out$scan_results$inputs$data,
   xlab("") +
   theme(legend.position = "none")
 
-intervention <- intervention_plot(oxford_grt[[iso3c]], date)
+#intervention <- intervention_plot(oxford_grt[[iso3c]], date)
+intervention <- intervention_plot_google(google_brt[[iso3c]], date)
 
 title <- cowplot::ggdraw() + 
   cowplot::draw_label(
@@ -137,7 +149,7 @@ line <- ggplot() + cowplot::draw_line(x = 0:10,y=1) +
         axis.text = element_blank(), 
         axis.ticks = element_blank())
 
-top_row <- cowplot::plot_grid(ll,prob,ncol=2)
+top_row <- cowplot::plot_grid(prob,ncol=1)
 
 pdf("fitting.pdf",width = 6,height = 10)
 print(cowplot::plot_grid(title,line,top_row,intervention,d,ncol=1,rel_heights = c(0.1,0.1,0.8,0.6,1)))
@@ -153,6 +165,9 @@ out_det <- squire::calibrate(
   R0_min = R0_min,
   R0_max = R0_max,
   R0_step = 0.05,
+  Meff_min = Meff_min,
+  Meff_max = Meff_max,
+  Meff_step = Meff_step,
   first_start_date = max(as.Date("2020-01-04"),last_start_date - 40, na.rm = TRUE),
   last_start_date = last_start_date,
   day_step = day_step,
