@@ -131,7 +131,10 @@ brt <- gbm.step(data = x,
                 tree.complexity = tree_complexity, 
                 learning.rate = learning_rate, 
                 bag.fraction = bag_fraction, 
-                max.trees = max_trees, n.folds = 5)
+                max.trees = max_trees, 
+                n.folds = 5, 
+                plot.main = FALSE, 
+                plot.folds = FALSE)
 
 # predicted <- predict.gbm(brt, x[, c(2:ncol(x))], n.trees = brt$gbm.call$best.trees, type = "response")
 # plot(overall$overall, predicted, ylim = c(-100, 20), xlim = c(-100, 20), pch = 20, cex = 2, ylab = "")
