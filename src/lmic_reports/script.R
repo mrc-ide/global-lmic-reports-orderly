@@ -59,7 +59,7 @@ reporting_fraction = 1
 R0_min = 2.0
 R0_max = 5.0
 Meff_min = 0.4
-Meff_max = 1
+Meff_max = 1.4
 Meff_step = 0.3
 int_unique <- squire:::interventions_unique(interventions[[iso3c]], "C")
 R0_change <- int_unique$change
@@ -129,8 +129,8 @@ d <- d + geom_point(data = out$scan_results$inputs$data,
   xlab("") +
   theme(legend.position = "none")
 
-#intervention <- intervention_plot(interventions[[iso3c]], date)
-intervention <- intervention_plot_google(interventions[[iso3c]], date)
+intervention <- intervention_plot(interventions[[iso3c]], date)
+#intervention <- intervention_plot_google(interventions[[iso3c]], date)
 
 title <- cowplot::ggdraw() + 
   cowplot::draw_label(
