@@ -334,13 +334,13 @@ saveRDS(summary_number_df, "summary_df.rds")
 
 #### **[Download the report for `r country`, `r format(date, "%Y-%m-%d")` here](`r url`).**
 
-This report uses data from the ECDC database of COVID-19 deaths reported. We use mathematical modelling techniques (see [Report 12](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-12-global-impact-covid-19/) for further details) to estimate the number of people that have been infected and to make short-term projections for future healthcare needs.
+This report uses data from the European Centre for Disease Control. These data are updated daily and whilst there may be a short delay, they are generally consistent with Ministry reports. These data are then used to back-calculate an ‘inferred number of COVID-19 infections’ using mathematical modelling techniques (see [Report 12](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-12-global-impact-covid-19/) for further details) to estimate the number of people that have been infected and to make short-term projections for future healthcare needs.
 
 <br> 
 
 ### Epidemiological Situation
 
-| **Total Infections** | **New Infections** | **Total Deaths** | **New Deaths** |
+| **Total Reported Cases** | **New Reported Cases** | **Total Reported Deaths** | **New Reported Deaths** |
 | --- | --- | --- | --- |
 | `r format(data$cases[1], big.mark=",")` | `r format(data$daily_cases[1], big.mark=",")` | `r format(data$deaths[1], big.mark=",")`|`r format(data$daily_deaths[1], big.mark=",")`|
 
@@ -348,7 +348,7 @@ The figure below shows the cumulative reported deaths as a function of the time 
 
 `r linebreak()`
 
-```{r fig1, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 1: Cumulative Deaths since 10 deaths.** Note if 10 deaths are yet to be reported, country will not be shown."), fig.height=fig_height(3.24,6), fig.width=fig_height(6,8), fig.align=fig_center()}
+```{r fig1, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 1: Cumulative Deaths since 10 deaths.** Note if 10 deaths are yet to be reported, country will not be shown."), fig.height=fig_height(3,6), fig.width=fig_height(5,8), fig.align=fig_center()}
 
 suppressWarnings(suppressMessages(print(cumulative_deaths_plot(country = country))))
 
@@ -364,7 +364,7 @@ We assume that the deaths reported to date provide the best indication of the st
 
 To explore this, we fit our age-structured SEIR model (see [Methods](https://mrc-ide.github.io/global-lmic-reports/parameters.html)) to the time series of deaths in a country, in order to estimate the start date of the epidemic and the baseline R0. We assume that 100% of COVID-19 related deaths have been reported. We have also included the impact of interventions that have been put in place using data from the [Oxford Coronavirus Government Response Tracker](https://www.bsg.ox.ac.uk/research/research-projects/coronavirus-government-response-tracker). We currently make assumptions about the efficacy of these interventions and so the projections should be interpreted as scenarios rather than predictions. Using our [mathematical model](https://github.com/mrc-ide/squire) that formalises this approach, we estimate that there has been a total of `r form(infs)` infections over the past 4 weeks.
 
-The figure below shows the estimated number of people infected over the past 4 weeks. The bar charts show, for comparison, the number of reported cases. It should be noted that the estimated infections may include both asymptomatic and mild cases that would not necessarily be identified through surveillance. The right-hand plot shows these data on a different scale as the estimated infections are likely to be much larger than the reported cases.
+The figure below shows the estimated number of people infected over the past 4 weeks. The bar charts show, for comparison, the number of reported cases. The right-hand plot shows these data on a different scale as the estimated infections are likely to be much larger than the reported cases.  **Importantly**, the estimated infections includes both asymptomatic and mild cases that would not necessarily be identified through surveillance. Consequently, the estimated infections are likely to be significantly higher than the reported cases (see our [FAQ](https://mrc-ide.github.io/global-lmic-reports/FAQ.html#why-are-the-estimated-infections-so-much-higher-than-the-reported-cases) for further explanation of these differences and why the reported cases and estimated infections are unlikely to match).
 
 <br>
 
