@@ -84,9 +84,9 @@ out <- squire::calibrate(
   R0_min = R0_min,
   R0_max = R0_max,
   R0_step = R0_step,
-  Meff_min = Meff_min,
-  Meff_max = Meff_max,
-  Meff_step = Meff_step,
+  # Meff_min = Meff_min,
+  # Meff_max = Meff_max,
+  # Meff_step = Meff_step,
   first_start_date = first_start_date,
   last_start_date = last_start_date,
   day_step = day_step,
@@ -104,12 +104,8 @@ out <- squire::calibrate(
 saveRDS(out, "grid_out.rds")
 
 ## summarise what we have
-prob <- lapply(seq_len(length(out$scan_results$z)), 
-               function(x) {plot_scan(out$scan_results, what="probability", log = FALSE, n=x)})
-prob <- cowplot::plot_grid(plotlist = lapply(prob,function(x){ x +
-    scale_fill_continuous(labels = scales::label_scientific(digits = 1)) + 
-    theme(legend.position = "top", legend.text = element_text(angle=45))}), nrow = 1)
-#ll <- plot_scan(out$scan_results, log = FALSE)
+prob <- plot_scan(out$scan_results, what="probability", log = FALSE)
+ll <- plot_scan(out$scan_results, log = FALSE)
 
 index <- squire:::odin_index(out$model)
 forecast <- 7
@@ -149,7 +145,7 @@ line <- ggplot() + cowplot::draw_line(x = 0:10,y=1) +
         axis.text = element_blank(), 
         axis.ticks = element_blank())
 
-top_row <- cowplot::plot_grid(prob,ncol=1)
+top_row <- cowplot::plot_grid(ll, prob, ncol=2)
 
 pdf("fitting.pdf",width = 6,height = 10)
 print(cowplot::plot_grid(title,line,top_row,intervention,d,ncol=1,rel_heights = c(0.1,0.1,0.8,0.6,1)))
@@ -165,9 +161,9 @@ out_det <- squire::calibrate(
   R0_min = R0_min,
   R0_max = R0_max,
   R0_step = 0.05,
-  Meff_min = Meff_min,
-  Meff_max = Meff_max,
-  Meff_step = Meff_step,
+  # Meff_min = Meff_min,
+  # Meff_max = Meff_max,
+  # Meff_step = Meff_step,
   first_start_date = max(as.Date("2020-01-04"),last_start_date - 40, na.rm = TRUE),
   last_start_date = last_start_date,
   day_step = day_step,

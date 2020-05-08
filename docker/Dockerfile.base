@@ -50,6 +50,11 @@ RUN install_packages --repo=https://ncov-ic.github.io/drat \
         qpdf \
         readxl \
         stringdist \
+        tidyverse \
+        gbm \
+        dismo \
+        conflicted \
+        gtools \
         scales \
         tidyr \
         zoo
