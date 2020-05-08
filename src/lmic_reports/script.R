@@ -67,9 +67,9 @@ date_R0_change <- int_unique$dates_change
 date_contact_matrix_set_change <- NULL
 squire_model <- explicit_model()
 pars_obs <- NULL
-day_step = 2
-R0_step = 0.2
-n_particles <- 20
+day_step = 1
+R0_step = 0.1
+n_particles <- 100
 
 # sort out missing dates etc
 null_na <- function(x) {if(is.null(x)) {NA} else {x}}
