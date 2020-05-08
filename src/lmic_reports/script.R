@@ -44,8 +44,8 @@ if(length(to_remove) > 0) {
 date_0 <- date
 
 # get country data
-oxford_grt <- readRDS("oxford_grt.rds")
-google_brt <- readRDS("google_brt.rds")
+interventions <- readRDS("oxford_grt.rds")
+#interventions <- readRDS("google_brt.rds")
 
 # conduct unmitigated
 pop <- squire::get_population(country)
@@ -61,7 +61,7 @@ R0_max = 5.0
 Meff_min = 0.4
 Meff_max = 1
 Meff_step = 0.3
-int_unique <- squire:::interventions_unique(google_brt[[iso3c]], "C")
+int_unique <- squire:::interventions_unique(interventions[[iso3c]], "C")
 R0_change <- int_unique$change
 date_R0_change <- int_unique$dates_change
 date_contact_matrix_set_change <- NULL
@@ -133,8 +133,8 @@ d <- d + geom_point(data = out$scan_results$inputs$data,
   xlab("") +
   theme(legend.position = "none")
 
-#intervention <- intervention_plot(oxford_grt[[iso3c]], date)
-intervention <- intervention_plot_google(google_brt[[iso3c]], date)
+#intervention <- intervention_plot(interventions[[iso3c]], date)
+intervention <- intervention_plot_google(interventions[[iso3c]], date)
 
 title <- cowplot::ggdraw() + 
   cowplot::draw_label(

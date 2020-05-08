@@ -85,7 +85,7 @@ cumulative_deaths_plot <- function(country) {
   continent <- unique(df$Continent[df$Region == country])
   
   gg_deaths <- ggplot(df_deaths[which(df_deaths$Continent == continent), ], aes(x=day_since, y=Cum_Deaths, group = Region)) + 
-    geom_line(data = doubling_lines_deaths, aes(x=x, y=y, linetype = Doubling),alpha=0.3, inherit.aes = FALSE,color = "black") +
+    geom_line(data = doubling_lines_deaths, aes(x=x, y=y, linetype = Doubling),alpha=0.7, inherit.aes = FALSE,color = "black") +
     geom_line(show.legend = FALSE, color = "grey", alpha = 0.6) +
     geom_line(data = df_deaths[which(df_deaths$Region == country), ], color = "red", lwd = 1) +
     geom_point(data = df_deaths[which(df_deaths$Region == country), ], color = "red") +
