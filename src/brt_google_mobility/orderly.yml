@@ -49,7 +49,7 @@ artefacts:
 packages:
   - lubridate
   - readxl
-  - tidyverse
+  - dplyr
   - gbm
   - dismo
   - conflicted 

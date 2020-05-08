@@ -3,7 +3,7 @@
 ## -----------------------------------------------------------------------------
 
 # Loading Required Libraries
-library(tidyverse); library(gbm); library(dismo); library(conflicted); library(gtools); library(lubridate)
+library(gbm); library(dismo); library(conflicted); library(gtools); library(lubridate)
 conflict_prefer("select", "dplyr")
 conflict_prefer("filter", "dplyr")
 conflict_prefer("area", "patchwork")
