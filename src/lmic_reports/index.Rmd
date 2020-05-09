@@ -407,7 +407,7 @@ We estimate that over the next 2 weeks demand for hospital beds will change from
 
 <br>
 
-```{r healthcare plots, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 4: Healthcare demands in the next 2 weeks.** Individuals needing an ICU bed are assumed to need mechanical ventilation. Projected demand for Scenario 1 (the epidemic continues to grow at the current rate) are shown in green (Maintain staus quo). Projections for Scenario 2 (a further 50% reduction in transmission) are shown in blue. Projections for Scenario 3 (relaxing interventions by 50%) are shown in red. The dashed line shows the current day."), fig.width=fig_height(8,10), fig.height=fig_height(4.5,5.5), fig.align=fig_center()}
+```{r healthcare plots, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 4: Healthcare demands in the next 2 weeks.** Individuals needing an ICU bed are assumed to need mechanical ventilation. Projected demand for Scenario 1 (the epidemic continues to grow at the current rate) are shown in green (Maintain status quo). Projections for Scenario 2 (a further 50% reduction in transmission) are shown in blue. Projections for Scenario 3 (relaxing interventions by 50%) are shown in red. The dashed line shows the current day."), fig.width=fig_height(8,10), fig.height=fig_height(4.5,5.5), fig.align=fig_center()}
 
   # suppressWarnings(suppressMessages(cowplot::plot_grid(
   #   healthcare_plot_contrast(o1 = params$o_list[[1]], o2 = params$o_list[[2]], 
@@ -447,7 +447,7 @@ The impact of each scenario has a more immediate effect on the daily number of i
 
 <br>
 
-```{r infections forecast plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap=figRef("**Figure 5: Daily number of infections estimated by fitting to the current total of deaths.** Projected infections for Scenario 1 (the epidemic continues to grow at the current rate) are shown in green (Maintain staus quo). Projections for Scenario 2 (a further 50% reduction in transmission) are shown in blue. Projections for Scenario 3 (relaxing interventions by 50%) are shown in red. The dashed line shows the current day."), fig.width=7, fig.height=fig_height(4,4.5), fig.align=fig_center()}
+```{r infections forecast plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap=figRef("**Figure 5: Daily number of infections estimated by fitting to the current total of deaths.** Projected infections for Scenario 1 (the epidemic continues to grow at the current rate) are shown in green (Maintain status quo). Projections for Scenario 2 (a further 50% reduction in transmission) are shown in blue. Projections for Scenario 3 (relaxing interventions by 50%) are shown in red. The dashed line shows the current day."), fig.width=7, fig.height=fig_height(4,4.5), fig.align=fig_center()}
 
 
 suppressWarnings(suppressMessages(print(cases_contrast_triple_bars(
