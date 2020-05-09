@@ -1,0 +1,29 @@
+#!/usr/bin/env Rscript
+
+write_data_schema <- function() {
+  
+  lines <- c("## Data Schema",
+             "",
+             "* **date** - ISO Date for the predicted number of infection/deaths/hospital burden",
+             "* **compartment** - One of deaths, infections, hospital demand, ICU demand and D (cumulative deaths)",
+             "* **y_025, y_25, y_median, y_mean, y_75, y_975** - Summary statistics for the compartment. E.g. y_25 is the 25% quantile",
+             "* **scenario** - The intervention scenario explored. One of Maintain Status Quo, Additional 50% Reduction, Relax Interventions 50%",
+             "* **country** - Country name",
+             "* **iso3c** - Country ISO3C letter",
+             "* **report_date** - ISO Date at which the reports were generated, i.e. what is the current date in the dataset")
+  
+  f <- "gh-pages/data/schema.md"
+  if (!file.exists(f)) {
+    dir.create(dirname(f))
+    file.create(f)
+  }
+  writeLines(lines, f)  
+  
+}
+
+
+if(!interactive()) {
+  usage <- "Usage:\n./write_data_schema.R"
+  args <- docopt::docopt(usage)
+  write_data_schema()
+}
