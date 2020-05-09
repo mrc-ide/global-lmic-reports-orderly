@@ -132,9 +132,11 @@ The parameter table below summarises the current best estimates incorporated in 
 | Mean duration of Stepdown post ICU (I\_Rec) | 3.4 days | Based on unpublished UK data |
 | Mean duration of hospitalisation if require ICU but do not receive it | 1 day | Working assumption |
 | Probability of dying in critical care | 50% | Based on [UK data](https://www.icnarc.org/Our-Audit/Audits/Cmp/Reports) |
-| Probability of death if require critical care but do not receive it | 95% | Working assumption based on expert clinical opinion |
-| Probability of death if require hospitalisation but do not receive it | 60% | Working assumption based on expert clinical opinion |
-| Multiplier of duration of stay for LIC and LMIC settings compared to HIC | 50% | Working assumption based on expert clinical opinion |
+| Probability of death if require critical care but do not receive it | 95% | Working assumption based on expert clinical opinion* |
+| Probability of death if require hospitalisation but do not receive it | 60% | Working assumption based on expert clinical opinion* |
+| Multiplier of duration of stay for LIC and LMIC settings compared to HIC | 50% | Working assumption based on expert clinical opinion* |
+
+* N.B. Given the substantially weaker health systems in LIC and LMIC, it is likely that disease outcomes will differ from the UK. The estimates listed above for the key parameters determining the severity outcomes are the result of a rapid expert clinical review. Eight clinical experts with experience both in treating COVID-19 patients in the UK and with previous experience in clinical practice in LIC/LMICs were asked to provide their assessment of severity outcomes in LMICs. Although there was broad consensus on these outcomes, it should be noted that there was also consensus that this is likely to be highly heterogeneous both within and between countries due to other factors that are difficult to quantify and for which data sources do not readily exist as of `r date`. 
 
 ### Age-Specific Parameters
 
@@ -158,4 +160,5 @@ The parameter table below summarises the current best estimates incorporated in 
 | 75 to 79 | 0.177 | 0.461 | 0.203 |
 | 80+ | 0.180 | 0.709 | 0.580 |
 | Source | [Verity et al. 2020](https://www.thelancet.com/pdfs/journals/laninf/PIIS1473-3099(20)30243-7.pdf) corrected for non-uniform attack rate in China (see [Report 12](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-12-global-impact-covid-19/)) | Adjusted from IFR distributional shape in [Verity et al. 2020](https://www.thelancet.com/pdfs/journals/laninf/PIIS1473-3099(20)30243-7.pdf) to give an overall proportion of cases requiring critical care of ~30% to match [UK data](https://www.icnarc.org/Our-Audit/Audits/Cmp/Reports) | Calculated from IFR in [Verity et al. 2020](https://www.thelancet.com/pdfs/journals/laninf/PIIS1473-3099(20)30243-7.pdf) corrected for non-uniform attack rate in China (see [Report 12](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-12-global-impact-covid-19/)) given the 50% fatality rate in critical care. |
+
 <br>

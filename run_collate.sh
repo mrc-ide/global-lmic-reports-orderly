@@ -20,5 +20,8 @@ echo "*** 404 page"
 echo "*** FAQ page"
 ./orderly run FAQ date=$DATE
 
+echo "*** data schema"
+./write_data_schema.R
+
 echo "*** Copying files"
 ./copy_index.R $DATE

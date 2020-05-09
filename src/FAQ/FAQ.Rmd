@@ -182,7 +182,7 @@ Of those infections that are symptomatic and would seek care, the surveillance u
 
 #### 4. Why are the reported cases increasing in my country but the estimated infections are falling?
   
-We fit our transmission model to the reported deaths in a country, as we believe this is the most accurate indication of the progression of the epidemic, with the under reporting of cases likely to be far greater than the under reporting of deaths. The level of under reporting, however, is likely to change over time. Testing capacity will be very limited at the beginning of the epidemic with only the most severe infections and deaths likely to be detected. As the epidemic progresses, testing capacity is likely to increase. Consequently, most countries will observe an increase in reported cases over time that is not in proportion to the reported deaths over time. In these settings, where daily reported cases are increasing but daily reported deaths remains constant, we predict the difference to be due to the increasing testing capacity and is unlikely to be indiciative of an increasing epidemic. 
+We fit our transmission model to the reported deaths in a country, as we believe this is the most accurate indication of the progression of the epidemic, with the under reporting of cases likely to be far greater than the under reporting of deaths. The level of under reporting, however, is likely to change over time. Testing capacity will be very limited at the beginning of the epidemic with only the most severe infections and deaths likely to be detected. As the epidemic progresses, testing capacity is likely to increase. Consequently, most countries will observe an increase in reported cases over time that is not in proportion to the reported deaths over time. In these settings, where daily reported cases are increasing but daily reported deaths remains constant, we predict the difference to be due to the increasing testing capacity and is unlikely to be indicative of an increasing epidemic. 
 
 <br>
 
@@ -208,7 +208,7 @@ Heterogeneity is known to slow the spread of respiratory pathogens, thereby resu
 
 <br>
 
-#### 8. Do your projections change if you modelled subnationally?
+#### 8. Do your projections change if you modelled sub-nationally?
   
 There are many aspects of populations that vary at a smaller spatial scale and could therefore differ between sub-national units. Our outputs are therefore representative of “average” patterns for a given country. Whilst sub-national estimates can help to determine local responses, we note that for the most part respiratory pathogens tend to spread quite rapidly across populations and so differences between sub-national areas are likely to primarily relate to the timescale of the epidemic rather than the overall attack rate. Differences in underlying demography and risk factors could however give rise to different overall mortality rates at the sub-national level.
 

@@ -57,7 +57,7 @@ pop <- squire::get_population(country)
 # calibration arguments
 reporting_fraction = 1
 R0_min = 2.0
-R0_max = 5.0
+R0_max = 5.6
 Meff_min = 0.4
 Meff_max = 1.4
 Meff_step = 0.3
@@ -68,7 +68,7 @@ date_contact_matrix_set_change <- NULL
 squire_model <- explicit_model()
 pars_obs <- NULL
 day_step = 1
-R0_step = 0.1
+R0_step = 0.2
 n_particles <- 100
 
 # sort out missing dates etc
@@ -279,7 +279,7 @@ data_sum <- do.call(rbind, data_sum)
 data_sum$country <- country
 data_sum$iso3c <- iso3c
 data_sum$report_date <- date
-data_sum[data_sum$compartment != "D",] <- data_sum
+data_sum <- data_sum[data_sum$compartment != "D",]
 write.csv(data_sum, "projections.csv", row.names = FALSE, quote = FALSE)
 
 # saveRDS("finished", paste0("/home/oj/GoogleDrive/AcademicWork/covid/githubs/global-lmic-reports-orderly/scripts/",iso3c,".rds"))
