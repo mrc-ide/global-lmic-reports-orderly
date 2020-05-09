@@ -166,7 +166,7 @@ We have also attempted to capture the impact of interventions that have been put
 
 * The combined reports can be downloaded from [here](https://github.com/mrc-ide/global-lmic-reports/blob/master/combined_reports.pdf)
 
-* Projected infections, deaths and healthcare demands can be downloaded from [here](https://github.com/mrc-ide/global-lmic-reports/tree/master/data)
+* Projected infections, deaths and healthcare demands can be downloaded from [here](`r data_url`)
 
 ---
 
