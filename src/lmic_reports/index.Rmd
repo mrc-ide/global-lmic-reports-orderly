@@ -130,6 +130,14 @@ if(data$deaths[1] >= 10) {
                           " deaths have been reported to date**")
 }
 
+if(any(data$daily_cases < 0)) {
+  show_cases_sentence <- paste("**N.B. ", country, 
+                          " has revised their historic reported cases and", 
+                          " thus have reported negative cases.**")
+} else  {
+  show_cases_sentence <- ""
+}
+
 
 ```
 
@@ -364,7 +372,7 @@ We assume that the deaths reported to date provide the best indication of the st
 
 To explore this, we fit our age-structured SEIR model (see [Methods](https://mrc-ide.github.io/global-lmic-reports/parameters.html)) to the time series of deaths in a country, in order to estimate the start date of the epidemic and the baseline R0. We assume that 100% of COVID-19 related deaths have been reported. We have also included the impact of interventions that have been put in place using data from the [Oxford Coronavirus Government Response Tracker](https://www.bsg.ox.ac.uk/research/research-projects/coronavirus-government-response-tracker). We currently make assumptions about the efficacy of these interventions and so the projections should be interpreted as scenarios rather than predictions. Using our [mathematical model](https://github.com/mrc-ide/squire) that formalises this approach, we estimate that there has been a total of `r form(infs)` infections over the past 4 weeks.
 
-The figure below shows the estimated number of people infected over the past 4 weeks. The bar charts show, for comparison, the number of reported cases. The right-hand plot shows these data on a different scale as the estimated infections are likely to be much larger than the reported cases.  **Importantly**, the estimated infections includes both asymptomatic and mild cases that would not necessarily be identified through surveillance. Consequently, the estimated infections are likely to be significantly higher than the reported cases (see our [FAQ](https://mrc-ide.github.io/global-lmic-reports/FAQ.html#why-are-the-estimated-infections-so-much-higher-than-the-reported-cases) for further explanation of these differences and why the reported cases and estimated infections are unlikely to match).
+The figure below shows the estimated number of people infected over the past 4 weeks. The bar charts show, for comparison, the number of reported cases. The right-hand plot shows these data on a different scale as the estimated infections are likely to be much larger than the reported cases.  **Importantly**, the estimated infections includes both asymptomatic and mild cases that would not necessarily be identified through surveillance. Consequently, the estimated infections are likely to be significantly higher than the reported cases (see our [FAQ](https://mrc-ide.github.io/global-lmic-reports/FAQ.html#why-are-the-estimated-infections-so-much-higher-than-the-reported-cases) for further explanation of these differences and why the reported cases and estimated infections are unlikely to match). `r show_cases_sentence`
 
 <br>
 

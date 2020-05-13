@@ -108,18 +108,10 @@ prob <- plot_scan(out$scan_results, what="probability", log = FALSE)
 ll <- plot_scan(out$scan_results, log = FALSE)
 
 index <- squire:::odin_index(out$model)
-forecast <- 7
-ymax <- max(
-  vapply(seq_len(dim(out$output)[3]), 
-         function(x) {
-           quantile(vapply(seq(max(out$output[1,"time",],-28, na.rm = TRUE),forecast+1), function(y){
-             sum(out$output[as.character(date+y),index$D,x] -
-                   out$output[as.character(date+y-1),index$D,x])
-           }, numeric(1)),na.rm=TRUE,probs = 0.975)},
-         numeric(1)),na.rm=TRUE)
-ymax <- max(out$scan_results$inputs$data$deaths, ymax)
+forecast <- 14
 
 d <- plot(out, "deaths", date_0 = date, x_var = "date")
+ymax <- max(out$scan_results$inputs$data$deaths, d$layers[[1]]$data$ymax)
 d <- d + geom_point(data = out$scan_results$inputs$data, 
                     mapping = aes(x=date,y=deaths), inherit.aes = FALSE) + 
   scale_x_date(limits = c(min(data$date),date+forecast)) +

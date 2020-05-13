@@ -505,25 +505,16 @@ deaths_plot_single <- function(out, data, date_0, date = Sys.Date(),
                                forecast = 14) {
   
   date <- as.Date(date)
+  gg <- plot(out, "deaths", date_0 = date_0, x_var = "date") 
+  ymax <- max(out$scan_results$inputs$data$deaths, gg$layers[[1]]$data$ymax)
   
-  ymax <- quantile(
-    vapply(seq_len(dim(out$output)[3]), 
-           function(x) {
-             max(vapply(seq(-28,forecast+1), function(y){
-               sum(out$output[as.character(date+y),index$D,x]-
-                     out$output[as.character(date+y-1),index$D,x])
-             }, numeric(1)),na.rm=TRUE)},
-           numeric(1)),na.rm=TRUE, 0.975)
-  
-  ymax <- max(out$scan_results$inputs$data$deaths, ymax*1.1)
-  
-  gg <- plot(out, "deaths", date_0 = date_0, x_var = "date") + 
+  gg <- gg + 
     geom_point(data = out$scan_results$inputs$data, mapping = aes(x=date, y=deaths,shape="Reported")) +
     ggplot2::geom_vline(xintercept = date, linetype = "dashed") +
     ggplot2::theme_bw()  +
     ggplot2::scale_y_continuous(expand = c(0,0), limits = c(0, ymax)) +
     ggplot2::scale_x_date(date_breaks = "1 week", date_labels = "%b %d",
-                          limits = c(date - 28, date + forecast)) +
+                          limits = c(min(data$date), date + forecast)) +
     ggplot2::scale_fill_manual(name = "", labels = rev(c("Estimated")),
                                values = (c("#c59e96"))) +
     ggplot2::scale_color_manual(name = "", labels = rev(c("Estimated")),
