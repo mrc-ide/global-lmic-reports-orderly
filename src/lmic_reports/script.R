@@ -196,7 +196,7 @@ beta_set <- squire:::beta_est(squire_model = squire_model,
                               model_params = out$scan_results$inputs$model_params,
                               R0 = R0)
 
-df <- data.frame(tt_beta = tt_beta, beta_set = beta_set, date = start_date + tt_beta)
+df <- data.frame(tt_beta = tt_beta, beta_set = beta_set, date = start_date + tt_beta, Rt = R0)
 writeLines(jsonlite::toJSON(df,pretty = TRUE), "input_params.json")
 
 ## -----------------------------------------------------------------------------
