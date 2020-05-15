@@ -52,7 +52,7 @@ pop <- squire::get_population(country)
 ## -----------------------------------------------------------------------------
 
 ## -----------------------------------------------------------------------------
-## Step 2a: Sourcing previous fits to limit grid search
+## Step 2a: Sourcing previous fits to focus grid search
 ## -----------------------------------------------------------------------------
 
 # what is the date of first death
@@ -72,7 +72,16 @@ R0_step = 0.2
 n_particles <- 100
 replicates <- 100
 
+
+
 # 1. Do we have a previous report for this country
+json <- NULL
+try({
+  json_path <- file.path("https://raw.githubusercontent.com/mrc-ide/global-lmic-reports/master/",iso3c,"input_params.json")
+  json <- jsonlite::read_json(json_path)
+})
+
+
 if (!is.null(reports) && (iso3c %in% reports$country)) {
   
   out <- file.path(here::here(), "archive", "lmic_reports", reports$id[which(reports$country==iso3c)], "grid_out.rds")
