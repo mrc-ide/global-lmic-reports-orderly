@@ -514,7 +514,7 @@ deaths_plot_single <- function(out, data, date_0, date = Sys.Date(),
     ggplot2::theme_bw()  +
     ggplot2::scale_y_continuous(expand = c(0,0), limits = c(0, ymax)) +
     ggplot2::scale_x_date(date_breaks = "1 week", date_labels = "%b %d",
-                          limits = c(min(data$date), date + forecast)) +
+                          limits = c(min(data$date[data$deaths>0]), date + forecast)) +
     ggplot2::scale_fill_manual(name = "", labels = rev(c("Estimated")),
                                values = (c("#c59e96"))) +
     ggplot2::scale_color_manual(name = "", labels = rev(c("Estimated")),
