@@ -72,8 +72,6 @@ R0_step = 0.2
 n_particles <- 100
 replicates <- 100
 
-
-
 # 1. Do we have a previous report for this country
 json <- NULL
 try({
@@ -81,44 +79,29 @@ try({
   json <- jsonlite::read_json(json_path)
 })
 
-
-if (!is.null(reports) && (iso3c %in% reports$country)) {
+if (!is.null(json) || is.null(json$Meff)) {
+ 
+    R0 <- json[[1]]$R0 
+    date <- json[[1]]$date
+    Meff <- json[[1]]$Meff
   
-  out <- file.path(here::here(), "archive", "lmic_reports", reports$id[which(reports$country==iso3c)], "grid_out.rds")
-  out <- readRDS(out)
-  
-  if (!is.nulll(out$scan_results$z)) {
-    
-    # recreate the grids
-    x_grid <- array(out$scan_results$x, dim(out$scan_results$renorm_mat_LL))
-    y_grid <- array(mapply(rep, out$scan_results$y, length(out$scan_results$x)), dim(out$scan_results$renorm_mat_LL))
-    if (!is.null(out$scan_results$z)) {
-      z_grid <- array(mapply(rep, out$scan_results$z, length(out$scan_results$x)*length(out$scan_results$y)), dim(out$scan_results$renorm_mat_LL))
-    }
-    
-    # first get the sorted density
-    ord <- order(out$scan_results$renorm_mat_LL, decreasing = TRUE)
-    cum <- cumsum(out$scan_results$renorm_mat_LL[ord])
-    ninety <- which(cum > 0.9)[1]
-    
     # get the range from this for R0 and grow it by 0.2
-    R0_max <- max(x_grid[ord[seq_len(ninety)]]) + 0.2
-    R0_min <- min(x_grid[ord[seq_len(ninety)]]) - 0.2
+    R0_max <- R0 + 1
+    R0_min <- R0 - 1
+    R0_step <- 0.05
     
-    # get the range for dates and grow it by 3 days
-    last_start_date <- max(y_grid[ord[seq_len(ninety)]])
-    first_start_date <- min(y_grid[ord[seq_len(ninety)]])
-    last_start_date <- as.Date(out$scan_results$y[match(last_start_date, as.numeric(out$scan_results$y))]) + 3
-    first_start_date <- as.Date(out$scan_results$y[match(first_start_date, as.numeric(out$scan_results$y))]) -3
+    # get the range for dates and grow it by 4 days
+    last_start_date <- as.Date(date) + 4
+    first_start_date <- as.Date(date) - 4
     
     # adust the dates so they are compliant with the data
     last_start_date <- min(c(last_start_date, as.Date(null_na(min_death_date))-10), na.rm = TRUE)
     first_start_date <- max(as.Date("2020-01-04"), first_start_date, na.rm = TRUE)
     
     # get the range for Meff
-    Meff_max <- max(z_grid[ord[seq_len(ninety)]]) + 0.2
-    Meff_min <- min(z_grid[ord[seq_len(ninety)]]) - 0.2
-    Meff_step <- 0.1
+    Meff_max <- min(Meff + 0.2, 1.0)
+    Meff_min <- max(Meff - 0.2)
+    Meff_step <- 0.01
     
   } else {
     
@@ -126,7 +109,7 @@ if (!is.null(reports) && (iso3c %in% reports$country)) {
     R0_min = 2.0
     R0_max = 5.6
     Meff_min = 0.5
-    Meff_max = 2
+    Meff_max = 1
     Meff_step = 0.3
     last_start_date <- as.Date(null_na(min_death_date))-10
     first_start_date <- max(as.Date("2020-01-04"),last_start_date - 30, na.rm = TRUE)
@@ -138,6 +121,7 @@ if (!is.null(reports) && (iso3c %in% reports$country)) {
   # Defualts if no previous data
   R0_min = 2.0
   R0_max = 5.6
+  R0_step = 0.05
   Meff_min = 0.5
   Meff_max = 2
   Meff_step = 0.3
@@ -151,7 +135,7 @@ out_det <- squire::calibrate(
   R0_min = R0_min,
   R0_max = R0_max,
   R0_step = 0.05,
-  R0_prior = list("func" = dnorm, args = list("mean"= 3.5, "sd"= 3, "log = TRUE")),
+  R0_prior = list("func" = dnorm, args = list("mean"= 3.5, "sd"= 0.25, "log = TRUE")),
   Meff_min = Meff_min,
   Meff_max = 1,
   Meff_step = 0.01,
