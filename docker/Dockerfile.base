@@ -53,6 +53,8 @@ RUN install_packages --repo=https://ncov-ic.github.io/drat \
         gbm \
         dismo \
         conflicted \
+        rvest \
+        xml2 \
         gtools \
         scales \
         tidyr \

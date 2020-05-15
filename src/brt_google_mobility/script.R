@@ -13,7 +13,7 @@ download_url <- function(url) {
     tf <- tempfile()
     code <- download.file(url, tf, mode = "wb")
     if (code != 0) {
-      stop("Error downloading google csv")
+      stop("Error downloading file")
     }
   },
   error = function(e) {
@@ -66,7 +66,11 @@ wb_metadata <- read.csv("World_Bank_Country_Metadata.csv", fileEncoding="UTF-8-B
   filter(region != "")
 
 # Loading in ACAPs Data
-acap_tf <- download_url("https://www.acaps.org/sites/acaps/files/resources/files/acaps_covid19_goverment_measures_dataset.xlsx")
+acap_site <- "https://www.acaps.org/covid19-government-measures-dataset"
+xml <- xml2::read_html(acap_site)
+url <- rvest::html_attr(rvest::html_nodes(xml, ".file a"), "href")
+  
+acap_tf <- download_url(url)
 acap <- readxl::read_excel(acap_tf, progress = FALSE, sheet = "Database",)
 ACAPs_measure <- acap %>%
   rename(country = COUNTRY, measure = MEASURE, type = LOG_TYPE, date = DATE_IMPLEMENTED) %>%
@@ -145,10 +149,10 @@ output_data <- new_ACAPs_cat %>%
   left_join(wb_metadata, by = "ISO") %>%
   ungroup(ISO) %>%
   select(overall, everything(), -country_region)
-predicted <- predict.gbm(brt, output_data[which(is.na(output_data$overall)), c(4:68)], n.trees = brt$gbm.call$best.trees, type = "response")
+predicted <- predict.gbm(brt, output_data[which(is.na(output_data$overall)), c(4:(ncol(output_data)))], n.trees = brt$gbm.call$best.trees, type = "response")
 output_data$observed <- !is.na(output_data$overall)
 output_data$overall[which(is.na(output_data$overall))] <- predicted
-output_data$all_overall <- predict.gbm(brt, output_data[, c(4:68)], n.trees = brt$gbm.call$best.trees, type = "response")
+output_data$all_overall <- predict.gbm(brt, output_data[, c(4:(ncol(output_data)))], n.trees = brt$gbm.call$best.trees, type = "response")
 
 ## -----------------------------------------------------------------------------
 ## Step 4: Data Formatting

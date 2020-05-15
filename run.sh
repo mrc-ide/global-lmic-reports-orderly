@@ -15,7 +15,7 @@ echo "*** Oxford GRT data"
 ./orderly run oxford_grt date=$DATE
 
 echo "*** Google BRT data"
-#./orderly run brt_google_mobility date=$DATE
+./orderly run brt_google_mobility date=$DATE
 
 echo "*** Updating country list"
 ./update_run_sh.R $DATE

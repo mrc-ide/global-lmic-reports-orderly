@@ -39,7 +39,6 @@ artefacts:
       description: Projections report for a single scenario
       filenames:
         - ecdc.xlsx
-        - ecdc.rds
         - ecdc_all.rds
 
 # Packages that should be loaded before the script is run.  Use this
