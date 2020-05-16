@@ -1,7 +1,7 @@
 orderly_id <- tryCatch(orderly::orderly_run_info()$id,
                        error = function(e) "<id>") # bury this in the html, docx
 
-version_min <- "0.4.4"
+version_min <- "0.4.11"
 if(packageVersion("squire") < version_min) {
   stop("squire needs to be updated to at least", version_min)
 }
@@ -77,7 +77,7 @@ min_death_date <- data$date[which(data$deaths>0)][1]
 last_start_date <- min(as.Date(null_na(date_R0_change[1]))-2, as.Date(null_na(min_death_date))-10, na.rm = TRUE)
 first_start_date <- max(as.Date("2020-01-04"),last_start_date - 30, na.rm = TRUE)
 
-#future::plan(future::multiprocess())
+# future::plan(future::multiprocess())
 
 out <- squire::calibrate(
   data = data,
@@ -181,6 +181,7 @@ start_date <- out_det$scan_results$y[pos[2]]
 if(!is.null(date_R0_change)) {
   start_date <- min(start_date, date_R0_change-1)
   tt_beta <- c(0, squire:::intervention_dates_for_odin(dates = date_R0_change,
+                                                       change = R0_change,
                                                        start_date = start_date,
                                                        steps_per_day = 1))
 } else {
@@ -188,7 +189,7 @@ if(!is.null(date_R0_change)) {
 }
 
 if(!is.null(R0_change)) {
-  R0 <- c(R0, R0 * R0_change)
+  R0 <- c(R0, R0 * tt_beta$change)
 } else {
   R0 <- R0
 }
@@ -196,7 +197,7 @@ beta_set <- squire:::beta_est(squire_model = squire_model,
                               model_params = out$scan_results$inputs$model_params,
                               R0 = R0)
 
-df <- data.frame(tt_beta = tt_beta, beta_set = beta_set, date = start_date + tt_beta)
+df <- data.frame(tt_beta = c(0,tt_beta$tt), beta_set = beta_set, date = start_date + c(0,tt_beta$tt))
 writeLines(jsonlite::toJSON(df,pretty = TRUE), "input_params.json")
 
 ## -----------------------------------------------------------------------------

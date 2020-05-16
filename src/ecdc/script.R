@@ -20,6 +20,7 @@ error = function(e) {
 })
 
 
+
 d <- readxl::read_excel("ecdc.xlsx", progress = FALSE)
 names(d)[1] <- "dateRep"
 
