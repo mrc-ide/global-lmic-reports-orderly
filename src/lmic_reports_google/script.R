@@ -66,8 +66,15 @@ date_R0_change <- int_unique$dates_change
 date_contact_matrix_set_change <- NULL
 squire_model <- squire::explicit_model()
 pars_obs <- NULL
-n_particles <- 5
-replicates <- 20
+
+if(short_run) {
+  n_particles <- 2
+  replicates <- 2
+} else {
+  n_particles <- 100
+  replicates <- 100
+  
+}
 
 # 1. Do we have a previous report for this country
 json <- NULL
@@ -116,7 +123,19 @@ if (!is.null(json) && !is.null(json$Meff)) {
   
 }
 
-future::plan(future::multiprocess())
+if (short_run) {
+  R0_min <- 2.0
+  R0_max <- 5
+  R0_step <- 1
+  Meff_min <- 0.4
+  Meff_max <- 2
+  Meff_step <- 0.4
+  last_start_date <- as.Date(null_na(min_death_date))-20
+  first_start_date <- max(as.Date("2020-01-04"),last_start_date - 35, na.rm = TRUE)
+  day_step <- 7
+}
+
+# future::plan(future::multiprocess())
 out_det <- squire::calibrate(
   data = data,
   R0_min = R0_min,
@@ -159,7 +178,7 @@ if(!is.null(date_R0_change)) {
 }
 
 if(!is.null(R0_change)) {
-  R0 <- c(R0, R0 * R0_change)
+  R0 <- c(R0, R0 * tt_beta$change)
 } else {
   R0 <- R0
 }
