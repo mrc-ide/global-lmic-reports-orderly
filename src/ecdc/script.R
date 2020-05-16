@@ -20,21 +20,14 @@ error = function(e) {
 })
 
 
+
 d <- readxl::read_excel("ecdc.xlsx", progress = FALSE)
 names(d)[1] <- "dateRep"
 
 names(d)[names(d) %in% c("Countries and territories", "countriesAndTerritories")] <- "Region"
+
+# remove imported early death in Philippines
+d[which(d$countryterritoryCode=="PHL" & as.Date(d$dateRep) == as.Date("2020-02-02")),]$deaths <- 0
+
+# save 
 saveRDS(d, "ecdc_all.rds")
-
-# original countries to keep
-keep <- c("Italy", "Germany", "France", "United_Kingdom",
-          "United_States_of_America", "South_Korea")
-
-d <- d[d$Region %in% keep, ]
-
-stopifnot(length(unique(d$Region)) == length(keep))
-
-d$t <- lubridate::decimal_date(d$dateRep)
-d <- d[order(d$Region, d$t), ]
-
-saveRDS(d, "ecdc.rds")
