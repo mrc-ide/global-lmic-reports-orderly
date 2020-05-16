@@ -54,3 +54,89 @@ reports_day <- function(date = NULL) {
   reports$date <- as.character(date)
   return(reports)
 }
+
+
+generate_draws <- function(scan_results, squire_model, replicates, n_particles, forecast,
+                           country, population, interventions) {
+  
+  # carry out sims drawn from the grid
+  if (is.null(scan_results$z)) {
+    res <- squire:::sample_grid_scan(scan_results = scan_results,
+                                     n_sample_pairs = replicates,
+                                     n_particles = n_particles,
+                                     forecast_days = forecast ,
+                                     full_output = TRUE)
+  } else {
+    res <- squire:::sample_3d_grid_scan(scan_results = scan_results,
+                                        n_sample_pairs = replicates,
+                                        n_particles = n_particles,
+                                        forecast_days = forecast ,
+                                        full_output = TRUE)
+  }
+  
+  
+  # recreate model output for each type of model(ish)
+  if (inherits(squire_model, "stochastic")) {
+    
+    # create a fake run object and fill in the required elements
+    r <- squire_model$run_func(country = country,
+                               contact_matrix_set = scan_results$inputs$model_params$contact_matrix_set,
+                               tt_contact_matrix = scan_results$inputs$model_params$tt_matrix,
+                               hosp_bed_capacity = scan_results$inputs$model_params$hosp_bed_capacity,
+                               tt_hosp_beds = scan_results$inputs$model_params$tt_hosp_beds,
+                               ICU_bed_capacity = scan_results$inputs$model_params$ICU_bed_capacity,
+                               tt_ICU_beds = scan_results$inputs$model_params$tt_ICU_beds,
+                               population = population,
+                               replicates = 1,
+                               time_period = nrow(res$trajectories))
+    
+    # first let's create the output
+    names(res)[names(res) == "trajectories"] <- "output"
+    dimnames(res$output) <- list(dimnames(res$output)[[1]], dimnames(r$output)[[2]], NULL)
+    r$output <- res$output
+    
+    # and adjust the time as before
+    full_row <- match(0, apply(r$output[,"time",],2,function(x) { sum(is.na(x)) }))
+    saved_full <- r$output[,"time",full_row]
+    for(i in seq_len(replicates)) {
+      na_pos <- which(is.na(r$output[,"time",i]))
+      full_to_place <- saved_full - which(rownames(r$output) == as.Date(max(data$date))) + 1L
+      if(length(na_pos) > 0) {
+        full_to_place[na_pos] <- NA
+      }
+      r$output[,"time",i] <- full_to_place
+    }
+    
+  } else if (inherits(squire_model, "deterministic")) {
+    r <- list("output" = res$trajectories)
+    r <- structure(r, class = "squire_simulation")
+  }
+  
+  # second let's recreate the output
+  r$model <- res$inputs$model$odin_model(
+    user = res$inputs$model_params, unused_user_action = "ignore"
+  )
+  
+  # we will add the interventions here so that we now what times are needed for projection
+  r$interventions <- interventions
+  
+  # as well as adding the scan_results so it's easy to draw from the scan again in the future
+  r$scan_results <- scan_results
+  
+  # and add the parameters that changed between each simulation, i.e. drawn from gris
+  r$replicate_parameters <- res$param_grid
+  
+  # and fix the replicates
+  r$parameters$replicates <- replicates
+  r$parameters$time_period <- as.numeric(diff(as.Date(range(rownames(r$output)))))
+  
+  return(r)
+  
+}
+
+named_list <- function(...) {
+  get <- as.character(match.call())
+  l <- list(...)
+  names(l) <- tail(get, -1)
+  return(l)
+}

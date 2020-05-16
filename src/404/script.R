@@ -3,4 +3,4 @@ orderly_id <- tryCatch(orderly::orderly_run_info()$id,
 
 date <- as.Date(date)
 rmarkdown::render("404.Rmd", output_format = c("html_document"), 
-                  output_options = list(pandoc_args = c("--metadata=title:\"404\"")))
+                  output_options = list(pandoc_args = c("--metadata=title:404")))
