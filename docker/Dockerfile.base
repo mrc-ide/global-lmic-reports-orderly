@@ -4,6 +4,7 @@ RUN apt-get update && apt-get -y install --no-install-recommends \
         libcurl4-openssl-dev \
         libjpeg-dev \
         libv8-dev \
+        libxml2-dev \
         parallel \
         zlib1g-dev
 
