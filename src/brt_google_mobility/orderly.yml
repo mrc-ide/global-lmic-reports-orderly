@@ -52,6 +52,7 @@ packages:
   - dplyr
   - gbm
   - dismo
+  - tidyr
   - conflicted 
   - gtools
   - stringi
