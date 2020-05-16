@@ -506,7 +506,7 @@ deaths_plot_single <- function(out, data, date_0, date = Sys.Date(),
   
   date <- as.Date(date)
   gg <- plot(out, "deaths", date_0 = date_0, x_var = "date") 
-  ymax <- max(out$scan_results$inputs$data$deaths, gg$layers[[1]]$data$ymax)
+  ymax <- max(out$scan_results$inputs$data$deaths, gg$layers[[1]]$data$ymax[gg$layers[[1]]$data$x<(as.Date(date)+forecast)])
   
   gg <- gg + 
     geom_point(data = out$scan_results$inputs$data, mapping = aes(x=date, y=deaths,shape="Reported")) +
@@ -1090,7 +1090,7 @@ intervention_plot_google <- function(res, date, data, forecast) {
                           limits = c(min(res$date[which(res$observed)])-7, max(res$date))) +
     scale_color_discrete(name = "Observed") +
     theme_bw() + 
-    theme(legend.position = c(0.1,0.1)) + 
+    theme(legend.position = c(0.1,0.3)) + 
     ylab("% Mobility") + 
     xlab("Date")
   

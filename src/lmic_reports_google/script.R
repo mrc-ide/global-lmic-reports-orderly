@@ -213,7 +213,8 @@ prob2 <- plot(out$scan_results, what="probability", log = FALSE, show = c(1,3))
 prob3 <- plot(out$scan_results, what="probability", log = FALSE, show = c(2,3))
 mp <- max(c(prob1$data$z, prob2$data$z, prob3$data$z))
 suppressMessages(
-  what <- lapply(list(prob1, prob2, prob3), function(x) {x + scale_fill_viridis_c(name = "Probability", limits = c(0, mp))})
+  what <- lapply(list(prob1, prob2, prob3), function(x) {x + theme(axis.title = element_text(size = 9)) +
+                                                                   scale_fill_viridis_c(name = "Probability", limits = c(0, mp))})
 )
 leg <- cowplot::get_legend(what[[3]])
 what <- lapply(what, function(x){x+theme(legend.position = "none", plot.title = element_blank())})
@@ -228,7 +229,7 @@ d <- plot(out, "deaths", date_0 = date, x_var = "date")
 ymax <- max(out$scan_results$inputs$data$deaths, d$layers[[1]]$data$ymax)
 d <- d + geom_point(data = out$scan_results$inputs$data, 
                     mapping = aes(x=date,y=deaths), inherit.aes = FALSE) + 
-  scale_x_date(limits = c(min(data$date),date+forecast)) +
+  scale_x_date(limits = c(min(data$date[which(data$deaths>0)]),date+forecast)) +
   scale_y_continuous(limits = c(0,ymax+1)) + 
   geom_vline(xintercept = date, linetype = "dashed") +
   ylab("Deaths") + 
@@ -251,7 +252,7 @@ line <- ggplot() + cowplot::draw_line(x = 0:10,y=1) +
         axis.text = element_blank(), 
         axis.ticks = element_blank())
 
-pdf("fitting.pdf",width = 6,height = 10)
+pdf("fitting.pdf",width = 8.5,height = 12)
 print(cowplot::plot_grid(title,line,top_row,intervention,d,ncol=1,rel_heights = c(0.1,0.1,0.8,0.6,1)))
 dev.off()
 
