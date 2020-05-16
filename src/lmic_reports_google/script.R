@@ -9,7 +9,7 @@ if(packageVersion("squire") < version_min) {
 ## -----------------------------------------------------------------------------
 ## Step 1: Incoming Date
 ## -----------------------------------------------------------------------------
-system(paste0("echo ",iso3c))
+system(paste0("echo LMIC Reports Google Mobility for  ",iso3c))
 set.seed(123)
 date <- as.Date(date)
 
