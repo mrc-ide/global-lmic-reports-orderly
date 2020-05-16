@@ -1080,11 +1080,17 @@ intervention_plot <- function(res, date) {
 }
   
 
-intervention_plot_google <- function(res, date) {
+intervention_plot_google <- function(res, date, data, forecast) {
+  
+  date <- as.Date(date)
   
   ggplot(res, aes(x = date, y = C, color = observed)) + 
     geom_point() + 
+    ggplot2::scale_x_date(date_breaks = "2 week", date_labels = "%b %d",
+                          limits = c(min(res$date[which(res$observed)])-7, max(res$date))) +
+    scale_color_discrete(name = "Observed") +
     theme_bw() + 
+    theme(legend.position = c(0.1,0.1)) + 
     ylab("% Mobility") + 
     xlab("Date")
   
