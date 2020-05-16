@@ -12,7 +12,6 @@ if(packageVersion("squire") < version_min) {
 system(paste0("echo ",iso3c))
 set.seed(123)
 date <- as.Date(date)
-reports <- reports_day(as.character(date-1))
 
 ## Get the ECDC data
 ecdc <- readRDS("ecdc_all.rds")
@@ -67,9 +66,7 @@ date_R0_change <- int_unique$dates_change
 date_contact_matrix_set_change <- NULL
 squire_model <- explicit_model()
 pars_obs <- NULL
-day_step = 1
-R0_step = 0.2
-n_particles <- 100
+n_particles <- 50
 replicates <- 100
 
 # 1. Do we have a previous report for this country
@@ -79,54 +76,43 @@ try({
   json <- jsonlite::read_json(json_path)
 })
 
-if (!is.null(json) || is.null(json$Meff)) {
- 
-    R0 <- json[[1]]$R0 
-    date <- json[[1]]$date
-    Meff <- json[[1]]$Meff
+if (!is.null(json) && !is.null(json$Meff)) {
   
-    # get the range from this for R0 and grow it by 0.2
-    R0_max <- R0 + 1
-    R0_min <- R0 - 1
-    R0_step <- 0.05
-    
-    # get the range for dates and grow it by 4 days
-    last_start_date <- as.Date(date) + 4
-    first_start_date <- as.Date(date) - 4
-    
-    # adust the dates so they are compliant with the data
-    last_start_date <- min(c(last_start_date, as.Date(null_na(min_death_date))-10), na.rm = TRUE)
-    first_start_date <- max(as.Date("2020-01-04"), first_start_date, na.rm = TRUE)
-    
-    # get the range for Meff
-    Meff_max <- min(Meff + 0.2, 1.0)
-    Meff_min <- max(Meff - 0.2)
-    Meff_step <- 0.01
-    
-  } else {
-    
-    # Defualts if no previous data
-    R0_min = 2.0
-    R0_max = 5.6
-    Meff_min = 0.5
-    Meff_max = 1
-    Meff_step = 0.3
-    last_start_date <- as.Date(null_na(min_death_date))-10
-    first_start_date <- max(as.Date("2020-01-04"),last_start_date - 30, na.rm = TRUE)
-    
-  }
+  R0 <- json[[1]]$R0 
+  date <- json[[1]]$date
+  Meff <- json[[1]]$Meff
+  
+  # get the range from this for R0 and grow it by 0.2
+  R0_max <- R0 + 0.75
+  R0_min <- R0 - 0.75
+  R0_step <- 0.05
+  
+  # get the range for dates and grow it by 7 days
+  last_start_date <- as.Date(date) + 7
+  first_start_date <- as.Date(date) - 7
+  
+  # adust the dates so they are compliant with the data
+  last_start_date <- min(c(last_start_date, as.Date(null_na(min_death_date))-10), na.rm = TRUE)
+  first_start_date <- max(as.Date("2020-01-04"), first_start_date, na.rm = TRUE)
+  day_step <- 1
+  
+  # get the range for Meff
+  Meff_max <- min(Meff + 0.2)
+  Meff_min <- max(Meff - 0.2)
+  Meff_step <- 0.01
   
 } else {
   
   # Defualts if no previous data
-  R0_min = 2.0
-  R0_max = 5.6
-  R0_step = 0.05
-  Meff_min = 0.5
-  Meff_max = 2
-  Meff_step = 0.3
+  R0_min <- 2.0
+  R0_max <- 5.6
+  R0_step <- 0.25
+  Meff_min <- 0.5
+  Meff_max <- 2
+  Meff_step <- 0.3
   last_start_date <- as.Date(null_na(min_death_date))-20
   first_start_date <- max(as.Date("2020-01-04"),last_start_date - 30, na.rm = TRUE)
+  day_step <- 2
   
 }
 
@@ -134,14 +120,14 @@ out_det <- squire::calibrate(
   data = data,
   R0_min = R0_min,
   R0_max = R0_max,
-  R0_step = 0.05,
-  R0_prior = list("func" = dnorm, args = list("mean"= 3.5, "sd"= 0.25, "log = TRUE")),
+  R0_step = R0_step,
+  R0_prior = list("func" = dnorm, args = list("mean"= 3.2, "sd"= 0.25, "log" = TRUE)),
   Meff_min = Meff_min,
-  Meff_max = 1,
-  Meff_step = 0.01,
+  Meff_max = Meff_max,
+  Meff_step = Meff_step,
   first_start_date = first_start_date,
   last_start_date = last_start_date,
-  day_step = 1,
+  day_step = day_step,
   squire_model = squire:::deterministic_model(),
   pars_obs = pars_obs,
   n_particles = 2,
@@ -150,7 +136,7 @@ out_det <- squire::calibrate(
   date_R0_change = date_R0_change,
   replicates = replicates,
   country = country,
-  forecast = 28,
+  forecast = 0
 )
 
 ## and save the info for the interface
@@ -177,16 +163,50 @@ if(!is.null(R0_change)) {
   R0 <- R0
 }
 beta_set <- squire:::beta_est(squire_model = squire_model,
-                              model_params = out$scan_results$inputs$model_params,
+                              model_params = out_det$scan_results$inputs$model_params,
                               R0 = R0*Meff)
 
-df <- data.frame(tt_beta = c(0,tt_beta$tt), beta_set = beta_set, date = start_date + c(0,tt_beta$tt), Meff = Meff)
+df <- data.frame(tt_beta = c(0,tt_beta$tt), beta_set = beta_set, 
+                 date = start_date + c(0,tt_beta$tt), R0 = R0, Meff = Meff)
 writeLines(jsonlite::toJSON(df,pretty = TRUE), "input_params.json")
 
 
 ## -----------------------------------------------------------------------------
 ## Step 3: Particle Filter
 ## -----------------------------------------------------------------------------
+
+## take the density from the deterministic to focus the grid
+
+# recreate the grids
+x_grid <- array(out_det$scan_results$x, dim(out_det$scan_results$renorm_mat_LL))
+y_grid <- array(mapply(rep, out_det$scan_results$y, length(out_det$scan_results$x)), dim(out_det$scan_results$renorm_mat_LL))
+z_grid <- array(mapply(rep, out_det$scan_results$z, length(out_det$scan_results$x)*length(out_det$scan_results$y)), dim(out_det$scan_results$renorm_mat_LL))
+
+# first get the sorted density
+ord <- order(out_det$scan_results$renorm_mat_LL, decreasing = TRUE)
+cum <- cumsum(out_det$scan_results$renorm_mat_LL[ord])
+hpd <- which(cum > 0.75)[1]
+
+# get the range from this for R0 and grow it by 0.1
+R0_max <- max(x_grid[ord[seq_len(hpd)]]) + 0.1
+R0_min <- min(x_grid[ord[seq_len(hpd)]])
+R0_step <- 0.2
+
+# get the range for dates and grow it by 3 days
+last_start_date <- max(y_grid[ord[seq_len(hpd)]])
+first_start_date <- min(y_grid[ord[seq_len(hpd)]])
+last_start_date <- as.Date(out_det$scan_results$y[match(last_start_date, as.numeric(out_det$scan_results$y))]) + 2
+first_start_date <- as.Date(out_det$scan_results$y[match(first_start_date, as.numeric(out_det$scan_results$y))]) -2
+
+# adust the dates so they are compliant with the data
+last_start_date <- min(c(last_start_date, as.Date(null_na(min_death_date))-20), na.rm = TRUE)
+first_start_date <- max(as.Date("2020-01-04"), first_start_date, na.rm = TRUE)
+day_step <- 1
+
+# get the range for Meff
+Meff_max <- min(max(z_grid[ord[seq_len(hpd)]])+0.05, 2)
+Meff_min <- max(min(z_grid[ord[seq_len(hpd)]])-0.05, 0.5)
+Meff_step <- 0.02
 
 
 # future::plan(future::multiprocess())
@@ -195,6 +215,7 @@ out <- squire::calibrate(
   R0_min = R0_min,
   R0_max = R0_max,
   R0_step = R0_step,
+  R0_prior = list("func" = dnorm, args = list("mean"= 3.2, "sd"= 0.25, "log" = TRUE)),
   Meff_min = Meff_min,
   Meff_max = Meff_max,
   Meff_step = Meff_step,
@@ -209,7 +230,7 @@ out <- squire::calibrate(
   date_R0_change = date_R0_change,
   replicates = replicates,
   country = country,
-  forecast = 28
+  forecast = 0
 )
 
 saveRDS(out, "grid_out.rds")
@@ -218,6 +239,13 @@ saveRDS(out, "grid_out.rds")
 prob1 <- plot(out$scan_results, what="probability", log = FALSE, show = c(1,2))
 prob2 <- plot(out$scan_results, what="probability", log = FALSE, show = c(1,3))
 prob3 <- plot(out$scan_results, what="probability", log = FALSE, show = c(2,3))
+mp <- max(c(prob1$data$z, prob2$data$z, prob3$data$z))
+what <- lapply(list(prob1, prob2, prob3), function(x) {x + scale_fill_viridis_c(name = "Probability", limits = c(0, mp))})
+leg <- cowplot::get_legend(what[[3]])
+what <- lapply(what, function(x){x+theme(legend.position = "none", plot.title = element_blank())})
+what[[4]] <- leg
+top_row <- cowplot::plot_grid(plotlist = what, ncol=4, rel_widths = c(1,1,1,0.4))
+
 
 index <- squire:::odin_index(out$model)
 forecast <- 14
@@ -249,29 +277,45 @@ line <- ggplot() + cowplot::draw_line(x = 0:10,y=1) +
         axis.text = element_blank(), 
         axis.ticks = element_blank())
 
-top_row <- cowplot::plot_grid(prob1, prob2, prob3, ncol=3)
-
 pdf("fitting.pdf",width = 6,height = 10)
 print(cowplot::plot_grid(title,line,top_row,intervention,d,ncol=1,rel_heights = c(0.1,0.1,0.8,0.6,1)))
 dev.off()
-
 
 
 ## -----------------------------------------------------------------------------
 ## Step 4: Scenarios
 ## -----------------------------------------------------------------------------
 
-# conduct scnearios
-mit <- squire::projections(out, R0_change = 0.5, tt_R0 = 0)
+## Conduct scnearios
+fr0 <- tail(out$interventions$R0_change,1)
 
-if(!is.null(out$interventions$R0_change)) {
-  rev_change <- 1-((1-tail(out$interventions$R0_change,1))/2)
-} else {
-  rev_change <- 1
-}
-rev <- squire::projections(out, R0 = mean(out$replicate_parameters$R0)*rev_change, tt_R0 = 0)
+# Maintaining the current set of measures for a further 3 months following which contacts return to pre-intervention levels  
+maintain_3months_lift <- squire::projections(out, R0_change = c(1, 1/fr0), tt_R0 = c(0,90))
 
-r_list <- list(out, mit, rev)
+# Enhancing movement restrictions for 3 months (50% further reduction in contacts) which then return to pre-intervention levels (Mitigation) 
+mitigation_3months_lift <- squire::projections(out, R0_change = c(0.5,1/fr0), tt_R0 = c(0,90))
+
+# Relax by 50% for 3 months and then return to pre-intervention levels 
+reverse_3_months_lift <- squire::projections(out, R0_change = c((1/fr0)*(fr0/2), 1/fr0), tt_R0 = c(0, 90))
+
+# Enhancing movement restrictions until the end of the year (50% further reduction in contacts) which then return to pre-intervention levels   
+mitigation_rest_year_lift <- squire::projections(out, R0_change = c(0.5, 1/fr0), tt_R0 = c(0,as.Date("2020-12-31")-Sys.Date()))
+
+# Enhance movement restrictions for 3 months (50% further reduction in contacts), ease restrictions for a further 3 months (current contacts), then return to pre-intervention levels  
+mitigation_3months_ease_3months_lift <- squire::projections(out, R0_change = c(0.5, 1, 1/fr0), tt_R0 = c(0, 90, 180))
+
+# Suppression for 3 months (75% reduction in contacts) which then return to pre-intervention levels 
+suppress_3months_lift <- squire::projections(out, R0_change = c((1/fr0)*(fr0/4), 1/fr0), tt_R0 = c(0, 90))
+
+# Long-term sustained suppression (75% reduction in contacts)  
+suppress_full <- squire::projections(out, R0_change = c((1/fr0)*(fr0/4)), tt_R0 = c(0))
+
+# Full lifting of emergency measures in a week – contact rates are assumed to return to pre-intervention levels  
+lift_week <- squire::projections(out, R0_change = c(1,1/fr0), tt_R0 = c(0, 7))
+
+r_list <- list(maintain_3months_lift, mitigation_rest_year_lift, reverse_3_months_lift, 
+               mitigation_3months_ease_3months_lift, suppress_3months_lift, suppress_full, 
+               lift_week)
 o_list <- lapply(r_list, squire::format_output,
                  var_select = c("infections","deaths","hospital_demand","ICU_demand", "D"),
                  date_0 = date_0)
