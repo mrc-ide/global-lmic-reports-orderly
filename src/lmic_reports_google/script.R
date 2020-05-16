@@ -236,7 +236,7 @@ d <- d + geom_point(data = out$scan_results$inputs$data,
   theme(legend.position = "none")
 
 #intervention <- intervention_plot(interventions[[iso3c]], date)
-intervention <- intervention_plot_google(interventions[[iso3c]], date)
+intervention <- intervention_plot_google(interventions[[iso3c]], date, data, forecast)
 
 title <- cowplot::ggdraw() + 
   cowplot::draw_label(

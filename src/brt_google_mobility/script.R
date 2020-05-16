@@ -199,15 +199,6 @@ res <- lapply(res, function(x) {
   }
 })
 
-
-res <- lapply(res,function(x){
-  if(nrow(x) > 0) {
-  x <- x[as.Date(x$date) <= date,]
-  }
-  return(x)
-  
-})
-
 # make sure they all have a pre first switch date
 res <- lapply(res,function(x){
   
