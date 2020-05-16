@@ -26,6 +26,11 @@ names(d)[1] <- "dateRep"
 
 names(d)[names(d) %in% c("Countries and territories", "countriesAndTerritories")] <- "Region"
 
+# sort out the date malarkey that happened on the 16th May
+if(is.na(as.Date(d$dateRep[1], "%Y-%m-%d"))) {
+  d$dateRep <- as.Date(d$dateRep, format = "%d/%m/%Y")
+}
+
 # remove imported early death in Philippines
 d[which(d$countryterritoryCode=="PHL" & as.Date(d$dateRep) == as.Date("2020-02-02")),]$deaths <- 0
 
