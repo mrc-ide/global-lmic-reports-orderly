@@ -181,6 +181,7 @@ start_date <- out_det$scan_results$y[pos[2]]
 if(!is.null(date_R0_change)) {
   start_date <- min(start_date, date_R0_change-1)
   tt_beta <- c(0, squire:::intervention_dates_for_odin(dates = date_R0_change,
+                                                       change = R0_change,
                                                        start_date = start_date,
                                                        steps_per_day = 1))
 } else {
@@ -196,7 +197,7 @@ beta_set <- squire:::beta_est(squire_model = squire_model,
                               model_params = out$scan_results$inputs$model_params,
                               R0 = R0)
 
-df <- data.frame(tt_beta = tt_beta, beta_set = beta_set, date = start_date + tt_beta, Rt = R0)
+df <- data.frame(tt_beta = tt_beta, beta_set = beta_set, date = start_date + tt_beta)
 writeLines(jsonlite::toJSON(df,pretty = TRUE), "input_params.json")
 
 ## -----------------------------------------------------------------------------
