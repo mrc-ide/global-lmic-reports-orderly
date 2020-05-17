@@ -356,7 +356,7 @@ The figure below shows the cumulative reported deaths as a function of the time 
 
 `r linebreak()`
 
-```{r fig1, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 1: Cumulative Deaths since 10 deaths.** Note if 10 deaths are yet to be reported, country will not be shown."), fig.height=fig_height(3,6), fig.width=fig_height(5,8), fig.align=fig_center()}
+```{r fig1, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 1: Cumulative Deaths since 10 deaths.** Country not shown if fewer than 10 deaths."), fig.height=fig_height(3.2,6), fig.width=fig_height(6,8), fig.align=fig_center()}
 
 suppressWarnings(suppressMessages(print(cumulative_deaths_plot(country = country))))
 
