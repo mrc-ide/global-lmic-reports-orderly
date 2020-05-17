@@ -9,16 +9,17 @@ if(packageVersion("squire") < version_min) {
 ## -----------------------------------------------------------------------------
 ## Step 1: Incoming Date
 ## -----------------------------------------------------------------------------
-system(paste0("echo ",iso3c))
+system(paste0("echo LMIC Reports Oxford GRT for  ",iso3c, ". Short Run = ", short_run, ". Parallel = ", parallel))
 set.seed(123)
 date <- as.Date(date)
+short_run <- as.logical(short_run)
+parllel <- as.logical(parallel)
 
-# prepare fitting first
-start <- 10
+# prepare run type first
 
 if(short_run) {
   replicates <- 2
-  particles <- 2
+  n_particles <- 2
 }
 
 ## Get the ECDC data
@@ -49,7 +50,6 @@ date_0 <- date
 
 # get country data
 interventions <- readRDS("oxford_grt.rds")
-#interventions <- readRDS("google_brt.rds")
 
 # conduct unmitigated
 pop <- squire::get_population(country)
@@ -80,7 +80,9 @@ min_death_date <- data$date[which(data$deaths>0)][1]
 last_start_date <- min(as.Date(null_na(date_R0_change[1]))-2, as.Date(null_na(min_death_date))-10, na.rm = TRUE)
 first_start_date <- max(as.Date("2020-01-04"),last_start_date - 30, na.rm = TRUE)
 
-# future::plan(future::multiprocess())
+if (parallel) {
+ suppressWarnings(future::plan(future::multiprocess()))
+}
 
 out <- squire::calibrate(
   data = data,
@@ -143,7 +145,7 @@ line <- ggplot() + cowplot::draw_line(x = 0:10,y=1) +
 top_row <- cowplot::plot_grid(ll, prob, ncol=2)
 
 pdf("fitting.pdf",width = 6,height = 10)
-print(cowplot::plot_grid(title,line,top_row,intervention,d,ncol=1,rel_heights = c(0.1,0.1,0.8,0.6,1)))
+suppressWarnings(print(cowplot::plot_grid(title,line,top_row,intervention,d,ncol=1,rel_heights = c(0.1,0.1,0.8,0.6,1))))
 dev.off()
 
 

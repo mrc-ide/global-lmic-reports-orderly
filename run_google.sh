@@ -5,7 +5,8 @@ set -e
 
 TODAY=$(date "+%Y-%m-%d")
 DATE=${1:-$TODAY}
-SHORT_RUN=$2
+DEFAULT_SHORT="FALSE"
+SHORT_RUN=${2:-$DEFAULT_SHORT}
 
 echo "*** Date: $DATE"
 

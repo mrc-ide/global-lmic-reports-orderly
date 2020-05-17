@@ -39,6 +39,8 @@ parameters:
     date: ~
     short_run:
       default: FALSE
+    parallel:
+      default: FALSE
 
 # You must list at least one artefact that your report will generate.
 # Each artefact consists of one or more files.  The format is to list

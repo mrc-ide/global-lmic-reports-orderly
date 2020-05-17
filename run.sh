@@ -5,6 +5,8 @@ set -e
 
 TODAY=$(date "+%Y-%m-%d")
 DATE=${1:-$TODAY}
+DEFAULT_SHORT="FALSE"
+SHORT_RUN=${2:-$DEFAULT_SHORT}
 
 echo "*** Date: $DATE"
 
@@ -24,8 +26,7 @@ echo "*** Running country reports"
 
 # Parallel
 grep -E '^[A-Z]{3}\s*' countries | \
-    parallel --progress -j 16 ./orderly run lmic_reports iso3c={} date=$DATE
-
+    parallel --progress -j 16 ./orderly run lmic_reports iso3c={} date=$DATE short_run=$SHORT_RUN
 # Serial (useful if debugging)
 # for ISO in $(grep -E '^[A-Z]{3}\s*' countries); do
 #     echo "*** `- $ISO"

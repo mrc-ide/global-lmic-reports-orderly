@@ -9,9 +9,11 @@ if(packageVersion("squire") < version_min) {
 ## -----------------------------------------------------------------------------
 ## Step 1: Incoming Date
 ## -----------------------------------------------------------------------------
-system(paste0("echo LMIC Reports Google Mobility for  ",iso3c))
+system(paste0("echo LMIC Reports Google Mobility for  ",iso3c, ". Short Run = ", short_run, ". Parallel = ", parallel))
 set.seed(123)
 date <- as.Date(date)
+short_run <- as.logical(short_run)
+parallel <- as.logical(parallel)
 
 ## Get the ECDC data
 ecdc <- readRDS("ecdc_all.rds")
@@ -135,7 +137,10 @@ if (short_run) {
   day_step <- 7
 }
 
-# future::plan(future::multiprocess())
+if (parallel) {
+suppressWarnings(future::plan(future::multiprocess()))
+}
+
 out_det <- squire::calibrate(
   data = data,
   R0_min = R0_min,
@@ -253,7 +258,7 @@ line <- ggplot() + cowplot::draw_line(x = 0:10,y=1) +
         axis.ticks = element_blank())
 
 pdf("fitting.pdf",width = 8.5,height = 12)
-print(cowplot::plot_grid(title,line,top_row,intervention,d,ncol=1,rel_heights = c(0.1,0.1,0.8,0.6,1)))
+suppressWarnings(print(cowplot::plot_grid(title,line,top_row,intervention,d,ncol=1,rel_heights = c(0.1,0.1,0.8,0.6,1))))
 dev.off()
 
 
