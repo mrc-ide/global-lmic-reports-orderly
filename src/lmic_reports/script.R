@@ -15,7 +15,11 @@ date <- as.Date(date)
 
 # prepare fitting first
 start <- 10
-replicates <- 100
+
+if(short_run) {
+  replicates <- 2
+  particles <- 2
+}
 
 ## Get the ECDC data
 ecdc <- readRDS("ecdc_all.rds")
@@ -69,7 +73,6 @@ squire_model <- explicit_model()
 pars_obs <- NULL
 day_step = 1
 R0_step = 0.2
-n_particles <- 100
 
 # sort out missing dates etc
 null_na <- function(x) {if(is.null(x)) {NA} else {x}}
@@ -180,12 +183,12 @@ start_date <- out_det$scan_results$y[pos[2]]
 
 if(!is.null(date_R0_change)) {
   start_date <- min(start_date, date_R0_change-1)
-  tt_beta <- c(0, squire:::intervention_dates_for_odin(dates = date_R0_change,
+  tt_beta <- squire:::intervention_dates_for_odin(dates = date_R0_change,
                                                        change = R0_change,
                                                        start_date = start_date,
-                                                       steps_per_day = 1))
+                                                       steps_per_day = 1)
 } else {
-  tt_beta <- 0
+  tt_beta <- list("tt" = NULL, "change" = NULL)
 }
 
 if(!is.null(R0_change)) {
