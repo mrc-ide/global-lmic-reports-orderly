@@ -20,6 +20,9 @@ parllel <- as.logical(parallel)
 if(short_run) {
   replicates <- 2
   n_particles <- 2
+} else {
+  replicates <- 100
+  n_particles <- 100
 }
 
 ## Get the ECDC data
