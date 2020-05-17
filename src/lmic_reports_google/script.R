@@ -91,9 +91,9 @@ if (!is.null(json) && !is.null(json$Meff)) {
   date <- json[[1]]$date
   Meff <- json[[1]]$Meff
   
-  # get the range from this for R0 and grow it by 0.2
-  R0_max <- R0 + 0.75
-  R0_min <- R0 - 0.75
+  # get the range from this for R0 and grow it by 0.75
+  R0_max <- min(R0 + 0.75, 5.6)
+  R0_min <- max(R0 - 0.75, 2)
   R0_step <- 0.05
   
   # get the range for dates and grow it by 7 days
@@ -106,8 +106,8 @@ if (!is.null(json) && !is.null(json$Meff)) {
   day_step <- 1
   
   # get the range for Meff
-  Meff_max <- min(Meff + 0.2)
-  Meff_min <- max(Meff - 0.2)
+  Meff_max <- min(Meff + 0.3, 2)
+  Meff_min <- max(Meff - 0.3, 0.2)
   Meff_step <- 0.01
   
 } else {
@@ -115,10 +115,10 @@ if (!is.null(json) && !is.null(json$Meff)) {
   # Defualts if no previous data
   R0_min <- 2.0
   R0_max <- 5.6
-  R0_step <- 0.25
-  Meff_min <- 0.4
+  R0_step <- 0.1
+  Meff_min <- 0.2
   Meff_max <- 2
-  Meff_step <- 0.2
+  Meff_step <- 0.05
   last_start_date <- as.Date(null_na(min_death_date))-20
   first_start_date <- max(as.Date("2020-01-04"),last_start_date - 35, na.rm = TRUE)
   day_step <- 2
@@ -146,7 +146,7 @@ out_det <- squire::calibrate(
   R0_min = R0_min,
   R0_max = R0_max,
   R0_step = R0_step,
-  R0_prior = list("func" = dnorm, args = list("mean"= 3.2, "sd"= 0.25, "log" = TRUE)),
+  R0_prior = list("func" = dnorm, args = list("mean"= 3.2, "sd"= 0.5, "log" = TRUE)),
   Meff_min = Meff_min,
   Meff_max = Meff_max,
   Meff_step = Meff_step,
