@@ -120,17 +120,10 @@ forecast <- 14
 
 d <- plot(out, "deaths", date_0 = date, x_var = "date")
 ymax <- max(out$scan_results$inputs$data$deaths, d$layers[[1]]$data$ymax)
-d <- d + geom_point(data = out$scan_results$inputs$data, 
-                    mapping = aes(x=date,y=deaths), inherit.aes = FALSE) + 
-  scale_x_date(limits = c(min(data$date),date+forecast)) +
-  scale_y_continuous(limits = c(0,ymax)) + 
-  geom_vline(xintercept = date, linetype = "dashed") +
-  ylab("Deaths") + 
-  xlab("") +
-  theme(legend.position = "none")
+d <- deaths_plot_single(out, data, date = date,date_0 = date_0, forecast = 14) + theme(legend.position = "none")
 
 intervention <- intervention_plot(interventions[[iso3c]], date)
-#intervention <- intervention_plot_google(interventions[[iso3c]], date)
+
 
 title <- cowplot::ggdraw() + 
   cowplot::draw_label(

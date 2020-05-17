@@ -91,7 +91,7 @@ cumulative_deaths_plot <- function(country) {
     geom_point(data = df_deaths[which(df_deaths$Region == country), ], color = "red") +
     geom_point(data = df_deaths_latest[which(df_deaths_latest$Continent == continent), ], alpha = 0.5, show.legend = FALSE) + 
     ggrepel::geom_text_repel(data =  df_deaths_latest[which(df_deaths_latest$Continent == continent), ],
-                             aes(label = Region), show.legend = FALSE, min.segment.length = 1,nudge_x = 1) + 
+                             aes(label = Region), show.legend = FALSE, min.segment.length = 2,nudge_x = 1) + 
     scale_y_log10(limits=c(start, max(df_deaths$Cum_Deaths[df_deaths$Continent == continent]))) +
     xlim(limits=c(0, max(df_deaths$day_since[df_deaths$Continent == continent]))) +
     theme_bw() +
@@ -506,7 +506,7 @@ deaths_plot_single <- function(out, data, date_0, date = Sys.Date(),
   
   date <- as.Date(date)
   gg <- plot(out, "deaths", date_0 = date_0, x_var = "date") 
-  ymax <- max(out$scan_results$inputs$data$deaths, gg$layers[[1]]$data$ymax)
+  ymax <- max(out$scan_results$inputs$data$deaths, gg$layers[[1]]$data$ymax[gg$layers[[1]]$data$x<=(as.Date(date)+forecast)])
   
   gg <- gg + 
     geom_point(data = out$scan_results$inputs$data, mapping = aes(x=date, y=deaths,shape="Reported")) +
