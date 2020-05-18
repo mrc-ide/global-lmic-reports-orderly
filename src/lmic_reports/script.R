@@ -112,8 +112,8 @@ out <- squire::calibrate(
 saveRDS(out, "grid_out.rds")
 
 ## summarise what we have
-prob <- plot_scan(out$scan_results, what="probability", log = FALSE)
-ll <- plot_scan(out$scan_results, log = FALSE)
+prob <- plot_scan(out$scan_results, what="probability", log = FALSE) + geom_tile(color = NA)
+ll <- plot_scan(out$scan_results, log = FALSE) + geom_tile(color = NA)
 
 index <- squire:::odin_index(out$model)
 forecast <- 14

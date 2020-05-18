@@ -213,9 +213,9 @@ out <- generate_draws(scan_results = out$scan_results, squire_model = squire::ex
 saveRDS(out, "grid_out.rds")
 
 ## summarise what we have
-prob1 <- plot(out$scan_results, what="probability", log = FALSE, show = c(1,2))
-prob2 <- plot(out$scan_results, what="probability", log = FALSE, show = c(1,3))
-prob3 <- plot(out$scan_results, what="probability", log = FALSE, show = c(2,3))
+prob1 <- plot(out$scan_results, what="probability", log = FALSE, show = c(1,2)) + geom_tile(color = NA)
+prob2 <- plot(out$scan_results, what="probability", log = FALSE, show = c(1,3)) + geom_tile(color = NA)
+prob3 <- plot(out$scan_results, what="probability", log = FALSE, show = c(2,3)) + geom_tile(color = NA)
 mp <- max(c(prob1$data$z, prob2$data$z, prob3$data$z))
 suppressMessages(
   what <- lapply(list(prob1, prob2, prob3), function(x) {x + theme(axis.title = element_text(size = 9)) +

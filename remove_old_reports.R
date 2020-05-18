@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-remove_old_reports <- function(date = NULL, keep = 3) {
+remove_old_reports <- function(date = NULL, keep = 4) {
   
   cwd <- getwd()
   wd <- "/home/oj/net/lmic/home/lmic/global-lmic-reports-orderly/"
