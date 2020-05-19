@@ -10,6 +10,8 @@ SHORT_RUN=${2:-$DEFAULT_SHORT}
 
 echo "*** Date: $DATE"
 
+echo "*** Short Run: $SHORT_RUN"
+
 echo "*** ECDC data"
 ./orderly run ecdc date=$DATE
 

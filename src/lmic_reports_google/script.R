@@ -293,7 +293,7 @@ out <- squire::calibrate(
   reporting_fraction = reporting_fraction,
   R0_change = R0_change,
   date_R0_change = date_R0_change,
-  replicates = n_replicates,
+  replicates = replicates,
   country = country,
   forecast = 0
 )
