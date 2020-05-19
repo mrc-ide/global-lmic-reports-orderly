@@ -79,68 +79,37 @@ if(short_run) {
 }
 
 # 1. Do we have a previous run for this country
-reports <- reports_day(as.character(date-1))
+json <- NULL
+try({
+  json_path <- file.path("https://raw.githubusercontent.com/mrc-ide/global-lmic-reports/master/",iso3c,"input_params.json")
+  json <- jsonlite::read_json(json_path)
+})
 
-if (!is.null(reports) && (iso3c %in% reports$country)) {
-  
-  out <- file.path(here::here(), "archive", "lmic_reports", reports$id[which(reports$country==iso3c)], "grid_out.rds")
-  out <- readRDS(out)
-  
-  # recreate the grids
-  x_grid <- array(out$scan_results$x, dim(out$scan_results$renorm_mat_LL))
-  y_grid <- array(mapply(rep, out$scan_results$y, length(out$scan_results$x)), dim(out$scan_results$renorm_mat_LL))
-  z_grid <- array(mapply(rep, out$scan_results$z, length(out$scan_results$x)*length(out$scan_results$y)), dim(out$scan_results$renorm_mat_LL))
+if (!is.null(json) && !is.null(json$Meff)) {
 
-  
-  # first get the sorted density
-  ord <- order(out$scan_results$renorm_mat_LL, decreasing = TRUE)
-  cum <- cumsum(out$scan_results$renorm_mat_LL[ord])
-  ninety <- which(cum > 0.9)[1]
-  
-  # get the range from this for R0 and grow it by 0.2
-  R0_max <- max(x_grid[ord[seq_len(ninety)]]) + 0.2
-  R0_min <- min(x_grid[ord[seq_len(ninety)]]) - 0.2
-  
-  # get the range for dates and grow it by 3 days
-  last_start_date <- max(y_grid[ord[seq_len(ninety)]])
-  first_start_date <- min(y_grid[ord[seq_len(ninety)]])
-  last_start_date <- as.Date(out$scan_results$y[match(last_start_date, as.numeric(out$scan_results$y))]) + 3
-  first_start_date <- as.Date(out$scan_results$y[match(first_start_date, as.numeric(out$scan_results$y))]) -3
-  
+  R0 <- json[[1]]$R0
+  date <- json[[1]]$date
+  Meff <- json[[1]]$Meff
+
+  # get the range from this for R0 and grow it by 0.75
+  R0_max <- min(R0 + 0.75, 5.6)
+  R0_min <- max(R0 - 0.75, 2)
+  R0_step <- 0.05
+
+  # get the range for dates and grow it by 7 days
+  last_start_date <- as.Date(date) + 7
+  first_start_date <- as.Date(date) - 7
+
   # adust the dates so they are compliant with the data
   last_start_date <- min(c(last_start_date, as.Date(null_na(min_death_date))-10), na.rm = TRUE)
   first_start_date <- max(as.Date("2020-01-04"), first_start_date, na.rm = TRUE)
-  
+  day_step <- 1
+
   # get the range for Meff
-  Meff_max <- max(z_grid[ord[seq_len(ninety)]]) + 0.2
-  Meff_min <- min(z_grid[ord[seq_len(ninety)]]) - 0.2
-  Meff_step <- 0.05
-  
-# if (!is.null(json) && !is.null(json$Meff)) {
-#   
-#   R0 <- json[[1]]$R0 
-#   date <- json[[1]]$date
-#   Meff <- json[[1]]$Meff
-#   
-#   # get the range from this for R0 and grow it by 0.75
-#   R0_max <- min(R0 + 0.75, 5.6)
-#   R0_min <- max(R0 - 0.75, 2)
-#   R0_step <- 0.05
-#   
-#   # get the range for dates and grow it by 7 days
-#   last_start_date <- as.Date(date) + 7
-#   first_start_date <- as.Date(date) - 7
-#   
-#   # adust the dates so they are compliant with the data
-#   last_start_date <- min(c(last_start_date, as.Date(null_na(min_death_date))-10), na.rm = TRUE)
-#   first_start_date <- max(as.Date("2020-01-04"), first_start_date, na.rm = TRUE)
-#   day_step <- 1
-#   
-#   # get the range for Meff
-#   Meff_max <- min(Meff + 0.3, 2)
-#   Meff_min <- max(Meff - 0.3, 0.2)
-#   Meff_step <- 0.01
-  
+  Meff_max <- min(Meff + 0.3, 2)
+  Meff_min <- max(Meff - 0.3, 0.2)
+  Meff_step <- 0.01
+
 } else {
   
   # Defualts if no previous data
@@ -149,7 +118,7 @@ if (!is.null(reports) && (iso3c %in% reports$country)) {
   R0_step <- 0.1
   Meff_min <- 0.2
   Meff_max <- 2
-  Meff_step <- 0.05
+  Meff_step <- 0.025
   last_start_date <- as.Date(null_na(min_death_date))-20
   first_start_date <- max(as.Date("2020-01-04"),last_start_date - 35, na.rm = TRUE)
   day_step <- 2
