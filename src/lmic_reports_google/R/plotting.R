@@ -1084,7 +1084,8 @@ intervention_plot_google <- function(res, date, data, forecast) {
   
   date <- as.Date(date)
   
-  ggplot(res, aes(x = date, y = C, color = observed)) + 
+  ggplot(res[res$date <= date+forecast & res$date >= (min(data$date[data$deaths>0])-30),], 
+         aes(x = date, y = C, color = observed)) + 
     geom_point() + 
     scale_color_discrete(name = "Observed") +
     theme_bw() + 

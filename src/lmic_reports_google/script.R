@@ -73,42 +73,73 @@ if(short_run) {
   n_particles <- 2
   replicates <- 2
 } else {
-  n_particles <- 100
+  n_particles <- 50
   replicates <- 100
   
 }
 
-# 1. Do we have a previous report for this country
-json <- NULL
-try({
-  json_path <- file.path("https://raw.githubusercontent.com/mrc-ide/global-lmic-reports/master/",iso3c,"input_params.json")
-  json <- jsonlite::read_json(json_path)
-})
+# 1. Do we have a previous run for this country
+reports <- reports_day(as.character(date-1))
 
-if (!is.null(json) && !is.null(json$Meff)) {
+if (!is.null(reports) && (iso3c %in% reports$country)) {
   
-  R0 <- json[[1]]$R0 
-  date <- json[[1]]$date
-  Meff <- json[[1]]$Meff
+  out <- file.path(here::here(), "archive", "lmic_reports", reports$id[which(reports$country==iso3c)], "grid_out.rds")
+  out <- readRDS(out)
   
-  # get the range from this for R0 and grow it by 0.75
-  R0_max <- min(R0 + 0.75, 5.6)
-  R0_min <- max(R0 - 0.75, 2)
-  R0_step <- 0.05
+  # recreate the grids
+  x_grid <- array(out$scan_results$x, dim(out$scan_results$renorm_mat_LL))
+  y_grid <- array(mapply(rep, out$scan_results$y, length(out$scan_results$x)), dim(out$scan_results$renorm_mat_LL))
+  z_grid <- array(mapply(rep, out$scan_results$z, length(out$scan_results$x)*length(out$scan_results$y)), dim(out$scan_results$renorm_mat_LL))
+
   
-  # get the range for dates and grow it by 7 days
-  last_start_date <- as.Date(date) + 7
-  first_start_date <- as.Date(date) - 7
+  # first get the sorted density
+  ord <- order(out$scan_results$renorm_mat_LL, decreasing = TRUE)
+  cum <- cumsum(out$scan_results$renorm_mat_LL[ord])
+  ninety <- which(cum > 0.9)[1]
+  
+  # get the range from this for R0 and grow it by 0.2
+  R0_max <- max(x_grid[ord[seq_len(ninety)]]) + 0.2
+  R0_min <- min(x_grid[ord[seq_len(ninety)]]) - 0.2
+  
+  # get the range for dates and grow it by 3 days
+  last_start_date <- max(y_grid[ord[seq_len(ninety)]])
+  first_start_date <- min(y_grid[ord[seq_len(ninety)]])
+  last_start_date <- as.Date(out$scan_results$y[match(last_start_date, as.numeric(out$scan_results$y))]) + 3
+  first_start_date <- as.Date(out$scan_results$y[match(first_start_date, as.numeric(out$scan_results$y))]) -3
   
   # adust the dates so they are compliant with the data
   last_start_date <- min(c(last_start_date, as.Date(null_na(min_death_date))-10), na.rm = TRUE)
   first_start_date <- max(as.Date("2020-01-04"), first_start_date, na.rm = TRUE)
-  day_step <- 1
   
   # get the range for Meff
-  Meff_max <- min(Meff + 0.3, 2)
-  Meff_min <- max(Meff - 0.3, 0.2)
-  Meff_step <- 0.01
+  Meff_max <- max(z_grid[ord[seq_len(ninety)]]) + 0.2
+  Meff_min <- min(z_grid[ord[seq_len(ninety)]]) - 0.2
+  Meff_step <- 0.05
+  
+# if (!is.null(json) && !is.null(json$Meff)) {
+#   
+#   R0 <- json[[1]]$R0 
+#   date <- json[[1]]$date
+#   Meff <- json[[1]]$Meff
+#   
+#   # get the range from this for R0 and grow it by 0.75
+#   R0_max <- min(R0 + 0.75, 5.6)
+#   R0_min <- max(R0 - 0.75, 2)
+#   R0_step <- 0.05
+#   
+#   # get the range for dates and grow it by 7 days
+#   last_start_date <- as.Date(date) + 7
+#   first_start_date <- as.Date(date) - 7
+#   
+#   # adust the dates so they are compliant with the data
+#   last_start_date <- min(c(last_start_date, as.Date(null_na(min_death_date))-10), na.rm = TRUE)
+#   first_start_date <- max(as.Date("2020-01-04"), first_start_date, na.rm = TRUE)
+#   day_step <- 1
+#   
+#   # get the range for Meff
+#   Meff_max <- min(Meff + 0.3, 2)
+#   Meff_min <- max(Meff - 0.3, 0.2)
+#   Meff_step <- 0.01
   
 } else {
   
@@ -201,14 +232,71 @@ writeLines(jsonlite::toJSON(df,pretty = TRUE), "input_params.json")
 ## -----------------------------------------------------------------------------
 
 ## take the density from the deterministic to focus the grid
-out <- out_det
-out$scan_results$inputs$model <- squire::explicit_model()
+# recreate the grids
+x_grid <- array(out_det$scan_results$x, dim(out_det$scan_results$renorm_mat_LL))
+y_grid <- array(mapply(rep, out_det$scan_results$y, length(out_det$scan_results$x)), dim(out_det$scan_results$renorm_mat_LL))
+z_grid <- array(mapply(rep, out_det$scan_results$z, length(out_det$scan_results$x)*length(out_det$scan_results$y)), dim(out_det$scan_results$renorm_mat_LL))
 
-# particle filter draws
-out <- generate_draws(scan_results = out$scan_results, squire_model = squire::explicit_model(), 
-                      replicates = replicates, n_particles = n_particles, forecast = 14,
-                      country = country, population = squire::get_population(iso3c = iso3c)$n, 
-                      interventions = out$interventions)
+# first get the sorted density
+ord <- order(out_det$scan_results$renorm_mat_LL, decreasing = TRUE)
+cum <- cumsum(out_det$scan_results$renorm_mat_LL[ord])
+cut <- which(cum > 0.8)[1]
+
+# get the range from this for R0 and grow it by 0.1
+R0_max <- max(x_grid[ord[seq_len(cut)]]) + 0.1
+R0_min <- min(x_grid[ord[seq_len(cut)]]) - 0.1
+R0_step <- 0.1
+
+# get the range for dates and grow it by 1 day
+last_start_date <- max(y_grid[ord[seq_len(cut)]])
+first_start_date <- min(y_grid[ord[seq_len(cut)]])
+last_start_date <- as.Date(out_det$scan_results$y[match(last_start_date, as.numeric(out_det$scan_results$y))]) + 1
+first_start_date <- as.Date(out_det$scan_results$y[match(first_start_date, as.numeric(out_det$scan_results$y))]) - 1
+
+# adust the dates so they are compliant with the data
+last_start_date <- min(c(last_start_date, as.Date(null_na(min_death_date))-10), na.rm = TRUE)
+first_start_date <- max(as.Date("2020-01-04"), first_start_date, na.rm = TRUE)
+day_step <- 1
+
+# get the range for Meff
+Meff_max <- max(z_grid[ord[seq_len(cut)]]) + 0.05
+Meff_min <- min(z_grid[ord[seq_len(cut)]]) - 0.05
+Meff_step <- 0.1
+
+if (short_run) {
+  R0_min <- 2.0
+  R0_max <- 5
+  R0_step <- 1
+  Meff_min <- 0.4
+  Meff_max <- 2
+  Meff_step <- 0.4
+  last_start_date <- as.Date(null_na(min_death_date))-20
+  first_start_date <- max(as.Date("2020-01-04"),last_start_date - 35, na.rm = TRUE)
+  day_step <- 7
+}
+
+out <- squire::calibrate(
+  data = data,
+  R0_min = R0_min,
+  R0_max = R0_max,
+  R0_step = R0_step,
+  R0_prior = list("func" = dnorm, args = list("mean"= 3.2, "sd"= 0.5, "log" = TRUE)),
+  Meff_min = Meff_min,
+  Meff_max = Meff_max,
+  Meff_step = Meff_step,
+  first_start_date = first_start_date,
+  last_start_date = last_start_date,
+  day_step = day_step,
+  squire_model = explicit_model(),
+  pars_obs = pars_obs,
+  n_particles = n_particles,
+  reporting_fraction = reporting_fraction,
+  R0_change = R0_change,
+  date_R0_change = date_R0_change,
+  replicates = n_replicates,
+  country = country,
+  forecast = 0
+)
 
 saveRDS(out, "grid_out.rds")
 
@@ -228,9 +316,9 @@ top_row <- cowplot::plot_grid(plotlist = what, ncol=4, rel_widths = c(1,1,1,0.4)
 
 
 index <- squire:::odin_index(out$model)
-forecast <- 14
+forecast <- 0
 
-d <- deaths_plot_single(out, data, date = date,date_0 = date_0, forecast = 14) + theme(legend.position = "none")
+d <- deaths_plot_single(out, data, date = date,date_0 = date_0, forecast = forecast) + theme(legend.position = "none")
 
 #intervention <- intervention_plot(interventions[[iso3c]], date)
 intervention <- intervention_plot_google(interventions[[iso3c]], date, data, forecast)
