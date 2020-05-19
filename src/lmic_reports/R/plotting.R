@@ -1062,9 +1062,9 @@ intervention_plot <- function(res, date) {
   res %>% dplyr::rename("School Closure" = S1,
                         "Work Closure" = S2,
                         "Public Events\nBanned" = S3,
-                        "Lockdown" = S6) %>%  
+                        "Lockdown /\n Movement Restrictions" = S6) %>%  
     tidyr::pivot_longer(cols = c("School Closure", "Work Closure", 
-                                 "Public Events\nBanned", "Lockdown")) %>% 
+                                 "Public Events\nBanned", "Lockdown /\n Movement Restrictions")) %>% 
     ggplot(aes(x=date, y=as.factor(name),fill=as.factor(value>0))) + 
     geom_tile(color="black") + 
     ylab("") + 
