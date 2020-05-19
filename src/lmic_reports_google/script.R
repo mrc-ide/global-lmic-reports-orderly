@@ -83,7 +83,7 @@ reports <- reports_day(as.character(date-1))
 
 if (!is.null(reports) && (iso3c %in% reports$country)) {
   
-  out <- file.path(here::here(), "archive", "lmic_reports", reports$id[which(reports$country==iso3c)], "grid_out.rds")
+  out <- file.path("archive", "lmic_reports_google", reports$id[which(reports$country==iso3c)], "grid_out.rds")
   out <- readRDS(out)
   
   # recreate the grids
