@@ -125,7 +125,7 @@ overall_test <- overall %>%
 # Running the BRT 
 tree_complexity <- 8
 bag_fraction <- 0.5
-max_trees <- 3000
+max_trees <- 30
 learning_rate <- 0.05
 x <- as.data.frame(overall_test)
 brt <- gbm.step(data = x, 
