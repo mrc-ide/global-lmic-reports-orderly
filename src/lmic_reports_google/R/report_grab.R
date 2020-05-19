@@ -39,11 +39,16 @@ reports_day <- function(date = NULL) {
             JOIN parameters
               ON parameters.report_version = report_version.id
            WHERE report_version_artefact.report_version IN (%s)
-             AND report = "lmic_reports"
+             AND report = "lmic_reports_google"
              AND parameters.name = "iso3c"
            ORDER BY country, report_version.id'
   sql <- sprintf(sql, paste(sprintf('"%s"', id), collapse = ", "))
   reports <- DBI::dbGetQuery(db, sql)
+  
+  if(nrow(reports) == 0) {
+    DBI::dbDisconnect(db)
+    return(NULL)
+  } else {
   
   if (any(duplicated(reports$country))) {
     keep <- tapply(seq_len(nrow(reports)), reports$country, max)
@@ -52,7 +57,10 @@ reports_day <- function(date = NULL) {
   }
   
   reports$date <- as.character(date)
+  DBI::dbDisconnect(db)
   return(reports)
+  
+  }
 }
 
 
