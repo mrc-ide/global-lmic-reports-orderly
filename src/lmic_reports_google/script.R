@@ -68,6 +68,7 @@ date_R0_change <- int_unique$dates_change
 date_contact_matrix_set_change <- NULL
 squire_model <- squire::explicit_model()
 pars_obs <- NULL
+R0_prior <- list("func" = dnorm, args = list("mean"= 3.2, "sd"= 0.5, "log" = TRUE))
 
 if(short_run) {
   n_particles <- 2
@@ -146,7 +147,7 @@ out_det <- squire::calibrate(
   R0_min = R0_min,
   R0_max = R0_max,
   R0_step = R0_step,
-  R0_prior = list("func" = dnorm, args = list("mean"= 3.2, "sd"= 0.5, "log" = TRUE)),
+  R0_prior = R0_prior,
   Meff_min = Meff_min,
   Meff_max = Meff_max,
   Meff_step = Meff_step,
@@ -249,7 +250,7 @@ out <- squire::calibrate(
   R0_min = R0_min,
   R0_max = R0_max,
   R0_step = R0_step,
-  R0_prior = list("func" = dnorm, args = list("mean"= 3.2, "sd"= 0.5, "log" = TRUE)),
+  R0_prior = R0_prior,
   Meff_min = Meff_min,
   Meff_max = Meff_max,
   Meff_step = Meff_step,
