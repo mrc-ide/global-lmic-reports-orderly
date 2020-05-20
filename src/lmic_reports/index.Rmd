@@ -132,8 +132,8 @@ if(data$deaths[1] >= 10) {
 
 if(any(data$daily_cases < 0)) {
   show_cases_sentence <- paste("**N.B. ", country, 
-                          " has revised their historic reported cases and", 
-                          " thus have reported negative cases.**")
+                               " has revised their historic reported cases and", 
+                               " thus have reported negative cases.**")
 } else  {
   show_cases_sentence <- ""
 }
@@ -324,8 +324,8 @@ deaths_14_rev <- group_by(deaths_rev[deaths_rev$t==14,], replicate) %>%
 
 summary_number_df <- data.frame(variable = c("est_infections","report_infections",
                                              "report_deaths", "hospital_14", "icu_14",
-                                            "hospital_14_mit", "icu_14_mit",
-                                            "hospital_14_rev", "icu_14_rev"),
+                                             "hospital_14_mit", "icu_14_mit",
+                                             "hospital_14_rev", "icu_14_rev"),
                                 value = c(infs[[1]],  data$deaths[1], data$cases[1], 
                                           hosp_14[[1]], icu_14[[1]], 
                                           hosp_14_mit[[1]],icu_14_mit[[1]],
@@ -333,6 +333,23 @@ summary_number_df <- data.frame(variable = c("est_infections","report_infections
                                 country = country,
                                 continent = countrycode::countrycode(country, origin = 'country.name', destination = 'continent'))
 saveRDS(summary_number_df, "summary_df.rds")
+
+```
+
+```{r capacity warn, echo = FALSE, collapse=TRUE, warning=FALSE}
+icu_cap <- squire:::get_ICU_bed_capacity(country)
+hosp_cap <- squire:::get_hosp_bed_capacity(country)
+if(icu_14$i_max > icu_cap || hosp_14$i_max > hosp_cap) {
+  show_capacity_sentence <- paste(
+    "**N.B.", country,
+    "is forecast to be close to or supassing our best estimates for healthcare",
+    "capacity in the next 14 days.** Estimates of deaths in the next 14 days may be", 
+    "inaccurate due to our working assumptions for mortality in individuals who", 
+    "do not receive appropriate treatment. [See our parameter sources for more", 
+    "information](https://mrc-ide.github.io/global-lmic-reports/parameters.html)")
+} else  {
+  show_capacity_sentence <-  paste("")
+}
 
 ```
 
@@ -372,7 +389,7 @@ We assume that the deaths reported to date provide the best indication of the st
 
 To explore this, we fit our age-structured SEIR model (see [Methods](https://mrc-ide.github.io/global-lmic-reports/parameters.html)) to the time series of deaths in a country, in order to estimate the start date of the epidemic and the baseline R0. We assume that 100% of COVID-19 related deaths have been reported. We have also included the impact of interventions that have been put in place using data from the [Oxford Coronavirus Government Response Tracker](https://www.bsg.ox.ac.uk/research/research-projects/coronavirus-government-response-tracker). We currently make assumptions about the efficacy of these interventions and so the projections should be interpreted as scenarios rather than predictions. Using our [mathematical model](https://github.com/mrc-ide/squire) that formalises this approach, we estimate that there has been a total of `r form(infs)` infections over the past 4 weeks.
 
-The figure below shows the estimated number of people infected over the past 4 weeks. The bar charts show, for comparison, the number of reported cases. The right-hand plot shows these data on a different scale as the estimated infections are likely to be much larger than the reported cases.  **Importantly**, the estimated infections includes both asymptomatic and mild cases that would not necessarily be identified through surveillance. Consequently, the estimated infections are likely to be significantly higher than the reported cases (see our [FAQ](https://mrc-ide.github.io/global-lmic-reports/FAQ.html#why-are-the-estimated-infections-so-much-higher-than-the-reported-cases) for further explanation of these differences and why the reported cases and estimated infections are unlikely to match). `r show_cases_sentence`
+The figure below shows the estimated number of people infected over the past 4 weeks. The bar charts show, for comparison, the number of reported cases. The right-hand plot shows these data on a different scale as the estimated infections are likely to be much larger than the reported cases.  **Importantly, the estimated infections includes both asymptomatic and mild cases that would not necessarily be identified through surveillance.** Consequently, the estimated infections are likely to be significantly higher than the reported cases (see our [FAQ](https://mrc-ide.github.io/global-lmic-reports/FAQ.html#why-are-the-estimated-infections-so-much-higher-than-the-reported-cases) for further explanation of these differences and why the reported cases and estimated infections are unlikely to match). `r show_cases_sentence`
 
 <br>
 
@@ -385,13 +402,15 @@ suppressWarnings(suppressMessages(print(cases_plot(params$o_list[[1]], data = da
 `r pagebreak()`
 <br>
 
-The expected trajectory for cumulative deaths is shown in the figure below. This assumes a severity pattern by age that is consistent with that observed in China, Europe and the U.S to date.
+The expected trajectory for cumulative deaths is shown in the figure below. This assumes a severity pattern by age that is consistent with that observed in China, Europe and the U.S to date. `r show_capacity_sentence`
+
+<br>
 
 ```{r death forecast plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap=figRef("**Figure 3: Estimated daily deaths.** Projected deaths assuming the current level of interventions are maintained are shown in red (mean and 95% quantile). Reported deaths are plotted in black"), fig.width=8, fig.height=fig_height(4,4.5), fig.align=fig_center()}
 
 
 suppressWarnings(suppressMessages(print(deaths_plot_single(params$r_list[[1]], 
-                     data = data, date_0 = date_0, date = date))))
+                                                           data = data, date_0 = date_0, date = date))))
 
 ```
 
@@ -411,37 +430,37 @@ Consequently, these predictions have one major caveat:
 
 `r pagebreak()`
 
-We estimate that over the next 2 weeks demand for hospital beds will change from `r form(hosp_today)` patients requiring treatment with high-pressure oxygen at the current date to `r form(hosp_14)` hospital beds being required on `r format(date + 14, "%Y-%m-%d")` if no further interventions are introduced (Scenario 1). Similarly, we estimate that over the next 2 weeks demand for critical care (ICU) beds will change from `r form(icu_today)` patients requiring treatment with mechanical ventilation at the current date to `r form(icu_14)` by `r format(date + 14, "%Y-%m-%d")`. These projections assume that approximately 5% of all infections will require treatment with high-pressure oxygen and that approximately 30% of hospitalised cases will require treatment with mechanical ventilation (based on analysis of ongoing epidemics in Europe). **N.B. These scenarios are unlikely to show significant differences since there is a delay of approximately 10 days between infection and hospital admission. Consequently,  the effectiveness of a change in policy is likely to be better captured by hospital admission data approximately 2 weeks after the policy change is implemented.**
+We estimate that over the next 2 weeks demand for hospital beds will change from `r form(hosp_today)` patients requiring treatment with high-pressure oxygen at the current date to `r form(hosp_14)` hospital beds being required on `r format(date + 14, "%Y-%m-%d")` if no further interventions are introduced (Scenario 1). Similarly, we estimate that over the next 2 weeks demand for critical care (ICU) beds will change from `r form(icu_today)` patients requiring treatment with mechanical ventilation at the current date to `r form(icu_14)` by `r format(date + 14, "%Y-%m-%d")`. These projections assume that approximately 5% of all infections will require treatment with high-pressure oxygen and that approximately 30% of hospitalised cases will require treatment with mechanical ventilation (based on analysis of ongoing epidemics in Europe). **N.B. The difference between scenrarios will not be significantly different in the first 7 days**. This is due to the approximate 10 day delay between infection and hospital admission. Consequently, the effectiveness of a change in policy is likely to be better captured by hospital admission data approximately 2 weeks after a policy change is implemented.
 
 <br>
 
 ```{r healthcare plots, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 4: Healthcare demands in the next 2 weeks.** Individuals needing an ICU bed are assumed to need mechanical ventilation. Projected demand for Scenario 1 (the epidemic continues to grow at the current rate) are shown in green (Maintain status quo). Projections for Scenario 2 (a further 50% reduction in transmission) are shown in blue. Projections for Scenario 3 (relaxing interventions by 50%) are shown in red. The dashed line shows the current day."), fig.width=fig_height(8,10), fig.height=fig_height(4.5,5.5), fig.align=fig_center()}
 
-  # suppressWarnings(suppressMessages(cowplot::plot_grid(
-  #   healthcare_plot_contrast(o1 = params$o_list[[1]], o2 = params$o_list[[2]], 
-  #                            data = data, date_0 = date_0, date = date, 
-  #                            forecast = 14, what = "hospital_demand"),
-  #   healthcare_plot_contrast(o1 = params$o_list[[1]], o2 = params$o_list[[2]], 
-  #                            data = data, date_0 = date_0, date = date, 
-  #                            forecast = 14, what = "ICU_demand"),
-  #                    ncol=2)))
+# suppressWarnings(suppressMessages(cowplot::plot_grid(
+#   healthcare_plot_contrast(o1 = params$o_list[[1]], o2 = params$o_list[[2]], 
+#                            data = data, date_0 = date_0, date = date, 
+#                            forecast = 14, what = "hospital_demand"),
+#   healthcare_plot_contrast(o1 = params$o_list[[1]], o2 = params$o_list[[2]], 
+#                            data = data, date_0 = date_0, date = date, 
+#                            forecast = 14, what = "ICU_demand"),
+#                    ncol=2)))
 
 gg_hosp <- healthcare_plot_contrast_triple(o1 = params$o_list[[1]], 
-                                   o2 = params$o_list[[2]], 
-                                   o3 = params$o_list[[3]], 
-                             data = data, date_0 = date_0, date = date, 
-                             forecast = 14, what = "hospital_demand")
+                                           o2 = params$o_list[[2]], 
+                                           o3 = params$o_list[[3]], 
+                                           data = data, date_0 = date_0, date = date, 
+                                           forecast = 14, what = "hospital_demand")
 gg_icu <- healthcare_plot_contrast_triple(o1 = params$o_list[[1]], 
-                                   o2 = params$o_list[[2]], 
-                                   o3 = params$o_list[[3]], 
-                             data = data, date_0 = date_0, date = date, 
-                             forecast = 14, what = "ICU_demand")
+                                          o2 = params$o_list[[2]], 
+                                          o3 = params$o_list[[3]], 
+                                          data = data, date_0 = date_0, date = date, 
+                                          forecast = 14, what = "ICU_demand")
 leg <- suppressWarnings(suppressMessages(
   cowplot::get_legend(gg_hosp + theme(legend.justification = c(0.5,1)))
 ))
 bottom <- suppressWarnings(suppressMessages(
   cowplot::plot_grid(gg_hosp + theme(legend.position = "none"), 
-                             gg_icu + theme(legend.position = "none"), ncol = 2)
+                     gg_icu + theme(legend.position = "none"), ncol = 2)
 ))
 grid <- cowplot::plot_grid(leg,bottom,nrow=2,rel_heights = c(0.1,1))
 suppressWarnings(suppressMessages(print(grid)))
