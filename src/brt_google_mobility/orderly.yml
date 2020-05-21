@@ -10,6 +10,9 @@ script: script.R
 #
 parameters:
   date: ~
+  short_run:
+    default: FALSE
+  
 
 resources:
   - World_Bank_Country_Metadata.csv

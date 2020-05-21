@@ -7,6 +7,9 @@ TODAY=$(date "+%Y-%m-%d")
 DATE=${1:-$TODAY}
 DEFAULT_SHORT="FALSE"
 SHORT_RUN=${2:-$DEFAULT_SHORT}
+DEFAULT_FULL_SCENARIOS="FALSE"
+FULL_SCENARIOS=${3:-$DEFAULT_FULL_SCENARIOS}
+
 
 echo "*** Date: $DATE"
 
@@ -19,5 +22,5 @@ echo "*** Running country reports"
 
 # Parallel
 grep -E '^[A-Z]{3}\s*' countries | \
-parallel --progress -j 32 ./orderly run lmic_reports_google iso3c={} date=$DATE short_run=$SHORT_RUN
+parallel --progress -j 32 ./orderly run lmic_reports_google iso3c={} date=$DATE short_run=$SHORT_RUN full_scenarios=$FULL_SCENARIOS
 

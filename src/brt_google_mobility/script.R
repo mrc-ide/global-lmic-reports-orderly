@@ -130,7 +130,11 @@ overall_test <- overall %>%
 # Running the BRT 
 tree_complexity <- 8
 bag_fraction <- 0.5
+if (short_run) {
+  max_trees <- 30
+} else {
 max_trees <- 3000
+}
 learning_rate <- 0.05
 x <- as.data.frame(overall_test)
 brt <- gbm.step(data = x, 
@@ -225,7 +229,7 @@ for(r in seq_along(res)) {
   }
   
 }
-}
+
 
 
 saveRDS(res, "google_brt.rds")

@@ -41,6 +41,8 @@ parameters:
       default: FALSE
     parallel:
       default: FALSE
+    full_scenarios:
+      default: FALSE
       
 
 # You must list at least one artefact that your report will generate.

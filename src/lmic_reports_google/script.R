@@ -14,6 +14,7 @@ set.seed(123)
 date <- as.Date(date)
 short_run <- as.logical(short_run)
 parallel <- as.logical(parallel)
+full_scenarios <- as.logical(full_scenarios)
 
 ## Get the ECDC data
 ecdc <- readRDS("ecdc_all.rds")
@@ -348,6 +349,8 @@ mitigation_3months_lift <- squire::projections(out, R0_change = c(0.5,1/fr0), tt
 # Relax by 50% for 3 months and then return to pre-intervention levels 
 reverse_3_months_lift <- squire::projections(out, R0_change = c((1/fr0)*(1-(fr0/2)), 1/fr0), tt_R0 = c(0, 90), time_period = time_period)
 
+if (full_scenarios) {
+
 # Enhancing movement restrictions until the end of the year (50% further reduction in contacts) which then return to pre-intervention levels   
 mitigation_rest_year_lift <- squire::projections(out, R0_change = c(0.5, 1/fr0), tt_R0 = c(0,as.Date("2020-12-31")-Sys.Date()), time_period = time_period)
 
@@ -434,6 +437,12 @@ r_list <- named_list(maintain_3months_lift, mitigation_3months_lift,  reverse_3_
                mitigation_rest_year_lift_meff_75, mitigation_3months_ease_3months_lift_meff_75, 
                suppress_3months_lift_meff_75, suppress_full_meff_75, lift_week_meff_75)
 
+} else {
+  
+  r_list <- named_list(maintain_3months_lift, mitigation_3months_lift,  reverse_3_months_lift)
+  
+}
+
 
 o_list <- lapply(r_list[1:3], squire::format_output,
                  var_select = c("infections","deaths","hospital_demand","ICU_demand", "D"),
@@ -499,6 +508,8 @@ write.csv(data_sum, "projections.csv", row.names = FALSE, quote = FALSE)
 ## Step 6: Full saves
 ## -----------------------------------------------------------------------------
 
+if (full_scenarios) {
+  
 o_list <- lapply(r_list, squire::format_output,
                  var_select = c("infections","deaths","hospital_demand","ICU_demand", "ICase"),
                  date_0 = date_0)
@@ -531,15 +542,4 @@ data_sum$iso3c <- iso3c
 data_sum$report_date <- date
 write.csv(data_sum, "full_projections.csv", row.names = FALSE, quote = FALSE)
 
-# saveRDS("finished", paste0("/home/oj/GoogleDrive/AcademicWork/covid/githubs/global-lmic-reports-orderly/scripts/",iso3c,".rds"))
-
-# url_structure: /<iso_date>/<iso_country>/report.html
-# url_latest: /latest/<iso_country>/report.html
-# get the figures out into a run directory
-# figures/
-# fig.path or fig.prefix
-# pdf/
-# can get pdfs to sharepoint easily or latest update by nuking the previous reports
-# nightly github release with attached binaries
-# rewrite the html output to remove bootstrap
-# report.html to index.html
+}
