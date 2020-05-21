@@ -410,10 +410,15 @@ summaries_cases_plot <- function(summaries) {
   
 }
 
-
 summaries_forecasts_plot <- function(summaries) {
   
-  ggplot(summaries[summaries$variable %in% c("hospital_14","icu_14"),], 
+  summaries <- mutate(summaries, country = fct_rev(country)) %>% 
+    mutate(value = ceiling(value)) %>% 
+    mutate(group_large = "Africa & Europe") 
+  
+  summaries$group_large[summaries$continent %in% c("Asia", "Americas")] <- "Asia & Americas"
+  
+  gg <- ggplot(summaries[summaries$variable %in% c("hospital_14","icu_14"),], 
          aes(x = country, y = value, color = variable, fill = variable)) + 
     geom_bar(stat="identity",position = "dodge", width = 0.5) + 
     scale_y_continuous(labels = scales::comma) + 
@@ -426,11 +431,13 @@ summaries_forecasts_plot <- function(summaries) {
     theme_bw() +
     xlab("") +
     ylab("") + 
-    facet_wrap(~continent,scales="free") +
+    facet_grid(continent~., scales = "free", space = "free",) +
     theme(legend.key = element_rect(size = 5),
           legend.key.size = unit(2, 'lines')) + 
+    scale_y_log10() +
     coord_flip()
   
+  return(gg)
 }
 
 
