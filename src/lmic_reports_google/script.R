@@ -237,7 +237,7 @@ if(length(span_date_currently) < 7) {
   last_start_date <- mean(span_date_currently) + 3
   first_start_date <- mean(span_date_currently) - 3
 }
-day_step <- as.numeric(round((last_start_date - first_start_date)/12))
+day_step <- as.numeric(round((last_start_date - first_start_date + 1)/12))
 
 # get the range for Meff
 Meff_max <- max(z_grid[ord[seq_len(cut)]]) + 0.05
