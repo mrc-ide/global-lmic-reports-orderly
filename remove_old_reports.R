@@ -3,7 +3,7 @@
 remove_old_reports <- function(date = NULL, keep = 4) {
   
   cwd <- getwd()
-  wd <- "/home/oj/net/lmic/home/lmic/global-lmic-reports-orderly/"
+  wd <- "/home/oj/net/lmic_new/home/lmic/global-lmic-reports-orderly/"
   setwd(wd)
   country_root <- list.files("gh-pages", full.names = TRUE)
   country_root <- country_root[dir.exists(country_root)]

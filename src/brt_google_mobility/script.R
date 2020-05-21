@@ -71,7 +71,12 @@ xml <- xml2::read_html(acap_site)
 url <- rvest::html_attr(rvest::html_nodes(xml, ".file a"), "href")
   
 acap_tf <- download_url(url)
-acap <- readxl::read_excel(acap_tf, progress = FALSE, sheet = "Database",)
+acap <- readxl::read_excel(acap_tf, progress = FALSE, sheet = "Database")
+
+# country name fixes. We want to use the ISO3C eventually but there are typos...
+acap$ISO <- countrycode::countrycode(acap$COUNTRY, "country.name", "iso3c",
+                                     custom_match = c("Eswatini"="SWZ", "Micronesia"="FSM"))
+
 ACAPs_measure <- acap %>%
   rename(country = COUNTRY, measure = MEASURE, type = LOG_TYPE, date = DATE_IMPLEMENTED) %>%
   select(ISO, measure, type, date) %>%
@@ -164,19 +169,7 @@ res <- select(output_data, ISO, date, overall, all_overall, observed, income_gro
          all_overall = (all_overall+100)/100) %>% 
   rename(C = overall,
          C_predict = all_overall,
-         iso3c = ISO) %>% 
-  group_by(iso3c) %>% 
-  mutate(C = if(sum(observed)>0) {
-    C/mean(C[which(observed)[1:5]])
-  } else {
-    C/mean(C[date < as.Date("2020-03-01")])  
-  } , 
-  C_predict = if(sum(observed)>0) {
-    C_predict/mean(C_predict[which(observed)[1:5]])
-  } else {
-    C_predict/mean(C_predict[date < as.Date("2020-03-01")])  
-  }, 
-  continent = countrycode::countrycode(iso3c, "iso3c","continent"))
+         iso3c = ISO)
 
 res <- split.data.frame(res, res$iso3c)
 
@@ -211,6 +204,29 @@ res <- lapply(res,function(x){
   return(x)
   
 })
+
+# adjust the unobserved data if it is against the regression of the observed
+for(r in seq_along(res)) {
+  
+  if(any(res[[r]]$observed)) {
+    
+    # first for prior to the firt mobility date use the mean of the first week
+    lw <- res[[r]]$C[which(res[[r]]$observed)][1:7]
+    res[[r]]$C[1:(which(res[[r]]$observed)[1]-1)] <- mean(lw)
+    
+    # for the end check to see if it is less than the mean of the final week
+    rw <- tail(res[[r]]$C[which(res[[r]]$observed)], 7)
+    rw_end <- tail(which(res[[r]]$observed),1)
+    rw_7 <- res[[r]]$C[(rw_end+1):(rw_end+7)] 
+    if(mean(rw_7) < mean(rw)) {
+      res[[r]]$C[(rw_end+1):nrow(res[[r]])] <- mean(rw)
+    }
+    
+  }
+  
+}
+}
+
 
 saveRDS(res, "google_brt.rds")
 

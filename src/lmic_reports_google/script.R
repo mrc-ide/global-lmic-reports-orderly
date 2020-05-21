@@ -1,7 +1,7 @@
 orderly_id <- tryCatch(orderly::orderly_run_info()$id,
                        error = function(e) "<id>") # bury this in the html, docx
 
-version_min <- "0.4.11"
+version_min <- "0.4.13"
 if(packageVersion("squire") < version_min) {
   stop("squire needs to be updated to at least", version_min)
 }
@@ -68,7 +68,7 @@ date_R0_change <- int_unique$dates_change
 date_contact_matrix_set_change <- NULL
 squire_model <- squire::explicit_model()
 pars_obs <- NULL
-R0_prior <- list("func" = dnorm, args = list("mean"= 3.2, "sd"= 0.5, "log" = TRUE))
+R0_prior <- list("func" = dnorm, args = list("mean"= 3.2, "sd"= 1, "log" = TRUE))
 
 if(short_run) {
   n_particles <- 2
@@ -107,19 +107,19 @@ if (!is.null(json) && !is.null(json$Meff)) {
   day_step <- 1
 
   # get the range for Meff
-  Meff_max <- min(Meff + 0.3, 2)
-  Meff_min <- max(Meff - 0.3, 0.2)
-  Meff_step <- 0.01
+  Meff_max <- (Meff + 0.5)
+  Meff_min <- min(Meff - 0.5,0.1)
+  Meff_step <- 0.1
 
 } else {
   
   # Defualts if no previous data
   R0_min <- 2.0
   R0_max <- 5.6
-  R0_step <- 0.1
-  Meff_min <- 0.2
-  Meff_max <- 2
-  Meff_step <- 0.025
+  R0_step <- 0.2
+  Meff_min <- 0.1
+  Meff_max <- 10.1
+  Meff_step <- 0.5
   last_start_date <- as.Date(null_na(min_death_date))-20
   first_start_date <- max(as.Date("2020-01-04"),last_start_date - 35, na.rm = TRUE)
   day_step <- 2
@@ -130,9 +130,9 @@ if (short_run) {
   R0_min <- 2.0
   R0_max <- 5
   R0_step <- 1
-  Meff_min <- 0.4
-  Meff_max <- 2
-  Meff_step <- 0.4
+  Meff_min <- 0.1
+  Meff_max <- 5.1
+  Meff_step <- 0.5
   last_start_date <- as.Date(null_na(min_death_date))-20
   first_start_date <- max(as.Date("2020-01-04"),last_start_date - 35, na.rm = TRUE)
   day_step <- 7
@@ -151,6 +151,9 @@ out_det <- squire::calibrate(
   Meff_min = Meff_min,
   Meff_max = Meff_max,
   Meff_step = Meff_step,
+  Rt_func = function(R0_change, R0, Meff) {
+    R0 * (2 * plogis(-(R0_change-1) * -Meff))
+  },
   first_start_date = first_start_date,
   last_start_date = last_start_date,
   day_step = day_step,
@@ -184,13 +187,13 @@ if(!is.null(date_R0_change)) {
 }
 
 if(!is.null(R0_change)) {
-  R0 <- c(R0, R0 * tt_beta$change)
+  R0 <- c(R0, vapply(tt_beta$change, out_det$scan_results$inputs$Rt_func, numeric(1), R0 = R0, Meff = Meff))
 } else {
   R0 <- R0
 }
 beta_set <- squire:::beta_est(squire_model = squire_model,
                               model_params = out_det$scan_results$inputs$model_params,
-                              R0 = R0*Meff)
+                              R0 = R0)
 
 df <- data.frame(tt_beta = c(0,tt_beta$tt), beta_set = beta_set, 
                  date = start_date + c(0,tt_beta$tt), R0 = R0, Meff = Meff)
@@ -215,7 +218,7 @@ cut <- which(cum > 0.8)[1]
 # get the range from this for R0 and grow it by 0.1
 R0_max <- max(x_grid[ord[seq_len(cut)]]) + 0.1
 R0_min <- min(x_grid[ord[seq_len(cut)]]) - 0.1
-R0_step <- 0.1
+R0_step <- (R0_max-R0_min)/12
 
 # get the range for dates and grow it by 1 day
 last_start_date <- max(y_grid[ord[seq_len(cut)]])
@@ -226,12 +229,19 @@ first_start_date <- as.Date(out_det$scan_results$y[match(first_start_date, as.nu
 # adust the dates so they are compliant with the data
 last_start_date <- min(c(last_start_date, as.Date(null_na(min_death_date))-10), na.rm = TRUE)
 first_start_date <- max(as.Date("2020-01-04"), first_start_date, na.rm = TRUE)
-day_step <- 1
+
+# have at least a week span for start date
+span_date_currently <- seq.Date(first_start_date, last_start_date, 1)
+if(length(span_date_currently) < 7) {
+  last_start_date <- mean(span_date_currently) + 3
+  first_start_date <- mean(span_date_currently) - 3
+}
+day_step <- as.numeric(round((last_start_date - first_start_date)/12))
 
 # get the range for Meff
 Meff_max <- max(z_grid[ord[seq_len(cut)]]) + 0.05
 Meff_min <- min(z_grid[ord[seq_len(cut)]]) - 0.05
-Meff_step <- 0.1
+Meff_step <- (Meff_max-Meff_min)/12
 
 if (short_run) {
   R0_min <- 2.0
@@ -318,6 +328,12 @@ dev.off()
 ## Conduct scnearios
 fr0 <- tail(out$interventions$R0_change,1)
 time_period <- 365
+
+# Maintaining the current set of measures for a further 3 months following which contacts return to pre-intervention levels  
+no_capacity <- squire::projections(out, R0_change = c(1), tt_R0 = c(0),
+                                   hosp_bed_capacity = 1e10, tt_hosp_beds = 0, 
+                                   ICU_bed_capacity = 1e10, tt_ICU_beds = 0, 
+                                   time_period = time_period)
 
 ## -----------------------------------------------------------------------------
 ## 4.1. Assuming current Meff in the future

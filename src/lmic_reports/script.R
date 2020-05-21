@@ -65,9 +65,6 @@ pop <- squire::get_population(country)
 reporting_fraction = 1
 R0_min = 2.0
 R0_max = 5.6
-Meff_min = 0.4
-Meff_max = 1.4
-Meff_step = 0.3
 int_unique <- squire:::interventions_unique(interventions[[iso3c]], "C")
 R0_change <- int_unique$change
 date_R0_change <- int_unique$dates_change
