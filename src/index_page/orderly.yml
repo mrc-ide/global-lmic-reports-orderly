@@ -119,6 +119,7 @@ global_resources:
   footer.tex: footer.tex
   logo.png: logo.png
   header.html: header.html
+  ganalytics.html: ganalytics.html
 
 # This section copies the word style over from the global/
 # directory. If you do not want to create a docx, please remove this

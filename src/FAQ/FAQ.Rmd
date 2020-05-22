@@ -9,6 +9,8 @@ output:
     css: styles.css
     theme: cosmo
     fig_caption: TRUE
+    includes:
+      in_header: ganalytics.html
   pdf_document: 
     fig_caption: true
     includes: 
