@@ -69,7 +69,7 @@ date_R0_change <- int_unique$dates_change
 date_contact_matrix_set_change <- NULL
 squire_model <- squire::explicit_model()
 pars_obs <- NULL
-R0_prior <- list("func" = dnorm, args = list("mean"= 3.2, "sd"= 0.5, "log" = TRUE))
+R0_prior <- list("func" = dnorm, args = list("mean"= 3, "sd"= 0.5, "log" = TRUE))
 
 if(short_run) {
   n_particles <- 2
@@ -95,7 +95,7 @@ if (!is.null(json) && !is.null(json$Meff)) {
 
   # get the range from this for R0 and grow it by 0.75
   R0_max <- min(R0 + 0.75, 5.6)
-  R0_min <- max(R0 - 0.75, 2)
+  R0_min <- max(R0 - 0.75, 1.6)
   R0_step <- 0.05
 
   # get the range for dates and grow it by 7 days
@@ -115,7 +115,7 @@ if (!is.null(json) && !is.null(json$Meff)) {
 } else {
   
   # Defualts if no previous data
-  R0_min <- 2.0
+  R0_min <- 1.6
   R0_max <- 5.6
   R0_step <- 0.2
   Meff_min <- 0.1
@@ -128,7 +128,7 @@ if (!is.null(json) && !is.null(json$Meff)) {
 }
 
 if (short_run) {
-  R0_min <- 2.0
+  R0_min <- 1.6
   R0_max <- 5
   R0_step <- 1
   Meff_min <- 0.1
@@ -217,9 +217,9 @@ cum <- cumsum(out_det$scan_results$renorm_mat_LL[ord])
 cut <- which(cum > 0.8)[1]
 
 # get the range from this for R0 and grow it by 0.1
-R0_max <- max(x_grid[ord[seq_len(cut)]]) + 0.1
-R0_min <- min(x_grid[ord[seq_len(cut)]]) - 0.1
-R0_step <- (R0_max-R0_min)/12
+R0_max <- max(x_grid[ord[seq_len(cut)]]) + 0.2
+R0_min <- min(x_grid[ord[seq_len(cut)]]) - 0.2
+R0_step <- (R0_max-R0_min)/15
 
 # get the range for dates and grow it by 1 day
 last_start_date <- max(y_grid[ord[seq_len(cut)]])
@@ -240,9 +240,9 @@ if(length(span_date_currently) < 7) {
 day_step <- as.numeric(round((last_start_date - first_start_date + 1)/12))
 
 # get the range for Meff
-Meff_max <- max(z_grid[ord[seq_len(cut)]]) + 0.05
-Meff_min <- min(z_grid[ord[seq_len(cut)]]) - 0.05
-Meff_step <- (Meff_max-Meff_min)/12
+Meff_max <- max(z_grid[ord[seq_len(cut)]]) + 0.25
+Meff_min <- min(z_grid[ord[seq_len(cut)]]) - 0.25
+Meff_step <- (Meff_max-Meff_min)/20
 
 if (short_run) {
   R0_min <- 2.0
