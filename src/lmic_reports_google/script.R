@@ -69,7 +69,7 @@ date_R0_change <- int_unique$dates_change
 date_contact_matrix_set_change <- NULL
 squire_model <- squire::explicit_model()
 pars_obs <- NULL
-R0_prior <- list("func" = dnorm, args = list("mean"= 3.2, "sd"= 1, "log" = TRUE))
+R0_prior <- list("func" = dnorm, args = list("mean"= 3.2, "sd"= 0.5, "log" = TRUE))
 
 if(short_run) {
   n_particles <- 2
@@ -108,8 +108,8 @@ if (!is.null(json) && !is.null(json$Meff)) {
   day_step <- 1
 
   # get the range for Meff
-  Meff_max <- (Meff + 0.5)
-  Meff_min <- min(Meff - 0.5,0.1)
+  Meff_max <- min(Meff + 1, 5.1)
+  Meff_min <- max(Meff - 1, 0.1)
   Meff_step <- 0.1
 
 } else {
@@ -119,8 +119,8 @@ if (!is.null(json) && !is.null(json$Meff)) {
   R0_max <- 5.6
   R0_step <- 0.2
   Meff_min <- 0.1
-  Meff_max <- 10.1
-  Meff_step <- 0.5
+  Meff_max <- 5.1
+  Meff_step <- 0.2
   last_start_date <- as.Date(null_na(min_death_date))-20
   first_start_date <- max(as.Date("2020-01-04"),last_start_date - 35, na.rm = TRUE)
   day_step <- 2
@@ -262,6 +262,9 @@ out <- squire::calibrate(
   R0_max = R0_max,
   R0_step = R0_step,
   R0_prior = R0_prior,
+  Rt_func = function(R0_change, R0, Meff) {
+    R0 * (2 * plogis(-(R0_change-1) * -Meff))
+  },
   Meff_min = Meff_min,
   Meff_max = Meff_max,
   Meff_step = Meff_step,

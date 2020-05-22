@@ -14,6 +14,8 @@ echo "*** Date: $DATE"
 
 echo "*** Short Run: $SHORT_RUN"
 
+echo "*** Full Scenarios: $FULL_SCENARIOS"
+
 echo "*** ECDC data"
 ./orderly run ecdc date=$DATE
 

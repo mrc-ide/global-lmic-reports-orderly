@@ -10,10 +10,11 @@ SHORT_RUN=${2:-$DEFAULT_SHORT}
 DEFAULT_FULL_SCENARIOS="FALSE"
 FULL_SCENARIOS=${3:-$DEFAULT_FULL_SCENARIOS}
 
-
 echo "*** Date: $DATE"
 
 echo "*** Short Run: $SHORT_RUN"
+
+echo "*** Full Scenarios: $FULL_SCENARIOS"
 
 echo "*** Updating country list"
 ./update_run_sh.R $DATE
