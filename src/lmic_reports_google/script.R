@@ -240,8 +240,8 @@ if(length(span_date_currently) < 7) {
 day_step <- as.numeric(round((last_start_date - first_start_date + 1)/12))
 
 # get the range for Meff
-Meff_max <- max(z_grid[ord[seq_len(cut)]]) + 0.25
-Meff_min <- min(z_grid[ord[seq_len(cut)]]) - 0.25
+Meff_max <- (min,max(z_grid[ord[seq_len(cut)]]) + 0.25, 5)
+Meff_min <- max(min(z_grid[ord[seq_len(cut)]]) - 0.25, 0.1)
 Meff_step <- (Meff_max-Meff_min)/20
 
 if (short_run) {
