@@ -217,8 +217,8 @@ cum <- cumsum(out_det$scan_results$renorm_mat_LL[ord])
 cut <- which(cum > 0.8)[1]
 
 # get the range from this for R0 and grow it by 0.1
-R0_max <- max(x_grid[ord[seq_len(cut)]]) + 0.2
-R0_min <- min(x_grid[ord[seq_len(cut)]]) - 0.2
+R0_max <- min(max(x_grid[ord[seq_len(cut)]]) + 0.2, 5.6)
+R0_min <- max(min(x_grid[ord[seq_len(cut)]]) - 0.2, 1.6)
 R0_step <- (R0_max-R0_min)/15
 
 # get the range for dates and grow it by 1 day
@@ -240,7 +240,7 @@ if(length(span_date_currently) < 7) {
 day_step <- as.numeric(round((last_start_date - first_start_date + 1)/12))
 
 # get the range for Meff
-Meff_max <- (min,max(z_grid[ord[seq_len(cut)]]) + 0.25, 5)
+Meff_max <- min(max(z_grid[ord[seq_len(cut)]]) + 0.25, 5)
 Meff_min <- max(min(z_grid[ord[seq_len(cut)]]) - 0.25, 0.1)
 Meff_step <- (Meff_max-Meff_min)/20
 
