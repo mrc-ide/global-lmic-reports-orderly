@@ -51,6 +51,8 @@ echo "*** 404 page"
 ./orderly run 404 date=$DATE
 echo "*** FAQ page"
 ./orderly run FAQ date=$DATE
+echo "*** News page"
+./orderly run news date=$DATE
 
 echo "*** data schema"
 ./write_data_schema.R

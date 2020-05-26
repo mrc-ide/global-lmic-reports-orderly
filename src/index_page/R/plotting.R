@@ -132,6 +132,138 @@ cumulative_deaths_plot_continent <- function(continent) {
   
 }
 
+cumulative_deaths_plot_continent_projections <- function(continent, today, data, ecdc) {
+  
+  ## handle arugments coming in
+  if(!continent %in% c("Asia","Europe","Africa","Americas","Oceania")) {
+    stop("continent not matched")
+  }
+  today <- as.Date(today)
+  
+  # identify lmics
+  rl <- readLines("_navbar.html")
+  lmics <- gsub("(.*reports/)(\\w\\w\\w)(\".*)","\\2",grep("reports/(\\w\\w\\w)\"",rl, value =TRUE))
+  
+  # set up colors
+  colors <- c("#003b73","#e4572e","#BB750D","#003844","#925e78")
+  col <- colors[match(continent, c("Asia","Europe","Africa","Americas","Oceania"))]
+  
+  # create dataset
+  slim <- data %>% 
+    mutate(date = as.Date(.data$date)) %>% 
+    filter(date > (today)) %>%
+    filter(date < (today+28)) %>% 
+    filter(scenario == "Maintain Status Quo") %>% 
+    select(date, compartment, y_mean, y_025, y_975, country, iso3c) %>% 
+    mutate(observed = FALSE) %>% 
+    rename(y = y_mean)
+  
+  slim <- slim[,c("date", "y", "country", "iso3c", "observed", "compartment", "y_025", "y_975")]
+  
+  # handle ecdc
+  names(ecdc)[names(ecdc) %in% c("dateRep","Region", "countryterritoryCode")] <- c("date", "country", "iso3c")
+  ecdc <- ecdc %>% 
+    mutate(date = as.Date(date),
+           observed = TRUE,
+           compartment = "deaths") %>% 
+    rename(y = deaths) %>% 
+    select(date, y, country, iso3c, observed, compartment) %>% 
+    mutate(y_025 = NA, 
+           y_975 = NA)
+  
+  
+  df <- as.data.frame(do.call(rbind, list(as.data.frame(ecdc), slim)), stringsAsFactors = FALSE)
+  
+  d <- df
+  d$country[d$country=="Congo"] <- "Republic of Congo"
+  d$country[d$country=="United_Republic_of_Tanzania"] <- "Tanzania"
+  d$country[d$country=="CuraÃ§ao"] <- "Curacao"
+  start <- 10
+  
+  suppressWarnings(d$Continent <- countrycode::countrycode(d$country, origin = 'country.name', destination = 'continent'))
+  d$Continent[d$country=="Eswatini"] <- "Africa"
+  d$Continent[d$country=="United State of America"] <- "Americas"
+  d$Continent[d$country=="Isle_of_Man"] <- "Europe"             
+  d$Continent[d$country=="Kosovo"] <- "Europe"                  
+  d$Continent[d$country=="Netherlands_Antilles"] <- "Americas"    
+  d$Continent[d$country=="Saint_Lucia"] <- "Americas"             
+  d$Continent[d$country=="South_Korea"] <- "Asia"             
+  d$Continent[d$country=="United_States_of_America"] <- "Americas"
+  
+  doubling <- function(double = 2, start = 10, xmax = 100) {
+    
+    x <- seq(0, xmax, 0.1)
+    y <- start * 2^(x/double) 
+    return(data.frame(x= x, y = y, 
+                      Doubling = paste0("Every ", double, " Days")))
+  }
+  
+  d <- d[d$compartment=="deaths",]
+  d$date <- as.Date(d$date)
+  
+  
+  df <- group_by(d, iso3c) %>% 
+    arrange(date) %>%  
+    mutate(Cum_Deaths = cumsum(y))
+  
+  df$country <- gsub("_" ," ", df$country)
+  df <- df[which(df$iso3c %in% unique(df$iso3c[which(df$Cum_Deaths>10 & df$observed)])), ]
+  
+  df_deaths <- df %>% 
+    filter(Cum_Deaths > start) %>% 
+    mutate(day_since = seq_len(n())-1)
+  
+  doubling_lines_deaths <- do.call(rbind, lapply(c(2, 3, 5, 7), function(x){
+    doubling(x, start = start, xmax = max(df_deaths$day_since))
+  }))
+  
+  df_deaths_latest <- df_deaths[df_deaths$date == max(df_deaths$date),]
+  
+  
+  gg_deaths <- ggplot(df_deaths, aes(x=day_since, y=Cum_Deaths, group = country)) + 
+    #geom_line(data = doubling_lines_deaths, aes(x=x, y=y, linetype = Doubling), inherit.aes = FALSE, color = "black") +
+    geom_line(show.legend = FALSE, color = "grey", alpha = 0.3) +
+    geom_line(data = df_deaths[which(df_deaths$Continent %in% continent & df_deaths$iso3c %in% lmics & df_deaths$observed),], 
+              color = col) +
+    geom_line(data = df_deaths[which(df_deaths$Continent %in% continent & df_deaths$iso3c %in% lmics),], 
+              linetype = "dashed", color = col) +
+    #geom_point(data = df_deaths[which(df_deaths$country %in% country[1:7]),], mapping = aes(color = Continent)) +
+    geom_point(data = df_deaths_latest[which(df_deaths_latest$Continent %in% continent & df_deaths_latest$iso3c %in% lmics), ], 
+               alpha = 0.5, show.legend = FALSE) + 
+    ggrepel::geom_text_repel(data =  df_deaths_latest[which(df_deaths_latest$Continent %in% continent & df_deaths_latest$iso3c %in% lmics), ],
+                             aes(label = country), show.legend = FALSE, min.segment.length = 0.1,nudge_x = 1,nudge_y = -0.1) + 
+    scale_y_log10(limits=c(start, max(df_deaths$Cum_Deaths[df_deaths$Continent %in% continent & df_deaths$iso3c %in% lmics])), 
+                  labels = scales::comma) +
+    xlim(limits=c(0, max(df_deaths$day_since[df_deaths$Continent %in% continent & df_deaths$iso3c %in% lmics])+15)) +
+    theme_bw() +
+    #scale_linetype(name = "Doubling Time:") +
+    ylab("Cumulative Deaths (Logarithmic Scale)") +
+    xlab(paste("Days Since", start, "Deaths")) + 
+    ggtitle(continent)
+  
+  gg_deaths
+  
+}
+
+full_firework_plot <- function() {
+  
+  data <- read.csv(file.path("https://raw.githubusercontent.com/mrc-ide/global-lmic-reports/master/data/", 
+                             paste0(as.Date(date)-1, ".csv")), stringsAsFactors = FALSE)
+  
+  ecdc <- readRDS("ecdc_all.rds")
+  
+  plots <- lapply(c("Asia","Europe","Africa","Americas","Oceania"), 
+                  cumulative_deaths_plot_continent_projections, 
+                  today = date, 
+                  data = data, 
+                  ecdc = ecdc)
+  plotted <- lapply(plots[1:4], function(x){x+theme(legend.position = "none")})
+  leg <- cowplot::get_legend(plots[[1]] + theme(legend.position = "top"))
+  main <- cowplot::plot_grid(plotlist = plotted[1:4], ncol = 2)
+  get <- cowplot::plot_grid(main,leg,ncol=1,rel_heights = c(1, 0.05))
+  get
+}
+
 full_plot <- function() {
 
 plots <- lapply(c("Asia","Europe","Africa","Americas","Oceania"), cumulative_deaths_plot_continent)
@@ -387,7 +519,6 @@ summaries_cases_continets_plot <- function(summaries) {
   
 }
 
-
 summaries_cases_plot <- function(summaries) {
   
   sub <- summaries[!summaries$variable %in% c("hospital_14","icu_14", "hospital_14_mit","icu_14_mit","report_deaths"),]
@@ -440,7 +571,6 @@ summaries_forecasts_plot <- function(summaries) {
   return(gg)
 }
 
-
 deaths_plot <- function(out, data, date = Sys.Date()) {
   
   o1 <- squire:::calibrate_output_parsing(
@@ -458,7 +588,6 @@ deaths_plot <- function(out, data, date = Sys.Date()) {
   
   
 }
-
 
 healthcare_plot <- function(out, data) {
   

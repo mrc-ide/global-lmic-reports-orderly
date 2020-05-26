@@ -1,0 +1,183 @@
+---
+title: News
+header-includes: \usepackage{caption}
+date: ""
+output:
+  html_document:
+    keep_md: yes
+    self_contained: yes
+    css: styles.css
+    theme: cosmo
+    fig_caption: TRUE
+    includes:
+      in_header: ganalytics.html
+  pdf_document: 
+    fig_caption: true
+    includes: 
+      before_body: footer.tex
+  word_document:
+    df_print: kable
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 6
+    highlight: tango
+    reference_docx: template.docx
+---
+
+```{js, echo = FALSE}
+
+if ($(window).width() < 768) {
+  $('.dropdown-menu a.dropdown-toggle').on('click', function(e) {
+    if (!$(this).next().hasClass('show')) {
+      $(this).parents('.dropdown-menu').first().find('.show').removeClass("show");
+    }
+
+ 
+
+    var $subMenu = $(this).next(".dropdown-menu");
+    if (!$subMenu.hasClass('show')) {
+      $subMenu.addClass('show');
+      $subMenu.show();
+    } else {
+      $subMenu.removeClass('show');
+      $subMenu.hide();
+    }
+
+ 
+
+    $(this).parents('li.nav-item.dropdown.show').on('hidden.bs.dropdown', function(e) {
+      $('.dropdown-submenu .show').removeClass("show");
+    });
+
+ 
+
+    return false;
+  });
+}
+
+```
+
+```{r, echo = FALSE, message=FALSE, warning=FALSE}
+start <- 10
+replicates <- 10
+library(dplyr)
+library(ggplot2)
+library(squire)
+
+format <- knitr::opts_knit$get("rmarkdown.pandoc.to")
+figRef <- function(caption) {
+  if(format == "latex") {
+    gsub("Figure \\d: ","",caption)
+  } else {
+    caption
+  }
+}
+
+
+fig_height <- function(pdf = 4, html = 6) {
+    if(format == "latex") {
+    pdf
+  } else {
+    html
+  }
+}
+
+fig_center <- function() {
+    if(format == "latex") {
+    "default"
+  } else {
+    "center"
+  }
+}
+
+
+```
+
+```{r, echo = FALSE, message=FALSE, warning=FALSE}
+render_toc <- function(
+  filename, 
+  toc_header_name = "Table of Contents",
+  base_level = NULL,
+  toc_depth = 3,
+  section = "Questions"
+) {
+  x <- readLines(filename, warn = FALSE)
+  x <- paste(x, collapse = "\n")
+  x <- paste0("\n", x, "\n")
+  for (i in 5:3) {
+    regex_code_fence <- paste0("\n[`]{", i, "}.+?[`]{", i, "}\n")
+    x <- gsub(regex_code_fence, "", x)
+  }
+  x <- strsplit(x, "\n")[[1]]
+  x <- x[grepl("^#+", x)]
+  if (!is.null(toc_header_name)) 
+    x <- x[!grepl(paste0("^#+ ", toc_header_name), x)]
+  if (is.null(base_level))
+    base_level <- min(sapply(gsub("(#+).+", "\\1", x), nchar))
+  start_at_base_level <- FALSE
+  x <- sapply(x, function(h) {
+    level <- nchar(gsub("(#+).+", "\\1", h)) - base_level
+    if (level < 0) {
+      stop("Cannot have negative header levels. Problematic header \"", h, '" ',
+           "was considered level ", level, ". Please adjust `base_level`.")
+    }
+    if (level > toc_depth - 1) return("")
+    if (!start_at_base_level && level == 0) start_at_base_level <<- TRUE
+    if (!start_at_base_level) return("")
+    if (grepl("\\{#.+\\}(\\s+)?$", h)) {
+      # has special header slug
+      header_text <- gsub("#+ (.+)\\s+?\\{.+$", "\\1", h)
+      header_slug <- gsub(".+\\{\\s?#([-_.a-zA-Z]+).+", "\\1", h)
+    } else {
+      header_text <- gsub("#+\\s+?", "", h)
+      header_text <- gsub("\\s+?\\{.+\\}\\s*$", "", header_text) # strip { .tabset ... }
+      header_text <- gsub("^[^[:alpha:]]*\\s*", "", header_text) # remove up to first alpha char
+      header_slug <- paste(strsplit(header_text, " ")[[1]], collapse="-")
+      header_slug <- tolower(header_slug)
+    }
+    paste0(strrep(" ", level * 4), "- [", header_text, "](#", header_slug, ")")
+  })
+  x <- x[x != ""]
+  mains <- grep("^-",x)
+  for(i in seq_len(length(x))) {
+    x[i] <- gsub("- ", paste0(i-1,". "), x[i])
+    x[i] <- gsub("\\?)$",")", x[i])
+    x[i] <- gsub("?-/-","-",x[i],fixed=TRUE)
+  }
+  x <- stringr::str_trim(x[-mains])
+  #x <- gsub("^\\d\\. ","", x)
+  
+  knitr::asis_output(paste(rev(x), collapse = " \n"))
+}
+```
+
+
+## News
+
+SARS-CoV-2 is a novel virus and we gain new information on its transmission almost daily, with an incredible amount of new research on COVID-19 being published each week. Consequently, as our understanding of COVID-19 changes over time, we aim to respond accordingly and update our predictions. 
+
+Here, we detail the major version changes to the reports produced in this website (minor changes, such as typo fixes and small edits to plots and text are not docuemnted here). These major changes represent either a new methodology or new information being presented. We hope the following overivew will help users understand the changes implemented throughout the pandemic. 
+
+---
+
+#### Version 2: 2020-05-27
+  
+* Data on mobility from the [Google Community Mobility Reports](https://www.google.com/covid19/mobility/) to inform changes in transmission.
+* Estimates of $R_t$ included in country reports
+* Projections extended to 28 days
+* Impact of countries nearing health system capacity explored
+* Regional overviews provided
+
+<br>
+
+#### Version 1: 2020-04-23
+
+* Initial version released, with reports presenting information on the following:
+  - The total number of COVID-19 infections
+  - The expected number of deaths within the next 14 days
+  - The number of individuals requiring oxygen or mechanical ventilation in the next 14 days
+  - The impact of changing their current intervention policy
+* Model outputs available to download from home page
+
+
+<br>

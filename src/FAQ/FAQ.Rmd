@@ -162,7 +162,7 @@ render_toc("FAQ.Rmd")
   
 We use two sources of data to calibrate the model. The first is the reported numbers of deaths by date as available in the European Centre for Disease Control database. These data are updated daily and whilst there may be a short delay, they are generally consistent with Ministry reports. However, as noted below, it is not clear what proportion of deaths are reported.
 
-The second data source is information on the interventions that have been implemented. We currently capture this in a relatively simplistic way and so this may not fully represent the different interventions that are in place, nor any regional differences in these. We are actively working to improve this aspect of our forecasts.
+The second data source is information on the interventions that have been implemented. In Version 1, we captured this in a relatively simplistic way making assumptions about the impact of different goverment interventions on transmission. As more data became available, we adapted our methods to incorporate data on mobility from the [Google Community Mobility Reports](https://www.google.com/covid19/mobility/) to inform the change in transmission over time. 
 
 <br>
 
@@ -229,3 +229,7 @@ Our outputs should therefore be considered as inputs into wider discussion about
 Our outputs are provided to help support decision makers to interpret their current epidemiological situation and to provide short-term projections of the likely trajectory of the COVID-19 epidemic. They are, however, only one input to be considered prior to deciding on the most appropriate actions to take in response to this epidemic. It is important to note that our model only provides an estimate of the direct mortality due to COVID-19 disease and not any indirect mortality that could occur as a result of either limited healthcare capacity or the wider response taken. Equally, it is likely that any actions taken to mitigate the spread of SARS-CoV-2 virus could impact in other ways that could impact both the health and livelihoods of populations. All of these factors should be considered in tandem to decide the appropriate national response.
   
 <br>
+
+#### 11. The website and projections look different to when I last viewed the website?
+
+We are actively involved in updating our methods and the scenarios that we are modelling. Consequently, the website will change as we try to provide a more useful tool for the global community, which more accurately captures the dynamics of the COVID-19 pandemic. To see how the website has changed over time, please view the [News](https://mrc-ide.github.io/global-lmic-reports/News.html) page for more information.

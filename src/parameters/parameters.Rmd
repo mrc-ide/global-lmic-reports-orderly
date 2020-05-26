@@ -150,7 +150,9 @@ The parameter table below summarises the current best estimates incorporated in 
 | Probability of death if require hospitalisation but do not receive it | 60% | Working assumption based on expert clinical opinion* |
 | Multiplier of duration of stay for LIC and LMIC settings compared to HIC | 50% | Working assumption based on expert clinical opinion* |
 
-* N.B. Given the substantially weaker health systems in LIC and LMIC, it is likely that disease outcomes will differ from the UK. The estimates listed above for the key parameters determining the severity outcomes are the result of a rapid expert clinical review. Eight clinical experts with experience both in treating COVID-19 patients in the UK and with previous experience in clinical practice in LIC/LMICs were asked to provide their assessment of severity outcomes in LMICs. Although there was broad consensus on these outcomes, it should be noted that there was also consensus that this is likely to be highly heterogeneous both within and between countries due to other factors that are difficult to quantify and for which data sources do not readily exist as of `r date`. 
+*N.B. Given the substantially weaker health systems in LIC and LMIC, it is likely that disease outcomes will differ from the UK. The estimates listed above for the key parameters determining the severity outcomes are the result of a rapid expert clinical review. Eight clinical experts with experience both in treating COVID-19 patients in the UK and with previous experience in clinical practice in LIC/LMICs were asked to provide their assessment of severity outcomes in LMICs. Although there was broad consensus on these outcomes, it should be noted that there was also consensus that this is likely to be highly heterogeneous both within and between countries due to other factors that are difficult to quantify and for which data sources do not readily exist as of `r date`. 
+
+<br> 
 
 ### Age-Specific Parameters
 

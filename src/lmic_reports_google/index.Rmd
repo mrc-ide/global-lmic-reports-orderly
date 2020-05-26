@@ -478,4 +478,5 @@ suppressWarnings(suppressMessages(print(cases_contrast_triple_bars(
 
 ```
 
+To explore different scenarios, we recommend using our [COVID-19 Scenario Analysis Tool](https://covidsim.org/), which can be used to simulate different intervention scenarios and explore the long term impact on healthcare demand. 
 ---
