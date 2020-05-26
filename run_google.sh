@@ -41,7 +41,7 @@ parallel --progress -j 32 ./orderly run lmic_reports_google iso3c={} date=$DATE 
 # done
 
 echo "*** Copying reports"
-./copy_reports.R $DATE
+./copy_reports_google.R $DATE
 
 echo "*** Index page"
 ./orderly run index_page date=$DATE

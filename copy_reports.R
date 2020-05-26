@@ -65,9 +65,8 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   target <- "gh-pages"
 
   src <- file.path("archive", "lmic_reports", reports$id)
-  dest <- sprintf("gh-pages/%s/%s", reports$country, reports$date)
+  dest <- sprintf("gh-pages/%s/%s/%s", reports$country, reports$date, "v1")
   copy <- c("index.html",
-            "index_files/figure-html",
             "projections.csv",
             "index.pdf",
             "input_params.json")
