@@ -1,0 +1,214 @@
+---
+title: Continent COVID-19 LMIC Reports"
+header-includes: \usepackage{caption}
+date: ""
+output:
+  html_document:
+    keep_md: no
+    self_contained: yes
+    css: styles.css
+    theme: cosmo
+    fig_caption: TRUE
+    includes:
+      in_header: ganalytics.html
+  pdf_document: 
+    fig_caption: true
+    includes: 
+      before_body: footer.tex
+  word_document:
+    df_print: kable
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 6
+    highlight: tango
+    reference_docx: template.docx
+---
+
+```{js, echo = FALSE}
+
+if ($(window).width() < 768) {
+  $('.dropdown-menu a.dropdown-toggle').on('click', function(e) {
+    if (!$(this).next().hasClass('show')) {
+      $(this).parents('.dropdown-menu').first().find('.show').removeClass("show");
+    }
+
+ 
+
+    var $subMenu = $(this).next(".dropdown-menu");
+    if (!$subMenu.hasClass('show')) {
+      $subMenu.addClass('show');
+      $subMenu.show();
+    } else {
+      $subMenu.removeClass('show');
+      $subMenu.hide();
+    }
+
+ 
+
+    $(this).parents('li.nav-item.dropdown.show').on('hidden.bs.dropdown', function(e) {
+      $('.dropdown-submenu .show').removeClass("show");
+    });
+
+ 
+
+    return false;
+  });
+}
+
+```
+
+```{r, echo = FALSE, message=FALSE, warning=FALSE}
+if (!exists("date")) { # running outside of orderly
+  date <- Sys.Date()
+}
+
+data_url <- paste0("https://github.com/mrc-ide/global-lmic-reports/raw/master/data/",date,".csv")
+url <- paste0("https://github.com/mrc-ide/global-lmic-reports/raw/master/",continent,"/index.pdf")
+
+start <- 10
+replicates <- 10
+library(dplyr)
+library(ggplot2)
+library(squire)
+
+format <- knitr::opts_knit$get("rmarkdown.pandoc.to")
+figRef <- function(caption) {
+  if(format == "latex") {
+    gsub("Figure \\d: ","",caption)
+  } else {
+    caption
+  }
+}
+
+
+fig_height <- function(pdf = 4, html = 6) {
+    if(format == "latex") {
+    pdf
+  } else {
+    html
+  }
+}
+
+fig_center <- function() {
+    if(format == "latex") {
+    "default"
+  } else {
+    "center"
+  }
+}
+
+
+```
+
+```{r ecdc prep, echo = FALSE, collapse=TRUE, warning=FALSE}
+
+# get the ecdc data
+df <- readRDS("ecdc_all.rds")
+data <- df[,c("dateRep", "deaths", "cases","Region")]
+names(data)[1] <- "date"
+data$date <- as.Date(data$date)
+
+# group for cumulative deaths
+data <- group_by(data, Region) %>% mutate(cum_deaths = rev(cumsum(rev(deaths))),
+                                          cum_cases = rev(cumsum(rev(cases))),)
+countries_less_100 <- length(unique(data$Region[!data$Region %in% unique(data$Region[data$cum_deaths > 100])]))
+
+# and with respect to population size
+summed <- group_by(df, Region) %>% summarise(tot = sum(deaths,na.rm=TRUE),
+                                             rel=tot/popData2018[1],
+                                             early = tot<100 && rel < (10/1e6))
+countries_less_pop <- sum(summed$early, na.rm=TRUE)
+
+
+## summaries
+summaries <- readRDS("summaries.rds")
+
+```
+
+## Situation Report for COVID-19: `r cotninent`, `r format(date, "%Y-%m-%d")`
+
+`r latex_omit("---")`
+
+#### **[Download the report for `r continent`, `r format(date, "%Y-%m-%d")` here](`r url`).**
+
+<br> 
+
+COVID-19 has caused large-scale outbreaks in many countries, particularly in Europe and Asia where many countries have experienced a level of healthcare demand that have placed health systems under strain. Many countries, particularly Low- or Middle Income countries (LMICs) (shown below), are at an earlier stage of the epidemic. `r countries_less_100` countries have reported less than 100 COVID-19 deaths, with `r countries_less_pop` where the total COVID-19 deaths also represents less than 10/million of their population. 
+
+In response, we provide daily updated forecasts for LMICs, helping to provide them with an indication of where they are in their epidemic. Specifically, these reports will aim to help countries understand:
+
+<br>
+
+#### 1. The total number of COVID-19 infections
+#### 2. The expected number of deaths within the next 28 days
+#### 3. The number of individuals requiring oxygen or mechanical ventilation in the next 28 days
+#### 4. The impact of changing their current intervention policy 
+
+<br> 
+
+**For further guidance and questions about the methodology and caveats, please see the [Frequently Asked Questions](https://mrc-ide.github.io/global-lmic-reports/FAQ.html)**
+
+<br>
+
+```{r fig1, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.align=fig_center(),fig.width=10, fig.height=fig_height(10,10), fig.cap=figRef("Cumulative Deaths since 10 deaths. The projected deaths (assuming population mobility is maintained at today's level) are shown with dashed lines.")}
+
+data <- read.csv("all_data.csv", stringsAsFactors = FALSE)
+ecdc <- readRDS("ecdc_all.rds")
+
+# [FIGURE SHOWING TRAJECTORIES AND CASES OF EARLY-STAGE LMIC COUNTRIES RELATIVE TO HICS?]
+suppressMessages(suppressWarnings(
+cumulative_deaths_plot_continent_projections(continent, 
+                  today = date, 
+                  data = data, 
+                  ecdc = ecdc)
+))
+
+```
+
+---
+
+### METHODOLOGY 
+
+As in our projections for high-income settings at more advanced stages of the epidemic, rather than relying upon reported cases which are likely to be subject to a high and varying degree of under reporting, we use reported deaths as a more reliable indicator of disease spread. These data are then used to back-calculate an ‘inferred number of COVID-19 infections’ that we estimate have occurred within each country up to the current day, adjusted for the demographics and representative patterns of social mixing within each country. 
+
+Using data on the age-dependent risk of requiring hospitalisation, oxygen and mechanical ventilation by age observed in other countries to date, we use our model to project forwards the likely demand for healthcare over the coming four weeks. This data is currently from high-income countries and consequently likely under estimates the true burden. Full methods used, with parameter values can be found in the [Methods Section](https://mrc-ide.github.io/global-lmic-reports/parameters.html).
+
+These reports are updated daily using the latest publicly available data on COVID-19 from the [European Centre for Disease Prevention and Control](https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide). We also model the impact of government interventions that have been put in place and their effect on human mobility based on the [Google COVID-19 Community Mobility Reports](https://www.google.com/covid19/mobility/).
+
+---
+
+### DATA 
+
+* The combined reports can be downloaded from [here](https://github.com/mrc-ide/global-lmic-reports/blob/master/combined_reports.pdf)
+
+* Projected infections, deaths and healthcare demands can be downloaded from [here](`r data_url`)
+
+---
+
+### FUNDING
+
+This project was funded jointly by the UK Department for International Development and The Wellcome Trust
+
+<br>
+
+<center>
+![](wellcome.png){width=15%}
+![](ukaid.jpg){width=15%}
+</center>
+```{r case plot, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE,  fig.cap=figRef("**Figure 2: Estimated vs Reported Cases and Deaths.**"), fig.width=10, fig.height=12}
+
+# [FIGURE SHOWING TOTAL DEATHS AND TOTAL CASES [OBSERVED AND INFERRED FOR SUB-SAHARAN AFRICA]
+# suppressMessages(summaries_cases_plot(summaries))
+
+```
+
+
+
+```{r healthcare plots, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 3: Estimated Healthcare demands in 2 weeks time.** Individuals needing an ICU bed are predicted to need mechanical ventilation."), fig.width=10, fig.height=fig_height(9,12)}
+
+# [FIGURE SHOWING PROJECTIONS OF HOSP/ICU/DEATHS IN NEXT TWO WEEKS IN SSA]
+# suppressMessages(summaries_forecasts_plot(summaries))
+
+```
+
+<br>
