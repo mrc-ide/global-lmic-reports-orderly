@@ -382,6 +382,18 @@ if (length(params$r_list) > 3) {
 }
 ```
 
+```{r other sources, echo = FALSE, collapse = TRUE, warning = FALSE}
+
+if (iso3c == "BRA") {
+  other_sources <- paste("For sub-national estimates of $R_t$, and further analysis of",
+                         "Brazil, please see ",
+                         "[Report 21](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-21-brazil/)")
+} else {
+  other_sources <- ""
+}
+
+```
+
 ## Situation Report for COVID-19: `r country`, `r format(date, "%Y-%m-%d")`
 
 `r latex_omit("---")`
@@ -405,6 +417,8 @@ This report uses data from the European Centre for Disease Control. These data a
 suppressWarnings(suppressMessages(print(rt$plot)))
 
 ```
+
+`r other_sources`
 
 ---
 
