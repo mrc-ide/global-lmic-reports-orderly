@@ -375,7 +375,8 @@ if (length(params$r_list) > 3) {
     "The forecasted deaths in blue assumes healthcare capacity has been surged",
     "to ensure sufficient supply of ICU and hospital beds. The red curve assumes",
     "no surging in healthcare capacity and subsequently projects increased deaths.",
-    "The plot on the left is included to show the reported deaths to date clearer")
+    "The plot on the left is included to more clearly show the different model fits",
+    " to the reported deaths to date.")
 } else  {
   show_capacity_sentence <-  paste("")
   fig_cap_capacity <- ""
@@ -385,9 +386,9 @@ if (length(params$r_list) > 3) {
 ```{r other sources, echo = FALSE, collapse = TRUE, warning = FALSE}
 
 if (iso3c == "BRA") {
-  other_sources <- paste("For sub-national estimates of $R_t$, and further analysis of",
+  other_sources <- paste("**For sub-national estimates of $R_t$, and further analysis of",
                          "Brazil, please see ",
-                         "[Report 21](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-21-brazil/)")
+                         "[Report 21](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-21-brazil/)**")
 } else {
   other_sources <- ""
 }
@@ -412,13 +413,15 @@ This report uses data from the European Centre for Disease Control. These data a
 
 `r pdf_line_break()`
 
+`r other_sources`
+
 ```{r fig0, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 1: Time-varying reproduction number, $R_t$.** Dark green shows the 50% CI and light green shows the 95% CI."), fig.height=fig_height(3.5,4.5), fig.width=fig_height(6,8), fig.align=fig_center()}
 
 suppressWarnings(suppressMessages(print(rt$plot)))
 
 ```
 
-`r other_sources`
+
 
 ---
 
