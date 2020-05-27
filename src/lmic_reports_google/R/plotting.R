@@ -1128,8 +1128,8 @@ rt_plot <- function(out) {
     complete(date = seq.Date(min(rt$date), max(rt$date), by = "days")) 
   
   column_names <- colnames(new_rt_all)[-c(1,2,3)]
-  new_rt_all <- fill(new_rt_all, column_names, .direction = c("down"))
-  new_rt_all <- fill(new_rt_all, column_names, .direction = c("up"))
+  new_rt_all <- fill(new_rt_all, all_of(column_names), .direction = c("down"))
+  new_rt_all <- fill(new_rt_all, all_of(column_names), .direction = c("up"))
   
   sum_rt <- group_by(new_rt_all, iso, date) %>% 
     summarise(Rt_min = quantile(Rt, 0.025),
