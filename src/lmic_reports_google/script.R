@@ -89,7 +89,7 @@ try({
 
 if (!is.null(json) && !is.null(json$Meff)) {
 
-  R0 <- json[[1]]$R0
+  R0 <- json[[1]]$Rt
   date <- json[[1]]$date
   Meff <- json[[1]]$Meff
 
@@ -197,7 +197,7 @@ beta_set <- squire:::beta_est(squire_model = squire_model,
                               R0 = R0)
 
 df <- data.frame(tt_beta = c(0,tt_beta$tt), beta_set = beta_set, 
-                 date = start_date + c(0,tt_beta$tt), R0 = R0, Meff = Meff)
+                 date = start_date + c(0,tt_beta$tt), Rt = R0, Meff = Meff)
 writeLines(jsonlite::toJSON(df,pretty = TRUE), "input_params.json")
 
 
@@ -324,7 +324,6 @@ pdf("fitting.pdf",width = 8.5,height = 12)
 suppressWarnings(print(cowplot::plot_grid(title,line,top_row,intervention,d,ncol=1,rel_heights = c(0.1,0.1,0.8,0.6,1))))
 dev.off()
 
-
 ## -----------------------------------------------------------------------------
 ## Step 4: Scenarios
 ## -----------------------------------------------------------------------------
@@ -332,12 +331,6 @@ dev.off()
 ## Conduct scnearios
 fr0 <- tail(out$interventions$R0_change,1)
 time_period <- 365
-
-# Maintaining the current set of measures for a further 3 months following which contacts return to pre-intervention levels  
-no_capacity <- squire::projections(out, R0_change = c(1), tt_R0 = c(0),
-                                   hosp_bed_capacity = 1e10, tt_hosp_beds = 0, 
-                                   ICU_bed_capacity = 1e10, tt_ICU_beds = 0, 
-                                   time_period = time_period)
 
 ## -----------------------------------------------------------------------------
 ## 4.1. Assuming current Meff in the future
@@ -446,8 +439,73 @@ r_list <- named_list(maintain_3months_lift, mitigation_3months_lift,  reverse_3_
   
 }
 
+r_list_pass <- r_list
 
-o_list <- lapply(r_list[1:3], squire::format_output,
+## Lastly, do we need to redo this if capacity is about to be passed:
+
+icu_cap <- squire:::get_ICU_bed_capacity(country)
+hosp_cap <- squire:::get_hosp_bed_capacity(country)
+
+t_test_safe <- function(x, ...) {
+  out <- try(t.test(x, ...), silent = TRUE)
+  if (inherits(out, "try-error"))
+  {
+    out <- list("conf.int"=c(mean(x),mean(x)))
+  }
+  return(out)
+}
+
+icu <- format_output(maintain_3months_lift, "ICU_demand", date_0 = date_0)
+icu <- icu[icu$compartment == "ICU_demand",]
+icu_28 <- group_by(icu[icu$t==28,], replicate) %>% 
+  summarise(tot = sum(y, na.rm = TRUE)) %>% 
+  summarise(i_tot = mean(tot, na.rm = TRUE), 
+            i_min = t_test_safe(tot)$conf.int[1],
+            i_max = t_test_safe(tot)$conf.int[2])
+
+hosp <- format_output(maintain_3months_lift, "hospital_demand", date_0 = date_0)
+hosp <- hosp[hosp$compartment == "hospital_demand",]
+hosp_28 <- group_by(hosp[hosp$t==28,], replicate) %>% 
+  summarise(tot = sum(y, na.rm = TRUE)) %>% 
+  summarise(i_tot = mean(tot, na.rm = TRUE), 
+            i_min = t_test_safe(tot)$conf.int[1],
+            i_max = t_test_safe(tot)$conf.int[2])
+
+if(icu_28$i_max > icu_cap || hosp_28$i_max > hosp_cap) {
+  
+  out_surged <- squire::calibrate(
+    data = data,
+    R0_min = R0_min,
+    R0_max = R0_max,
+    R0_step = R0_step,
+    R0_prior = R0_prior,
+    Rt_func = function(R0_change, R0, Meff) {
+      R0 * (2 * plogis(-(R0_change-1) * -Meff))
+    },
+    Meff_min = Meff_min,
+    Meff_max = Meff_max,
+    Meff_step = Meff_step,
+    first_start_date = first_start_date,
+    last_start_date = last_start_date,
+    day_step = day_step,
+    squire_model = explicit_model(),
+    pars_obs = pars_obs,
+    n_particles = n_particles,
+    reporting_fraction = reporting_fraction,
+    R0_change = R0_change,
+    date_R0_change = date_R0_change,
+    replicates = replicates,
+    baseline_ICU_bed_capacity = 1e10,
+    baseline_hosp_bed_capacity = 1e10,
+    country = country,
+    forecast = 28
+  )
+  
+r_list_pass[[4]] <- out_surged
+
+}
+
+o_list <- lapply(r_list_pass, squire::format_output,
                  var_select = c("infections","deaths","hospital_demand","ICU_demand", "D"),
                  date_0 = date_0)
 
@@ -470,7 +528,7 @@ data$date <- as.Date(data$date)
 # prepare reports
 rmarkdown::render("index.Rmd", 
                   output_format = c("html_document","pdf_document"), 
-                  params = list("r_list" = r_list[1:3],
+                  params = list("r_list" = r_list_pass,
                                 "o_list" = o_list,
                                 "replicates" = replicates, 
                                 "data" = data,

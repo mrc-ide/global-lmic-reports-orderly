@@ -47,6 +47,8 @@ src/lmic_reports_google/fitting.pdf
 src/lmic_reports_google/projections.csv
 src/FAQ/FAQ.html
 src/FAQ/FAQ.md
+src/news/News.html
+src/news/News.md
 src/FAQ/structure.JPG
 src/test
 .ssh

@@ -1079,7 +1079,6 @@ intervention_plot <- function(res, date) {
   
 }
   
-
 intervention_plot_google <- function(res, date, data, forecast) {
   
   date <- as.Date(date)
@@ -1093,4 +1092,73 @@ intervention_plot_google <- function(res, date, data, forecast) {
     ylab("% Mobility") + 
     xlab("Date")
   
+}
+
+rt_plot <- function(out) {
+  
+  # create the Rt data frame
+  rts <- lapply(seq_len(length(out$replicate_parameters$R0)), function(y) {
+    
+    tt <- squire:::intervention_dates_for_odin(dates = out$interventions$date_R0_change, 
+                                               change = out$interventions$R0_change, 
+                                               start_date = out$replicate_parameters$start_date[y],
+                                               steps_per_day = 1/out$parameters$dt)
+    
+    df <- data.frame(
+      "Rt" = c(out$replicate_parameters$R0[y], 
+               vapply(tt$change, out$scan_results$inputs$Rt_func, numeric(1), 
+                      R0 = out$replicate_parameters$R0[y], Meff = out$replicate_parameters$Meff[y])),
+      "date" = c(as.character(out$replicate_parameters$start_date[y]), 
+                 as.character(out$interventions$date_R0_change[match(tt$change, out$interventions$R0_change)])),
+      "iso" = iso3c,
+      rep = y,
+      stringsAsFactors = FALSE)
+    df$pos <- seq_len(nrow(df))
+    return(df)
+  } )
+  
+  rt <- do.call(rbind, rts)
+  rt$date <- as.Date(rt$date)
+  
+  rt <- rt[,c(3,2,1,4,5)]
+  
+  new_rt_all <- rt %>%
+    group_by(iso, rep) %>% 
+    arrange(date) %>% 
+    complete(date = seq.Date(min(rt$date), max(rt$date), by = "days")) 
+  
+  column_names <- colnames(new_rt_all)[-c(1,2,3)]
+  new_rt_all <- fill(new_rt_all, column_names, .direction = c("down"))
+  new_rt_all <- fill(new_rt_all, column_names, .direction = c("up"))
+  
+  sum_rt <- group_by(new_rt_all, iso, date) %>% 
+    summarise(Rt_min = quantile(Rt, 0.025),
+              Rt_q25 = quantile(Rt, 0.25),
+              Rt_q75 = quantile(Rt, 0.75),
+              Rt_max = quantile(Rt, 0.975),
+              Rt = median(Rt))
+  
+  country_plot <- function(vjust = -1.2) {
+    ggplot(sum_rt, aes(x=date, y = Rt, ymin=Rt_min, ymax = Rt_max, group = iso, fill = iso)) +
+      geom_ribbon(fill = "#96c4aa") +
+      geom_line(color = "#48996b") +
+      geom_ribbon(mapping = aes(ymin = Rt_q25, ymax = Rt_q75), fill = "#48996b") +
+      geom_hline(yintercept = 1, linetype = "dashed") +
+      theme_bw() +
+      theme(axis.text = element_text(size=12)) +
+      xlab("") +
+      scale_x_date(breaks = "1 week",
+                   limits = as.Date(c(min(rt$date[rt$pos==1]),
+                                      as.character(Sys.Date()+as.numeric(lubridate::wday(Sys.Date()))))), 
+                   date_labels = "%d %b") + 
+      theme(legend.position = "none") +
+      theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, colour = "black"),
+            panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+            panel.border = element_blank(),
+            panel.background = element_blank(), axis.line = element_line(colour = "black")
+      )
+  }
+
+  res <- list("plot" = country_plot(), "rts" = sum_rt)
+  return(res)  
 }
