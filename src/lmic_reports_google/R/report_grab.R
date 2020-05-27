@@ -65,7 +65,7 @@ reports_day <- function(date = NULL) {
 
 
 generate_draws <- function(scan_results, squire_model, replicates, n_particles, forecast,
-                           country, population, interventions) {
+                           country, population, interventions, data) {
   
   # carry out sims drawn from the grid
   if (is.null(scan_results$z)) {

@@ -372,9 +372,10 @@ if (length(params$r_list) > 3) {
     "do not receive appropriate treatment. [See our methods for more", 
     "information](https://mrc-ide.github.io/global-lmic-reports/parameters.html)")
   fig_cap_capacity <- paste(
-    "The forecasted deaths in blue assumes healthcare capacity has been surged in order",
+    "The forecasted deaths in blue assumes healthcare capacity has been surged",
     "to ensure sufficient supply of ICU and hospital beds. The red curve assumes",
-    "no surging in healthcare capacity and subsequently projects increased deaths.")
+    "no surging in healthcare capacity and subsequently projects increased deaths.",
+    "The plot on the left is included to show the reported deaths to date clearer")
 } else  {
   show_capacity_sentence <-  paste("")
   fig_cap_capacity <- ""

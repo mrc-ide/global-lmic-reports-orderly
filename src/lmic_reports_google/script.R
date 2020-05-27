@@ -493,33 +493,18 @@ hosp_28 <- group_by(hosp[hosp$t==28,], replicate) %>%
 
 if(icu_28$i_tot > icu_cap || hosp_28$i_tot > hosp_cap) {
   
-  out_surged <- squire::calibrate(
-    data = data,
-    R0_min = R0_min,
-    R0_max = R0_max,
-    R0_step = R0_step,
-    R0_prior = R0_prior,
-    Rt_func = function(R0_change, R0, Meff) {
-      R0 * (2 * plogis(-(R0_change-1) * -Meff))
-    },
-    Meff_min = Meff_min,
-    Meff_max = Meff_max,
-    Meff_step = Meff_step,
-    first_start_date = first_start_date,
-    last_start_date = last_start_date,
-    day_step = day_step,
-    squire_model = explicit_model(),
-    pars_obs = pars_obs,
-    n_particles = n_particles,
-    reporting_fraction = reporting_fraction,
-    R0_change = R0_change,
-    date_R0_change = date_R0_change,
-    replicates = replicates,
-    baseline_ICU_bed_capacity = 1e10,
-    baseline_hosp_bed_capacity = 1e10,
-    country = country,
-    forecast = 28
-  )
+  scan_results <- out$scan_results
+  scan_results$inputs$model_params$hosp_beds <- 1e10
+  scan_results$inputs$model_params$ICU_beds <- 1e10
+  out_surged <- generate_draws(scan_results = scan_results, 
+                               squire_model = out$scan_results$inputs$model, 
+                               replicates = replicates, 
+                               n_particles = n_particles, 
+                               forecast = 28, 
+                               country = country, 
+                               population = get_population(iso3c = iso3c)$n, 
+                               interventions = out$interventions, 
+                               data = out$scan_results$inputs$data)
   
 r_list_pass[[4]] <- out_surged
 

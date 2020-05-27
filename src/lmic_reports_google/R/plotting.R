@@ -589,17 +589,17 @@ deaths_plot_single_surge <- function(out, out2, data, date_0, date = Sys.Date(),
               gg$layers[[1]]$data$ymax[gg$layers[[1]]$data$x<=(as.Date(date)+forecast)])
   
   gg2 <- gg + 
-    geom_point(data = out$scan_results$inputs$data, mapping = aes(x=date, y=deaths,shape="Reported"), inherit.aes = FALSE) +
+    geom_point(data = out$scan_results$inputs$data, mapping = aes(x=date, y=deaths,shape="Reported Deaths"), inherit.aes = FALSE) +
     ggplot2::geom_vline(xintercept = date, linetype = "dashed") +
     ggplot2::theme_bw()  +
     ggplot2::scale_x_date(date_breaks = "2 week", date_labels = "%b %d",
                           limits = c(min(data$date[which(data$deaths>0)]), date + forecast),
                           expand = c(0, 0)) +
-    ggplot2::scale_fill_manual(name = "", labels = (c("Estimated with Current\nHealthcare Capacity", 
-                                                      "Estimated with Surge\nin Healthcare Capacity")),
+    ggplot2::scale_fill_manual(name = "", labels = (c("Estimated with Current Healthcare Capacity", 
+                                                      "Estimated with Surge in Healthcare Capacity")),
                                values = (c("#c59e96","#3f8ea7"))) +
-    ggplot2::scale_color_manual(name = "", labels = (c("Estimated with Current\nHealthcare Capacity", 
-                                                       "Estimated with Surge\nin Healthcare Capacity")),
+    ggplot2::scale_color_manual(name = "", labels = (c("Estimated with Current Healthcare Capacity", 
+                                                       "Estimated with Surge in Healthcare Capacity")),
                                 values = (c("#c59e96","#3f8ea7"))) +
     ggplot2::ylab("Daily Deaths") +
     ggplot2::scale_shape_manual(name = "", values = 20) +
@@ -612,23 +612,21 @@ deaths_plot_single_surge <- function(out, out2, data, date_0, date = Sys.Date(),
                    axis.line = ggplot2::element_line(colour = "black")) 
   
   gg2 <- gg2 + ggplot2::theme(legend.position = "top", 
-                              legend.justification = c(0,1),
+                              legend.justification = c(0.5,1),
                               legend.direction = "horizontal") +
-    ggtitle("Plot on right zoomed in on reported deaths") +
     geom_vline(xintercept = date, linetype = "dashed")
   
-  rg <- cowplot::plot_grid(
-    NULL,
-                           gg2 + 
-                             ylim(c(0, max(gg2$data[gg2$data$x < date & gg2$data$Scenario ==  "Surge in healthcare",]$ymax))) +
-                             xlim(c(min(data$date[which(data$deaths>0)]), date)) +
-                             theme(legend.position = "none", title = element_blank()),
-                           nrow = 2, rel_heights = c(0.2,1))
+  rg <- gg2 + ylab("Daily Deaths") +
+      ylim(c(0, max(gg2$data[gg2$data$x < date+1,]$ymax))) +
+      xlim(c(min(data$date[which(data$deaths>0)]), date)) +
+      theme(legend.position = "none", plot.title = element_blank())
   
+  gg2 <- gg2 + theme(legend.position = "none") + ylab("")
   
-  cowplot::plot_grid(gg2, 
-                     rg,
-                     rel_widths=c(1,0.5))
+  leg <- cowplot::get_legend(gg2)
+  cowplot::plot_grid(leg, 
+                     cowplot::plot_grid(rg, gg2+theme(legend.position = "none"),rel_widths=c(0.66,1)),
+                     ncol = 1, rel_heights = c(0.1,1))
   
   
 }
