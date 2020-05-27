@@ -147,7 +147,7 @@ if(any(data$daily_cases < 0)) {
   show_cases_sentence <- ""
 }
 
-rt <- rt_plot(params$r_list[[1]])
+suppressWarnings(rt <- rt_plot(params$r_list[[1]]))
 
 ```
 
@@ -451,7 +451,7 @@ The expected trajectory for cumulative deaths is shown in the figure below. This
 ```{r death forecast plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap=figRef(paste0("**Figure 4: Estimated daily deaths.** Projected deaths assuming the current level of interventions are maintained are shown in red (mean and 95% quantile). Reported deaths are plotted in black. ",fig_cap_capacity)), fig.width=if (length(params$r_list) > 3) 10 else 8, fig.height=fig_height(4,4.5), fig.align=fig_center()}
 
 if (length(params$r_list) > 3) {
-  cowplot::plot_grid(
+  suppressWarnings(suppressMessages((cowplot::plot_grid(
     suppressWarnings(suppressMessages((
       deaths_plot_single(params$r_list[[1]], forecast = 28, 
                          data = data, date_0 = date_0, date = date) + 
@@ -461,7 +461,7 @@ if (length(params$r_list) > 3) {
                          data = data, date_0 = date_0, date = date) + 
         theme(legend.position = "top")))),
     ncol = 2
-  )  
+  ))))  
 } else {
   suppressWarnings(suppressMessages(print(
     deaths_plot_single(params$r_list[[1]], forecast = 28, 
