@@ -56,7 +56,7 @@ copy_index <- function(date = NULL, is_latest = TRUE) {
   src_params <- file.path("archive", "parameters", id_params, "parameters.html")
   src_404 <- file.path("archive", "404", id_404, "404.html")
   src_FAQ <- file.path("archive", "FAQ", id_FAQ, "FAQ.html")
-  src_News <- file.path("archive", "news", id_FAQ, "News.html")
+  src_News <- file.path("archive", "news", id_News, "News.html")
   file_copy(c(src_index, src_params, src_404, src_FAQ, src_News), target)
 }
 
