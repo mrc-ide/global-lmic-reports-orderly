@@ -368,7 +368,7 @@ hosp_cap <- squire:::get_hosp_bed_capacity(country)
 if(icu_28$i_max > icu_cap || hosp_28$i_max > hosp_cap) {
   show_capacity_sentence <- paste(
     "**N.B.", country,
-    "is forecast to be close to or supassing our best estimates for healthcare",
+    "is forecast to be close to or surpassing our best estimates for healthcare",
     "capacity in the next 28 days.** Estimates of deaths in the next 28 days may be", 
     "inaccurate due to our working assumptions for mortality in individuals who", 
     "do not receive appropriate treatment. [See our parameter sources for more", 
