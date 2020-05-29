@@ -88,6 +88,6 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
 if (!interactive()) {
   usage <- "Usage:\n./copy_regionals.R [<date>]"
   args <- docopt::docopt(usage)
-  copy_index(args$date)
+  copy_outputs(args$date)
 }
 
