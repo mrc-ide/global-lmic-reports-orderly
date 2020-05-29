@@ -70,6 +70,9 @@ date_contact_matrix_set_change <- NULL
 squire_model <- squire::explicit_model()
 pars_obs <- NULL
 R0_prior <- list("func" = dnorm, args = list("mean"= 3, "sd"= 0.5, "log" = TRUE))
+Rt_func <- function(R0_change, R0, Meff) {
+  R0 * (2 * plogis(-(R0_change-1) * -Meff))
+}
 
 if(short_run) {
   n_particles <- 2
@@ -152,9 +155,7 @@ out_det <- squire::calibrate(
   Meff_min = Meff_min,
   Meff_max = Meff_max,
   Meff_step = Meff_step,
-  Rt_func = function(R0_change, R0, Meff) {
-    R0 * (2 * plogis(-(R0_change-1) * -Meff))
-  },
+  Rt_func = Rt_func,
   first_start_date = first_start_date,
   last_start_date = last_start_date,
   day_step = day_step,
@@ -262,9 +263,7 @@ out <- squire::calibrate(
   R0_max = R0_max,
   R0_step = R0_step,
   R0_prior = R0_prior,
-  Rt_func = function(R0_change, R0, Meff) {
-    R0 * (2 * plogis(-(R0_change-1) * -Meff))
-  },
+  Rt_func = Rt_func,
   Meff_min = Meff_min,
   Meff_max = Meff_max,
   Meff_step = Meff_step,
@@ -282,6 +281,10 @@ out <- squire::calibrate(
   forecast = 0
 )
 
+Rt_func <- function(R0_change, R0, Meff) {
+  R0 * (2 * plogis(-(R0_change-1) * -Meff))
+}
+out$scan_results$inputs$Rt_func <- Rt_func
 saveRDS(out, "grid_out.rds")
 
 ## summarise what we have
@@ -550,6 +553,7 @@ data_sum <- lapply(o_list[1:3], function(pd){
   
   # Format summary data
   pds <- pd %>%
+    dplyr::filter(.data$date <= (date+28)) %>% 
     dplyr::group_by(.data$date, .data$compartment) %>%
     dplyr::summarise(y_025 = stats::quantile(.data$y, 0.025),
                      y_25 = stats::quantile(.data$y, 0.25),

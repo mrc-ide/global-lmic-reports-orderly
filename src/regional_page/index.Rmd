@@ -65,8 +65,6 @@ if (!exists("date")) { # running outside of orderly
 data_url <- paste0("https://github.com/mrc-ide/global-lmic-reports/raw/master/data/",date,".csv")
 url <- paste0("https://github.com/mrc-ide/global-lmic-reports/raw/master/",continent,"/index.pdf")
 
-start <- 10
-replicates <- 10
 library(dplyr)
 library(ggplot2)
 library(squire)
@@ -97,6 +95,34 @@ fig_center <- function() {
   }
 }
 
+latex_omit <- function(text) {
+  if(knitr::is_latex_output())
+    return("")
+  else
+    return(text)
+}
+
+pagebreak <- function() {
+  if(knitr::is_latex_output())
+    return("\\newpage")
+  else
+    return('<div style="page-break-before: always;" />')
+}
+
+linebreak <- function() {
+  if(knitr::is_latex_output())
+    return("")
+  else
+    return('<br>')
+}
+
+pdf_line_break <- function() {
+  if(knitr::is_latex_output())
+    return("<br>")
+  else
+    return('')
+}
+
 
 ```
 
@@ -104,28 +130,40 @@ fig_center <- function() {
 
 # get the ecdc data
 df <- readRDS("ecdc_all.rds")
-data <- df[,c("dateRep", "deaths", "cases","Region")]
-names(data)[1] <- "date"
+data <- df[,c("dateRep", "deaths", "cases","Region", "countryterritoryCode")]
+names(data)[c(1,4,5)] <- c("date","country","iso3c")
 data$date <- as.Date(data$date)
+date <- date_0 <- as.Date(date)
 
 # group for cumulative deaths
-data <- group_by(data, Region) %>% mutate(cum_deaths = rev(cumsum(rev(deaths))),
+data <- group_by(data, country) %>% mutate(cum_deaths = rev(cumsum(rev(deaths))),
                                           cum_cases = rev(cumsum(rev(cases))),)
-countries_less_100 <- length(unique(data$Region[!data$Region %in% unique(data$Region[data$cum_deaths > 100])]))
 
-# and with respect to population size
-summed <- group_by(df, Region) %>% summarise(tot = sum(deaths,na.rm=TRUE),
-                                             rel=tot/popData2018[1],
-                                             early = tot<100 && rel < (10/1e6))
-countries_less_pop <- sum(summed$early, na.rm=TRUE)
 
+
+d <- data
+d$country[d$country=="Congo"] <- "Republic of Congo"
+d$country[d$country=="United_Republic_of_Tanzania"] <- "Tanzania"
+d$country[d$country=="CuraÃ§ao"] <- "Curacao"
+suppressWarnings(d$Continent <- countrycode::countrycode(d$country, origin = 'country.name', destination = 'continent'))
+d$Continent[d$country=="Eswatini"] <- "Africa"
+d$Continent[d$country=="United State of America"] <- "Americas"
+d$Continent[d$country=="Isle_of_Man"] <- "Europe"             
+d$Continent[d$country=="Kosovo"] <- "Europe"                  
+d$Continent[d$country=="Netherlands_Antilles"] <- "Americas"    
+d$Continent[d$country=="Saint_Lucia"] <- "Americas"             
+d$Continent[d$country=="South_Korea"] <- "Asia"             
+d$Continent[d$country=="United_States_of_America"] <- "Americas"
+d$Continent[d$country=="Kosovo"] <- "Europe"
+
+cont_sums <- d[d$Continent == continent & d$date == date_0,]
 
 ## summaries
 summaries <- readRDS("summaries.rds")
 
 ```
 
-## Situation Report for COVID-19: `r cotninent`, `r format(date, "%Y-%m-%d")`
+## Situation Report for COVID-19: `r continent`, `r format(date, "%Y-%m-%d")`
 
 `r latex_omit("---")`
 
@@ -133,81 +171,71 @@ summaries <- readRDS("summaries.rds")
 
 <br> 
 
-COVID-19 has caused large-scale outbreaks in many countries, particularly in Europe and Asia where many countries have experienced a level of healthcare demand that have placed health systems under strain. Many countries, particularly Low- or Middle Income countries (LMICs) (shown below), are at an earlier stage of the epidemic. `r countries_less_100` countries have reported less than 100 COVID-19 deaths, with `r countries_less_pop` where the total COVID-19 deaths also represents less than 10/million of their population. 
-
-In response, we provide daily updated forecasts for LMICs, helping to provide them with an indication of where they are in their epidemic. Specifically, these reports will aim to help countries understand:
+**Please see the country reports for further details on individual countries. For further guidance and questions about the methodology and caveats, please see the [Frequently Asked Questions](https://mrc-ide.github.io/global-lmic-reports/FAQ.html)**
 
 <br>
 
-#### 1. The total number of COVID-19 infections
-#### 2. The expected number of deaths within the next 28 days
-#### 3. The number of individuals requiring oxygen or mechanical ventilation in the next 28 days
-#### 4. The impact of changing their current intervention policy 
+### Epidemiological Situation
 
-<br> 
-
-**For further guidance and questions about the methodology and caveats, please see the [Frequently Asked Questions](https://mrc-ide.github.io/global-lmic-reports/FAQ.html)**
+| **Total Reported Cases** | **New Reported Cases** | **Total Reported Deaths** | **New Reported Deaths** | 
+| ---- | ---- | ---- | ---- |
+| `r format(sum(cont_sums$cum_cases), big.mark=",")` | `r format(sum(cont_sums$cases), big.mark=",")` | `r format(sum(cont_sums$cum_deaths), big.mark=",")`|`r format(sum(cont_sums$deaths), big.mark=",")`|
 
 <br>
 
-```{r fig1, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.align=fig_center(),fig.width=10, fig.height=fig_height(10,10), fig.cap=figRef("Cumulative Deaths since 10 deaths. The projected deaths (assuming population mobility is maintained at today's level) are shown with dashed lines.")}
+```{r starter, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.width=fig_height(7,9), fig.height=fig_height(4,5),fig.align=fig_center()}
 
-data <- read.csv("all_data.csv", stringsAsFactors = FALSE)
-ecdc <- readRDS("ecdc_all.rds")
-
-# [FIGURE SHOWING TRAJECTORIES AND CASES OF EARLY-STAGE LMIC COUNTRIES RELATIVE TO HICS?]
-suppressMessages(suppressWarnings(
-cumulative_deaths_plot_continent_projections(continent, 
-                  today = date, 
-                  data = data, 
-                  ecdc = ecdc)
-))
+suppressMessages(suppressWarnings(d %>% filter(date < date_0) %>% 
+  group_by(date, Continent) %>% 
+  summarise(deaths = sum(cum_deaths)) %>% 
+  ggplot(aes(x=date,y=deaths,color=Continent)) + 
+  geom_line(lwd=1) + 
+  theme_bw() + xlab("") + ylab("Cumulative Deaths") + 
+  scale_color_brewer(palette = "Set2") + 
+  scale_y_log10(limits=c(1,NA), labels = scales::comma) + 
+  theme(panel.border = element_blank(), axis.line = element_line(size=0.5))))
 
 ```
 
----
+`r pagebreak()`
 
-### METHODOLOGY 
-
-As in our projections for high-income settings at more advanced stages of the epidemic, rather than relying upon reported cases which are likely to be subject to a high and varying degree of under reporting, we use reported deaths as a more reliable indicator of disease spread. These data are then used to back-calculate an ‘inferred number of COVID-19 infections’ that we estimate have occurred within each country up to the current day, adjusted for the demographics and representative patterns of social mixing within each country. 
-
-Using data on the age-dependent risk of requiring hospitalisation, oxygen and mechanical ventilation by age observed in other countries to date, we use our model to project forwards the likely demand for healthcare over the coming four weeks. This data is currently from high-income countries and consequently likely under estimates the true burden. Full methods used, with parameter values can be found in the [Methods Section](https://mrc-ide.github.io/global-lmic-reports/parameters.html).
-
-These reports are updated daily using the latest publicly available data on COVID-19 from the [European Centre for Disease Prevention and Control](https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide). We also model the impact of government interventions that have been put in place and their effect on human mobility based on the [Google COVID-19 Community Mobility Reports](https://www.google.com/covid19/mobility/).
-
----
-
-### DATA 
-
-* The combined reports can be downloaded from [here](https://github.com/mrc-ide/global-lmic-reports/blob/master/combined_reports.pdf)
-
-* Projected infections, deaths and healthcare demands can be downloaded from [here](`r data_url`)
-
----
-
-### FUNDING
-
-This project was funded jointly by the UK Department for International Development and The Wellcome Trust
+### Projected deaths within the next 28 days
 
 <br>
 
-<center>
-![](wellcome.png){width=15%}
-![](ukaid.jpg){width=15%}
-</center>
-```{r case plot, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE,  fig.cap=figRef("**Figure 2: Estimated vs Reported Cases and Deaths.**"), fig.width=10, fig.height=12}
+```{r deaths plot, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE,  fig.cap=figRef("**Figure 1: Cumulative Deaths since 10 deaths**. The projected deaths (assuming population mobility is maintained at today's level) are shown with dashed lines."), fig.width=fig_height(7,9), fig.height=fig_height(5,6),fig.align=fig_center()}
 
 # [FIGURE SHOWING TOTAL DEATHS AND TOTAL CASES [OBSERVED AND INFERRED FOR SUB-SAHARAN AFRICA]
-# suppressMessages(summaries_cases_plot(summaries))
+suppressMessages(one_firework_plot(cont = continent))
+
+```
+
+<br>
+`r pagebreak()`
+
+### Projected healthcare demand within the next 28 days
+
+<br>
+
+```{r healthcare plots, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 2: Estimated Healthcare demands in 4 weeks time.** Individuals needing an ICU bed are predicted to need mechanical ventilation. Individuals requiring oxygen are assumed to require high-flow oxygen."), fig.width=fig_height(9,9), fig.height=fig_height(9,9),fig.align=fig_center()}
+
+# [FIGURE SHOWING PROJECTIONS OF HOSP/ICU/DEATHS IN NEXT TWO WEEKS IN SSA]
+suppressMessages(summaries_forecasts_plot(sums = summaries, cont = continent))
 
 ```
 
 
+<br>
+`r pagebreak()`
 
-```{r healthcare plots, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 3: Estimated Healthcare demands in 2 weeks time.** Individuals needing an ICU bed are predicted to need mechanical ventilation."), fig.width=10, fig.height=fig_height(9,12)}
+### Effective Reproductive Number
 
-# [FIGURE SHOWING PROJECTIONS OF HOSP/ICU/DEATHS IN NEXT TWO WEEKS IN SSA]
-# suppressMessages(summaries_forecasts_plot(summaries))
+<br>
+
+```{r rt plot, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE,  fig.cap=figRef("**Figure 3: Time-varying reproduction number, $R_t$.** Dark green shows the 50% CI and light green shows the 95% CI. $R_t$ < 1 indicates a slowing epidemic, whereas an $R_t$ greater than 1 indicates a growing epidemic."), fig.width=fig_height(10,10), fig.height=fig_height(10,10),fig.align=fig_center()}
+
+# [FIGURE SHOWING TOTAL DEATHS AND TOTAL CASES [OBSERVED AND INFERRED FOR SUB-SAHARAN AFRICA]
+suppressMessages(rt_plot(cont = continent))
 
 ```
 

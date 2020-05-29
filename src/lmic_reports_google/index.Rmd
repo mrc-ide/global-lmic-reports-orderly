@@ -374,9 +374,7 @@ if (length(params$r_list) > 3) {
   fig_cap_capacity <- paste(
     "The forecasted deaths in blue assumes healthcare capacity has been surged",
     "to ensure sufficient supply of ICU and hospital beds. The red curve assumes",
-    "no surging in healthcare capacity and subsequently projects increased deaths.",
-    "The plot on the left is included to more clearly show the different model fits",
-    " to the reported deaths to date.")
+    "no surging in healthcare capacity and subsequently projects increased deaths.")
 } else  {
   show_capacity_sentence <-  paste("")
   fig_cap_capacity <- ""
@@ -415,7 +413,7 @@ This report uses data from the European Centre for Disease Control. These data a
 
 `r other_sources`
 
-```{r fig0, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 1: Time-varying reproduction number, $R_t$.** Dark green shows the 50% CI and light green shows the 95% CI."), fig.height=fig_height(3.5,4.5), fig.width=fig_height(6,8), fig.align=fig_center()}
+```{r fig0, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 1: Time-varying reproduction number, $R_t$.** Dark green shows the 50% CI and light green shows the 95% CI. $R_t$ < 1 indicates a slowing epidemic, whereas an $R_t$ greater than 1 indicates a growing epidemic."), fig.height=fig_height(3.5,4.5), fig.width=fig_height(6,8), fig.align=fig_center()}
 
 suppressWarnings(suppressMessages(print(rt$plot)))
 
@@ -464,7 +462,7 @@ The expected trajectory for cumulative deaths is shown in the figure below. This
 
 <br>
 
-```{r death forecast plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap=figRef(paste0("**Figure 4: Estimated daily deaths.** Projected deaths assuming the current level of interventions are maintained are shown in red (mean and 95% quantile). Reported deaths are plotted in black. ",fig_cap_capacity)), fig.width=if (length(params$r_list) > 3) 10 else 8, fig.height=if (length(params$r_list) > 3) 6 else 4.5, fig.align=fig_center()}
+```{r death forecast plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap=figRef(paste0("**Figure 4: Estimated daily deaths.** Projected deaths assuming the current level of interventions are maintained are shown in red (mean and 95% quantile). Reported deaths are plotted in black. The plot on the left is focussed on the model fit prior to today, while the plot on the right forecasts the next 28 days, fig_cap_capacity)), fig.width=if (length(params$r_list) > 3) 10 else 8, fig.height=if (length(params$r_list) > 3) 6 else 4.5, fig.align=fig_center()}
 
 if (length(params$r_list) > 3) {
   suppressWarnings(suppressMessages(

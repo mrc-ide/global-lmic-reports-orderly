@@ -520,7 +520,7 @@ deaths_plot_single <- function(out, data, date_0, date = Sys.Date(),
                                values = (c("#c59e96"))) +
     ggplot2::scale_color_manual(name = "", labels = rev(c("Estimated")),
                                 values = (c("#c59e96"))) +
-    ggplot2::ylab("Daily Deaths") +
+    ggplot2::ylab("") +
     ggplot2::scale_shape_manual(name = "", values = 20) +
     ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, colour = "black"),
                    axis.title.x = ggplot2::element_blank(),
@@ -530,7 +530,18 @@ deaths_plot_single <- function(out, data, date_0, date = Sys.Date(),
                    panel.background = ggplot2::element_blank(),
                    axis.line = ggplot2::element_line(colour = "black")) 
   
-  gg
+  rg <- gg + ylab("Daily Deaths") +
+    ylim(c(0, max(gg$layers[[1]]$data[gg$layers[[1]]$data$x < date+1,]$ymax))) +
+    xlim(c(min(data$date[which(data$deaths>0)]), date)) +
+    theme(legend.position = "none") +
+    ggtitle("Model Fit up to Current Day")
+  
+  gg <- gg + theme(legend.position = "none") + ylab("") + ggtitle("Model Fit & 28 Day Projection")
+  
+  leg <- cowplot::get_legend(gg)
+  cowplot::plot_grid(leg, 
+                     cowplot::plot_grid(rg, gg+theme(legend.position = "none"),rel_widths=c(0.66,1)),
+                     ncol = 1, rel_heights = c(0.1,1))
   
   
 }
@@ -619,9 +630,10 @@ deaths_plot_single_surge <- function(out, out2, data, date_0, date = Sys.Date(),
   rg <- gg2 + ylab("Daily Deaths") +
       ylim(c(0, max(gg2$data[gg2$data$x < date+1,]$ymax))) +
       xlim(c(min(data$date[which(data$deaths>0)]), date)) +
-      theme(legend.position = "none", plot.title = element_blank())
+      theme(legend.position = "none") +
+    ggtitle("Model Fit up to Current Day")
   
-  gg2 <- gg2 + theme(legend.position = "none") + ylab("")
+  gg2 <- gg2 + theme(legend.position = "none") + ylab("") + ggtitle("Model Fit & 28 Day Projection")
   
   leg <- cowplot::get_legend(gg2)
   cowplot::plot_grid(leg, 
@@ -1198,6 +1210,8 @@ intervention_plot_google <- function(res, date, data, forecast) {
 
 rt_plot <- function(out) {
   
+  date_0 <- date
+  
   # create the Rt data frame
   rts <- lapply(seq_len(length(out$replicate_parameters$R0)), function(y) {
     
@@ -1227,7 +1241,7 @@ rt_plot <- function(out) {
   new_rt_all <- rt %>%
     group_by(iso, rep) %>% 
     arrange(date) %>% 
-    complete(date = seq.Date(min(rt$date), max(rt$date), by = "days")) 
+    complete(date = seq.Date(min(rt$date), date_0, by = "days")) 
   
   column_names <- colnames(new_rt_all)[-c(1,2,3)]
   new_rt_all <- fill(new_rt_all, all_of(column_names), .direction = c("down"))

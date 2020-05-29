@@ -99,7 +99,68 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
                          lapply(file.path(src, "projections.csv"), read.csv))
   dir.create("gh-pages/data", FALSE, TRUE)
   write.csv(projections, paste0("gh-pages/data/",date,".csv"), row.names = FALSE, quote = FALSE)
-  write.csv(projections, paste0("src/index_page/all_data.csv"), row.names = FALSE, quote = FALSE)
+  saveRDS(projections, paste0("src/index_page/all_data.rds"))
+  saveRDS(projections, paste0("src/regional_page/all_data.rds"))
+  
+  ## ---------------------------------------------------------------------------
+  # rt grab --------------------------------------------------------------------
+  ## ---------------------------------------------------------------------------
+  
+  rt <- lapply(seq_along(reports$id), function(x) {
+    
+    iso <- reports$country[x]
+    out <- file.path("archive", "lmic_reports_google", reports$id[x], "grid_out.rds")
+    out <- readRDS(out)
+    
+    rts <- lapply(1:100, function(y) {
+      
+      tt <- squire:::intervention_dates_for_odin(dates = out$interventions$date_R0_change, 
+                                                 change = out$interventions$R0_change, 
+                                                 start_date = out$replicate_parameters$start_date[y],
+                                                 steps_per_day = 1/out$parameters$dt)
+      
+      df <- data.frame(
+        "Rt" = c(out$replicate_parameters$R0[y], 
+                 vapply(tt$change, out$scan_results$inputs$Rt_func, numeric(1), 
+                        R0 = out$replicate_parameters$R0[y], Meff = out$replicate_parameters$Meff[y])),
+        "date" = c(as.character(out$replicate_parameters$start_date[y]), 
+                   as.character(out$interventions$date_R0_change[match(tt$change, out$interventions$R0_change)])),
+        "iso" = iso,
+        rep = y,
+        stringsAsFactors = FALSE)
+      df$pos <- seq_len(nrow(df))
+      return(df)
+    } )
+    
+    rt <- do.call(rbind, rts)
+    return(rt)
+  })
+  names(rt) <- reports$country
+  
+  rt_all <- do.call(rbind, rt)
+  rt_all$date <- as.Date(rt_all$date)
+  rt_all <- rt_all[,c(3,2,1,4,5)]
+  
+  date_0 <- as.Date(date)
+  new_rt_all <- rt_all %>%
+    group_by(iso, rep) %>% 
+    arrange(date) %>% 
+    complete(date = seq.Date(min(rt_all$date), date_0, by = "days")) 
+  
+  column_names <- colnames(new_rt_all)[-c(1,2,3)]
+  new_rt_all <- fill(new_rt_all, column_names, .direction = c("down"))
+  new_rt_all <- fill(new_rt_all, column_names, .direction = c("up"))
+  
+  sum_rt <- group_by(new_rt_all, iso, date) %>% 
+    summarise(Rt_min = quantile(Rt, 0.025),
+              Rt_q25 = quantile(Rt, 0.25),
+              Rt_q75 = quantile(Rt, 0.75),
+              Rt_max = quantile(Rt, 0.975),
+              Rt = median(Rt)) 
+  sum_rt$continent <- countrycode::countrycode(sum_rt$iso, "iso3c", "continent")
+  saveRDS(sum_rt, paste0("src/index_page/sum_rt.rds"))
+  saveRDS(sum_rt, paste0("src/regional_page/sum_rt.rds"))
+  
 }
 
 

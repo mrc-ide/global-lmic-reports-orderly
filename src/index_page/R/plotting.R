@@ -247,7 +247,7 @@ cumulative_deaths_plot_continent_projections <- function(continent, today, data,
 
 full_firework_plot <- function() {
   
-  data <- read.csv("all_data.csv", stringsAsFactors = FALSE)
+  data <- readRDS("all_data.rds")
   
   ecdc <- readRDS("ecdc_all.rds")
   
