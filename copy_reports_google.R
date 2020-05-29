@@ -141,17 +141,18 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   rt_all$date <- as.Date(rt_all$date)
   rt_all <- rt_all[,c(3,2,1,4,5)]
   
+  library(dplyr)
   date_0 <- as.Date(date)
-  new_rt_all <- rt_all %>%
-    group_by(iso, rep) %>% 
-    arrange(date) %>% 
-    complete(date = seq.Date(min(rt_all$date), date_0, by = "days")) 
+  new_rt_all <- rt_all magrittr::`%>%`
+    dplyr::group_by(iso, rep) magrittr::`%>%` 
+    dplyr::arrange(date) magrittr::`%>%` 
+    tidyr::complete(date = seq.Date(min(rt_all$date), date_0, by = "days")) 
   
   column_names <- colnames(new_rt_all)[-c(1,2,3)]
-  new_rt_all <- fill(new_rt_all, column_names, .direction = c("down"))
-  new_rt_all <- fill(new_rt_all, column_names, .direction = c("up"))
+  new_rt_all <- tidyr::fill(new_rt_all, column_names, .direction = c("down"))
+  new_rt_all <- tidyr::fill(new_rt_all, column_names, .direction = c("up"))
   
-  sum_rt <- group_by(new_rt_all, iso, date) %>% 
+  sum_rt <- dplyr::group_by(new_rt_all, iso, date) magrittr::`%>%` 
     summarise(Rt_min = quantile(Rt, 0.025),
               Rt_q25 = quantile(Rt, 0.25),
               Rt_q75 = quantile(Rt, 0.75),
