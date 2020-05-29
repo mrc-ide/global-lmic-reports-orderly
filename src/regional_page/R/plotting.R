@@ -212,10 +212,10 @@ summaries_forecasts_plot <- function(sums, cont) {
     scale_y_continuous(labels = scales::comma) + 
     scale_fill_manual("", labels = c("Estimated Hospital Beds\nNeeded in 28 days",
                                      "Estimated ICU Beds\nNeeded in 28 days"),
-                      values = viridis::viridis(3)) +
+                      values = c("#440154FF", "#21908CFF")) +
     scale_color_manual("", labels = c("Estimated Hospital Beds\nNeeded in 28 days",
                                       "Estimated ICU Beds\nNeeded in 28 days"),
-                       values = viridis::viridis(3)) + 
+                       values = c("#440154FF", "#21908CFF")) + 
     theme_bw() +
     xlab("") +
     ylab("") + 
