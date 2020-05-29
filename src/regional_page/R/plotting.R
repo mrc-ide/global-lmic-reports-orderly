@@ -201,7 +201,7 @@ forecasted_deaths_bar <- function(cont, today) {
 summaries_forecasts_plot <- function(sums, cont) {
   
   sums$country <- as.character(sums$country)
-  sums$country <- factor(sums$country, levels = sort(unique(sums$country)))
+  sums$country <- factor(sums$country, levels = sort(unique(sums$country),decreasing = TRUE))
   sums <- mutate(sums) %>% 
     mutate(value = ceiling(value)) %>% 
   filter(continent == cont)
@@ -236,7 +236,8 @@ rt_plot <- function(cont) {
   sum_rt <- group_by(sum_rt,iso) %>% 
     filter(date >= date[rle(Rt)$lengths[1]])
   sum_rt$name <- countrycode::countrycode(sum_rt$iso, origin = "iso3c", destination = "cow.name", 
-                                          custom_match = c("SRB"="Serbia"))
+                                          custom_match = c("SRB"="Serbia",
+                                                           "PSE"="State of Palestine"))
   sum_rt$name[sum_rt$name=="Democratic Republic of the Congo"] <- "DRC"
   
   ggplot(sum_rt, aes(x=date, y = Rt, ymin=Rt_min, ymax = Rt_max, group = iso, fill = iso)) +
