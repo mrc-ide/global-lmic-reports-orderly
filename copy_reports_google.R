@@ -149,8 +149,8 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
     tidyr::complete(date = seq.Date(min(rt_all$date), date_0, by = "days")) 
   
   column_names <- colnames(new_rt_all)[-c(1,2,3)]
-  new_rt_all <- tidyr::fill(new_rt_all, tidyselect::all_ofcolumn_names, .direction = c("down"))
-  new_rt_all <- tidyr::fill(new_rt_all, tidyselect::all_ofcolumn_names, .direction = c("up"))
+  new_rt_all <- tidyr::fill(new_rt_all, tidyselect::all_of(column_names), .direction = c("down"))
+  new_rt_all <- tidyr::fill(new_rt_all, tidyselect::all_of(column_names), .direction = c("up"))
   
   sum_rt <- dplyr::group_by(new_rt_all, iso, date) %>% 
     dplyr::summarise(Rt_min = quantile(Rt, 0.025),
