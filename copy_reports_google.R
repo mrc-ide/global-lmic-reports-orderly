@@ -113,7 +113,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
     out <- file.path("archive", "lmic_reports_google", reports$id[x], "grid_out.rds")
     out <- readRDS(out)
     
-    rts <- lapply(1:100, function(y) {
+    rts <- lapply(seq_len(nrow(out$replicate_parameters)), function(y) {
       
       tt <- squire:::intervention_dates_for_odin(dates = out$interventions$date_R0_change, 
                                                  change = out$interventions$R0_change, 

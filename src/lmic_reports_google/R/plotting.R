@@ -1276,6 +1276,6 @@ rt_plot <- function(out) {
       )
   }
   
-  res <- list("plot" = country_plot(), "rts" = sum_rt)
+  res <- list("plot" = suppressWarnings(country_plot()), "rts" = sum_rt)
   return(res)  
 }
