@@ -94,6 +94,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   summaries <- do.call(rbind,
                        lapply(file.path(src, "summary_df.rds"), readRDS))
   saveRDS(summaries, "src/index_page/summaries.rds")
+  saveRDS(summaries, "src/regional_page/summaries.rds")
   
   projections <- do.call(rbind,
                          lapply(file.path(src, "projections.csv"), read.csv))
