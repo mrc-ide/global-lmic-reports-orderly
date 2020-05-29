@@ -510,7 +510,10 @@ if(icu_28$i_tot > icu_cap || hosp_28$i_tot > hosp_cap) {
                                data = out$scan_results$inputs$data)
   
 r_list_pass[[4]] <- out_surged
-
+names(r_list_pass[[4]]) <- "maintain_3months_lift_surged"
+surging <- TRUE
+} else {
+  surging <- FALSE
 }
 
 o_list <- lapply(r_list_pass, squire::format_output,
@@ -544,7 +547,8 @@ rmarkdown::render("index.Rmd",
                                 "country" = country),
                   output_options = list(pandoc_args = paste0("--metadata=title:",country," COVID-19 report")))
 
-data_sum <- lapply(o_list[1:3], function(pd){
+
+data_sum <- lapply(o_list, function(pd){
   
   # remove any NA rows (due to different start dates)
   if(sum(is.na(pd$t) | is.na(pd$y))>0) {
@@ -567,6 +571,10 @@ data_sum <- lapply(o_list[1:3], function(pd){
 data_sum[[1]]$scenario <- "Maintain Status Quo"
 data_sum[[2]]$scenario <- "Additional 50% Reduction"
 data_sum[[3]]$scenario <- "Relax Interventions 50%"
+if (surging) {
+data_sum[[4]]$scenario <- "Surged Maintain Status Quo"
+}
+
 data_sum <- do.call(rbind, data_sum)
 data_sum$country <- country
 data_sum$iso3c <- iso3c

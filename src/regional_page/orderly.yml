@@ -56,7 +56,7 @@ artefacts:
       description: Projections report for a single country
       filenames:
         - index.html
-#        - index.pdf
+        - index.pdf
 
 # An optional name to describe the report in more detail than its
 # directory name (which must be short) but less detail than

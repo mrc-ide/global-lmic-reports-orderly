@@ -185,7 +185,7 @@ summaries <- readRDS("summaries.rds")
 
 ```{r starter, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.width=fig_height(7,9), fig.height=fig_height(4,5),fig.align=fig_center()}
 
-suppressMessages(suppressWarnings(d %>% filter(date < date_0) %>% 
+suppressMessages(suppressWarnings(print(d %>% filter(date < date_0) %>% 
   group_by(date, Continent) %>% 
   summarise(deaths = sum(cum_deaths)) %>% 
   ggplot(aes(x=date,y=deaths,color=Continent)) + 
@@ -193,7 +193,7 @@ suppressMessages(suppressWarnings(d %>% filter(date < date_0) %>%
   theme_bw() + xlab("") + ylab("Cumulative Deaths") + 
   scale_color_brewer(palette = "Set2") + 
   scale_y_log10(limits=c(1,NA), labels = scales::comma) + 
-  theme(panel.border = element_blank(), axis.line = element_line(size=0.5))))
+  theme(panel.border = element_blank(), axis.line = element_line(size=0.5)))))
 
 ```
 
@@ -205,8 +205,8 @@ suppressMessages(suppressWarnings(d %>% filter(date < date_0) %>%
 
 ```{r deaths plot, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE,  fig.cap=figRef("**Figure 1: Cumulative Deaths since 10 deaths**. The projected deaths (assuming population mobility is maintained at today's level) are shown with dashed lines."), fig.width=fig_height(7,9), fig.height=fig_height(5,6),fig.align=fig_center()}
 
-# [FIGURE SHOWING TOTAL DEATHS AND TOTAL CASES [OBSERVED AND INFERRED FOR SUB-SAHARAN AFRICA]
-suppressMessages(one_firework_plot(cont = continent))
+# [FIGURE SHOWING PROJECTED DEATHS]
+suppressMessages(suppressWarnings(print(one_firework_plot(cont = continent))))
 
 ```
 
@@ -217,10 +217,10 @@ suppressMessages(one_firework_plot(cont = continent))
 
 <br>
 
-```{r healthcare plots, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 2: Estimated Healthcare demands in 4 weeks time.** Individuals needing an ICU bed are predicted to need mechanical ventilation. Individuals requiring oxygen are assumed to require high-flow oxygen."), fig.width=fig_height(9,9), fig.height=fig_height(9,9),fig.align=fig_center()}
+```{r healthcare plots, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 2: Estimated Healthcare demands in 4 weeks time.** Individuals needing an ICU bed are predicted to need mechanical ventilation. Individuals requiring oxygen are assumed to require high-flow oxygen."), fig.width=fig_height(9,9), fig.height=fig_height(8.5,9),fig.align=fig_center()}
 
-# [FIGURE SHOWING PROJECTIONS OF HOSP/ICU/DEATHS IN NEXT TWO WEEKS IN SSA]
-suppressMessages(summaries_forecasts_plot(sums = summaries, cont = continent))
+# [FIGURE SHOWING PROJECTIONS OF HOSP/ICU/DEATHS IN NEXT FOUR WEEKS]
+suppressMessages(suppressWarnings(print(summaries_forecasts_plot(sums = summaries, cont = continent))))
 
 ```
 
@@ -234,8 +234,8 @@ suppressMessages(summaries_forecasts_plot(sums = summaries, cont = continent))
 
 ```{r rt plot, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE,  fig.cap=figRef("**Figure 3: Time-varying reproduction number, $R_t$.** Dark green shows the 50% CI and light green shows the 95% CI. $R_t$ < 1 indicates a slowing epidemic, whereas an $R_t$ greater than 1 indicates a growing epidemic."), fig.width=fig_height(10,10), fig.height=fig_height(10,10),fig.align=fig_center()}
 
-# [FIGURE SHOWING TOTAL DEATHS AND TOTAL CASES [OBSERVED AND INFERRED FOR SUB-SAHARAN AFRICA]
-suppressMessages(rt_plot(cont = continent))
+# [FIGURE SHOWING Rt]
+suppressMessages(suppressWarnings(print(rt_plot(cont = continent))))
 
 ```
 

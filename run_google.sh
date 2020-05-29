@@ -45,6 +45,16 @@ echo "*** Copying reports"
 
 echo "*** Index page"
 ./orderly run index_page date=$DATE
+
+echo "*** Africa page"
+./orderly run regional_page date=$DATE continent=Africa
+echo "*** Asia page"
+./orderly run regional_page date=$DATE continent=Asia
+echo "*** Americas page"
+./orderly run regional_page date=$DATE continent=Americas
+echo "*** Europe page"
+./orderly run regional_page date=$DATE continent=Europe
+
 echo "*** Parameters page"
 ./orderly run parameters date=$DATE
 echo "*** 404 page"
@@ -59,3 +69,4 @@ echo "*** data schema"
 
 echo "*** Copying files"
 ./copy_index.R $DATE
+./copy_regionals.R $DATE

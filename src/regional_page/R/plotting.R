@@ -183,7 +183,7 @@ forecasted_deaths_bar <- function(cont, today) {
     
     d$country <- as.character(d$country)
     d$country <- factor(d$country, levels = sort(unique(d$country)))
-    d <- mutate(d, country = fct_rev(country)) %>% 
+    d <- d %>% 
       filter(Continent == cont & compartment == "deaths")
     
     d <- filter(d, y>=sort(d$y,decreasing = TRUE)[10])
@@ -202,7 +202,7 @@ summaries_forecasts_plot <- function(sums, cont) {
   
   sums$country <- as.character(sums$country)
   sums$country <- factor(sums$country, levels = sort(unique(sums$country)))
-  sums <- mutate(sums, country = fct_rev(country)) %>% 
+  sums <- mutate(sums) %>% 
     mutate(value = ceiling(value)) %>% 
   filter(continent == cont)
 
@@ -229,8 +229,12 @@ summaries_forecasts_plot <- function(sums, cont) {
 
 rt_plot <- function(cont) {
   
+  today <- date
   sum_rt <- readRDS("sum_rt.rds")
   sum_rt <- sum_rt %>% filter(continent == cont)
+  sum_rt <- sum_rt %>% filter(date <= today)
+  sum_rt <- group_by(sum_rt,iso) %>% 
+    filter(date >= date[rle(Rt)$lengths[1]])
   sum_rt$name <- countrycode::countrycode(sum_rt$iso, origin = "iso3c", destination = "cow.name", 
                                           custom_match = c("SRB"="Serbia"))
   sum_rt$name[sum_rt$name=="Democratic Republic of the Congo"] <- "DRC"
@@ -243,10 +247,8 @@ rt_plot <- function(cont) {
     theme_bw() +
     theme(axis.text = element_text(size=12)) +
     xlab("") +
-    facet_wrap(~name) +
+    facet_wrap(~name, ncol = 6) +
     scale_x_date(breaks = "3 week",
-                 limits = as.Date(c(min(rt[[iso]]$date[rt[[iso]]$pos==1]),
-                                    as.character(Sys.Date()+as.numeric(lubridate::wday(Sys.Date()))))), 
                  date_labels = "%d %b") + 
     theme(legend.position = "none") +
     theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, colour = "black", size = 8),
@@ -260,8 +262,12 @@ rt_plot <- function(cont) {
 
 rt_continental_plot <- function(cont) {
   
+  today <- date
   sum_rt <- readRDS("sum_rt.rds")
   sum_rt <- sum_rt %>% filter(continent == cont)
+  sum_rt <- sum_rt %>% filter(date <= today)
+  sum_rt <- group_by(sum_rt,iso) %>% 
+    filter(date >= date[rle(Rt)$lengths[1]])
   
   ggplot(sum_rt, aes(x=date, y = Rt, ymin=Rt_min, ymax = Rt_max, group = iso, fill = iso)) +
     geom_ribbon(fill = "#96c4aa") +
@@ -271,9 +277,7 @@ rt_continental_plot <- function(cont) {
     theme_bw() +
     theme(axis.text = element_text(size=12)) +
     xlab("") +
-    scale_x_date(breaks = "3 week",
-                 limits = as.Date(c(min(rt[[iso]]$date[rt[[iso]]$pos==1]),
-                                    as.character(Sys.Date()+as.numeric(lubridate::wday(Sys.Date()))))), 
+    scale_x_date(breaks = "3 week", 
                  date_labels = "%d %b") + 
     theme(legend.position = "none") +
     theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, colour = "black",size = 6),
