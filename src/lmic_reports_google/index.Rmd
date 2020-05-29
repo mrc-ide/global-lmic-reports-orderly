@@ -2,6 +2,7 @@
 title: ""
 header-includes: \usepackage{caption}
 date: ""
+urlcolor: blue
 output:
   html_document:
     keep_md: yes
@@ -15,6 +16,7 @@ output:
     fig_caption: true
     toc: false
     includes: 
+      in_header: header.tex
       after_body: footer.tex
   word_document:
     df_print: kable
@@ -31,6 +33,14 @@ params:
    date_0: NA
    country: NA
 ---
+
+```{r rm_title_page, echo=FALSE}
+head <- cat('
+\\AtBeginDocument{\\let\\maketitle\\relax}
+', file = "header.tex")
+
+```
+
 
 ```{js, echo = FALSE}
 
@@ -370,7 +380,7 @@ if (length(params$r_list) > 3) {
     "capacity in the next 28 days.** Estimates of deaths in the next 28 days may be", 
     "inaccurate due to our working assumptions for mortality in individuals who", 
     "do not receive appropriate treatment. [See our methods for more", 
-    "information](https://mrc-ide.github.io/global-lmic-reports/parameters.html)")
+    "information.](https://mrc-ide.github.io/global-lmic-reports/parameters.html)")
   fig_cap_capacity <- paste(
     "The forecasted deaths in blue assumes healthcare capacity has been surged",
     "to ensure sufficient supply of ICU and hospital beds. The red curve assumes",
@@ -411,25 +421,11 @@ This report uses data from the European Centre for Disease Control. These data a
 
 `r pdf_line_break()`
 
-`r other_sources`
-
-```{r fig0, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 1: Time-varying reproduction number, $R_t$.** Dark green shows the 50% CI and light green shows the 95% CI. $R_t$ < 1 indicates a slowing epidemic, whereas an $R_t$ greater than 1 indicates a growing epidemic."), fig.height=fig_height(3.5,4.5), fig.width=fig_height(6,8), fig.align=fig_center()}
-
-suppressWarnings(suppressMessages(print(rt$plot)))
-
-```
-
-
-
----
-
-`r pagebreak()`
-
 The figure below shows the cumulative reported deaths as a function of the time since the 10th death was reported. Dashed lines show the expected trajectory for different doubling times of the epidemic. For example, with a doubling time of 3 days, if there are currently a total of 20 deaths reported, we would expect there to be 40 deaths in total reported in 3 days-time, 80 deaths in 6 days-time, 160 deaths in 9 days-time etc. For most epidemics, in the absence of interventions, we expect a doubling time of 3-4 days for this disease. `r show_sentence`
 
 <br>
 
-```{r fig1, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 2: Cumulative Deaths since 10 deaths.** Country not shown if fewer than 10 deaths."), fig.height=fig_height(6,6), fig.width=fig_height(8,8), fig.align=fig_center()}
+```{r fig1, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 1: Cumulative Deaths since 10 deaths.** Country not shown if fewer than 10 deaths."), fig.height=fig_height(4.5,6), fig.width=fig_height(6,8), fig.align=fig_center()}
 
 suppressWarnings(suppressMessages(print(cumulative_deaths_plot(country = country))))
 
@@ -449,20 +445,37 @@ The figure below shows the estimated number of people infected over the past 4 w
 
 <br>
 
-```{r case plot, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE,  fig.cap=figRef("**Figure 3: Daily number of infections estimated by fitting to the current total of deaths.** Reported cases are shown in red. Model estimated infections are shown in blue (dark blue 50% interquartile range, light blue 95% quantile). The dashed line shows the current day."), fig.width=10, fig.height=fig_height(5.5,5.5), fig.align=fig_center()}
+```{r case plot, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE,  fig.cap=figRef("**Figure 2: Daily number of infections estimated by fitting to the current total of deaths.** Reported cases are shown in red. Model estimated infections are shown in blue (dark blue 50% interquartile range, light blue 95% quantile). The dashed line shows the current day."), fig.width=10, fig.height=fig_height(5.5,5.5), fig.align=fig_center()}
 
 suppressWarnings(suppressMessages(print(cases_plot(params$o_list[[1]], data = data, date = date, date_0 = date_0))))
 
 ```
 
 `r pagebreak()`
+
+By fitting to the time series of deaths, we are able to estimate a time-varying reproduction number, $R_t$. $R_t$ is the the average number of secondary infections caused by a single infected person at a given time. If $R_t$ is above 1, the rate of transmission is increasing and the number of new infections is increasing. $R_t$ is assumed to change in relation to mobility  fall in proportion. When fitting out model we assume that 100% of COVID-19 related deaths have been reported (please see our [FAQ](https://mrc-ide.github.io/global-lmic-reports/FAQ.html#how-have-you-accounted-for-unreported-deaths) section for more information about this asssumption). 
+
 <br>
 
-The expected trajectory for cumulative deaths is shown in the figure below. This assumes a severity pattern by age that is consistent with that observed in China, Europe and the U.S to date. `r show_capacity_sentence`
+`r other_sources`
 
 <br>
 
-```{r death forecast plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap=figRef(paste0("**Figure 4: Estimated daily deaths.** Projected deaths assuming the current level of interventions are maintained are shown in red (mean and 95% quantile). Reported deaths are plotted in black. The plot on the left is focussed on the model fit prior to today, while the plot on the right forecasts the next 28 days, fig_cap_capacity)), fig.width=if (length(params$r_list) > 3) 10 else 8, fig.height=if (length(params$r_list) > 3) 6 else 4.5, fig.align=fig_center()}
+```{r fig0, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 3: Time-varying reproduction number, $R_t$.** $R_t$ is the average number of secondary infections caused by a single infected person at time equal to $t$. $R_t$ < 1 indicates a slowing epidemic in which new infections are not increasing. $R_t$ > 1 indicates a growing epidemic in which new infections are increasing over time. Dark green shows the 50% CI and light green shows the 95% CI."), fig.height=fig_height(3.5,4.5), fig.width=fig_height(6,8), fig.align=fig_center()}
+
+suppressWarnings(suppressMessages(print(rt$plot)))
+
+```
+
+<br>
+
+`r pagebreak()`
+
+Using the model fit, we can forecast the expected trajectory for cumulative deaths, which is shown in the figure below. This assumes a severity pattern by age that is consistent with that observed in China, Europe and the U.S to date. This projection assumes that transmission is maintained at the current level of transmission as estimated by the final $R_t$ value. `r show_capacity_sentence`
+
+<br>
+
+```{r death forecast plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap=figRef(paste0("**Figure 4: Estimated daily deaths.** Projected deaths assuming the current level of interventions are maintained are shown in red (mean and 95% quantile). Reported deaths are plotted in black. The plot on the left is focussed on the model fit prior to today, while the plot on the right forecasts the next 28 days. ", fig_cap_capacity)), fig.width=if (length(params$r_list) > 3) 10 else 8, fig.height=if (length(params$r_list) > 3) 6 else 4.5, fig.align=fig_center()}
 
 if (length(params$r_list) > 3) {
   suppressWarnings(suppressMessages(
@@ -481,6 +494,8 @@ if (length(params$r_list) > 3) {
 
 <br>
 
+`r pagebreak()`
+
 ### Short-term Epidemic Scenarios
 
 We make the following short-term projections of healthcare demand and new infections under the following three scenarios:
@@ -488,12 +503,6 @@ We make the following short-term projections of healthcare demand and new infect
 * **Scenario 1.** The epidemic continues to grow at the current rate. 
 * **Scenario 2.** Countries will further scale up interventions (either increasing current strategies or implementing new interventions) leading to a further 50% reduction in transmission.
 * **Scenario 3.** Countries will relax current interventions by 50%
-
-Consequently, these predictions have one major caveat:
-
-* The projections assume that 100% of COVID-19 related deaths have been reported.
-
-`r pagebreak()`
 
 We estimate that over the next 4 weeks demand for hospital beds will change from `r form(hosp_today)` patients requiring treatment with high-pressure oxygen at the current date to `r form(hosp_28)` hospital beds being required on `r format(date + 28, "%Y-%m-%d")` if no further interventions are introduced (Scenario 1). Similarly, we estimate that over the next 4 weeks demand for critical care (ICU) beds will change from `r form(icu_today)` patients requiring treatment with mechanical ventilation at the current date to `r form(icu_28)` by `r format(date + 28, "%Y-%m-%d")`. These projections assume that approximately 5% of all infections will require treatment with high-pressure oxygen and that approximately 30% of hospitalised cases will require treatment with mechanical ventilation (based on analysis of ongoing epidemics in Europe). **N.B. These scenarios are unlikely to show significant differences since there is a delay of approximately 10 days between infection and hospital admission. Consequently,  the effectiveness of a change in policy is likely to be better captured by hospital admission data approximately 2 weeks after the policy change is implemented.**
 

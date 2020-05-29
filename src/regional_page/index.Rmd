@@ -14,6 +14,7 @@ output:
   pdf_document: 
     fig_caption: true
     includes: 
+      in_header: header.tex
       before_body: footer.tex
   word_document:
     df_print: kable
@@ -23,6 +24,14 @@ output:
     highlight: tango
     reference_docx: template.docx
 ---
+
+```{r rm_title_page, echo=FALSE}
+head <- cat('
+\\AtBeginDocument{\\let\\maketitle\\relax}
+', file = "header.tex")
+
+```
+
 
 ```{js, echo = FALSE}
 
@@ -232,7 +241,7 @@ suppressMessages(suppressWarnings(print(summaries_forecasts_plot(sums = summarie
 
 <br>
 
-```{r rt plot, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE,  fig.cap=figRef("**Figure 3: Time-varying reproduction number, $R_t$.** Dark green shows the 50% CI and light green shows the 95% CI. $R_t$ < 1 indicates a slowing epidemic, whereas an $R_t$ greater than 1 indicates a growing epidemic."), fig.width=fig_height(10,10), fig.height=fig_height(10,10),fig.align=fig_center()}
+```{r rt plot, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE,  fig.cap=figRef("**Figure 3: Time-varying reproduction number, $R_t$.** $R_t$ is the average number of secondary infections caused by a single infected person at time equal to $t$. $R_t$ < 1 indicates a slowing epidemic in which new infections are not increasing. $R_t$ > 1 indicates a growing epidemic in which new infections are increasing over time. Dark green shows the 50% CI and light green shows the 95% CI."), fig.width=fig_height(10,10), fig.height=fig_height(10,10),fig.align=fig_center()}
 
 # [FIGURE SHOWING Rt]
 suppressMessages(suppressWarnings(print(rt_plot(cont = continent))))

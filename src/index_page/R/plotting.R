@@ -148,12 +148,20 @@ cumulative_deaths_plot_continent_projections <- function(continent, today, data,
   colors <- c("#003b73","#e4572e","#BB750D","#003844","#925e78")
   col <- colors[match(continent, c("Asia","Europe","Africa","Americas","Oceania"))]
   
+  # Are we presnting the surge if it's there
+  if("Surged Maintain Status Quo" %in% unique(data$scenario)) {
+    scen <- "Surged Maintain Status Quo"
+  } else {
+    scen <- "Maintain Status Quo"
+  }
+  
+  
   # create dataset
   slim <- data %>% 
     mutate(date = as.Date(.data$date)) %>% 
     filter(date > (today)) %>%
     filter(date < (today+28)) %>% 
-    filter(scenario == "Maintain Status Quo") %>% 
+    filter(scenario == scen) %>% 
     select(date, compartment, y_mean, y_025, y_975, country, iso3c) %>% 
     mutate(observed = FALSE) %>% 
     rename(y = y_mean)
