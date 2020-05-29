@@ -141,7 +141,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   rt_all$date <- as.Date(rt_all$date)
   rt_all <- rt_all[,c(3,2,1,4,5)]
   
-  library(dplyr)
+  library(magrittr)
   date_0 <- as.Date(date)
   new_rt_all <- rt_all %>%
     dplyr::group_by(iso, rep) %>% 
@@ -149,11 +149,11 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
     tidyr::complete(date = seq.Date(min(rt_all$date), date_0, by = "days")) 
   
   column_names <- colnames(new_rt_all)[-c(1,2,3)]
-  new_rt_all <- tidyr::fill(new_rt_all, column_names, .direction = c("down"))
-  new_rt_all <- tidyr::fill(new_rt_all, column_names, .direction = c("up"))
+  new_rt_all <- tidyr::fill(new_rt_all, tidyselect::all_ofcolumn_names, .direction = c("down"))
+  new_rt_all <- tidyr::fill(new_rt_all, tidyselect::all_ofcolumn_names, .direction = c("up"))
   
   sum_rt <- dplyr::group_by(new_rt_all, iso, date) %>% 
-    summarise(Rt_min = quantile(Rt, 0.025),
+    dplyr::summarise(Rt_min = quantile(Rt, 0.025),
               Rt_q25 = quantile(Rt, 0.25),
               Rt_q75 = quantile(Rt, 0.75),
               Rt_max = quantile(Rt, 0.975),
