@@ -156,7 +156,7 @@ render_toc <- function(
 
 SARS-CoV-2 is a novel virus and we gain new information on its transmission almost daily, with an incredible amount of new research on COVID-19 being published each week. Consequently, as our understanding of COVID-19 changes over time, we aim to respond accordingly and update our predictions. 
 
-Here, we detail the major version changes to the reports produced in this website (minor changes, such as typo fixes and small edits to plots and text are not docuemnted here). These major changes represent either a new methodology or new information being presented. We hope the following overivew will help users understand the changes implemented throughout the pandemic. 
+Here, we detail the major version changes to the reports produced in this website (minor changes, such as typo fixes and small edits to plots and text are not documented here). These major changes represent either a new methodology or new information being presented. We hope the following overview will help users understand the changes implemented throughout the pandemic. 
 
 ---
 
