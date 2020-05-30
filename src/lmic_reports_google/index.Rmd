@@ -41,6 +41,10 @@ head <- cat('
 
 ```
 
+```{r knitr_options} 
+knitr::opts_chunk$set(message = FALSE,warning = FALSE)
+```
+
 
 ```{js, echo = FALSE}
 
@@ -157,7 +161,7 @@ if(any(data$daily_cases < 0)) {
   show_cases_sentence <- ""
 }
 
-suppressWarnings(rt <- rt_plot(params$r_list[[1]]))
+suppressMessages(suppressWarnings(rt <- rt_plot(params$r_list[[1]])))
 
 ```
 
@@ -519,16 +523,16 @@ We estimate that over the next 4 weeks demand for hospital beds will change from
 #                            forecast = 28, what = "ICU_demand"),
 #                    ncol=2)))
 
-gg_hosp <- healthcare_plot_contrast_triple(o1 = params$o_list[[1]], 
+suppressWarnings(suppressMessages(gg_hosp <- healthcare_plot_contrast_triple(o1 = params$o_list[[1]], 
                                            o2 = params$o_list[[2]], 
                                            o3 = params$o_list[[3]], 
                                            data = data, date_0 = date_0, date = date, 
-                                           forecast = 28, what = "hospital_demand")
-gg_icu <- healthcare_plot_contrast_triple(o1 = params$o_list[[1]], 
+                                           forecast = 28, what = "hospital_demand")))
+suppressWarnings(suppressMessages(gg_icu <- healthcare_plot_contrast_triple(o1 = params$o_list[[1]], 
                                           o2 = params$o_list[[2]], 
                                           o3 = params$o_list[[3]], 
                                           data = data, date_0 = date_0, date = date, 
-                                          forecast = 28, what = "ICU_demand")
+                                          forecast = 28, what = "ICU_demand")))
 leg <- suppressWarnings(suppressMessages(
   cowplot::get_legend(gg_hosp + theme(legend.justification = c(0.5,1)))
 ))
@@ -536,7 +540,7 @@ bottom <- suppressWarnings(suppressMessages(
   cowplot::plot_grid(gg_hosp + theme(legend.position = "none"), 
                      gg_icu + theme(legend.position = "none"), ncol = 2)
 ))
-grid <- cowplot::plot_grid(leg,bottom,nrow=2,rel_heights = c(0.1,1))
+suppressWarnings(suppressMessages(grid <- cowplot::plot_grid(leg,bottom,nrow=2,rel_heights = c(0.1,1))))
 suppressWarnings(suppressMessages(print(grid)))
 
 ```
