@@ -319,7 +319,8 @@ top_row <- cowplot::plot_grid(plotlist = what, ncol=4, rel_widths = c(1,1,1,0.4)
 index <- squire:::odin_index(out$model)
 forecast <- 0
 
-d <- deaths_plot_single(out, data, date = date,date_0 = date_0, forecast = forecast) + theme(legend.position = "none")
+d <- deaths_plot_single(out, data, date = date,date_0 = date_0, forecast = forecast, single = TRUE) + 
+  theme(legend.position = "none")
 
 #intervention <- intervention_plot(interventions[[iso3c]], date)
 intervention <- intervention_plot_google(interventions[[iso3c]], date, data, forecast)

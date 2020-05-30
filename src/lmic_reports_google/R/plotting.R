@@ -502,7 +502,7 @@ cases_plot <- function(df, data, date = Sys.Date(), date_0) {
 }
 
 deaths_plot_single <- function(out, data, date_0, date = Sys.Date(), 
-                               forecast = 14) {
+                               forecast = 14, single = FALSE) {
   
   date <- as.Date(date)
   gg <- plot(out, "deaths", date_0 = date_0, x_var = "date") 
@@ -536,12 +536,17 @@ deaths_plot_single <- function(out, data, date_0, date = Sys.Date(),
     theme(legend.position = "none") +
     ggtitle("Model Fit up to Current Day")
   
+  if(single) {
+    return(rg)
+  } else {
+  
   gg <- gg + theme(legend.position = "none") + ylab("") + ggtitle("Model Fit & 28 Day Projection")
   
   leg <- cowplot::get_legend(gg)
-  cowplot::plot_grid(leg, 
+  return(cowplot::plot_grid(leg, 
                      cowplot::plot_grid(rg, gg+theme(legend.position = "none"),rel_widths=c(0.66,1)),
-                     ncol = 1, rel_heights = c(0.1,1))
+                     ncol = 1, rel_heights = c(0.1,1)))
+  }
   
   
 }
