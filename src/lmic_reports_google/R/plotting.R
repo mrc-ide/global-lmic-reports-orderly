@@ -1215,6 +1215,7 @@ intervention_plot_google <- function(res, date, data, forecast) {
 
 rt_plot <- function(out) {
   
+  date <- as.Date(date)
   date_0 <- date
   
   # create the Rt data frame
@@ -1252,12 +1253,12 @@ rt_plot <- function(out) {
   new_rt_all <- fill(new_rt_all, all_of(column_names), .direction = c("down"))
   new_rt_all <- fill(new_rt_all, all_of(column_names), .direction = c("up"))
   
-  sum_rt <- group_by(new_rt_all, iso, date) %>% 
+  suppressMessages(sum_rt <- group_by(new_rt_all, iso, date) %>% 
     summarise(Rt_min = quantile(Rt, 0.025),
               Rt_q25 = quantile(Rt, 0.25),
               Rt_q75 = quantile(Rt, 0.75),
               Rt_max = quantile(Rt, 0.975),
-              Rt = median(Rt))
+              Rt = median(Rt)))
   
   country_plot <- function(vjust = -1.2) {
     ggplot(sum_rt, aes(x=date, y = Rt, ymin=Rt_min, ymax = Rt_max, group = iso, fill = iso)) +

@@ -41,8 +41,9 @@ head <- cat('
 
 ```
 
-```{r knitr_options} 
+```{r knitr_options, echo=FALSE} 
 knitr::opts_chunk$set(message = FALSE,warning = FALSE)
+options("dplyr.summarise.inform"=FALSE)
 ```
 
 
@@ -165,7 +166,7 @@ suppressMessages(suppressWarnings(rt <- rt_plot(params$r_list[[1]])))
 
 ```
 
-```{r ecdc prep, echo = FALSE, collapse=TRUE, warning=FALSE}
+```{r ecdc prep, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE}
 
 ## Summaries
 form <- function(x) {
@@ -429,7 +430,7 @@ The figure below shows the cumulative reported deaths as a function of the time 
 
 <br>
 
-```{r fig1, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 1: Cumulative Deaths since 10 deaths.** Country not shown if fewer than 10 deaths."), fig.height=fig_height(4.5,6), fig.width=fig_height(6,8), fig.align=fig_center()}
+```{r fig1, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 1: Cumulative Deaths since 10 deaths.** Country not shown if fewer than 10 deaths."), fig.height=fig_height(4.25,6), fig.width=fig_height(8,8), fig.align=fig_center()}
 
 suppressWarnings(suppressMessages(print(cumulative_deaths_plot(country = country))))
 
@@ -457,7 +458,7 @@ suppressWarnings(suppressMessages(print(cases_plot(params$o_list[[1]], data = da
 
 `r pagebreak()`
 
-By fitting to the time series of deaths, we are able to estimate a time-varying reproduction number, $R_t$. $R_t$ is the the average number of secondary infections caused by a single infected person at a given time. If $R_t$ is above 1, the rate of transmission is increasing and the number of new infections is increasing. $R_t$ is assumed to change in relation to mobility  fall in proportion. When fitting out model we assume that 100% of COVID-19 related deaths have been reported (please see our [FAQ](https://mrc-ide.github.io/global-lmic-reports/FAQ.html#how-have-you-accounted-for-unreported-deaths) section for more information about this asssumption). 
+By fitting to the time series of deaths, we are able to estimate a time-varying reproduction number, $R_t$. $R_t$ is the the average number of secondary infections caused by a single infected person at a given time. If $R_t$ is above 1, the rate of transmission is increasing and the number of new infections is increasing. $R_t$ is assumed to change in relation to mobility  fall in proportion. When fitting out model we assume that 100% of COVID-19 related deaths have been reported (please see our [FAQ](https://mrc-ide.github.io/global-lmic-reports/FAQ.html#how-have-you-accounted-for-unreported-deaths) section for more information about this assumption). 
 
 <br>
 

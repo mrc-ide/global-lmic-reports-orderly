@@ -51,6 +51,7 @@ src/lmic_reports/projections.csv
 src/lmic_reports_google/index.html
 src/lmic_reports_google/index.md
 src/lmic_reports_google/index.pdf
+src/lmic_reports_google/header.tex
 src/lmic_reports_google/input_params.json
 src/lmic_reports_google/fitting.pdf
 src/lmic_reports_google/projections.csv

@@ -111,7 +111,7 @@ if (!is.null(json) && !is.null(json$Meff)) {
   day_step <- 1
   
   # get the range for Meff
-  Meff_max <- min(Meff + 1, 5.1)
+  Meff_max <- min(Meff + 1, 7.5)
   Meff_min <- max(Meff - 1, 0.1)
   Meff_step <- 0.1
   
@@ -122,7 +122,7 @@ if (!is.null(json) && !is.null(json$Meff)) {
   R0_max <- 5.6
   R0_step <- 0.2
   Meff_min <- 0.1
-  Meff_max <- 5.1
+  Meff_max <- 7.5
   Meff_step <- 0.2
   last_start_date <- as.Date(null_na(min_death_date))-20
   first_start_date <- max(as.Date("2020-01-04"),last_start_date - 35, na.rm = TRUE)
@@ -135,7 +135,7 @@ if (short_run) {
   R0_max <- 5
   R0_step <- 1
   Meff_min <- 0.1
-  Meff_max <- 5.1
+  Meff_max <- 7.5
   Meff_step <- 0.5
   last_start_date <- as.Date(null_na(min_death_date))-20
   first_start_date <- max(as.Date("2020-01-04"),last_start_date - 35, na.rm = TRUE)
@@ -249,7 +249,7 @@ if(length(span_date_currently) < 7) {
 day_step <- as.numeric(round((last_start_date - first_start_date + 1)/12))
 
 # get the range for Meff
-Meff_max <- min(max(z_grid[ord[seq_len(cut)]]) + 0.25, 6)
+Meff_max <- min(max(z_grid[ord[seq_len(cut)]]) + 0.25, 7.5)
 Meff_min <- max(min(z_grid[ord[seq_len(cut)]]) - 0.25, 0.1)
 Meff_step <- (Meff_max-Meff_min)/20
 
@@ -257,8 +257,8 @@ if (short_run) {
   R0_min <- 2.0
   R0_max <- 5
   R0_step <- 1
-  Meff_min <- 0.4
-  Meff_max <- 2
+  Meff_min <- 0.1
+  Meff_max <- 7.5
   Meff_step <- 0.4
   last_start_date <- as.Date(null_na(min_death_date))-20
   first_start_date <- max(as.Date("2020-01-04"),last_start_date - 35, na.rm = TRUE)
