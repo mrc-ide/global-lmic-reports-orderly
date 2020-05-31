@@ -65,10 +65,14 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   target <- "gh-pages"
 
   src <- file.path("archive", "lmic_reports", reports$id)
-  dest <- sprintf("gh-pages/%s/%s/%s", reports$country, reports$date, "v1")
+  dest <- sprintf("gh-pages/%s/%s", reports$country, reports$date)
   copy <- c("index.html",
             "projections.csv",
             "index.pdf",
+            "input_params.json")
+  copy_to <- c("v1.html",
+            "projections.csv",
+            "v1.pdf",
             "input_params.json")
 
   for (i in seq_along(dest)) {
@@ -79,7 +83,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
       dest_latest <- dirname(dest[[i]])
       prev <- dir(dest_latest, pattern = "\\.")
       unlink(c(prev, file.path(dest_latest, "figures")), recursive = TRUE)
-      file_copy(dir(dest[[i]], full.names = TRUE), dest_latest)
+      file_copy(dir(dest[[i]], full.names = TRUE), file.path(dest_latest, copy_to))
     }
   }
   
