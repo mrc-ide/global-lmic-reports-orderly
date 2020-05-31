@@ -25,6 +25,12 @@ output:
     reference_docx: template.docx
 ---
 
+```{r knitr_options, echo=FALSE} 
+knitr::opts_chunk$set(message = FALSE,warning = FALSE)
+options("dplyr.summarise.inform"=FALSE)
+```
+
+
 ```{r rm_title_page, echo=FALSE}
 head <- cat('
 \\AtBeginDocument{\\let\\maketitle\\relax}

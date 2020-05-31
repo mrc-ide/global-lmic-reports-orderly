@@ -24,6 +24,12 @@ output:
     reference_docx: template.docx
 ---
 
+```{r knitr_options, echo=FALSE} 
+knitr::opts_chunk$set(message = FALSE,warning = FALSE)
+options("dplyr.summarise.inform"=FALSE)
+```
+
+
 ```{js, echo = FALSE}
 
 if ($(window).width() < 768) {

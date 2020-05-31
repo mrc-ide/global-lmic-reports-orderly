@@ -44,6 +44,7 @@ artefacts:
       description: Google mobility data for each country, with imputed 
       filenames:
         - google_brt.rds
+        - google_brt_model.rds
 
 # Packages that should be loaded before the script is run.  Use this
 # in preference to explicit library() calls in your script because it

@@ -184,12 +184,11 @@ res_no <- lapply(nms[!nms %in% names(res)], function(x) {
 })
 names(res_no) <- nms[!nms %in% names(res)]
 
-# group them and apply the change calculations again after the data cleaning
+# group them and make sure they are all data frames
 res <- append(res, res_no)
 res <- lapply(res, function(x) {
   
   if(nrow(x) > 0) {
-    x$R0 <- 3*x$C
     return(as.data.frame(x))
   } else {
     return(x)
@@ -203,7 +202,6 @@ res <- lapply(res,function(x){
     x <- rbind(x[1,],x)
     x$date[1] <- x$date[2]-1
     x[1,"C"] <- 1
-    x$R0[1] <- 3
   }
   return(x)
   
@@ -214,7 +212,7 @@ for(r in seq_along(res)) {
   
   if(any(res[[r]]$observed)) {
     
-    # first for prior to the firt mobility date use the mean of the first week
+    # first for prior to the first mobility date use the mean of the first week
     lw <- res[[r]]$C[which(res[[r]]$observed)][1:7]
     res[[r]]$C[1:(which(res[[r]]$observed)[1]-1)] <- mean(lw)
     
@@ -233,6 +231,7 @@ for(r in seq_along(res)) {
 
 
 saveRDS(res, "google_brt.rds")
+saveRDS(brt, "google_brt_model.rds")
 
 ## -----------------------------------------------------------------------------
 ## Step 5: Data Validation / Plotting

@@ -577,7 +577,7 @@ data_sum <- lapply(o_list, function(pd){
   
   # Format summary data
   pds <- pd %>%
-    dplyr::filter(.data$date <= (date+90)) %>% 
+    dplyr::filter(.data$date <= (date_0+90)) %>% 
     dplyr::group_by(.data$date, .data$compartment) %>%
     dplyr::summarise(y_025 = stats::quantile(.data$y, 0.025),
                      y_25 = stats::quantile(.data$y, 0.25),

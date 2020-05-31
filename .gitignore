@@ -10,6 +10,7 @@ draft
 *.dll
 *.rds
 gh-pages
+gh-results
 orderly.sqlite
 index_files
 src/*/_site.yml
