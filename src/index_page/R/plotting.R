@@ -161,7 +161,6 @@ cumulative_deaths_plot_continent_projections <- function(continent, today, data,
     mutate(date = as.Date(.data$date)) %>% 
     filter(date > (today)) %>%
     filter(date < (today+28)) %>% 
-    filter(scenario == scen) %>% 
     select(date, compartment, y_mean, y_025, y_975, country, iso3c) %>% 
     mutate(observed = FALSE) %>% 
     rename(y = y_mean)
