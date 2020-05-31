@@ -15,5 +15,5 @@ docker run -it --rm \
         -u $USER_STR \
         -v $PACKAGE_ROOT:/orderly \
         -w /orderly \
-        --entrypoint /run_copy_results.sh \
+        --entrypoint /orderly/run_copy_results.sh \
         $TAG_BRANCH $*
