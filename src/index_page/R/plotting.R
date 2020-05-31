@@ -149,12 +149,12 @@ cumulative_deaths_plot_continent_projections <- function(continent, today, data,
   col <- colors[match(continent, c("Asia","Europe","Africa","Americas","Oceania"))]
   
   # Are we presnting the surge if it's there
-  if("Surged Maintain Status Quo" %in% unique(data$scenario)) {
-    scen <- "Surged Maintain Status Quo"
-  } else {
-    scen <- "Maintain Status Quo"
-  }
-  
+  data <- group_by(data, iso3c) %>% 
+    filter(scenario == (if("Surged Maintain Status Quo" %in% unique(scenario)) {
+      "Surged Maintain Status Quo"
+    } else {
+      "Maintain Status Quo"
+    })) %>% ungroup()
   
   # create dataset
   slim <- data %>% 

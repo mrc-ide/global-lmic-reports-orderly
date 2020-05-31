@@ -12,18 +12,18 @@ cumulative_deaths_plot_continent_projections <- function(continent, today, data,
   lmics <- gsub("(.*reports/)(\\w\\w\\w)(\".*)","\\2",grep("reports/(\\w\\w\\w)\"",rl, value =TRUE))
   
   # Are we presnting the surge if it's there
-  if("Surged Maintain Status Quo" %in% unique(data$scenario)) {
-    scen <- "Surged Maintain Status Quo"
-  } else {
-    scen <- "Maintain Status Quo"
-  }
+  data <- group_by(data, iso3c) %>% 
+    filter(scenario == (if("Surged Maintain Status Quo" %in% unique(scenario)) {
+      "Surged Maintain Status Quo"
+    } else {
+      "Maintain Status Quo"
+    })) %>% ungroup()
   
   # create dataset
   slim <- data %>% 
     mutate(date = as.Date(.data$date)) %>% 
     filter(date > (today)) %>%
     filter(date < (today+28)) %>% 
-    filter(scenario == scen) %>% 
     select(date, compartment, y_mean, y_025, y_975, country, iso3c) %>% 
     mutate(observed = FALSE) %>% 
     rename(y = y_mean)
