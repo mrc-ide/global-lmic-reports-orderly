@@ -19,8 +19,8 @@ echo "*** Full Scenarios: $FULL_SCENARIOS"
 echo "*** ECDC data"
 ./orderly run ecdc date=$DATE
 
-# echo "*** Oxford GRT data"
-# ./orderly run oxford_grt date=$DATE
+echo "*** Oxford GRT data"
+./orderly run oxford_grt date=$DATE
 
 echo "*** Google BRT data"
 ./orderly run brt_google_mobility date=$DATE short_run=$SHORT_RUN
