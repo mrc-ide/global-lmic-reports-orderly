@@ -39,8 +39,9 @@ add_deploy_key <- function(repo, overwrite = FALSE) {
 
 
 main <- function() {
-  add_deploy_key("global-lmic-reports")
-  add_deploy_key("global-lmic-reports-staging")
+  #add_deploy_key("global-lmic-reports")
+  #add_deploy_key("global-lmic-reports-staging")
+  add_deploy_key("global-lmic-results")
   invisible()
 }
 
