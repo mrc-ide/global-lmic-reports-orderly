@@ -160,7 +160,7 @@ Here, we detail the major version changes to the reports produced in this websit
 
 ---
 
-#### Version 2: 2020-06-01
+#### Version 2: 2020-05-31
   
 * Data on mobility from the [Google Community Mobility Reports](https://www.google.com/covid19/mobility/) to inform changes in transmission.
 * Estimates of $R_t$ included in country reports
