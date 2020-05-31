@@ -10,7 +10,8 @@ write_data_schema <- function() {
              "* **scenario** - The intervention scenario explored. One of Maintain Status Quo, Additional 50% Reduction, Relax Interventions 50%. Surged Maintain Status Quo also present in countries estimated to pass capacity in next 28 days.",
              "* **country** - Country name",
              "* **iso3c** - Country ISO3C letter",
-             "* **report_date** - ISO Date at which the reports were generated, i.e. what is the current date in the dataset")
+             "* **report_date** - ISO Date at which the reports were generated, i.e. what is the current date in the dataset",
+             "* **version** - Report version. If not present means they were run with verion 1. See Methods page for more details.")
   
   f <- "gh-pages/data/schema.md"
   if (!file.exists(f)) {
