@@ -575,6 +575,7 @@ deaths_plot_single_surge <- function(out, out2, data, date_0, date = Sys.Date(),
   pd <- do.call(rbind, lapply(pd_list, "[[", "pd"))
   
   # Plot
+  pds <- pds %>% filter(x <= date_0 + forecast)
   p <- ggplot2::ggplot(data = pds, 
                        ggplot2::aes(x = .data$x, y = .data$y, col = Scenario))
   
