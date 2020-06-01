@@ -110,6 +110,7 @@ resources:
   - summaries.rds
   - wellcome.png
   - ukaid.jpg
+  - all_data.rds
 
 global_resources:
   _navbar.html: _navbar.html
@@ -119,6 +120,7 @@ global_resources:
   footer.tex: footer.tex
   logo.png: logo.png
   header.html: header.html
+  ganalytics.html: ganalytics.html
 
 # This section copies the word style over from the global/
 # directory. If you do not want to create a docx, please remove this

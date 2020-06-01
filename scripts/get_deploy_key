@@ -31,3 +31,16 @@ else
           secret/ncov/deploy-keys/mrc-ide/global-lmic-reports-staging > \
           $ROOT/.ssh/staging/id_rsa.pub
 fi
+
+if [ -f $ROOT/.ssh/results/id_rsa ]; then
+    echo "results deploy key already exists"
+else
+    mkdir -p $ROOT/.ssh/results
+    vault read -field key \
+          secret/ncov/deploy-keys/mrc-ide/global-lmic-results > \
+          $ROOT/.ssh/results/id_rsa
+    chmod 600 $ROOT/.ssh/results/id_rsa
+    vault read -field pub \
+          secret/ncov/deploy-keys/mrc-ide/global-lmic-results > \
+          $ROOT/.ssh/results/id_rsa.pub
+fi

@@ -118,6 +118,7 @@ global_resources:
   footer.tex: footer.tex
   logo.png: logo.png
   header.html: header.html
+  ganalytics.html: ganalytics.html
 
 # Optional name of a variable to make the SQL connection available to
 # the script.  Use this with care and avoid using any queries that

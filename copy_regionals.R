@@ -14,7 +14,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   if (is.null(date)) {
     date <- as.character(Sys.Date())
   }
-
+  
   ## First find the id corresponding to the ecdc report with data.  If
   ## there are more than one, it's not totally clear what you want to
   ## do as you might want to take the earliest or the latest.
@@ -33,7 +33,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   } else if (length(id) > 1) {
     message(sprintf("Multiple 'ecdc' reports for '%s'", as.character(date)))
   }
-
+  
   ## Then find all lmic_reports reports that use files from this ecdc
   ## report.  This is a bit awful and I might add direct link or a
   ## view to make this easier at some point.
@@ -48,33 +48,27 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
             JOIN parameters
               ON parameters.report_version = report_version.id
            WHERE report_version_artefact.report_version IN (%s)
-             AND report = "lmic_reports"
-             AND parameters.name = "iso3c"
+             AND report = "regional_page"
+             AND parameters.name = "continent"
            ORDER BY country, report_version.id'
   sql <- sprintf(sql, paste(sprintf('"%s"', id), collapse = ", "))
   reports <- DBI::dbGetQuery(db, sql)
-
+  
   if (any(duplicated(reports$country))) {
     keep <- tapply(seq_len(nrow(reports)), reports$country, max)
     reports <- reports[keep, ]
     rownames(reports) <- NULL
   }
-
+  
   reports$date <- as.character(date)
-
+  
   target <- "gh-pages"
-
-  src <- file.path("archive", "lmic_reports", reports$id)
+  
+  src <- file.path("archive", "regional_page", reports$id)
   dest <- sprintf("gh-pages/%s/%s", reports$country, reports$date)
   copy <- c("index.html",
-            "projections.csv",
-            "index.pdf",
-            "input_params.json")
-  copy_to <- c("v1.html",
-            "projections.csv",
-            "v1.pdf",
-            "input_params.json")
-
+            "index.pdf")
+  
   for (i in seq_along(dest)) {
     message(sprintf("Copying %s (%s)", dest[[i]], reports$id[[i]]))
     dir.create(dest[[i]], FALSE, TRUE)
@@ -83,30 +77,17 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
       dest_latest <- dirname(dest[[i]])
       prev <- dir(dest_latest, pattern = "\\.")
       unlink(c(prev, file.path(dest_latest, "figures")), recursive = TRUE)
-      file_copy(dir(dest[[i]], full.names = TRUE), file.path(dest_latest, copy_to))
+      file_copy(dir(dest[[i]], full.names = TRUE), dest_latest)
     }
   }
   
-  pdf_input <- file.path(src, "index.pdf")
-  message(sprintf("Building combined pdf from %d files", length(pdf_input)))
-  qpdf::pdf_combine(pdf_input, "gh-pages/combined_reports.pdf")
-
-  ## Aha, this is so naughty, but probably a reasonable shout given
-  ## the situation.  The alternative is to depend on _all_ the country
-  ## tasks for that date.
-  summaries <- do.call(rbind,
-                       lapply(file.path(src, "summary_df.rds"), readRDS))
-  saveRDS(summaries, "src/index_page/summaries.rds")
-  
-  projections <- do.call(rbind,
-                         lapply(file.path(src, "projections.csv"), read.csv))
-  dir.create("gh-pages/data", FALSE, TRUE)
-  write.csv(projections, paste0("gh-pages/data/",date,".csv"), row.names = FALSE, quote = FALSE)
 }
+
 
 
 if (!interactive()) {
-  usage <- "Usage:\n./copy_outputs.R [<date>]"
+  usage <- "Usage:\n./copy_regionals.R [<date>]"
   args <- docopt::docopt(usage)
   copy_outputs(args$date)
 }
+

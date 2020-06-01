@@ -14,11 +14,13 @@ echo "*** Date: $DATE"
 
 echo "*** Short Run: $SHORT_RUN"
 
+echo "*** Full Scenarios: $FULL_SCENARIOS"
+
 echo "*** ECDC data"
 ./orderly run ecdc date=$DATE
 
-# echo "*** Oxford GRT data"
-# ./orderly run oxford_grt date=$DATE
+echo "*** Oxford GRT data"
+./orderly run oxford_grt date=$DATE
 
 echo "*** Google BRT data"
 ./orderly run brt_google_mobility date=$DATE short_run=$SHORT_RUN
@@ -39,19 +41,32 @@ parallel --progress -j 32 ./orderly run lmic_reports_google iso3c={} date=$DATE 
 # done
 
 echo "*** Copying reports"
-./copy_reports.R $DATE
+./copy_reports_google.R $DATE
 
 echo "*** Index page"
 ./orderly run index_page date=$DATE
+
+echo "*** Africa page"
+./orderly run regional_page date=$DATE continent=Africa
+echo "*** Asia page"
+./orderly run regional_page date=$DATE continent=Asia
+echo "*** Americas page"
+./orderly run regional_page date=$DATE continent=Americas
+echo "*** Europe page"
+./orderly run regional_page date=$DATE continent=Europe
+
 echo "*** Parameters page"
 ./orderly run parameters date=$DATE
 echo "*** 404 page"
 ./orderly run 404 date=$DATE
 echo "*** FAQ page"
 ./orderly run FAQ date=$DATE
+echo "*** News page"
+./orderly run news date=$DATE
 
 echo "*** data schema"
 ./write_data_schema.R
 
 echo "*** Copying files"
 ./copy_index.R $DATE
+./copy_regionals.R $DATE

@@ -9,6 +9,8 @@ output:
     css: styles.css
     theme: cosmo
     fig_caption: TRUE
+    includes:
+      in_header: ganalytics.html
   pdf_document: 
     fig_caption: true
     includes: 
@@ -97,11 +99,11 @@ The LMIC reports are generated using an age-structured SEIR model. The developed
 
 * S = Susceptibles 
 * E = Exposed (Latent Infection) 
-* IMild = Mild Infections (Not Requiring Hospitalisation) – including asymptomatic infection 
-* ICase = Infections that will subsequently require hospitalisation 
-* IHospital = Hospitalised Infection (Requires General Hospital Bed) 
-* IICU = Hospitalised Infection in critical care/ICU (Requires critical care/ICU Bed) 
-* IRec = Hospitalised Infection Recovering from critical care/ICU Stay (Requires General Hospital Bed) 
+* $I_{Mild}$ = Mild Infections (Not Requiring Hospitalisation) – including asymptomatic infection 
+* $I_{Case}$ = Infections that will subsequently require hospitalisation 
+* $I_{Hospital}$ = Hospitalised Infection (Requires General Hospital Bed) 
+* $I_{ICU}$ = Hospitalised Infection in critical care/ICU (Requires critical care/ICU Bed) 
+* $I_{Rec}$ = Hospitalised Infection Recovering from critical care/ICU Stay (Requires General Hospital Bed) 
 * R = Recovered 
 * D = Dead
 
@@ -112,7 +114,21 @@ The LMIC reports are generated using an age-structured SEIR model. The developed
 
 Given initial inputs of hospital/ICU bed capacity and the average time cases spend in hospital, the model dynamically tracks available hospital and ICU beds over time. Individuals newly requiring hospitalisation (either a hospital or ICU bed) are then assigned to either receive care (if the relevant bed is available) or not (if maximum capacity would be exceeded otherwise). Whether or not an individual receives the required care modifies their probability of dying.
 
-We have incorporated the impact of interventions that have been put in place using data from the [Oxford Coronavirus Government Response Tracker](https://www.bsg.ox.ac.uk/research/research-projects/coronavirus-government-response-tracker). We currently make assumptions about the efficacy of these interventions. We assume that  and so the projections should be interpreted as scenarios rather than predictions. Work is ongoing to integrate formal statistical fitting to improve these projections. In summary, school closures are assumed to cause a 10% reduction in contacts. Work closure is assumed to cause 30% reduction in contacts. Banning of public events is assumed to lead to a 5% reduction in contacts while restrictions on movement or a lockdown is not in force. Restrictions of movement is assumed to cause an additional 37.5% reduction in contacts on top of the 40% reduction due to school and work closure, leading to a total 77.5% reduction.
+## Interventions
+
+### Version 2
+
+We incorporate interventions using mobility data made publically available from [Google](https://www.google.com/covid19/mobility/), which provides data on movement in each country and includes the percent
+change in visits to places of interest (Grocery & Pharmacy, Parks, Transit Stations, Retail & Recreation, Residential, and Workplaces). Similar to Version 1, we assume that mobility changes will reduce contacts outside the household, whereas the increase in residential movement will not change household contacts. Consequently, we assume that the change in transmission over time can be summarised by averaging the mobility trends for all categories except for Residential and Parks (in which we assume significant contact events are negligable). Formally, $R_t$ (time varying reproductive number) for country $i$ is given by:
+
+$$ R_{t,i} = R_{0,i} . f(-M_{eff,i}.(1-M_i(t)))  $$
+where $f (x) = 2 exp(x)/(1 + exp(x))$ is tice the inverse logit function. $M_i(t)$ is the average mobility trend at time $t$ (in which 1 represnts 100% mobility (i.e. no change) and 0 represents 0% mobility) and $M_{eff,i}$ is the mobility effect size for country $i$. In countries in which mobility data is not available, we use a Boosted Regression Tree model, trained to government policy data from the [ACAPS Governement measures Dataset](https://www.acaps.org/covid19-government-measures-dataset), to predict the change in mobility. In scenario projections going forwards we use the mean of the last 7 days mobility as the assumed mobility in the absence of changs in interventions.  
+
+### Version 1
+
+In version 1 of these reports, we incorporated the impact of interventions that have been put in place using data from the [Oxford Coronavirus Government Response Tracker](https://www.bsg.ox.ac.uk/research/research-projects/coronavirus-government-response-tracker). We currently make assumptions about the efficacy of these interventions and so the projections should be interpreted as scenarios rather than predictions. Work is ongoing for version 2 to integrate formal statistical fitting to improve these projections. In summary, school closures are assumed to cause a 10% reduction in contacts. Work closure is assumed to cause 30% reduction in contacts. Banning of public events is assumed to lead to a 5% reduction in contacts while restrictions on movement or a lockdown is not in force. Restrictions of movement is assumed to cause an additional 37.5% reduction in contacts on top of the 40% reduction due to school and work closure, leading to a total 77.5% reduction.
+
+The reports from the last day that Version 1 was used (30th May 2020) can be accessed by appending `v1` to the url. E.g. to see the report for Brazil, go to [https://mrc-ide.github.io/global-lmic-reports/BRA/index.html](https://mrc-ide.github.io/global-lmic-reports/BRA/index.html). 
 
 ## Model Parameters
 
@@ -120,23 +136,25 @@ The parameter table below summarises the current best estimates incorporated in 
 
 | **Parameter** | **Value** | **Reference** |
 | --- | --- | --- |
-| Basic reproductive number, R0 | 3.0 | [Report 13](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-13-europe-npi-impact/) |
+| Basic reproductive number, $R_0$ | 3.0 | [Report 13](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-13-europe-npi-impact/) |
 | Mean Incubation Period | 4.6 days | [Report 9](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-9-impact-of-npis-on-covid-19/); [Linton et al.](https://www.medrxiv.org/content/medrxiv/early/2020/01/28/2020.01.26.20018754.full.pdf); [Li et al.](https://www.nejm.org/doi/full/10.1056/NEJMoa2001316) The last 0.5 days are included in the I_MILD and I_CASE states to capture pre-symptomatic infectivity |
 | Generation Time | 6.75 days | [Report 9](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-9-impact-of-npis-on-covid-19/) |
-| Mean Duration in I\_MILD | 2.1 days | Incorporates 0.5 days of infectiousness prior to symptoms; with parameters below ~95% of all infections are mild. In combination with mean duration in I\_CASE this gives a mean generation time as above |
-| Mean Duration in I\_CASE | 4.5 days | Mean onset-to-admission of 4 days from UK data. Includes 0.5 days of infectiousness prior to symptom onset |
-| Mean Duration of Hospitalisation for non-critical Cases (I\_HOSP) if survive | 9.5 days | Based on unpublished UK data |
-| Mean Duration of Hospitalisation for non-critical Cases (I\_HOSP) if die | 7.6 days | Based on unpublished UK data |
-| Mean duration of Critical Care (I\_ICU) if survive | 11.3 days | Based on [UK data](https://www.icnarc.org/Our-Audit/Audits/Cmp/Reports) adjusted for censoring |
-| Mean duration of Critical Care (I\_ICU) if die | 10.1 days | Based on [UK data](https://www.icnarc.org/Our-Audit/Audits/Cmp/Reports) |
-| Mean duration of Stepdown post ICU (I\_Rec) | 3.4 days | Based on unpublished UK data |
+| Mean Duration in $I_{MILD}$ | 2.1 days | Incorporates 0.5 days of infectiousness prior to symptoms; with parameters below ~95% of all infections are mild. In combination with mean duration in $I_{CASE}$ this gives a mean generation time as above |
+| Mean Duration in $I_{CASE}$ | 4.5 days | Mean onset-to-admission of 4 days from UK data. Includes 0.5 days of infectiousness prior to symptom onset |
+| Mean Duration of Hospitalisation for non-critical Cases ($I_{HOSP}$) if survive | 9.5 days | Based on unpublished UK data |
+| Mean Duration of Hospitalisation for non-critical Cases ($I_{HOSP}$) if die | 7.6 days | Based on unpublished UK data |
+| Mean duration of Critical Care ($I_{ICU}$) if survive | 11.3 days | Based on [UK data](https://www.icnarc.org/Our-Audit/Audits/Cmp/Reports) adjusted for censoring |
+| Mean duration of Critical Care ($I_{ICU}$) if die | 10.1 days | Based on [UK data](https://www.icnarc.org/Our-Audit/Audits/Cmp/Reports) |
+| Mean duration of Stepdown post ICU ($I_{Rec}$) | 3.4 days | Based on unpublished UK data |
 | Mean duration of hospitalisation if require ICU but do not receive it | 1 day | Working assumption |
 | Probability of dying in critical care | 50% | Based on [UK data](https://www.icnarc.org/Our-Audit/Audits/Cmp/Reports) |
 | Probability of death if require critical care but do not receive it | 95% | Working assumption based on expert clinical opinion* |
 | Probability of death if require hospitalisation but do not receive it | 60% | Working assumption based on expert clinical opinion* |
 | Multiplier of duration of stay for LIC and LMIC settings compared to HIC | 50% | Working assumption based on expert clinical opinion* |
 
-* N.B. Given the substantially weaker health systems in LIC and LMIC, it is likely that disease outcomes will differ from the UK. The estimates listed above for the key parameters determining the severity outcomes are the result of a rapid expert clinical review. Eight clinical experts with experience both in treating COVID-19 patients in the UK and with previous experience in clinical practice in LIC/LMICs were asked to provide their assessment of severity outcomes in LMICs. Although there was broad consensus on these outcomes, it should be noted that there was also consensus that this is likely to be highly heterogeneous both within and between countries due to other factors that are difficult to quantify and for which data sources do not readily exist as of `r date`. 
+*N.B. Given the substantially weaker health systems in LIC and LMIC, it is likely that disease outcomes will differ from the UK. The estimates listed above for the key parameters determining the severity outcomes are the result of a rapid expert clinical review. Eight clinical experts with experience both in treating COVID-19 patients in the UK and with previous experience in clinical practice in LIC/LMICs were asked to provide their assessment of severity outcomes in LMICs. Although there was broad consensus on these outcomes, it should be noted that there was also consensus that this is likely to be highly heterogeneous both within and between countries due to other factors that are difficult to quantify and for which data sources do not readily exist as of `r date`. 
+
+<br> 
 
 ### Age-Specific Parameters
 

@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -e
+DOCS_DIR=gh-results
+VERSION=$(git rev-parse --short HEAD)
+REMOTE_URL=git@github.com/mrc-ide/global-lmic-results.git
+
+TODAY=$(date "+%Y-%m-%d")
+DATE=${1:-$TODAY}
+
+export GIT_SSH_COMMAND="ssh -i ../.ssh/results/id_rsa"
+
+rm -rf ${DOCS_DIR}/.git
+git init ${DOCS_DIR}
+if [ -z $(git -C ${DOCS_DIR} config --get user.email) ]; then
+    git -C ${DOCS_DIR} config user.email "oj.watson@hotmail.co.uk"
+    git -C ${DOCS_DIR} config user.name "OJWatson"
+fi
+git -C ${DOCS_DIR} add .
+git -C ${DOCS_DIR} commit --no-verify -m "Update results for ${DATE} at version ${VERSION} "
+git -C ${DOCS_DIR} remote add origin ${REMOTE_URL}
+git -C ${DOCS_DIR} push --force -u origin master

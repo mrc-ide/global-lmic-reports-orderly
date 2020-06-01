@@ -10,6 +10,7 @@ draft
 *.dll
 *.rds
 gh-pages
+gh-results
 orderly.sqlite
 index_files
 src/*/_site.yml
@@ -20,6 +21,7 @@ src/*/logo.jpg
 src/*/header.html
 src/*/_navbar.html
 src/*/logo.png
+src/*/ganalytics.html
 src/parameters/parameters.html
 src/parameters/parameters.md
 src/404/404.html
@@ -32,6 +34,15 @@ src/index_page/logo.jpg
 src/index_page/header.html
 src/index_page/index.html
 src/index_page/index.md
+src/regional_page/_site.yml
+src/regional_page/styles.css
+src/regional_page/footer.html
+src/regional_page/footer.tex
+src/regional_page/logo.jpg
+src/regional_page/header.html
+src/regional_page/index.html
+src/regional_page/index.pdf
+src/regional_page/index.md
 src/lmic_reports/index.html
 src/lmic_reports/index.md
 src/lmic_reports/index.pdf
@@ -41,11 +52,14 @@ src/lmic_reports/projections.csv
 src/lmic_reports_google/index.html
 src/lmic_reports_google/index.md
 src/lmic_reports_google/index.pdf
+src/lmic_reports_google/header.tex
 src/lmic_reports_google/input_params.json
 src/lmic_reports_google/fitting.pdf
 src/lmic_reports_google/projections.csv
 src/FAQ/FAQ.html
 src/FAQ/FAQ.md
+src/news/News.html
+src/news/News.md
 src/FAQ/structure.JPG
 src/test
 .ssh

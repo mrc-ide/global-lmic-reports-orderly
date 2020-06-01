@@ -9,6 +9,8 @@ output:
     css: styles.css
     theme: cosmo
     fig_caption: TRUE
+    includes:
+      in_header: ganalytics.html
   pdf_document: 
     fig_caption: true
     includes: 
@@ -21,6 +23,12 @@ output:
     highlight: tango
     reference_docx: template.docx
 ---
+
+```{r knitr_options, echo=FALSE} 
+knitr::opts_chunk$set(message = FALSE,warning = FALSE)
+options("dplyr.summarise.inform"=FALSE)
+```
+
 
 ```{js, echo = FALSE}
 
@@ -123,31 +131,32 @@ summaries <- readRDS("summaries.rds")
 
 ```
 
-## Short-term forecasts of healthcare demand for countries in the early stage of COVID-19 epidemics
+## Forecasting the healthcare burden of COVID-19 in LMICs
 
 <br> 
 
-COVID-19 is currently causing large-scale outbreaks in many countries, particularly in Europe and Asia where many countries have experienced a level of healthcare demand that have placed health systems under strain. In response, countries have implemented large-scale non-pharmaceutical interventions such as social distancing measures and the closure of schools, businesses and meeting places. Meanwhile there are many countries, particularly Lower or Middle Income countries (LMICs) (shown below) which, as a likely function of global movement patterns, are at an earlier stage of the epidemic and major healthcare demand and mortality are yet to be reported. There are a total of `r countries_less_100` countries who have reported less than 100 COVID-19 deaths, with `r countries_less_pop` where the total COVID-19 deaths also represents less than 10/million of their population. 
+COVID-19 has caused large-scale outbreaks in many countries, particularly in Europe and Asia where many countries have experienced a level of healthcare demand that have placed health systems under strain. Many countries, particularly Low- or Middle Income countries (LMICs) (shown below), are at an earlier stage of the epidemic. `r countries_less_100` countries have reported less than 100 COVID-19 deaths, with `r countries_less_pop` where the total COVID-19 deaths also represents less than 10/million of their population. 
 
-The following short-term forecasts are designed to provide these countries with an indication of where they are in their epidemic in terms of the likely number of infections within their country and the short-term future trajectory. We present two-week trajectories of the number of individuals likely to require hospitalisation and the expected number of patients requiring high-pressure oxygen or mechanical ventilation in order to survive. These reports will be updated daily using the latest publicly available data on COVID-19 from the [European Centre for Disease Prevention and Control](https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide). These reports will aim to help countries understand:
+In response, we provide daily updated forecasts for LMICs, helping to provide them with an indication of where they are in their epidemic. Specifically, these reports will aim to help countries understand:
 
 <br>
 
 #### 1. The total number of COVID-19 infections
-#### 2. The expected number of deaths within the next 14 days
-#### 3. The number of individuals requiring oxygen or mechanical ventilation in the next 14 days
+#### 2. The expected number of deaths within the next 28 days
+#### 3. The number of individuals requiring oxygen or mechanical ventilation in the next 28 days
 #### 4. The impact of changing their current intervention policy 
+
 <br> 
 
 **For further guidance and questions about the methodology and caveats, please see the [Frequently Asked Questions](https://mrc-ide.github.io/global-lmic-reports/FAQ.html)**
 
 <br>
 
-```{r fig1, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.align=fig_center(),fig.width=10, fig.height=fig_height(10,10)}
+```{r fig1, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.align=fig_center(),fig.width=10, fig.height=fig_height(10,10), fig.cap=figRef("Cumulative Deaths since 10 deaths by continent for low- and middle-income countries. The projected deaths (assuming population mobility is maintained at today's level) are shown with dashed lines.")}
 
 # [FIGURE SHOWING TRAJECTORIES AND CASES OF EARLY-STAGE LMIC COUNTRIES RELATIVE TO HICS?]
 suppressMessages(suppressWarnings(
-full_plot()
+full_firework_plot()
 ))
 
 ```
@@ -156,9 +165,11 @@ full_plot()
 
 ### METHODOLOGY 
 
-As in our projections for high-income settings at more advanced stages of the epidemic, rather than relying upon reported cases which are likely to be subject to a high and varying degree of under reporting, we use reported deaths as a more reliable indicator of disease spread. These data are then used to back-calculate an ‘inferred number of COVID-19 infections’ that we estimate have occurred within each country up to the current day, adjusted for the demographics and representative patterns of social mixing within each country. Then, using data on the risk of requiring hospitalisation, oxygen and mechanical ventilation by age observed in other countries to date, we use our model to project forwards the likely demand for healthcare over the coming two weeks. This data is solely from high-income countries and consequently likely under estimates the true burden. Full methods used, with parameter values can be found in the [Methods Section](https://mrc-ide.github.io/global-lmic-reports/parameters.html).
+As in our projections for high-income settings at more advanced stages of the epidemic, rather than relying upon reported cases which are likely to be subject to a high and varying degree of under reporting, we use reported deaths as a more reliable indicator of disease spread. These data are then used to back-calculate an ‘inferred number of COVID-19 infections’ that we estimate have occurred within each country up to the current day, adjusted for the demographics and representative patterns of social mixing within each country. 
 
-We have also attempted to capture the impact of interventions that have been put in place using data from the [Oxford Coronavirus Government Response Tracker](https://www.bsg.ox.ac.uk/research/research-projects/coronavirus-government-response-tracker). We currently make assumptions about the efficacy of these interventions and so the projections should be interpreted as scenarios rather than predictions. Work is ongoing to integrate formal statistical fitting to improve these projections. 
+Using data on the age-dependent risk of requiring hospitalisation, oxygen and mechanical ventilation by age observed in other countries to date, we use our model to project forwards the likely demand for healthcare over the coming four weeks. This data is currently from high-income countries and consequently likely under estimates the true burden. Full methods used, with parameter values can be found in the [Methods Section](https://mrc-ide.github.io/global-lmic-reports/parameters.html).
+
+These reports are updated daily using the latest publicly available data on COVID-19 from the [European Centre for Disease Prevention and Control](https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide). We also model the impact of government interventions that have been put in place and their effect on human mobility based on the [Google COVID-19 Community Mobility Reports](https://www.google.com/covid19/mobility/).
 
 ---
 

@@ -1,0 +1,274 @@
+---
+title: Continent COVID-19 LMIC Reports"
+header-includes: \usepackage{caption}
+date: ""
+urlcolor: blue
+output:
+  html_document:
+    keep_md: no
+    self_contained: yes
+    css: styles.css
+    theme: cosmo
+    fig_caption: TRUE
+    includes:
+      in_header: ganalytics.html
+  pdf_document: 
+    fig_caption: true
+    includes: 
+      in_header: header.tex
+      after_body: footer.tex
+  word_document:
+    df_print: kable
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 6
+    highlight: tango
+    reference_docx: template.docx
+---
+
+```{r knitr_options, echo=FALSE} 
+knitr::opts_chunk$set(message = FALSE,warning = FALSE)
+options("dplyr.summarise.inform"=FALSE)
+```
+
+
+```{r rm_title_page, echo=FALSE}
+head <- cat('
+\\AtBeginDocument{\\let\\maketitle\\relax}
+', file = "header.tex")
+
+```
+
+
+```{js, echo = FALSE}
+
+if ($(window).width() < 768) {
+  $('.dropdown-menu a.dropdown-toggle').on('click', function(e) {
+    if (!$(this).next().hasClass('show')) {
+      $(this).parents('.dropdown-menu').first().find('.show').removeClass("show");
+    }
+
+ 
+
+    var $subMenu = $(this).next(".dropdown-menu");
+    if (!$subMenu.hasClass('show')) {
+      $subMenu.addClass('show');
+      $subMenu.show();
+    } else {
+      $subMenu.removeClass('show');
+      $subMenu.hide();
+    }
+
+ 
+
+    $(this).parents('li.nav-item.dropdown.show').on('hidden.bs.dropdown', function(e) {
+      $('.dropdown-submenu .show').removeClass("show");
+    });
+
+ 
+
+    return false;
+  });
+}
+
+```
+
+```{r, echo = FALSE, message=FALSE, warning=FALSE}
+if (!exists("date")) { # running outside of orderly
+  date <- Sys.Date()
+}
+
+data_url <- paste0("https://github.com/mrc-ide/global-lmic-reports/raw/master/data/",date,".csv")
+url <- paste0("https://github.com/mrc-ide/global-lmic-reports/raw/master/",continent,"/index.pdf")
+
+library(dplyr)
+library(ggplot2)
+library(squire)
+
+format <- knitr::opts_knit$get("rmarkdown.pandoc.to")
+figRef <- function(caption) {
+  if(format == "latex") {
+    gsub("Figure \\d: ","",caption)
+  } else {
+    caption
+  }
+}
+
+
+fig_height <- function(pdf = 4, html = 6) {
+    if(format == "latex") {
+    pdf
+  } else {
+    html
+  }
+}
+
+fig_center <- function() {
+    if(format == "latex") {
+    "default"
+  } else {
+    "center"
+  }
+}
+
+latex_omit <- function(text) {
+  if(knitr::is_latex_output())
+    return("")
+  else
+    return(text)
+}
+
+pagebreak <- function() {
+  if(knitr::is_latex_output())
+    return("\\newpage")
+  else
+    return('<div style="page-break-before: always;" />')
+}
+
+linebreak <- function() {
+  if(knitr::is_latex_output())
+    return("")
+  else
+    return('<br>')
+}
+
+pdf_line_break <- function() {
+  if(knitr::is_latex_output())
+    return("<br>")
+  else
+    return('')
+}
+
+
+```
+
+```{r ecdc prep, echo = FALSE, collapse=TRUE, warning=FALSE}
+
+# get the ecdc data
+df <- readRDS("ecdc_all.rds")
+data <- df[,c("dateRep", "deaths", "cases","Region", "countryterritoryCode")]
+names(data)[c(1,4,5)] <- c("date","country","iso3c")
+data$date <- as.Date(data$date)
+date <- date_0 <- as.Date(date)
+
+# group for cumulative deaths
+data <- group_by(data, country) %>% mutate(cum_deaths = rev(cumsum(rev(deaths))),
+                                          cum_cases = rev(cumsum(rev(cases))),)
+
+
+
+d <- data
+d$country[d$country=="Congo"] <- "Republic of Congo"
+d$country[d$country=="United_Republic_of_Tanzania"] <- "Tanzania"
+d$country[d$country=="CuraÃ§ao"] <- "Curacao"
+suppressWarnings(d$Continent <- countrycode::countrycode(d$country, origin = 'country.name', destination = 'continent'))
+d$Continent[d$country=="Eswatini"] <- "Africa"
+d$Continent[d$country=="United State of America"] <- "Americas"
+d$Continent[d$country=="Isle_of_Man"] <- "Europe"             
+d$Continent[d$country=="Kosovo"] <- "Europe"                  
+d$Continent[d$country=="Netherlands_Antilles"] <- "Americas"    
+d$Continent[d$country=="Saint_Lucia"] <- "Americas"             
+d$Continent[d$country=="South_Korea"] <- "Asia"             
+d$Continent[d$country=="United_States_of_America"] <- "Americas"
+d$Continent[d$country=="Kosovo"] <- "Europe"
+
+cont_sums <- d[d$Continent == continent & d$date == date_0,]
+
+## summaries
+summaries <- readRDS("summaries.rds")
+
+```
+
+## Situation Report for COVID-19: `r continent`, `r format(date, "%Y-%m-%d")`
+
+`r latex_omit("---")`
+
+#### **[Download the report for `r continent`, `r format(date, "%Y-%m-%d")` here](`r url`).**
+
+<br> 
+
+**Please see the country reports for further details on individual countries. For further guidance and questions about the methodology and caveats, please see the [Frequently Asked Questions](https://mrc-ide.github.io/global-lmic-reports/FAQ.html)**
+
+<br>
+
+### Epidemiological Situation
+
+| **Total Reported Cases** | **New Reported Cases** | **Total Reported Deaths** | **New Reported Deaths** | 
+| ---- | ---- | ---- | ---- |
+| `r format(sum(cont_sums$cum_cases), big.mark=",")` | `r format(sum(cont_sums$cases), big.mark=",")` | `r format(sum(cont_sums$cum_deaths), big.mark=",")`|`r format(sum(cont_sums$deaths), big.mark=",")`|
+
+<br>
+
+This report uses data from the European Centre for Disease Control. These data are updated daily and whilst there may be a short delay, they are generally consistent with Ministry reports. Below is an overview of the cumulative number of deaths in each continent as of `r format(date, "%Y-%m-%d")`
+
+<br>
+
+```{r starter, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.width=fig_height(7,9), fig.height=fig_height(4,5),fig.align=fig_center()}
+
+suppressMessages(suppressWarnings(print(d %>% filter(date < date_0) %>% 
+  group_by(date, Continent) %>% 
+  summarise(deaths = sum(cum_deaths)) %>% 
+  ggplot(aes(x=date,y=deaths,color=Continent)) + 
+  geom_line(lwd=1) + 
+  theme_bw() + xlab("") + ylab("Cumulative Deaths") + 
+  scale_color_brewer(palette = "Set2") + 
+  scale_y_log10(limits=c(1,NA), labels = scales::comma) + 
+  theme(panel.border = element_blank(), axis.line = element_line(size=0.5)))))
+
+```
+
+`r pagebreak()`
+
+### Projected deaths within the next 28 days
+
+<br>
+
+We assume that the deaths reported to date provide the best indication of the stage of the epidemic, as deaths are more consistently and accurately reported. These data are then used to calibrate our our [mathematical model](https://github.com/mrc-ide/squire), which allows us to forecast the number of deaths in the next 28 days (Figure 1), assuming that the current level of interventions and mobility are maintained.
+
+<br>
+
+```{r deaths plot, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE,  fig.cap=figRef("**Figure 1: Cumulative Deaths since 10 deaths**. The projected deaths (assuming population mobility is maintained at today's level) are shown with dashed lines."), fig.width=fig_height(7,9), fig.height=fig_height(5,6),fig.align=fig_center()}
+
+# [FIGURE SHOWING PROJECTED DEATHS]
+suppressMessages(suppressWarnings(print(one_firework_plot(cont = continent))))
+
+```
+
+<br>
+`r pagebreak()`
+
+### Projected healthcare demand within the next 28 days
+
+<br>
+
+Using data on the age-dependent risk of requiring hospitalisation, oxygen and mechanical ventilation by age observed in other countries to date, we can use our model to project forwards the likely demand for healthcare over the coming four weeks. This data is currently from high-income countries and consequently likely under estimates the true burden. Full methods used, with parameter values can be found in the [Methods Section](https://mrc-ide.github.io/global-lmic-reports/parameters.html).
+
+<br>
+
+```{r healthcare plots, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 2: Estimated Healthcare demands in 4 weeks time.** Individuals needing an ICU bed are predicted to need mechanical ventilation. Individuals requiring oxygen are assumed to require high-flow oxygen."), fig.width=fig_height(9,9), fig.height=fig_height(8.5,9),fig.align=fig_center()}
+
+# [FIGURE SHOWING PROJECTIONS OF HOSP/ICU/DEATHS IN NEXT FOUR WEEKS]
+suppressMessages(suppressWarnings(print(summaries_forecasts_plot(sums = summaries, cont = continent))))
+
+```
+
+
+<br>
+`r pagebreak()`
+
+### Effective Reproductive Number
+
+<br>
+
+By fitting to the time series of deaths in each country, we are able to estimate a time-varying reproduction number, $R_t$. $R_t$ is the the average number of secondary infections caused by a single infected person at a given time. If $R_t$ is above 1, the rate of transmission is increasing and the number of new infections is increasing. $R_t$ is assumed to change in relation to mobility  fall in proportion. When fitting out model we assume that 100% of COVID-19 related deaths have been reported (please see our [FAQ](https://mrc-ide.github.io/global-lmic-reports/FAQ.html#how-have-you-accounted-for-unreported-deaths) section for more information about this assumption). 
+
+<br>
+
+```{r rt plot, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE,  fig.cap=figRef("**Figure 3: Time-varying reproduction number, $R_t$.** $R_t$ is the average number of secondary infections caused by a single infected person at time equal to $t$. $R_t$ < 1 indicates a slowing epidemic in which new infections are not increasing. $R_t$ > 1 indicates a growing epidemic in which new infections are increasing over time. Dark green shows the 50% CI and light green shows the 95% CI."), fig.width=fig_height(10,10), fig.height=fig_height(8.5,10),fig.align=fig_center()}
+
+# [FIGURE SHOWING Rt]
+suppressMessages(suppressWarnings(print(rt_plot(cont = continent))))
+
+```
+
+<br>

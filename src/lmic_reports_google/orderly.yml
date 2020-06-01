@@ -144,6 +144,7 @@ global_resources:
   footer.tex: footer.tex
   logo.png: logo.png
   header.html: header.html
+  ganalytics.html: ganalytics.html
 
 # Indicate which reports your report depends on.  You can use this to
 # pull in artefacts from previous reports.  You can depend in multiple
@@ -174,10 +175,10 @@ depends:
     id: latest(parameter:date == date)
     use:
       ecdc_all.rds: ecdc_all.rds
-#  oxford_grt:
-#    id: latest(parameter:date == date)
-#    use:
-#      oxford_grt.rds: oxford_grt.rds
+  oxford_grt:
+    id: latest(parameter:date == date)
+    use:
+      oxford_grt.rds: oxford_grt.rds
   brt_google_mobility:
     id: latest(parameter:date == date)
     use:
