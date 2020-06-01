@@ -296,12 +296,14 @@ out <- squire::calibrate(
   forecast = 0
 )
 
-# Reassign the Rt_func to the output as for some reason this is grabbing the environment
+# Reassign the Rt_func_replace with stats environment as for some reason this is grabbing the environment
 # and adding like 50Mb plus to the object being saved!
-Rt_func <- function(R0_change, R0, Meff) {
+Rt_func_replace <- function(R0_change, R0, Meff) {
   R0 * (2 * plogis(-(R0_change-1) * -Meff))
 }
-out$scan_results$inputs$Rt_func <- Rt_func
+out$scan_results$inputs$Rt_func <- as.function(c(formals(Rt_func_replace), 
+                                                 body(Rt_func_replace)), 
+                                               envir = new.env(parent = environment(stats::acf)))
 saveRDS(out, "grid_out.rds")
 
 ## -----------------------------------------------------------------------------
