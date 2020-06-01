@@ -531,7 +531,7 @@ deaths_plot_single <- function(out, data, date_0, date = Sys.Date(),
                    axis.line = ggplot2::element_line(colour = "black")) 
   
   rg <- gg + ylab("Daily Deaths") +
-    ylim(c(0, max(gg$layers[[1]]$data[gg$layers[[1]]$data$x < date+1,]$ymax))) +
+    ylim(c(0, max(gg$layers[[1]]$data[gg$layers[[1]]$data$x < date+1,]$ymax,out$scan_results$inputs$data$deaths+1))) +
     xlim(c(min(data$date[which(data$deaths>0)]), date)) +
     theme(legend.position = "none") +
     ggtitle("Model Fit up to Current Day")
@@ -633,7 +633,7 @@ deaths_plot_single_surge <- function(out, out2, data, date_0, date = Sys.Date(),
     geom_vline(xintercept = date, linetype = "dashed")
   
   rg <- gg2 + ylab("Daily Deaths") +
-      ylim(c(0, max(gg2$data[gg2$data$x < date+1,]$ymax))) +
+      ylim(c(0, max(gg2$data[gg2$data$x < date+1,]$ymax, out$scan_results$inputs$data$deaths+1))) +
       xlim(c(min(data$date[which(data$deaths>0)]), date)) +
       theme(legend.position = "none") +
     ggtitle("Model Fit up to Current Day")
