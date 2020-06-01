@@ -183,7 +183,6 @@ start_date <- out_det$scan_results$y[pos[2]]
 Meff <- out_det$scan_results$z[pos[3]]
 
 if(!is.null(date_R0_change)) {
-  start_date <- min(start_date, date_R0_change-1)
   tt_beta <- squire:::intervention_dates_for_odin(dates = date_R0_change,
                                                   change = R0_change,
                                                   start_date = start_date,
