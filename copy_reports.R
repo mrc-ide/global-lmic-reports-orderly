@@ -81,9 +81,9 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
     file_copy(file.path(src[[i]], copy), dest[[i]])
     if (is_latest) {
       dest_latest <- dirname(dest[[i]])
-      prev <- dir(dest_latest, pattern = "\\.")
+      prev <- dir(dest_latest, full.names = TRUE, pattern = "\\.")
       unlink(c(prev, file.path(dest_latest, "figures")), recursive = TRUE)
-      file_copy(dir(dest[[i]], full.names = TRUE), file.path(dest_latest, copy_to))
+      file_copy(file.path(dest[[i]], copy), file.path(dest_latest, copy_to))
     }
   }
   

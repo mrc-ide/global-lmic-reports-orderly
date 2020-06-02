@@ -480,7 +480,7 @@ Using the model fit, we can forecast the expected trajectory for cumulative deat
 
 <br>
 
-```{r death forecast plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap=figRef(paste0("**Figure 4: Estimated daily deaths.** Projected deaths assuming the current level of interventions are maintained are shown in red (mean and 95% quantile). Reported deaths are plotted in black. The plot on the left is focussed on the model fit prior to today, while the plot on the right forecasts the next 28 days. ", fig_cap_capacity)), fig.width=if (length(params$r_list) > 3) 10 else 8, fig.height=if (length(params$r_list) > 3) 6 else 4.5, fig.align=fig_center()}
+```{r death forecast plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap=figRef(paste0("**Figure 4: Estimated daily deaths.** Projected deaths assuming the current level of interventions are maintained are shown in red (mean and 95% quantile). Reported deaths are plotted in black. The plot on the left is focussed on the model fit prior to today, while the plot on the right forecasts the next 28 days. ", fig_cap_capacity)), fig.width=if (length(params$r_list) > 3) 10 else 8, fig.height=if (length(params$r_list) > 3) 8 else 6, fig.align=fig_center()}
 
 if (length(params$r_list) > 3) {
   suppressWarnings(suppressMessages(

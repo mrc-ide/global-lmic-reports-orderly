@@ -9,13 +9,20 @@ DATE=${1:-$TODAY}
 
 export GIT_SSH_COMMAND="ssh -i ../.ssh/results/id_rsa"
 
-rm -rf ${DOCS_DIR}/.git
-git init ${DOCS_DIR}
 if [ -z $(git -C ${DOCS_DIR} config --get user.email) ]; then
     git -C ${DOCS_DIR} config user.email "oj.watson@hotmail.co.uk"
     git -C ${DOCS_DIR} config user.name "OJWatson"
 fi
+
+if [ ! -d "${DOCS_DIR}/.git" ]; then
+    git init ${DOCS_DIR}
+    git -C ${DOCS_DIR} remote add origin ${REMOTE_URL}
+    echo "init again"
+else 
+    git -C ${DOCS_DIR} pull
+    echo "pull"
+fi
+
 git -C ${DOCS_DIR} add .
-git -C ${DOCS_DIR} commit --no-verify -m "Update results for ${DATE} at version ${VERSION} "
-git -C ${DOCS_DIR} remote add origin ${REMOTE_URL}
-git -C ${DOCS_DIR} push --force -u origin master
+git -C ${DOCS_DIR} commit --no-verify -m "Update server results for ${DATE} at version ${VERSION} "
+git -C ${DOCS_DIR} push
