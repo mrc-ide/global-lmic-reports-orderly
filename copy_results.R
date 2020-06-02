@@ -11,6 +11,9 @@ file_copy <- function(from, to) {
 ## dir("gh-pages", pattern = "index\\.html$", recursive = TRUE)
 copy_results <- function(date = NULL, is_latest = TRUE) {
   
+  system("echo pre-DB")
+  db <- orderly::orderly_db("destination")
+  
   # first set up results dir
   target <- "gh-results/analysis/data/raw_data/server_results"
   #unlink("gh-results", recursive = TRUE, force = TRUE)
@@ -22,8 +25,6 @@ copy_results <- function(date = NULL, is_latest = TRUE) {
   file_copy("global/", target)
   
   # now copy over ecdc, brt and reports
-  system("echo pre-DB")
-  db <- orderly::orderly_db("destination")
   if (is.null(date)) {
     date <- as.character(Sys.Date())
   }
