@@ -162,6 +162,7 @@ out_det <- squire::calibrate(
   squire_model = squire:::deterministic_model(),
   pars_obs = pars_obs,
   n_particles = 2,
+  seeding_cases = 5,
   reporting_fraction = reporting_fraction,
   R0_change = R0_change,
   date_R0_change = date_R0_change,
@@ -219,6 +220,31 @@ writeLines(jsonlite::toJSON(df,pretty = TRUE), "input_params.json")
 ## -----------------------------------------------------------------------------
 ## Step 3a: Fit Stochastic Model
 ## -----------------------------------------------------------------------------
+
+# Redo the deterministic model fit based on 20 seeds
+out_det <- squire::calibrate(
+  data = data,
+  R0_min = R0_min,
+  R0_max = R0_max,
+  R0_step = R0_step,
+  R0_prior = R0_prior,
+  Meff_min = Meff_min,
+  Meff_max = Meff_max,
+  Meff_step = Meff_step,
+  Rt_func = Rt_func,
+  first_start_date = first_start_date,
+  last_start_date = last_start_date,
+  day_step = day_step,
+  squire_model = squire:::deterministic_model(),
+  pars_obs = pars_obs,
+  n_particles = 2,
+  reporting_fraction = reporting_fraction,
+  R0_change = R0_change,
+  date_R0_change = date_R0_change,
+  replicates = replicates,
+  country = country,
+  forecast = 0
+)
 
 ## take the density from the deterministic to focus the grid
 # recreate the grids
