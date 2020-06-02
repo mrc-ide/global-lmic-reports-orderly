@@ -48,7 +48,10 @@ return false;
 
 ## 
 
-The country you have requested has not recorded any deaths by `r date` due to COVID-19 according to the [ECDC](https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide) data. 
+The country you have requested is not currently available. This is because either:
+
+1. No deaths have been recorded by `r date` due to COVID-19 according to the [ECDC](https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide) data.
+2. The last death due to COVID-19 recorded was more than 20 days ago.   
 
 If this is incorrect or you are aware of reported deaths due to COVID-19 please reach out so we can use a better source of data to calibrate our models. 
 

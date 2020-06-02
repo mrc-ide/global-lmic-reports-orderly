@@ -391,95 +391,95 @@ reverse_3_months_lift <- squire::projections(out, R0_change = c(rel_R0(0.5), rel
 ## -----------------------------------------------------------------------------
 if (full_scenarios) {
   
-  # Enhancing movement restrictions until the end of the year (50% further reduction in contacts) which then return to pre-intervention levels   
-  mitigation_rest_year_lift <- squire::projections(out, R0_change = c(0.5, rel_R0(0)), 
-                                                   tt_R0 = c(0,as.Date("2020-12-31")-Sys.Date()), time_period = time_period)
-  
-  # Enhance movement restrictions for 3 months (50% further reduction in contacts), ease restrictions for a further 3 months (current contacts), then return to pre-intervention levels  
-  mitigation_3months_ease_3months_lift <- squire::projections(out, R0_change = c(0.5, 1, rel_R0(0)), tt_R0 = c(0, 90, 180), time_period = time_period)
-  
-  # Suppression for 3 months (75% reduction in contacts) which then return to pre-intervention levels 
-  suppress_3months_lift <- squire::projections(out, R0_change = c((rel_R0(0))*0.25, rel_R0(0)), tt_R0 = c(0, 90), time_period = time_period)
-  
-  # Long-term sustained suppression (75% reduction in contacts)  
-  suppress_full <- squire::projections(out, R0_change = c((rel_R0(0))*0.25), tt_R0 = c(0), time_period = time_period)
-  
-  # Full lifting of emergency measures in a week – contact rates are assumed to return to pre-intervention levels  
-  lift_week <- squire::projections(out, R0_change = c(1,rel_R0(0)), tt_R0 = c(0, 7), time_period = time_period)
-  
-  ## -----------------------------------------------------------------------------
-  ## 4.2. Assuming that this will uncoupel further, with Meff being 50% lower
-  ## -----------------------------------------------------------------------------
-  
-  # Maintaining the current set of measures for a further 3 months following which contacts return to pre-intervention levels  
-  maintain_3months_lift_meff_50 <- squire::projections(out, 
-                                                       R0_change = c(1, rel_R0(0)*0.5), 
-                                                       tt_R0 = c(0,90), 
-                                                       time_period = time_period)
-  
-  # Enhancing movement restrictions for 3 months (50% further reduction in contacts) which then return to pre-intervention levels (Mitigation) 
-  mitigation_3months_lift_meff_50 <- squire::projections(out, R0_change = c(0.5,rel_R0(0)*0.5), tt_R0 = c(0,90), time_period = time_period)
-  
-  # Relax by 50% for 3 months and then return to pre-intervention levels 
-  reverse_3_months_lift_meff_50 <- squire::projections(out, R0_change = c((rel_R0(0))*(1-(fr0/2)), rel_R0(0)*0.5), tt_R0 = c(0, 90), time_period = time_period)
-  
-  # Enhancing movement restrictions until the end of the year (50% further reduction in contacts) which then return to pre-intervention levels   
-  mitigation_rest_year_lift_meff_50 <- squire::projections(out, R0_change = c(0.5, rel_R0(0)*0.5), tt_R0 = c(0,as.Date("2020-12-31")-Sys.Date()), time_period = time_period)
-  
-  # Enhance movement restrictions for 3 months (50% further reduction in contacts), ease restrictions for a further 3 months (current contacts), then return to pre-intervention levels  
-  mitigation_3months_ease_3months_lift_meff_50 <- squire::projections(out, R0_change = c(0.5, 1*0.5, rel_R0(0)*0.5), tt_R0 = c(0, 90, 180), time_period = time_period)
-  
-  # Suppression for 3 months (75% reduction in contacts) which then return to pre-intervention levels 
-  suppress_3months_lift_meff_50 <- squire::projections(out, R0_change = c((rel_R0(0))*0.25, rel_R0(0)*0.5), tt_R0 = c(0, 90), time_period = time_period)
-  
-  # Long-term sustained suppression (75% reduction in contacts)  
-  suppress_full_meff_50 <- squire::projections(out, R0_change = c((rel_R0(0))*0.25), tt_R0 = c(0), time_period = time_period)
-  
-  # Full lifting of emergency measures in a week – contact rates are assumed to return to pre-intervention levels  
-  lift_week_meff_50 <- squire::projections(out, R0_change = c(1,rel_R0(0)*0.5), tt_R0 = c(0, 7), time_period = time_period)
-  
-  ## -----------------------------------------------------------------------------
-  ## 4.3. Assuming that this will uncoupel further, with Meff being 25% lower
-  ## -----------------------------------------------------------------------------
-  
-  # Maintaining the current set of measures for a further 3 months following which contacts return to pre-intervention levels  
-  maintain_3months_lift_meff_75 <- squire::projections(out, R0_change = c(1, rel_R0(0)*0.75), tt_R0 = c(0,90), time_period = time_period)
-  
-  # Enhancing movement restrictions for 3 months (50% further reduction in contacts) which then return to pre-intervention levels (Mitigation) 
-  mitigation_3months_lift_meff_75 <- squire::projections(out, R0_change = c(0.5,rel_R0(0)*0.75), tt_R0 = c(0,90), time_period = time_period)
-  
-  # Relax by 50% for 3 months and then return to pre-intervention levels 
-  reverse_3_months_lift_meff_75 <- squire::projections(out, R0_change = c((rel_R0(0))*(1-(fr0/2)), rel_R0(0)*0.75), tt_R0 = c(0, 90), time_period = time_period)
-  
-  # Enhancing movement restrictions until the end of the year (50% further reduction in contacts) which then return to pre-intervention levels   
-  mitigation_rest_year_lift_meff_75 <- squire::projections(out, R0_change = c(0.5, rel_R0(0)*0.75), tt_R0 = c(0,as.Date("2020-12-31")-Sys.Date()), time_period = time_period)
-  
-  # Enhance movement restrictions for 3 months (50% further reduction in contacts), ease restrictions for a further 3 months (current contacts), then return to pre-intervention levels  
-  mitigation_3months_ease_3months_lift_meff_75 <- squire::projections(out, R0_change = c(0.5, 1*0.75, rel_R0(0)*0.75), tt_R0 = c(0, 90, 180), time_period = time_period)
-  
-  # Suppression for 3 months (75% reduction in contacts) which then return to pre-intervention levels 
-  suppress_3months_lift_meff_75 <- squire::projections(out, R0_change = c((rel_R0(0))*0.25, rel_R0(0)*0.75), tt_R0 = c(0, 90), time_period = time_period)
-  
-  # Long-term sustained suppression (75% reduction in contacts)  
-  suppress_full_meff_75 <- squire::projections(out, R0_change = c((rel_R0(0))*0.25), tt_R0 = c(0), time_period = time_period)
-  
-  # Full lifting of emergency measures in a week – contact rates are assumed to return to pre-intervention levels  
-  lift_week_meff_75 <- squire::projections(out, R0_change = c(1,rel_R0(0)*0.75), tt_R0 = c(0, 7), time_period = time_period)
-  
-  
-  ## BIND THESE TOGETHER
-  
-  r_list <- named_list(maintain_3months_lift, mitigation_3months_lift,  reverse_3_months_lift, 
-                       mitigation_rest_year_lift, mitigation_3months_ease_3months_lift, 
-                       suppress_3months_lift, suppress_full, lift_week,
-                       
-                       maintain_3months_lift_meff_50, mitigation_3months_lift_meff_50, reverse_3_months_lift_meff_50, 
-                       mitigation_3months_lift_meff_50, mitigation_3months_ease_3months_lift_meff_50, 
-                       suppress_3months_lift_meff_50, suppress_full_meff_50, lift_week_meff_50,
-                       
-                       maintain_3months_lift_meff_75, mitigation_3months_lift_meff_75, reverse_3_months_lift_meff_75, 
-                       mitigation_rest_year_lift_meff_75, mitigation_3months_ease_3months_lift_meff_75, 
-                       suppress_3months_lift_meff_75, suppress_full_meff_75, lift_week_meff_75)
+  # # Enhancing movement restrictions until the end of the year (50% further reduction in contacts) which then return to pre-intervention levels   
+  # mitigation_rest_year_lift <- squire::projections(out, R0_change = c(0.5, rel_R0(0)), 
+  #                                                  tt_R0 = c(0,as.Date("2020-12-31")-Sys.Date()), time_period = time_period)
+  # 
+  # # Enhance movement restrictions for 3 months (50% further reduction in contacts), ease restrictions for a further 3 months (current contacts), then return to pre-intervention levels  
+  # mitigation_3months_ease_3months_lift <- squire::projections(out, R0_change = c(0.5, 1, rel_R0(0)), tt_R0 = c(0, 90, 180), time_period = time_period)
+  # 
+  # # Suppression for 3 months (75% reduction in contacts) which then return to pre-intervention levels 
+  # suppress_3months_lift <- squire::projections(out, R0_change = c((rel_R0(0))*0.25, rel_R0(0)), tt_R0 = c(0, 90), time_period = time_period)
+  # 
+  # # Long-term sustained suppression (75% reduction in contacts)  
+  # suppress_full <- squire::projections(out, R0_change = c((rel_R0(0))*0.25), tt_R0 = c(0), time_period = time_period)
+  # 
+  # # Full lifting of emergency measures in a week – contact rates are assumed to return to pre-intervention levels  
+  # lift_week <- squire::projections(out, R0_change = c(1,rel_R0(0)), tt_R0 = c(0, 7), time_period = time_period)
+  # 
+  # ## -----------------------------------------------------------------------------
+  # ## 4.2. Assuming that this will uncoupel further, with Meff being 50% lower
+  # ## -----------------------------------------------------------------------------
+  # 
+  # # Maintaining the current set of measures for a further 3 months following which contacts return to pre-intervention levels  
+  # maintain_3months_lift_meff_50 <- squire::projections(out, 
+  #                                                      R0_change = c(1, rel_R0(0)*0.5), 
+  #                                                      tt_R0 = c(0,90), 
+  #                                                      time_period = time_period)
+  # 
+  # # Enhancing movement restrictions for 3 months (50% further reduction in contacts) which then return to pre-intervention levels (Mitigation) 
+  # mitigation_3months_lift_meff_50 <- squire::projections(out, R0_change = c(0.5,rel_R0(0)*0.5), tt_R0 = c(0,90), time_period = time_period)
+  # 
+  # # Relax by 50% for 3 months and then return to pre-intervention levels 
+  # reverse_3_months_lift_meff_50 <- squire::projections(out, R0_change = c((rel_R0(0))*(1-(fr0/2)), rel_R0(0)*0.5), tt_R0 = c(0, 90), time_period = time_period)
+  # 
+  # # Enhancing movement restrictions until the end of the year (50% further reduction in contacts) which then return to pre-intervention levels   
+  # mitigation_rest_year_lift_meff_50 <- squire::projections(out, R0_change = c(0.5, rel_R0(0)*0.5), tt_R0 = c(0,as.Date("2020-12-31")-Sys.Date()), time_period = time_period)
+  # 
+  # # Enhance movement restrictions for 3 months (50% further reduction in contacts), ease restrictions for a further 3 months (current contacts), then return to pre-intervention levels  
+  # mitigation_3months_ease_3months_lift_meff_50 <- squire::projections(out, R0_change = c(0.5, 1*0.5, rel_R0(0)*0.5), tt_R0 = c(0, 90, 180), time_period = time_period)
+  # 
+  # # Suppression for 3 months (75% reduction in contacts) which then return to pre-intervention levels 
+  # suppress_3months_lift_meff_50 <- squire::projections(out, R0_change = c((rel_R0(0))*0.25, rel_R0(0)*0.5), tt_R0 = c(0, 90), time_period = time_period)
+  # 
+  # # Long-term sustained suppression (75% reduction in contacts)  
+  # suppress_full_meff_50 <- squire::projections(out, R0_change = c((rel_R0(0))*0.25), tt_R0 = c(0), time_period = time_period)
+  # 
+  # # Full lifting of emergency measures in a week – contact rates are assumed to return to pre-intervention levels  
+  # lift_week_meff_50 <- squire::projections(out, R0_change = c(1,rel_R0(0)*0.5), tt_R0 = c(0, 7), time_period = time_period)
+  # 
+  # ## -----------------------------------------------------------------------------
+  # ## 4.3. Assuming that this will uncoupel further, with Meff being 25% lower
+  # ## -----------------------------------------------------------------------------
+  # 
+  # # Maintaining the current set of measures for a further 3 months following which contacts return to pre-intervention levels  
+  # maintain_3months_lift_meff_75 <- squire::projections(out, R0_change = c(1, rel_R0(0)*0.75), tt_R0 = c(0,90), time_period = time_period)
+  # 
+  # # Enhancing movement restrictions for 3 months (50% further reduction in contacts) which then return to pre-intervention levels (Mitigation) 
+  # mitigation_3months_lift_meff_75 <- squire::projections(out, R0_change = c(0.5,rel_R0(0)*0.75), tt_R0 = c(0,90), time_period = time_period)
+  # 
+  # # Relax by 50% for 3 months and then return to pre-intervention levels 
+  # reverse_3_months_lift_meff_75 <- squire::projections(out, R0_change = c((rel_R0(0))*(1-(fr0/2)), rel_R0(0)*0.75), tt_R0 = c(0, 90), time_period = time_period)
+  # 
+  # # Enhancing movement restrictions until the end of the year (50% further reduction in contacts) which then return to pre-intervention levels   
+  # mitigation_rest_year_lift_meff_75 <- squire::projections(out, R0_change = c(0.5, rel_R0(0)*0.75), tt_R0 = c(0,as.Date("2020-12-31")-Sys.Date()), time_period = time_period)
+  # 
+  # # Enhance movement restrictions for 3 months (50% further reduction in contacts), ease restrictions for a further 3 months (current contacts), then return to pre-intervention levels  
+  # mitigation_3months_ease_3months_lift_meff_75 <- squire::projections(out, R0_change = c(0.5, 1*0.75, rel_R0(0)*0.75), tt_R0 = c(0, 90, 180), time_period = time_period)
+  # 
+  # # Suppression for 3 months (75% reduction in contacts) which then return to pre-intervention levels 
+  # suppress_3months_lift_meff_75 <- squire::projections(out, R0_change = c((rel_R0(0))*0.25, rel_R0(0)*0.75), tt_R0 = c(0, 90), time_period = time_period)
+  # 
+  # # Long-term sustained suppression (75% reduction in contacts)  
+  # suppress_full_meff_75 <- squire::projections(out, R0_change = c((rel_R0(0))*0.25), tt_R0 = c(0), time_period = time_period)
+  # 
+  # # Full lifting of emergency measures in a week – contact rates are assumed to return to pre-intervention levels  
+  # lift_week_meff_75 <- squire::projections(out, R0_change = c(1,rel_R0(0)*0.75), tt_R0 = c(0, 7), time_period = time_period)
+  # 
+  # 
+  # ## BIND THESE TOGETHER
+  # 
+  # r_list <- named_list(maintain_3months_lift, mitigation_3months_lift,  reverse_3_months_lift, 
+  #                      mitigation_rest_year_lift, mitigation_3months_ease_3months_lift, 
+  #                      suppress_3months_lift, suppress_full, lift_week,
+  #                      
+  #                      maintain_3months_lift_meff_50, mitigation_3months_lift_meff_50, reverse_3_months_lift_meff_50, 
+  #                      mitigation_3months_lift_meff_50, mitigation_3months_ease_3months_lift_meff_50, 
+  #                      suppress_3months_lift_meff_50, suppress_full_meff_50, lift_week_meff_50,
+  #                      
+  #                      maintain_3months_lift_meff_75, mitigation_3months_lift_meff_75, reverse_3_months_lift_meff_75, 
+  #                      mitigation_rest_year_lift_meff_75, mitigation_3months_ease_3months_lift_meff_75, 
+  #                      suppress_3months_lift_meff_75, suppress_full_meff_75, lift_week_meff_75)
   
 } else {
   
@@ -575,6 +575,7 @@ rmarkdown::render("index.Rmd",
                                 "country" = country),
                   output_options = list(pandoc_args = c(paste0("--metadata=title:",country," COVID-19 report "))))
 
+# summarise the projections
 
 data_sum <- lapply(o_list, function(pd){
   
@@ -603,7 +604,21 @@ if (surging) {
   data_sum[[4]]$scenario <- "Surged Maintain Status Quo"
 }
 
+# summarise the Rt
+rt_sum <- lapply(r_list_pass, rt_creation, date_0, date_0+90)
+rt_sum[[1]]$scenario <- "Maintain Status Quo"
+rt_sum[[2]]$scenario <- "Additional 50% Reduction"
+rt_sum[[3]]$scenario <- "Relax Interventions 50%"
+if (surging) {
+  rt_sum[[4]]$scenario <- "Surged Maintain Status Quo"
+}
+
+# combine and annotate
 data_sum <- do.call(rbind, data_sum)
+rt_sum <- do.call(rbind, rt_sum)
+data_sum <- rbind(data_sum, rt_sum) %>% arrange(date, scenario)
+rownames(data_sum) <- NULL
+
 data_sum$country <- country
 data_sum$iso3c <- iso3c
 data_sum$report_date <- date

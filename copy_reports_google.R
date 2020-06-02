@@ -15,6 +15,10 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
     date <- as.character(Sys.Date())
   }
   
+  ## ---------------------------------------------------------------------------
+  ## reports grab --------------------------------------------------------------
+  ## ---------------------------------------------------------------------------
+  
   ## First find the id corresponding to the ecdc report with data.  If
   ## there are more than one, it's not totally clear what you want to
   ## do as you might want to take the earliest or the latest.
@@ -33,6 +37,8 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   } else if (length(id) > 1) {
     message(sprintf("Multiple 'ecdc' reports for '%s'", as.character(date)))
   }
+  ecdc <- readRDS(file.path("archive/ecdc/", max(id), "ecdc_all.rds"))
+  
   
   ## Then find all lmic_reports reports that use files from this ecdc
   ## report.  This is a bit awful and I might add direct link or a
@@ -62,6 +68,10 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   
   reports$date <- as.character(date)
   
+  ## ---------------------------------------------------------------------------
+  ## copy reports --------------------------------------------------------------
+  ## ---------------------------------------------------------------------------
+  
   target <- "gh-pages"
   
   src <- file.path("archive", "lmic_reports_google", reports$id)
@@ -78,9 +88,16 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
     file_copy(file.path(src[[i]], copy), dest[[i]])
     if (is_latest) {
       dest_latest <- dirname(dest[[i]])
-      prev <- dir(dest_latest, pattern = "\\.")
+      prev <- dir(dest_latest, full.names = TRUE, pattern = "\\.")
       unlink(c(prev, file.path(dest_latest, "figures")), recursive = TRUE)
       file_copy(dir(dest[[i]], full.names = TRUE), dest_latest)
+      
+      # remove report if no deaths in last 20 days
+      if(sum(head(ecdc[ecdc$countryterritoryCode == reports$country[i],]$deaths,20), na.rm = TRUE)==0) {
+          prev <- dir(dest_latest, full.names = TRUE, pattern = "\\.")
+          unlink(grep("index", prev, value = TRUE), recursive = TRUE)
+      }
+      
     }
   }
   
@@ -104,7 +121,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   saveRDS(projections, paste0("src/regional_page/all_data.rds"))
   
   ## ---------------------------------------------------------------------------
-  # rt grab --------------------------------------------------------------------
+  ## rt grab -------------------------------------------------------------------
   ## ---------------------------------------------------------------------------
   
   rt <- lapply(seq_along(reports$id), function(x) {
@@ -162,6 +179,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   sum_rt$continent <- countrycode::countrycode(sum_rt$iso, "iso3c", "continent")
   saveRDS(sum_rt, paste0("src/index_page/sum_rt.rds"))
   saveRDS(sum_rt, paste0("src/regional_page/sum_rt.rds"))
+
   
 }
 
