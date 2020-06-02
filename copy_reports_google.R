@@ -93,7 +93,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
       file_copy(dir(dest[[i]], full.names = TRUE), dest_latest)
       
       # remove report if no deaths in last 20 days
-      if(sum(head(ecdc[ecdc$countryterritoryCode == reports$country[i],]$deaths,20), na.rm = TRUE)==0) {
+      if(sum(head(ecdc[which(ecdc$countryterritoryCode == reports$country[i]),]$deaths,20), na.rm = TRUE)==0) {
           prev <- dir(dest_latest, full.names = TRUE, pattern = "\\.")
           unlink(grep("index", prev, value = TRUE), recursive = TRUE)
       }
