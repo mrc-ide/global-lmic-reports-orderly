@@ -14,6 +14,6 @@ USER_STR="${USER_UID}:${USER_GID}"
 docker run -it --rm \
         -u $USER_STR \
         -v $PACKAGE_ROOT: \
-        -w /orderly \
+        -w  \
         --entrypoint run_copy_results.sh \
         $TAG_BRANCH $*
