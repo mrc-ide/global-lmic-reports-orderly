@@ -12,14 +12,14 @@ file_copy <- function(from, to) {
 copy_results <- function(date = NULL, is_latest = TRUE) {
   
   # first set up results dir
-  target <- "gh-results"
-  unlink("gh-results", recursive = TRUE, force = TRUE)
+  target <- "gh-results/analysis/data/raw_data/server_results"
+  #unlink("gh-results", recursive = TRUE, force = TRUE)
   
   # copy over orderly utilities
-  dir.create("gh-results/global", recursive = TRUE)
-  file_copy("orderly.sqlite", "gh-results")
-  file_copy("orderly_config.yml", "gh-results")
-  file_copy("global/", "gh-results")
+  dir.create(target, showWarnings = FALSE, recursive = TRUE)
+  file_copy("orderly.sqlite", target)
+  file_copy("orderly_config.yml", target)
+  file_copy("global/", target)
   
   # now copy over ecdc, brt and reports
   db <- orderly::orderly_db("destination")
@@ -49,7 +49,7 @@ copy_results <- function(date = NULL, is_latest = TRUE) {
   
   # copy lmic_reports_google
   src <- file.path("archive", "ecdc", id_ecdc_max)
-  dest <- sprintf("gh-results/%s/%s/%s", "archive", "ecdc",id_ecdc_max)
+  dest <- file.path(target,sprintf("%s/%s/%s", "archive", "ecdc",id_ecdc_max))
   worked <- vapply(dest, dir.create, logical(1), recursive = TRUE)
   worked <- mapply(file_copy, from = src, to = dirname(dest))
   
@@ -86,11 +86,15 @@ copy_results <- function(date = NULL, is_latest = TRUE) {
   
   reports$date <- as.character(date)
   
-  # copy lmic_reports_google
+  # copy lmic_reports_google key bits
   src <- file.path("archive", "lmic_reports_google", reports$id)
-  dest <- sprintf("gh-results/%s/%s/%s", "archive", "lmic_reports_google",reports$id)
+  dest <- file.path(target,sprintf("%s/%s/%s", "archive", "lmic_reports_google",reports$id))
   worked <- vapply(dest, dir.create, logical(1), recursive = TRUE)
-  worked <- mapply(file_copy, from = src, to = dirname(dest))
+  
+  worked <- mapply(function(from, to){
+    append <- c("fitting.pdf", "grid_out.rds", "projections.csv", "orderly_run.rds")
+    file_copy(file.path(from, append), to)
+  }, from = src, to = dest)
  
   ##  --------------------------------------------------------------------------
   ## BRT COPY ------------------------------------------------------------------
@@ -108,7 +112,7 @@ copy_results <- function(date = NULL, is_latest = TRUE) {
   
   # copy lmic_reports_google
   src <- file.path("archive", "brt_google_mobility", brt_id_max)
-  dest <- sprintf("gh-results/%s/%s/%s", "archive", "brt_google_mobility",reports$id)
+  dest <- file.path(target,sprintf("%s/%s/%s", "archive", "brt_google_mobility",reports$id))
   worked <- vapply(dest, dir.create, logical(1), recursive = TRUE)
   worked <- mapply(file_copy, from = src, to = dirname(dest))
 

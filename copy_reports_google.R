@@ -89,7 +89,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
     if (is_latest) {
       dest_latest <- dirname(dest[[i]])
       prev <- dir(dest_latest, full.names = TRUE, pattern = "\\.")
-      unlink(c(prev, file.path(dest_latest, "figures")), recursive = TRUE)
+      unlink(c(prev[-grep("v1", prev)], file.path(dest_latest, "figures")), recursive = TRUE)
       file_copy(dir(dest[[i]], full.names = TRUE), dest_latest)
       
       # remove report if no deaths in last 20 days
