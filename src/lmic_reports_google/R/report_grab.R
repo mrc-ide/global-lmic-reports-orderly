@@ -148,3 +148,65 @@ named_list <- function(...) {
   names(l) <- tail(get, -1)
   return(l)
 }
+
+
+rt_creation <- function(out, date_0, max_date) {
+  
+  date_0 <- as.Date(date_0)
+  
+  rts <- lapply(seq_len(nrow(out$replicate_parameters)), function(y) {
+    
+    tt <- squire:::intervention_dates_for_odin(dates = out$interventions$date_R0_change, 
+                                               change = out$interventions$R0_change, 
+                                               start_date = out$replicate_parameters$start_date[y],
+                                               steps_per_day = 1/out$parameters$dt)
+    
+    df <- data.frame(
+      "Rt" = c(out$replicate_parameters$R0[y], 
+               vapply(tt$change, out$scan_results$inputs$Rt_func, numeric(1), 
+                      R0 = out$replicate_parameters$R0[y], Meff = out$replicate_parameters$Meff[y])),
+      "date" = c(as.character(out$replicate_parameters$start_date[y]), 
+                 as.character(out$interventions$date_R0_change[match(tt$change, out$interventions$R0_change)])),
+      rep = y,
+      stringsAsFactors = FALSE)
+    
+    if("projection_args" %in% names(out)) {
+      
+      extra <- data.frame("Rt" = tail(df$Rt, 1) * out$projection_args$R0_change,
+                          "date" = as.character(date_0 + 1 + out$projection_args$tt_R0),
+                          "rep" = y)
+      
+      df <- rbind(df, extra)
+      
+    }
+    
+    df$pos <- seq_len(nrow(df))
+    return(df)
+  } )
+  
+  rt_all <- do.call(rbind, rts)
+  
+  rt_all$date <- as.Date(rt_all$date)
+  rt_all <- rt_all[,c(3,2,1,4)]
+  
+  new_rt_all <- rt_all %>%
+    dplyr::group_by(rep) %>% 
+    dplyr::arrange(date) %>% 
+    tidyr::complete(date = seq.Date(min(rt_all$date), max_date, by = "days")) 
+  
+  column_names <- colnames(new_rt_all)[-c(1,2)]
+  new_rt_all <- tidyr::fill(new_rt_all, tidyselect::all_of(column_names), .direction = c("down"))
+  new_rt_all <- tidyr::fill(new_rt_all, tidyselect::all_of(column_names), .direction = c("up"))
+  
+  sum_rt <- dplyr::group_by(new_rt_all, date) %>% 
+    dplyr::summarise(compartment = "Rt",
+                     y_025 = quantile(Rt, 0.025),
+                     y_25 = quantile(Rt, 0.25),
+                     y_median = median(Rt),
+                     y_mean = mean(Rt),
+                     y_75 = quantile(Rt, 0.75),
+                     y_975 = quantile(Rt, 0.975)) 
+  
+  head(sum_rt, -1)
+}
+
