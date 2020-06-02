@@ -9,10 +9,10 @@ DATE=${1:-$TODAY}
 
 export GIT_SSH_COMMAND="ssh -i ../.ssh/results/id_rsa"
 
-if [ -z $(git -C ${DOCS_DIR} config --get user.email) ]; then
-    git -C ${DOCS_DIR} config user.email "oj.watson@hotmail.co.uk"
-    git -C ${DOCS_DIR} config user.name "OJWatson"
-fi
+
+git -C ${DOCS_DIR} config user.email "oj.watson@hotmail.co.uk"
+git -C ${DOCS_DIR} config user.name "OJWatson"
+
 
 if [ ! -d "${DOCS_DIR}/.git" ]; then
     git init ${DOCS_DIR}
