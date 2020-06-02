@@ -22,11 +22,13 @@ copy_results <- function(date = NULL, is_latest = TRUE) {
   file_copy("global/", target)
   
   # now copy over ecdc, brt and reports
+  system("echo pre-DB")
   db <- orderly::orderly_db("destination")
   if (is.null(date)) {
     date <- as.character(Sys.Date())
   }
   
+  system("echo pre-ecdc")
   ## First find the id corresponding to the ecdc report with data.  If
   ## there are more than one, it's not totally clear what you want to
   ## do as you might want to take the earliest or the latest.
@@ -58,6 +60,7 @@ copy_results <- function(date = NULL, is_latest = TRUE) {
   ## LMIC REPORTS COPY ---------------------------------------------------------
   ##  --------------------------------------------------------------------------
   
+  system("echo pre-report")
   ## Then find all lmic_reports reports that use files from this ecdc
   ## report.  This is a bit awful and I might add direct link or a
   ## view to make this easier at some point.
@@ -100,6 +103,7 @@ copy_results <- function(date = NULL, is_latest = TRUE) {
   ## BRT COPY ------------------------------------------------------------------
   ##  --------------------------------------------------------------------------
  
+  system("echo pre-brt")
   sql <- 'SELECT report_version.id
             FROM report_version
             JOIN parameters
