@@ -24,7 +24,7 @@ else
     echo "pull"
     git -C ${DOCS_DIR} add .
     git -C ${DOCS_DIR} commit --no-verify -m "Update server results for ${DATE} at version ${VERSION} "
-    git -C ${DOCS_DIR} remote add origin ${REMOTE_URL}
+    #git -C ${DOCS_DIR} remote add origin ${REMOTE_URL}
     git -C ${DOCS_DIR} push
 fi
 
