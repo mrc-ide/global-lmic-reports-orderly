@@ -207,7 +207,7 @@ df <- data.frame(tt_beta = c(0,tt_beta$tt), beta_set = beta_set,
 # add in grey bar start for interface
 ox_interventions <- readRDS("oxford_grt.rds")
 ox_interventions_unique <- squire:::interventions_unique(ox_interventions[[iso3c]], "C")
-df$grey_bar_start[which.min(abs(df$date - ox_interventions_unique$dates_change[1]))] <- TRUE
+df$grey_bar_start[which.min(abs(as.numeric(df$date - ox_interventions_unique$dates_change[1])))] <- TRUE
 
 writeLines(jsonlite::toJSON(df,pretty = TRUE), "input_params.json")
 
