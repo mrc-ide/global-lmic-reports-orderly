@@ -642,9 +642,19 @@ data_sum <- lapply(o_list, function(pd){
     pd <- pd[-which(is.na(pd$t) | is.na(pd$y)),]
   }
   
+  # add in cumulative infections
+  cum_i <- pd %>% 
+    filter(compartment == "infections") %>% 
+    group_by(replicate) %>% 
+    mutate(y = cumsum(y),
+           compartment = "cumulative_infections") %>% 
+    ungroup
+  
+  pd <- rbind(pd, cum_i)
+  
   # Format summary data
   pds <- pd %>%
-    dplyr::filter(.data$date <= (date_0+90)) %>% 
+    dplyr::filter(.data$date < (date_0+90)) %>% 
     dplyr::group_by(.data$date, .data$compartment) %>%
     dplyr::summarise(y_025 = stats::quantile(.data$y, 0.025),
                      y_25 = stats::quantile(.data$y, 0.25),
@@ -661,7 +671,7 @@ data_sum[[3]]$scenario <- "Relax Interventions 50%"
 data_sum[[4]]$scenario <- "Surged Maintain Status Quo"
 
 # summarise the Rt
-rt_sum <- lapply(r_list_pass, rt_creation, date_0, date_0+90)
+rt_sum <- lapply(r_list_pass, rt_creation, date_0, date_0+89)
 rt_sum[[1]]$scenario <- "Maintain Status Quo"
 rt_sum[[2]]$scenario <- "Additional 50% Reduction"
 rt_sum[[3]]$scenario <- "Relax Interventions 50%"

@@ -207,7 +207,7 @@ rt_creation <- function(out, date_0, max_date) {
                      y_75 = quantile(Rt, 0.75),
                      y_975 = quantile(Rt, 0.975)) 
   
-  head(sum_rt, -1)
+  head(tail(sum_rt, -1),-1)
 }
 
 post_lockdown_date <- function(x) {
