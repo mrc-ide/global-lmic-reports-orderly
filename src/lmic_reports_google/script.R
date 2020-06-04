@@ -589,7 +589,7 @@ pl_dat_mov <- sc_ints$R0_change[which(sc_ints$date_R0_change == pld)]
 change <- pl_mov - pl_dat_mov
 change[change < 0] <- 0
 change <- change*0.5
-sc_ints$R0_change[sc_ints$date_R0_change > pld] <- pl_dat_mov + change
+sc_ints$R0_change[which(sc_ints$date_R0_change > pld)] <- pl_dat_mov + change
 scan_results$inputs$interventions <- sc_ints
 
 out_meff_half <- generate_draws(scan_results = scan_results, 
