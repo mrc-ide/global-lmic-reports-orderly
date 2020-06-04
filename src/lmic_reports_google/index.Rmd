@@ -32,6 +32,7 @@ params:
    data: NA
    date_0: NA
    country: NA
+   surging: FALSE
 ---
 
 ```{r rm_title_page, echo=FALSE}
