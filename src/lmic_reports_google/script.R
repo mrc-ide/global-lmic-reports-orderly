@@ -85,10 +85,10 @@ if(short_run) {
 
 # 1. Do we have a previous run for this country
 json <- NULL
-try({
+json <- tryCatch({
   json_path <- file.path("https://raw.githubusercontent.com/mrc-ide/global-lmic-reports/master/",iso3c,"input_params.json")
-  json <- jsonlite::read_json(json_path)
-})
+  suppressWarnings(jsonlite::read_json(json_path))
+}, error = function(e){NULL})
 
 if (!is.null(json) && !is.null(json$Meff)) {
   
