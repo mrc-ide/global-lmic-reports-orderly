@@ -380,7 +380,25 @@ dev.off()
 ## Step 4: Scenarios
 ## -----------------------------------------------------------------------------
 
-## Conduct scnearios
+## -----------------------------------------------------------------------------
+## 4.0. Conduct a draw from the fit assuming sufficient surging
+## -----------------------------------------------------------------------------
+
+scan_results <- out$scan_results
+scan_results$inputs$model_params$hosp_beds <- 1e10
+scan_results$inputs$model_params$ICU_beds <- 1e10
+out_surged <- generate_draws(scan_results = scan_results, 
+                             squire_model = out$scan_results$inputs$model, 
+                             replicates = replicates, 
+                             n_particles = n_particles, 
+                             forecast = 90, 
+                             country = country, 
+                             population = get_population(iso3c = iso3c)$n, 
+                             interventions = out$interventions, 
+                             data = out$scan_results$inputs$data)
+
+
+## Functions for working out the relative changes in R0 for given scenarios
 fr0 <- tail(out$interventions$R0_change,1)
 time_period <- 365
 rel_R0 <- function(rel = 0.5, Meff_mult = 1) {
@@ -403,13 +421,38 @@ rel_R0 <- function(rel = 0.5, Meff_mult = 1) {
 ## -----------------------------------------------------------------------------
 
 # Maintaining the current set of measures for a further 3 months following which contacts return to pre-intervention levels  
-maintain_3months_lift <- squire::projections(out, R0_change = c(1, rel_R0(0)), tt_R0 = c(0,90), time_period = time_period)
+maintain_3months_lift <- squire::projections(out, 
+                                             R0_change = c(1, rel_R0(0)), 
+                                             tt_R0 = c(0,90), 
+                                             time_period = time_period)
+
+maintain_3months_lift_surged <- squire::projections(out_surged, 
+                                             R0_change = c(1, rel_R0(0)), 
+                                             tt_R0 = c(0,90), 
+                                             time_period = time_period)
 
 # Enhancing movement restrictions for 3 months (50% further reduction in contacts) which then return to pre-intervention levels (Mitigation) 
-mitigation_3months_lift <- squire::projections(out, R0_change = c(0.5, rel_R0(0)), tt_R0 = c(0,90), time_period = time_period)
+mitigation_3months_lift <- squire::projections(out, 
+                                               R0_change = c(0.5, rel_R0(0)), 
+                                               tt_R0 = c(0,90), 
+                                               time_period = time_period)
+
+mitigation_3months_lift_surged <- squire::projections(out_surged, 
+                                               R0_change = c(0.5, rel_R0(0)), 
+                                               tt_R0 = c(0,90), 
+                                               time_period = time_period)
+
 
 # Relax by 50% for 3 months and then return to pre-intervention levels 
-reverse_3_months_lift <- squire::projections(out, R0_change = c(rel_R0(0.5), rel_R0(0)), tt_R0 = c(0, 90), time_period = time_period)
+reverse_3_months_lift <- squire::projections(out, 
+                                             R0_change = c(rel_R0(0.5), rel_R0(0)), 
+                                             tt_R0 = c(0, 90), 
+                                             time_period = time_period)
+
+reverse_3_months_lift_surged <- squire::projections(out_surged, 
+                                             R0_change = c(rel_R0(0.5), rel_R0(0)), 
+                                             tt_R0 = c(0, 90), 
+                                             time_period = time_period)
 
 ## -----------------------------------------------------------------------------
 ## Need to think about these more and think about putting in linear mobility time
@@ -509,8 +552,16 @@ if (full_scenarios) {
   
 } else {
   
-  r_list <- named_list(maintain_3months_lift, mitigation_3months_lift,  reverse_3_months_lift)
-  
+  r_list <-
+    named_list(
+      maintain_3months_lift,
+      mitigation_3months_lift,
+      reverse_3_months_lift,
+      maintain_3months_lift_surged,
+      mitigation_3months_lift_surged,
+      reverse_3_months_lift_surged
+    )
+
 }
 
 r_list_pass <- r_list
@@ -549,20 +600,6 @@ hosp_28 <- group_by(hosp[hosp$t==28,], replicate) %>%
             i_min = t_test_safe(tot)$conf.int[1],
             i_max = t_test_safe(tot)$conf.int[2])
 
-  scan_results <- out$scan_results
-  scan_results$inputs$model_params$hosp_beds <- 1e10
-  scan_results$inputs$model_params$ICU_beds <- 1e10
-  out_surged <- generate_draws(scan_results = scan_results, 
-                               squire_model = out$scan_results$inputs$model, 
-                               replicates = replicates, 
-                               n_particles = n_particles, 
-                               forecast = 90, 
-                               country = country, 
-                               population = get_population(iso3c = iso3c)$n, 
-                               interventions = out$interventions, 
-                               data = out$scan_results$inputs$data)
-  r_list_pass[["maintain_3months_lift_surged"]] <- out_surged
-
 # if it is actually required in the next 28days then TRUE
 if(icu_28$i_tot > icu_cap || hosp_28$i_tot > hosp_cap) {
   surging <- TRUE
@@ -578,7 +615,7 @@ o_list <- lapply(r_list_pass, squire::format_output,
 ## 4.5. Investigating a changing Meff
 ## -----------------------------------------------------------------------------
 
-## Lastly, let's do the same fir but with mobility relaxes reduced by a half in terms of impact:
+## Lastly, let's do the same fit but with mobility relaxes reduced by a half in terms of impact:
 
 # reduce 
 scan_results <- out$scan_results
@@ -669,6 +706,8 @@ data_sum[[1]]$scenario <- "Maintain Status Quo"
 data_sum[[2]]$scenario <- "Additional 50% Reduction"
 data_sum[[3]]$scenario <- "Relax Interventions 50%"
 data_sum[[4]]$scenario <- "Surged Maintain Status Quo"
+data_sum[[5]]$scenario <- "Surged Additional 50% Reduction"
+data_sum[[6]]$scenario <- "Surged Relax Interventions 50%"
 
 # summarise the Rt
 rt_sum <- lapply(r_list_pass, rt_creation, date_0, date_0+89)
@@ -676,6 +715,8 @@ rt_sum[[1]]$scenario <- "Maintain Status Quo"
 rt_sum[[2]]$scenario <- "Additional 50% Reduction"
 rt_sum[[3]]$scenario <- "Relax Interventions 50%"
 rt_sum[[4]]$scenario <- "Surged Maintain Status Quo"
+rt_sum[[5]]$scenario <- "Surged Additional 50% Reduction"
+rt_sum[[6]]$scenario <- "Surged Relax Interventions 50%"
 
 # combine and annotate
 data_sum <- do.call(rbind, data_sum)
