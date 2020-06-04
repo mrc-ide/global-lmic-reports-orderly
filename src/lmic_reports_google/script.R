@@ -658,18 +658,14 @@ data_sum <- lapply(o_list, function(pd){
 data_sum[[1]]$scenario <- "Maintain Status Quo"
 data_sum[[2]]$scenario <- "Additional 50% Reduction"
 data_sum[[3]]$scenario <- "Relax Interventions 50%"
-if (surging) {
-  data_sum[[4]]$scenario <- "Surged Maintain Status Quo"
-}
+data_sum[[4]]$scenario <- "Surged Maintain Status Quo"
 
 # summarise the Rt
 rt_sum <- lapply(r_list_pass, rt_creation, date_0, date_0+90)
 rt_sum[[1]]$scenario <- "Maintain Status Quo"
 rt_sum[[2]]$scenario <- "Additional 50% Reduction"
 rt_sum[[3]]$scenario <- "Relax Interventions 50%"
-if (surging) {
-  rt_sum[[4]]$scenario <- "Surged Maintain Status Quo"
-}
+rt_sum[[4]]$scenario <- "Surged Maintain Status Quo"
 
 # combine and annotate
 data_sum <- do.call(rbind, data_sum)
