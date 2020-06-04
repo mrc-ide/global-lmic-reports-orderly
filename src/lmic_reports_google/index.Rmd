@@ -90,6 +90,7 @@ replicates <- params$replicates
 data <- params$data 
 country <- params$country
 date_0 <- params$date_0
+surging <- params$surging
 url <- paste0("https://github.com/mrc-ide/global-lmic-reports/raw/master/",iso3c,"/index.pdf")
 
 format <- knitr::opts_knit$get("rmarkdown.pandoc.to")
@@ -378,7 +379,7 @@ saveRDS(summary_number_df, "summary_df.rds")
 ```
 
 ```{r capacity warn, echo = FALSE, collapse=TRUE, warning=FALSE}
-if (length(params$r_list) > 3) {
+if (surging) {
   show_capacity_sentence <- paste(
     "**N.B.", country,
     "is forecast to be close to or surpassing our best estimates for healthcare",
@@ -480,9 +481,9 @@ Using the model fit, we can forecast the expected trajectory for cumulative deat
 
 <br>
 
-```{r death forecast plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap=figRef(paste0("**Figure 4: Estimated daily deaths.** Projected deaths assuming the current level of interventions are maintained are shown in red (mean and 95% quantile). Reported deaths are plotted in black. The plot on the left is focussed on the model fit prior to today, while the plot on the right forecasts the next 28 days. ", fig_cap_capacity)), fig.width=if (length(params$r_list) > 3) 10 else 8, fig.height=if (length(params$r_list) > 3) 8 else 6, fig.align=fig_center()}
+```{r death forecast plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap=figRef(paste0("**Figure 4: Estimated daily deaths.** Projected deaths assuming the current level of interventions are maintained are shown in red (mean and 95% quantile). Reported deaths are plotted in black. The plot on the left is focussed on the model fit prior to today, while the plot on the right forecasts the next 28 days. ", fig_cap_capacity)), fig.width=if (surging) 10 else 8, fig.height=if (surging) 8 else 6, fig.align=fig_center()}
 
-if (length(params$r_list) > 3) {
+if (surging) {
   suppressWarnings(suppressMessages(
     deaths_plot_single_surge(params$r_list[[1]], params$r_list[[4]],
                              forecast = 28, 

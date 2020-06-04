@@ -210,3 +210,20 @@ rt_creation <- function(out, date_0, max_date) {
   head(sum_rt, -1)
 }
 
+post_lockdown_date <- function(x) {
+  
+  if(nrow(x)==0) {
+    
+    return(NA)
+    
+  } else {
+    
+    m <- predict(loess(C~as.numeric(date), data=x, span = 0.2), type = "response")
+    min_mob <- min(m)
+    above15 <- which(m > 1.10*min_mob)
+    pl <- above15[which(above15>which.min(m))[1]]
+    return(x$date[pl])
+    
+  }
+
+}

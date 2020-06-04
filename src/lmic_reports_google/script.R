@@ -519,7 +519,7 @@ r_list_pass <- r_list
 ## 4.4. Investigating a capacity surge
 ## -----------------------------------------------------------------------------
 
-## Lastly, do we need to redo this if capacity is about to be passed:
+## Lastly, let's do the same but with a if capacity is about to be passed:
 
 icu_cap <- squire:::get_ICU_bed_capacity(country)
 hosp_cap <- squire:::get_hosp_bed_capacity(country)
@@ -549,8 +549,6 @@ hosp_28 <- group_by(hosp[hosp$t==28,], replicate) %>%
             i_min = t_test_safe(tot)$conf.int[1],
             i_max = t_test_safe(tot)$conf.int[2])
 
-if(icu_28$i_tot > icu_cap || hosp_28$i_tot > hosp_cap) {
-  
   scan_results <- out$scan_results
   scan_results$inputs$model_params$hosp_beds <- 1e10
   scan_results$inputs$model_params$ICU_beds <- 1e10
@@ -558,13 +556,15 @@ if(icu_28$i_tot > icu_cap || hosp_28$i_tot > hosp_cap) {
                                squire_model = out$scan_results$inputs$model, 
                                replicates = replicates, 
                                n_particles = n_particles, 
-                               forecast = 28, 
+                               forecast = 90, 
                                country = country, 
                                population = get_population(iso3c = iso3c)$n, 
                                interventions = out$interventions, 
                                data = out$scan_results$inputs$data)
-  
   r_list_pass[["maintain_3months_lift_surged"]] <- out_surged
+
+# if it is actually required in the next 28days then TRUE
+if(icu_28$i_tot > icu_cap || hosp_28$i_tot > hosp_cap) {
   surging <- TRUE
 } else {
   surging <- FALSE
@@ -573,6 +573,35 @@ if(icu_28$i_tot > icu_cap || hosp_28$i_tot > hosp_cap) {
 o_list <- lapply(r_list_pass, squire::format_output,
                  var_select = c("infections","deaths","hospital_demand","ICU_demand", "D"),
                  date_0 = date_0)
+
+## -----------------------------------------------------------------------------
+## 4.5. Investigating a changing Meff
+## -----------------------------------------------------------------------------
+
+## Lastly, let's do the same fir but with mobility relaxes reduced by a half in terms of impact:
+
+# reduce 
+scan_results <- out$scan_results
+pld <- post_lockdown_date(interventions[[iso3c]])
+sc_ints <- scan_results$inputs$interventions
+pl_mov <- sc_ints$R0_change[sc_ints$date_R0_change > pld]
+pl_dat_mov <- sc_ints$R0_change[which(sc_ints$date_R0_change == pld)]
+change <- pl_mov - pl_dat_mov
+change[change < 0] <- 0
+change <- change*0.5
+sc_ints$R0_change[sc_ints$date_R0_change > pld] <- pl_dat_mov + change
+scan_results$inputs$interventions <- sc_ints
+
+out_meff_half <- generate_draws(scan_results = scan_results, 
+                             squire_model = out$scan_results$inputs$model, 
+                             replicates = replicates, 
+                             n_particles = n_particles, 
+                             forecast = 90, 
+                             country = country, 
+                             population = get_population(iso3c = iso3c)$n, 
+                             interventions = out$interventions, 
+                             data = out$scan_results$inputs$data)
+saveRDS(out_meff_half, "grid_meff_half.rds")
 
 ## -----------------------------------------------------------------------------
 ## Step 5: Report
@@ -598,7 +627,8 @@ rmarkdown::render("index.Rmd",
                                 "replicates" = replicates, 
                                 "data" = data,
                                 "date_0" = date_0,
-                                "country" = country),
+                                "country" = country,
+                                "surging" = surging),
                   output_options = list(pandoc_args = c(paste0("--metadata=title:",country," COVID-19 report "))))
 
 # summarise the projections
