@@ -584,12 +584,14 @@ o_list <- lapply(r_list_pass, squire::format_output,
 scan_results <- out$scan_results
 pld <- post_lockdown_date(interventions[[iso3c]])
 sc_ints <- scan_results$inputs$interventions
-pl_mov <- sc_ints$R0_change[sc_ints$date_R0_change > pld]
+pl_mov <- sc_ints$R0_change[sc_ints$date_R0_change >= pld]
 pl_dat_mov <- sc_ints$R0_change[which(sc_ints$date_R0_change == pld)]
 change <- pl_mov - pl_dat_mov
 change[change < 0] <- 0
 change <- change*0.5
-sc_ints$R0_change[which(sc_ints$date_R0_change > pld)] <- pl_dat_mov + change
+proposed <- pl_dat_mov + change
+new <- apply(cbind(pl_mov,proposed),1,min)
+sc_ints$R0_change[which(sc_ints$date_R0_change >= pld)] <- new
 scan_results$inputs$interventions <- sc_ints
 
 out_meff_half <- generate_draws(scan_results = scan_results, 
