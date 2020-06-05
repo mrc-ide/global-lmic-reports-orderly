@@ -265,6 +265,7 @@ data_sum$country <- country
 data_sum$iso3c <- iso3c
 data_sum$report_date <- date
 data_sum <- data_sum[data_sum$compartment != "D",]
+data_sum$version <- "v1"
 write.csv(data_sum, "projections.csv", row.names = FALSE, quote = FALSE)
 
 # saveRDS("finished", paste0("/home/oj/GoogleDrive/AcademicWork/covid/githubs/global-lmic-reports-orderly/scripts/",iso3c,".rds"))
