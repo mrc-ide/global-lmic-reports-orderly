@@ -101,7 +101,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   projections <- do.call(rbind,
                          lapply(file.path(src, "projections.csv"), read.csv))
   dir.create("gh-pages/data", FALSE, TRUE)
-  write.csv(projections, paste0("gh-pages/data/",date,".csv"), row.names = FALSE, quote = FALSE)
+  write.csv(projections, paste0("gh-pages/data/",date,"_v1.csv"), row.names = FALSE, quote = FALSE)
 }
 
 
