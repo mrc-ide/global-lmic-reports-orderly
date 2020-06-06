@@ -380,8 +380,49 @@ dev.off()
 ## Step 4: Scenarios
 ## -----------------------------------------------------------------------------
 
+
 ## -----------------------------------------------------------------------------
-## 4.1. Investigating a capacity surge
+## 4.1. Conduct our projections based on no surging
+## -----------------------------------------------------------------------------
+
+## Functions for working out the relative changes in R0 for given scenarios
+fr0 <- tail(out$interventions$R0_change,1)
+time_period <- 365
+rel_R0 <- function(rel = 0.5, Meff_mult = 1) {
+  R0_ch <- 1-((1-fr0)*rel)
+  wanted <- vapply(seq_along(out$replicate_parameters$R0), function(i){
+    out$scan_results$inputs$Rt_func(R0_ch, 
+                                    R0 = out$replicate_parameters$R0[i], 
+                                    Meff = out$replicate_parameters$Meff[i]*Meff_mult)
+  }, numeric(1))
+  current <- vapply(seq_along(out$replicate_parameters$R0), function(i){
+    out$scan_results$inputs$Rt_func(fr0, 
+                                    R0 = out$replicate_parameters$R0[i], 
+                                    Meff = out$replicate_parameters$Meff[i])
+  }, numeric(1))
+  mean(wanted/current)
+}
+
+# Maintaining the current set of measures for a further 3 months following which contacts return to pre-intervention levels  
+maintain_3months_lift <- squire::projections(out, 
+                                             R0_change = c(1, rel_R0(0)), 
+                                             tt_R0 = c(0,90), 
+                                             time_period = time_period)
+
+# Enhancing movement restrictions for 3 months (50% further reduction in contacts) which then return to pre-intervention levels (Mitigation) 
+mitigation_3months_lift <- squire::projections(out, 
+                                               R0_change = c(0.5, rel_R0(0)), 
+                                               tt_R0 = c(0,90), 
+                                               time_period = time_period)
+
+# Relax by 50% for 3 months and then return to pre-intervention levels 
+reverse_3_months_lift <- squire::projections(out, 
+                                             R0_change = c(rel_R0(0.5), rel_R0(0)), 
+                                             tt_R0 = c(0, 90), 
+                                             time_period = time_period)
+
+## -----------------------------------------------------------------------------
+## 4.2. Investigating a capacity surge
 ## -----------------------------------------------------------------------------
 
 ## Is capacity passed prior to today
@@ -479,78 +520,42 @@ if(icu_0$i_tot > icu_cap || hosp_0$i_tot > hosp_cap) {
               i_max = t_test_safe(tot)$conf.int[2])
   
   if(icu_28$i_tot > icu_cap || hosp_28$i_tot > hosp_cap) {
-  
+    
     surging <- TRUE
     
   } else {
     
-  surging <- FALSE
-  
+    surging <- FALSE
+    
   }
   
 }
 
-
-## -----------------------------------------------------------------------------
-## 4.2. Conduct our projections based on with and without assumed sufficient surging
-## -----------------------------------------------------------------------------
-
-## Functions for working out the relative changes in R0 for given scenarios
-fr0 <- tail(out$interventions$R0_change,1)
-time_period <- 365
-rel_R0 <- function(rel = 0.5, Meff_mult = 1) {
-  R0_ch <- 1-((1-fr0)*rel)
-  wanted <- vapply(seq_along(out$replicate_parameters$R0), function(i){
-    out$scan_results$inputs$Rt_func(R0_ch, 
-                                    R0 = out$replicate_parameters$R0[i], 
-                                    Meff = out$replicate_parameters$Meff[i]*Meff_mult)
-  }, numeric(1))
-  current <- vapply(seq_along(out$replicate_parameters$R0), function(i){
-    out$scan_results$inputs$Rt_func(fr0, 
-                                    R0 = out$replicate_parameters$R0[i], 
-                                    Meff = out$replicate_parameters$Meff[i])
-  }, numeric(1))
-  mean(wanted/current)
-}
-
-# Maintaining the current set of measures for a further 3 months following which contacts return to pre-intervention levels  
-maintain_3months_lift <- squire::projections(out, 
-                                             R0_change = c(1, rel_R0(0)), 
-                                             tt_R0 = c(0,90), 
-                                             time_period = time_period)
+## Now simulate the surged scenarios
 
 maintain_3months_lift_surged <- squire::projections(out_surged, 
-                                             R0_change = c(1, rel_R0(0)), 
-                                             tt_R0 = c(0,90), 
-                                             time_period = time_period)
-
-# Enhancing movement restrictions for 3 months (50% further reduction in contacts) which then return to pre-intervention levels (Mitigation) 
-mitigation_3months_lift <- squire::projections(out, 
-                                               R0_change = c(0.5, rel_R0(0)), 
-                                               tt_R0 = c(0,90), 
-                                               time_period = time_period)
+                                                    R0_change = c(1, rel_R0(0)), 
+                                                    tt_R0 = c(0,90), 
+                                                    time_period = time_period)
 
 mitigation_3months_lift_surged <- squire::projections(out_surged, 
-                                               R0_change = c(0.5, rel_R0(0)), 
-                                               tt_R0 = c(0,90), 
-                                               time_period = time_period)
-
-
-# Relax by 50% for 3 months and then return to pre-intervention levels 
-reverse_3_months_lift <- squire::projections(out, 
-                                             R0_change = c(rel_R0(0.5), rel_R0(0)), 
-                                             tt_R0 = c(0, 90), 
-                                             time_period = time_period)
+                                                      R0_change = c(0.5, rel_R0(0)), 
+                                                      tt_R0 = c(0,90), 
+                                                      time_period = time_period)
 
 reverse_3_months_lift_surged <- squire::projections(out_surged, 
-                                             R0_change = c(rel_R0(0.5), rel_R0(0)), 
-                                             tt_R0 = c(0, 90), 
-                                             time_period = time_period)
+                                                    R0_change = c(rel_R0(0.5), rel_R0(0)), 
+                                                    tt_R0 = c(0, 90), 
+                                                    time_period = time_period)
+
+
 
 ## -----------------------------------------------------------------------------
-## Need to think about these more and think about putting in linear mobility time
+## 4.3. Extra Scenarios
 ## N.B. Not ready yet  ---------------------------------------------------------
+## Need to think about these more and think about putting in linear mobility time
 ## -----------------------------------------------------------------------------
+
 if (full_scenarios) {
   
   # # Enhancing movement restrictions until the end of the year (50% further reduction in contacts) which then return to pre-intervention levels   
@@ -665,7 +670,7 @@ o_list <- lapply(r_list_pass, squire::format_output,
                  date_0 = date_0)
 
 ## -----------------------------------------------------------------------------
-## 4.5. Investigating a changing Meff
+## 4.4. Investigating a changing Meff
 ## -----------------------------------------------------------------------------
 
 ## Lastly, let's do the same fit but with mobility relaxes reduced by a half in terms of impact:
