@@ -381,22 +381,119 @@ dev.off()
 ## -----------------------------------------------------------------------------
 
 ## -----------------------------------------------------------------------------
-## 4.0. Conduct a draw from the fit assuming sufficient surging
+## 4.1. Investigating a capacity surge
 ## -----------------------------------------------------------------------------
 
-scan_results <- out$scan_results
-scan_results$inputs$model_params$hosp_beds <- 1e10
-scan_results$inputs$model_params$ICU_beds <- 1e10
-out_surged <- generate_draws(scan_results = scan_results, 
-                             squire_model = out$scan_results$inputs$model, 
-                             replicates = replicates, 
-                             n_particles = n_particles, 
-                             forecast = 90, 
-                             country = country, 
-                             population = get_population(iso3c = iso3c)$n, 
-                             interventions = out$interventions, 
-                             data = out$scan_results$inputs$data)
+## Is capacity passed prior to today
 
+icu_cap <- squire:::get_ICU_bed_capacity(country)
+hosp_cap <- squire:::get_hosp_bed_capacity(country)
+
+t_test_safe <- function(x, ...) {
+  out <- try(t.test(x, ...), silent = TRUE)
+  if (inherits(out, "try-error"))
+  {
+    out <- list("conf.int"=c(mean(x),mean(x)))
+  }
+  return(out)
+}
+
+icu <- format_output(maintain_3months_lift, "ICU_demand", date_0 = date_0)
+icu <- icu[icu$compartment == "ICU_demand",]
+icu_0 <- group_by(icu[icu$t==0,], replicate) %>% 
+  summarise(tot = sum(y, na.rm = TRUE)) %>% 
+  summarise(i_tot = mean(tot, na.rm = TRUE), 
+            i_min = t_test_safe(tot)$conf.int[1],
+            i_max = t_test_safe(tot)$conf.int[2])
+
+hosp <- format_output(maintain_3months_lift, "hospital_demand", date_0 = date_0)
+hosp <- hosp[hosp$compartment == "hospital_demand",]
+hosp_0 <- group_by(hosp[hosp$t==0,], replicate) %>% 
+  summarise(tot = sum(y, na.rm = TRUE)) %>% 
+  summarise(i_tot = mean(tot, na.rm = TRUE), 
+            i_min = t_test_safe(tot)$conf.int[1],
+            i_max = t_test_safe(tot)$conf.int[2])
+
+# if it is then we need to redo the fit without it for our surged predictions
+if(icu_0$i_tot > icu_cap || hosp_0$i_tot > hosp_cap) {
+  
+  out_surged <- squire::calibrate(
+    data = data,
+    R0_min = R0_min,
+    R0_max = R0_max,
+    R0_step = R0_step,
+    R0_prior = R0_prior,
+    Rt_func = Rt_func,
+    Meff_min = Meff_min,
+    Meff_max = Meff_max,
+    Meff_step = Meff_step,
+    first_start_date = first_start_date,
+    last_start_date = last_start_date,
+    day_step = day_step,
+    squire_model = explicit_model(),
+    pars_obs = pars_obs,
+    n_particles = n_particles,
+    reporting_fraction = reporting_fraction,
+    R0_change = R0_change,
+    date_R0_change = date_R0_change,
+    replicates = replicates,
+    baseline_hosp_bed_capacity = 1e10, 
+    baseline_ICU_bed_capacity = 1e10,
+    country = country,
+    forecast = 0
+  )
+  
+  surging <- TRUE
+  
+} else {
+  
+  # if not then we can use the current fit with altered capacity:
+  scan_results <- out$scan_results
+  scan_results$inputs$model_params$hosp_beds <- 1e10
+  scan_results$inputs$model_params$ICU_beds <- 1e10
+  out_surged <- generate_draws(scan_results = scan_results, 
+                               squire_model = out$scan_results$inputs$model, 
+                               replicates = replicates, 
+                               n_particles = n_particles, 
+                               forecast = 0, 
+                               country = country, 
+                               population = get_population(iso3c = iso3c)$n, 
+                               interventions = out$interventions, 
+                               data = out$scan_results$inputs$data)
+  
+  # will surging be required within the next 28 day forecast
+  icu <- format_output(maintain_3months_lift, "ICU_demand", date_0 = date_0)
+  icu <- icu[icu$compartment == "ICU_demand",]
+  icu_28 <- group_by(icu[icu$t==28,], replicate) %>% 
+    summarise(tot = sum(y, na.rm = TRUE)) %>% 
+    summarise(i_tot = mean(tot, na.rm = TRUE), 
+              i_min = t_test_safe(tot)$conf.int[1],
+              i_max = t_test_safe(tot)$conf.int[2])
+  
+  hosp <- format_output(maintain_3months_lift, "hospital_demand", date_0 = date_0)
+  hosp <- hosp[hosp$compartment == "hospital_demand",]
+  hosp_28 <- group_by(hosp[hosp$t==28,], replicate) %>% 
+    summarise(tot = sum(y, na.rm = TRUE)) %>% 
+    summarise(i_tot = mean(tot, na.rm = TRUE), 
+              i_min = t_test_safe(tot)$conf.int[1],
+              i_max = t_test_safe(tot)$conf.int[2])
+  
+  if(icu_28$i_tot > icu_cap || hosp_28$i_tot > hosp_cap) {
+  
+    surging <- TRUE
+    
+  } else {
+    
+  surging <- FALSE
+  
+  }
+  
+}
+
+
+## -----------------------------------------------------------------------------
+## 4.2. Conduct our projections based on with and without assumed sufficient surging
+## -----------------------------------------------------------------------------
 
 ## Functions for working out the relative changes in R0 for given scenarios
 fr0 <- tail(out$interventions$R0_change,1)
@@ -415,10 +512,6 @@ rel_R0 <- function(rel = 0.5, Meff_mult = 1) {
   }, numeric(1))
   mean(wanted/current)
 }
-
-## -----------------------------------------------------------------------------
-## 4.1. Assuming current Meff in the future
-## -----------------------------------------------------------------------------
 
 # Maintaining the current set of measures for a further 3 months following which contacts return to pre-intervention levels  
 maintain_3months_lift <- squire::projections(out, 
@@ -566,46 +659,6 @@ if (full_scenarios) {
 
 r_list_pass <- r_list
 
-## -----------------------------------------------------------------------------
-## 4.4. Investigating a capacity surge
-## -----------------------------------------------------------------------------
-
-## Lastly, let's do the same but with a if capacity is about to be passed:
-
-icu_cap <- squire:::get_ICU_bed_capacity(country)
-hosp_cap <- squire:::get_hosp_bed_capacity(country)
-
-t_test_safe <- function(x, ...) {
-  out <- try(t.test(x, ...), silent = TRUE)
-  if (inherits(out, "try-error"))
-  {
-    out <- list("conf.int"=c(mean(x),mean(x)))
-  }
-  return(out)
-}
-
-icu <- format_output(maintain_3months_lift, "ICU_demand", date_0 = date_0)
-icu <- icu[icu$compartment == "ICU_demand",]
-icu_28 <- group_by(icu[icu$t==28,], replicate) %>% 
-  summarise(tot = sum(y, na.rm = TRUE)) %>% 
-  summarise(i_tot = mean(tot, na.rm = TRUE), 
-            i_min = t_test_safe(tot)$conf.int[1],
-            i_max = t_test_safe(tot)$conf.int[2])
-
-hosp <- format_output(maintain_3months_lift, "hospital_demand", date_0 = date_0)
-hosp <- hosp[hosp$compartment == "hospital_demand",]
-hosp_28 <- group_by(hosp[hosp$t==28,], replicate) %>% 
-  summarise(tot = sum(y, na.rm = TRUE)) %>% 
-  summarise(i_tot = mean(tot, na.rm = TRUE), 
-            i_min = t_test_safe(tot)$conf.int[1],
-            i_max = t_test_safe(tot)$conf.int[2])
-
-# if it is actually required in the next 28days then TRUE
-if(icu_28$i_tot > icu_cap || hosp_28$i_tot > hosp_cap) {
-  surging <- TRUE
-} else {
-  surging <- FALSE
-}
 
 o_list <- lapply(r_list_pass, squire::format_output,
                  var_select = c("infections","deaths","hospital_demand","ICU_demand", "D"),
@@ -617,7 +670,6 @@ o_list <- lapply(r_list_pass, squire::format_output,
 
 ## Lastly, let's do the same fit but with mobility relaxes reduced by a half in terms of impact:
 
-# reduce 
 scan_results <- out$scan_results
 pld <- post_lockdown_date(interventions[[iso3c]])
 sc_ints <- scan_results$inputs$interventions
