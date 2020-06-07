@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -ex
+HERE=$(dirname $0)
+. $HERE/common
+
+## NOTE: if using buildkite for the run, we probably should put this
+## back to be TAG_SHA and make the pull optional.
+docker pull $TAG_BRANCH
+
+USER_UID=`id -u`
+USER_GID=`id -g`
+USER_STR="${USER_UID}:${USER_GID}"
+
+docker run -it --rm \
+        -u $USER_STR \
+        -v $PACKAGE_ROOT:/orderly \
+        -w /orderly \
+        --entrypoint /orderly/run_google_brt.sh \
+        $TAG_BRANCH $*
