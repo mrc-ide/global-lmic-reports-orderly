@@ -232,6 +232,7 @@ for(r in seq_along(res)) {
 
 saveRDS(res, "google_brt.rds")
 saveRDS(brt, "google_brt_model.rds")
+saveRDS(overall, "overall.rds")
 
 ## -----------------------------------------------------------------------------
 ## Step 5: Data Validation / Plotting

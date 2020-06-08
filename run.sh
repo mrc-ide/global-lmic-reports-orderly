@@ -5,8 +5,12 @@ set -e
 
 TODAY=$(date "+%Y-%m-%d")
 DATE=${1:-$TODAY}
+
 DEFAULT_SHORT="FALSE"
 SHORT_RUN=${2:-$DEFAULT_SHORT}
+
+DEFAULT_HICs="FALSE"
+HICs=${3:-$DEFAULT_HICs}
 
 echo "*** Date: $DATE"
 
@@ -20,7 +24,7 @@ echo "*** Oxford GRT data"
 # ./orderly run brt_google_mobility date=$DATE
 
 echo "*** Updating country list"
-./update_run_sh.R $DATE
+./update_run_sh.R $DATE $HICs
 
 echo "*** Running country reports"
 

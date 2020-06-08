@@ -5,16 +5,23 @@ set -e
 
 TODAY=$(date "+%Y-%m-%d")
 DATE=${1:-$TODAY}
+
 DEFAULT_SHORT="FALSE"
 SHORT_RUN=${2:-$DEFAULT_SHORT}
+
 DEFAULT_FULL_SCENARIOS="FALSE"
 FULL_SCENARIOS=${3:-$DEFAULT_FULL_SCENARIOS}
+
+DEFAULT_HICs="FALSE"
+HICs=${4:-$DEFAULT_HICs}
 
 echo "*** Date: $DATE"
 
 echo "*** Short Run: $SHORT_RUN"
 
 echo "*** Full Scenarios: $FULL_SCENARIOS"
+
+echo "*** HICs: $HICs"
 
 echo "*** ECDC data"
 ./orderly run ecdc date=$DATE
@@ -26,7 +33,7 @@ echo "*** Google BRT data"
 ./orderly run brt_google_mobility date=$DATE short_run=$SHORT_RUN
 
 echo "*** Updating country list"
-./update_run_sh.R $DATE
+./update_run_sh.R $DATE $HICs
 
 echo "*** Running country reports"
 

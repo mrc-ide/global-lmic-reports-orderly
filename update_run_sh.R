@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-update_run_sh <- function(date) {
+update_run_sh <- function(date, HICs = FALSE) {
 rl <- readLines(file.path(here::here(),"countries"))
 
 currently <- seq_along(rl)[-grep("#", rl)]
@@ -39,6 +39,12 @@ with_deaths <- unique(ecdc$countryterritoryCode[ecdc$deaths>0])
 # any to change
 to_uncomment <- which(not_iso %in% with_deaths)
 to_comment <- which(!currently_iso %in% with_deaths)
+
+# do we remove the extra HICs
+if(HICs) {
+  also <- rl[(grep("Other HICs", rl)+1):length(rl)]
+  to_comment <- unique(c(to_comment, which(currently_iso %in% also)))
+}
 
 # change them 
 if(length(to_uncomment) > 0) {
