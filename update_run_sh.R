@@ -60,7 +60,7 @@ writeLines(rl, file.path(here::here(),"countries"))
 }
 
 if(!interactive()) {
-  usage <- "Usage:\n./update_run_sh.R [<date>]"
+  usage <- "Usage:\n./update_run_sh.R [<date>] [<HICs>]"
   args <- docopt::docopt(usage)
   update_run_sh(args$date)
 }
