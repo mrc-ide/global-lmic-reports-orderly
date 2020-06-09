@@ -519,6 +519,12 @@ if(icu_0$i_tot > icu_cap || hosp_0$i_tot > hosp_cap) {
               i_min = t_test_safe(tot)$conf.int[1],
               i_max = t_test_safe(tot)$conf.int[2])
   
+  out_surged$model$set_user(ICU_beds = 1e10)
+  out_surged$model$set_user(hosp_beds = 1e10)
+  
+  out_surged$parameters$hosp_bed_capacity <- 1e10
+  out_surged$parameters$ICU_bed_capacity <- 1e10
+  
   if(icu_28$i_tot > icu_cap || hosp_28$i_tot > hosp_cap) {
     
     surging <- TRUE

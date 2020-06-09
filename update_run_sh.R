@@ -41,7 +41,7 @@ to_uncomment <- which(not_iso %in% with_deaths)
 to_comment <- which(!currently_iso %in% with_deaths)
 
 # do we remove the extra HICs
-if(HICs) {
+if(!HICs) {
   also <- rl[(grep("Other HICs", rl)+1):length(rl)]
   to_comment <- unique(c(to_comment, which(currently_iso %in% also)))
 }
