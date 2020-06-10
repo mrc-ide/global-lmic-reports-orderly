@@ -102,6 +102,8 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
                          lapply(file.path(src, "projections.csv"), read.csv))
   dir.create("gh-pages/data", FALSE, TRUE)
   write.csv(projections, paste0("gh-pages/data/",date,"_v1.csv"), row.names = FALSE, quote = FALSE)
+  zip(paste0("gh-pages/data/",date,"_v1.csv.zip"),paste0("gh-pages/data/",date,"_v1.csv"))
+  file.remove(paste0("gh-pages/data/",date,"_v1.csv"))
 }
 
 

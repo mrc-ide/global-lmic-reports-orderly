@@ -56,6 +56,13 @@ src/lmic_reports_google/header.tex
 src/lmic_reports_google/input_params.json
 src/lmic_reports_google/fitting.pdf
 src/lmic_reports_google/projections.csv
+src/lmic_reports_google_pmcmc/index.html
+src/lmic_reports_google_pmcmc/index.md
+src/lmic_reports_google_pmcmc/index.pdf
+src/lmic_reports_google_pmcmc/header.tex
+src/lmic_reports_google_pmcmc/input_params.json
+src/lmic_reports_google_pmcmc/fitting.pdf
+src/lmic_reports_google_pmcmc/projections.csv
 src/FAQ/FAQ.html
 src/FAQ/FAQ.md
 src/news/News.html

@@ -54,7 +54,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
             JOIN parameters
               ON parameters.report_version = report_version.id
            WHERE report_version_artefact.report_version IN (%s)
-             AND report = "lmic_reports_google"
+             AND report = "lmic_reports_google_pmcmc"
              AND parameters.name = "iso3c"
            ORDER BY country, report_version.id'
   sql <- sprintf(sql, paste(sprintf('"%s"', id), collapse = ", "))
@@ -74,7 +74,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   
   target <- "gh-pages"
   
-  src <- file.path("archive", "lmic_reports_google", reports$id)
+  src <- file.path("archive", "lmic_reports_google_pmcmc", reports$id)
   dest <- sprintf("gh-pages/%s/%s", reports$country, reports$date)
   copy <- c("index.html",
             "index_files/figure-html",
@@ -116,9 +116,9 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   projections <- do.call(rbind,
                          lapply(file.path(src, "projections.csv"), read.csv))
   dir.create("gh-pages/data", FALSE, TRUE)
-  write.csv(projections, paste0("gh-pages/data/",date,"_v2.csv"), row.names = FALSE, quote = FALSE)
-  zip(paste0("gh-pages/data/",date,"_v2.csv.zip"),paste0("gh-pages/data/",date,"_v2.csv"))
-  file.remove(paste0("gh-pages/data/",date,"_v2.csv"))
+  write.csv(projections, paste0("gh-pages/data/",date,"_v3.csv"), row.names = FALSE, quote = FALSE)
+  zip(paste0("gh-pages/data/",date,"_v3.csv.zip"),paste0("gh-pages/data/",date,"_v3.csv"))
+  file.remove(paste0("gh-pages/data/",date,"_v3.csv"))
   saveRDS(projections, paste0("src/index_page/all_data.rds"))
   saveRDS(projections, paste0("src/regional_page/all_data.rds"))
   
@@ -129,7 +129,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   rt <- lapply(seq_along(reports$id), function(x) {
     
     iso <- reports$country[x]
-    out <- file.path("archive", "lmic_reports_google", reports$id[x], "grid_out.rds")
+    out <- file.path("archive", "lmic_reports_google_pmcmc", reports$id[x], "grid_out.rds")
     out <- readRDS(out)
     
     rts <- lapply(seq_len(nrow(out$replicate_parameters)), function(y) {

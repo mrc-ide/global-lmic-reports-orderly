@@ -69,7 +69,7 @@ if (!exists("date")) { # running outside of orderly
   date <- Sys.Date()
 }
 
-data_url <- paste0("https://github.com/mrc-ide/global-lmic-reports/raw/master/data/",date,".csv")
+data_url <- paste0("https://github.com/mrc-ide/global-lmic-reports/raw/master/data/",date,"_v2.csv")
 
 start <- 10
 replicates <- 10

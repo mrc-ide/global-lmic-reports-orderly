@@ -167,6 +167,9 @@ Here, we detail the major version changes to the reports produced in this websit
 * Projections extended to 28 days
 * Impact of countries nearing health system capacity explored
 * Regional overviews provided
+* Surged healthcare capacity explored (2020-06-02)
+* Fix for looking at healthcare capacity being surged (2020-06-09)
+* Scenario projections provided in zipped files (2020-06-09)
 
 <br>
 
