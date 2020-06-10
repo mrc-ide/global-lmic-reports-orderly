@@ -80,7 +80,7 @@ if(short_run) {
   n_mcmc <- 5
   n_chains <- 3
 } else {
-  n_particles <- 50
+  n_particles <- 5
   replicates <- 100
   n_mcmc <- 7500
   n_chains < 3
@@ -796,7 +796,7 @@ data_sum$country <- country
 data_sum$iso3c <- iso3c
 data_sum$report_date <- date
 data_sum <- data_sum[data_sum$compartment != "D",]
-data_sum$version <- "v2"
+data_sum$version <- "v3"
 write.csv(data_sum, "projections.csv", row.names = FALSE, quote = FALSE)
 
 ## -----------------------------------------------------------------------------
