@@ -201,7 +201,7 @@ pmcmc_samples <- squire:::sample_pmcmc(pmcmc_results = pmcmc,
   }
 
 # second let's recreate the output
-r$model <- pmcmc_samples$inputs$model$odin_model(
+r$model <- pmcmc_samples$inputs$squire_model$odin_model(
   user = pmcmc_samples$inputs$model_params, unused_user_action = "ignore"
 )
 
