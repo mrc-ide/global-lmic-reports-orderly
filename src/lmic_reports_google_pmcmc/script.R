@@ -1,7 +1,7 @@
 orderly_id <- tryCatch(orderly::orderly_run_info()$id,
                        error = function(e) "<id>") # bury this in the html, docx
 
-version_min <- "0.4.16"
+version_min <- "0.4.18"
 if(packageVersion("squire") < version_min) {
   stop("squire needs to be updated to at least ", version_min)
 }
@@ -63,10 +63,13 @@ min_death_date <- data$date[which(data$deaths>0)][1]
 
 # calibration arguments
 reporting_fraction = 1
-int_unique <- squire:::interventions_unique(interventions[[iso3c]], "C")
-R0_change <- int_unique$change
-date_R0_change <- int_unique$dates_change
+R0_change <- interventions[[iso3c]]$C
+date_R0_change <- interventions[[iso3c]]$date
+R0_change <- R0_change[as.Date(date_R0_change) <= date]
+date_R0_change <- date_R0_change[as.Date(date_R0_change) <= date]
+
 date_contact_matrix_set_change <- NULL
+
 squire_model <- squire::explicit_model()
 pars_obs <- NULL
 R0_prior <- list("func" = dnorm, args = list("mean"= 3, "sd"= 0.5, "log" = TRUE))
@@ -498,7 +501,7 @@ if(icu_0$i_tot > icu_cap || hosp_0$i_tot > hosp_cap) {
                        n_particles = n_particles,
                        steps_per_day = 4,
                        log_likelihood = NULL,
-                       squire_model = out$scan_results$inputs$squire_model,
+                       squire_model = out$pmcmc_results$inputs$squire_model,
                        output_proposals = FALSE,
                        n_chains = n_chains,
                        Rt_func = Rt_func,
