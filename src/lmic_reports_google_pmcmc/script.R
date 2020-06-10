@@ -86,7 +86,7 @@ if(short_run) {
   n_particles <- 5
   replicates <- 100
   n_mcmc <- 7500
-  n_chains < 3
+  n_chains <- 3
 }
 
 # 1. Do we have a previous run for this country
