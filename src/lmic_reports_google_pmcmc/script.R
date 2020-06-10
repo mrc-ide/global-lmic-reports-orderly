@@ -386,6 +386,7 @@ saveRDS(out, "grid_out.rds")
 ## summarise what we have
 top_row <- plot(out$pmcmc_results)
 top_row <- recordPlot()
+dev.off()
 
 index <- squire:::odin_index(out$model)
 forecast <- 0
