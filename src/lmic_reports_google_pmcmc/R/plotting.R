@@ -1290,7 +1290,7 @@ rt_plot <- function(out) {
       theme(axis.text = element_text(size=12)) +
       xlab("") +
       scale_x_date(breaks = "1 week",
-                   limits = as.Date(c(min(rt$date[rt$pos==1]),
+                   limits = as.Date(c(as.character(min(rt$date[rt$pos==1])),
                                       as.character(date+as.numeric(lubridate::wday(date))))), 
                    date_labels = "%d %b",
                    expand = c(0,0)) + 

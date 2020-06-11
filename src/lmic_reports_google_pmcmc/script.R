@@ -196,8 +196,8 @@ out_det <- squire::pmcmc(data = data,
            seeding_cases = 5,
            replicates = replicates,
            required_acceptance_ratio = 0.13,
-           start_covariance_adaptation = 150,
-           start_scaling_factor_adaptation = 10,
+           start_covariance_adaptation = 1000,
+           start_scaling_factor_adaptation = 850,
            initial_scaling_factor = 0.05
 )
 
@@ -281,8 +281,8 @@ out_det <- squire::pmcmc(data = data,
                          burnin = ceiling(n_mcmc/10),
                          replicates = replicates,
                          required_acceptance_ratio = 0.13,
-                         start_covariance_adaptation = 150,
-                         start_scaling_factor_adaptation = 10,
+                         start_covariance_adaptation = 1000,
+                         start_scaling_factor_adaptation = 850,
                          initial_scaling_factor = 0.05
 )
 
@@ -325,12 +325,18 @@ Meff_pl_min <- max(min(all_chains$Meff_pl[seq_len(cut)]) - 0.25, 0.1)
 
 # PMCMC Parameters
 pars_init = list(
-  list('start_date' = first_start_date, 'R0' = R0_min, 'Meff' = Meff_min, 'Meff_pl' = Meff_pl_min),
-  list('start_date' = last_start_date, 'R0' = R0_max, 'Meff' = Meff_max, 'Meff_pl' = Meff_pl_max),
-  list('start_date' = first_start_date + (last_start_date - first_start_date)/2, 
-       'R0' = R0_min + (R0_max - R0_min)/2, 
-       'Meff' = Meff_min + (Meff_max - Meff_min)/2, 
-       'Meff_pl' = (Meff_pl_min + (Meff_pl_max - Meff_pl_min)/2))
+  list('start_date' = first_start_date + (last_start_date - first_start_date)/4, 
+       'R0' = R0_min + (R0_max - R0_min)/4, 
+       'Meff' = Meff_min + (Meff_max - Meff_min)/4, 
+       'Meff_pl' = (Meff_pl_min + (Meff_pl_max - Meff_pl_min)/4)),
+       list('start_date' = first_start_date + (last_start_date - first_start_date)/2, 
+            'R0' = R0_min + (R0_max - R0_min)/2, 
+            'Meff' = Meff_min + (Meff_max - Meff_min)/2, 
+            'Meff_pl' = (Meff_pl_min + (Meff_pl_max - Meff_pl_min)/2)),
+  list('start_date' = last_start_date - (last_start_date - first_start_date)/4, 
+       'R0' = R0_max - (R0_max - R0_min)/4, 
+       'Meff' = Meff_max - (Meff_max - Meff_min)/4, 
+       'Meff_pl' = (Meff_pl_max - (Meff_pl_max - Meff_pl_min)/4))
 )
 pars_min = list('start_date' = first_start_date, 'R0' = R0_min, 'Meff' = Meff_min, 'Meff_pl' = Meff_pl_min)
 pars_max = list('start_date' = last_start_date, 'R0' = R0_max, 'Meff' = Meff_max, 'Meff_pl' = Meff_pl_max)
@@ -364,8 +370,8 @@ out <- squire::pmcmc(data = data,
                          burnin = ceiling(n_mcmc/10),
                          replicates = replicates,
                          required_acceptance_ratio = 0.13,
-                         start_covariance_adaptation = 150,
-                         start_scaling_factor_adaptation = 10,
+                         start_covariance_adaptation = 1000,
+                         start_scaling_factor_adaptation = 850,
                          initial_scaling_factor = 0.05
 )
 
@@ -386,7 +392,7 @@ saveRDS(out, "grid_out.rds")
 ## summarise what we have
 top_row <- plot(out$pmcmc_results)
 top_row <- recordPlot()
-dev.off()
+
 
 index <- squire:::odin_index(out$model)
 forecast <- 0
@@ -412,6 +418,8 @@ line <- ggplot() + cowplot::draw_line(x = 0:10,y=1) +
 
 pdf("fitting.pdf",width = 8.5,height = 12)
 suppressWarnings(print(cowplot::plot_grid(title,line,top_row,intervention,d,ncol=1,rel_heights = c(0.1,0.1,1,0.4,0.6))))
+dev.off()
+
 dev.off()
 
 ## -----------------------------------------------------------------------------
