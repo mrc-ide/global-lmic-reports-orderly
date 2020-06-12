@@ -304,7 +304,7 @@ post_lockdown_date <- function(x, above = 1.1, max_date, min_date) {
         pl <- min_f[tail(which(x$date[min_f] < max_date),1)]
     }
     
-    return(as.Date(x$date[pl])-3)
+    return(max(min_date, as.Date(x$date[pl])-3))
     
   }
 
