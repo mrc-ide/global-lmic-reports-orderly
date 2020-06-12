@@ -282,7 +282,7 @@ rt_creation <- function(out, date_0, max_date) {
   head(tail(sum_rt, -1),-1)
 }
 
-post_lockdown_date <- function(x, above = 1.1, max_date) {
+post_lockdown_date <- function(x, above = 1.1, max_date, min_date) {
   
   if(nrow(x)==0) {
     

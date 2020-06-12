@@ -135,7 +135,7 @@ logprior <- function(pars){
 }
 
 # Meff_date_change
-pld <- post_lockdown_date(interventions[[iso3c]], 1, max_date = as.Date("2020-06-06"))
+pld <- post_lockdown_date(interventions[[iso3c]], 1, max_date = as.Date("2020-06-06"), min_date = as.Date(last_start_date)+1)
 
 out_det <- squire::pmcmc(data = data, 
            n_mcmc = n_mcmc,
