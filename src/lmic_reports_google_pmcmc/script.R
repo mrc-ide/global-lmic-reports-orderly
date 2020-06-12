@@ -83,58 +83,23 @@ if(short_run) {
   n_mcmc <- 5
   n_chains <- 3
 } else {
-  n_particles <- 5
+  n_particles <- 50
   replicates <- 100
-  n_mcmc <- 7500
+  n_mcmc <- 12500
   n_chains <- 3
 }
 
-# 1. Do we have a previous run for this country
-json <- NULL
-json <- tryCatch({
-  json_path <- file.path("https://raw.githubusercontent.com/mrc-ide/global-lmic-reports/master/",iso3c,"input_params.json")
-  suppressWarnings(jsonlite::read_json(json_path))
-}, error = function(e){NULL})
 
-if (!is.null(json) && !is.null(json$Meff_pl)) {
-  
-  R0 <- json[[1]]$Rt
-  date <- json[[1]]$date
-  Meff <- json[[1]]$Meff
-  
-  # get the range from this for R0 and grow it by 0.75
-  R0_max <- min(R0 + 0.75, 5.6)
-  R0_min <- max(R0 - 0.75, 1.0)
-  
-  # get the range for dates and grow it by 7 days
-  last_start_date <- as.Date(date) + 7
-  first_start_date <- as.Date(date) - 7
-  
-  # adust the dates so they are compliant with the data
-  last_start_date <- min(c(last_start_date, as.Date(null_na(min_death_date))-10), na.rm = TRUE)
-  first_start_date <- max(as.Date("2020-01-04"), first_start_date, na.rm = TRUE)
-  
-  # get the range for Meff
-  Meff_max <- min(Meff + 1, 7.5)
-  Meff_min <- max(Meff - 1, 0.1)
-  
-  # get the range for Meff_pl
-  Meff_pl_max <- min(Meff + 1, 15)
-  Meff_pl_min <- max(Meff - 1, 0.1)
-  
-} else {
-  
-  # Defualts if no previous data
-  R0_min <- 1.6
-  R0_max <- 5.6
-  Meff_min <- 0.1
-  Meff_max <- 7.5
-  Meff_pl_min <- 0.1
-  Meff_pl_max <- 15
-  last_start_date <- as.Date(null_na(min_death_date))-10
-  first_start_date <- max(as.Date("2020-01-04"),last_start_date - 45, na.rm = TRUE)
-  
-}
+# Defualts if no previous data
+R0_min <- 1.6
+R0_max <- 5.6
+Meff_min <- 0.1
+Meff_max <- 10
+Meff_pl_min <- 0.1
+Meff_pl_max <- 15
+last_start_date <- as.Date(null_na(min_death_date))-10
+first_start_date <- max(as.Date("2020-01-04"),last_start_date - 55, na.rm = TRUE)
+
 
 if (parallel) {
   suppressWarnings(future::plan(future::multiprocess()))
@@ -162,15 +127,15 @@ proposal_kernel["start_date", "start_date"] <- 1.5
 # MCMC Functions - Prior and Likelihood Calculation
 logprior <- function(pars){
   squire:::assert_in(names(pars), c("start_date", "R0", "Meff", "Meff_pl")) # good sanity check
-  ret <- dunif(x = pars[["start_date"]], min = -45, max = -10, log = TRUE) +
-    dnorm(x = pars[["R0"]], mean = 3, sd = 0.5, log = TRUE) +
+  ret <- dunif(x = pars[["start_date"]], min = -55, max = -10, log = TRUE) +
+    dnorm(x = pars[["R0"]], mean = 2.7, sd = 0.5, log = TRUE) +
     dnorm(x = pars[["Meff"]], mean = 2, sd = 2, log = TRUE) +
-    dnorm(x = pars[["Meff_pl"]], mean = 6, sd = 3, log = TRUE)
+    dnorm(x = pars[["Meff_pl"]], mean = 8, sd = 4, log = TRUE)
   return(ret)
 }
 
 # Meff_date_change
-pld <- post_lockdown_date(interventions[[iso3c]], 1)
+pld <- post_lockdown_date(interventions[[iso3c]], 1, max_date = as.Date("2020-06-06"))
 
 out_det <- squire::pmcmc(data = data, 
            n_mcmc = n_mcmc,
@@ -262,7 +227,7 @@ out_det <- squire::pmcmc(data = data,
                          n_mcmc = n_mcmc,
                          log_prior = logprior,
                          n_particles = 1,
-                         steps_per_day = 4,
+                         steps_per_day = 20,
                          log_likelihood = NULL,
                          squire_model = squire:::deterministic_model(),
                          output_proposals = FALSE,
@@ -288,60 +253,60 @@ out_det <- squire::pmcmc(data = data,
 
 ## take the density from the deterministic to focus the grid
 # recreate the grids
-
-## get the density
-all_chains <- unique(do.call(rbind,lapply(out_det$pmcmc_results$chains, "[[", "results")))
-
-# first get the sorted density
-all_chains <- all_chains[order(all_chains$log_posterior, decreasing = TRUE),]
-all_chains$prob <- exp(all_chains$log_posterior)/sum(exp(all_chains$log_posterior))
-drop <- 0.9
-while(any(is.na(all_chains$prob))) {
-  all_chains$prob <- exp(all_chains$log_posterior*drop)/sum(exp(all_chains$log_posterior*drop))
-  drop <- drop^2
-}
-cum <- cumsum(all_chains$prob)
-cut <- which(cum > 0.8)[1]
-
-# get the range from this for R0 and grow it by 0.2
-R0_max <- min(max(all_chains$R0[seq_len(cut)]) + 0.4, 5.6)
-R0_min <- max(min(all_chains$R0[seq_len(cut)]) - 0.4, 1.0)
-
-# get the range for dates and grow it by 1 day
-last_start_date <- squire:::offset_to_start_date(data$date[1], round(max(all_chains$start_date))) + 4
-first_start_date <- squire:::offset_to_start_date(data$date[1], round(min(all_chains$start_date))) - 4
-
-# adust the dates so they are compliant with the data
-last_start_date <- min(c(last_start_date, as.Date(null_na(min_death_date))-10), na.rm = TRUE)
-first_start_date <- max(as.Date("2020-01-04"), first_start_date, na.rm = TRUE)
-
-# get the range for Meff
-Meff_max <- min(max(all_chains$Meff[seq_len(cut)]) + 0.25, 10)
-Meff_min <- max(min(all_chains$Meff[seq_len(cut)]) - 0.25, 0.1)
-
-# get the range for Meff
-Meff_pl_max <- min(max(all_chains$Meff_pl[seq_len(cut)]) + 0.25, 20)
-Meff_pl_min <- max(min(all_chains$Meff_pl[seq_len(cut)]) - 0.25, 0.1)
-
-# PMCMC Parameters
-pars_init = list(
-  list('start_date' = first_start_date + (last_start_date - first_start_date)/4, 
-       'R0' = R0_min + (R0_max - R0_min)/4, 
-       'Meff' = Meff_min + (Meff_max - Meff_min)/4, 
-       'Meff_pl' = (Meff_pl_min + (Meff_pl_max - Meff_pl_min)/4)),
-       list('start_date' = first_start_date + (last_start_date - first_start_date)/2, 
-            'R0' = R0_min + (R0_max - R0_min)/2, 
-            'Meff' = Meff_min + (Meff_max - Meff_min)/2, 
-            'Meff_pl' = (Meff_pl_min + (Meff_pl_max - Meff_pl_min)/2)),
-  list('start_date' = last_start_date - (last_start_date - first_start_date)/4, 
-       'R0' = R0_max - (R0_max - R0_min)/4, 
-       'Meff' = Meff_max - (Meff_max - Meff_min)/4, 
-       'Meff_pl' = (Meff_pl_max - (Meff_pl_max - Meff_pl_min)/4))
-)
-pars_min = list('start_date' = first_start_date, 'R0' = R0_min, 'Meff' = Meff_min, 'Meff_pl' = Meff_pl_min)
-pars_max = list('start_date' = last_start_date, 'R0' = R0_max, 'Meff' = Meff_max, 'Meff_pl' = Meff_pl_max)
-pars_discrete = list('start_date' = TRUE, 'R0' = FALSE, 'Meff' = FALSE, 'Meff_pl' = FALSE)
-pars_obs = list(phi_cases = 1, k_cases = 2, phi_death = 1, k_death = 2, exp_noise = 1e6)
+# 
+# ## get the density
+# all_chains <- unique(do.call(rbind,lapply(out_det$pmcmc_results$chains, "[[", "results")))
+# 
+# # first get the sorted density
+# all_chains <- all_chains[order(all_chains$log_posterior, decreasing = TRUE),]
+# all_chains$prob <- exp(all_chains$log_posterior)/sum(exp(all_chains$log_posterior))
+# drop <- 0.9
+# while(any(is.na(all_chains$prob))) {
+#   all_chains$prob <- exp(all_chains$log_posterior*drop)/sum(exp(all_chains$log_posterior*drop))
+#   drop <- drop^2
+# }
+# cum <- cumsum(all_chains$prob)
+# cut <- which(cum > 0.8)[1]
+# 
+# # get the range from this for R0 and grow it by 0.2
+# R0_max <- min(max(all_chains$R0[seq_len(cut)]) + 0.4, 5.6)
+# R0_min <- max(min(all_chains$R0[seq_len(cut)]) - 0.4, 1.0)
+# 
+# # get the range for dates and grow it by 1 day
+# last_start_date <- squire:::offset_to_start_date(data$date[1], round(max(all_chains$start_date))) + 4
+# first_start_date <- squire:::offset_to_start_date(data$date[1], round(min(all_chains$start_date))) - 4
+# 
+# # adust the dates so they are compliant with the data
+# last_start_date <- min(c(last_start_date, as.Date(null_na(min_death_date))-10), na.rm = TRUE)
+# first_start_date <- max(as.Date("2020-01-04"), first_start_date, na.rm = TRUE)
+# 
+# # get the range for Meff
+# Meff_max <- min(max(all_chains$Meff[seq_len(cut)]) + 0.25, 10)
+# Meff_min <- max(min(all_chains$Meff[seq_len(cut)]) - 0.25, 0.1)
+# 
+# # get the range for Meff
+# Meff_pl_max <- min(max(all_chains$Meff_pl[seq_len(cut)]) + 0.25, 20)
+# Meff_pl_min <- max(min(all_chains$Meff_pl[seq_len(cut)]) - 0.25, 0.1)
+# 
+# # PMCMC Parameters
+# pars_init = list(
+#   list('start_date' = first_start_date + (last_start_date - first_start_date)/4, 
+#        'R0' = R0_min + (R0_max - R0_min)/4, 
+#        'Meff' = Meff_min + (Meff_max - Meff_min)/4, 
+#        'Meff_pl' = (Meff_pl_min + (Meff_pl_max - Meff_pl_min)/4)),
+#        list('start_date' = first_start_date + (last_start_date - first_start_date)/2, 
+#             'R0' = R0_min + (R0_max - R0_min)/2, 
+#             'Meff' = Meff_min + (Meff_max - Meff_min)/2, 
+#             'Meff_pl' = (Meff_pl_min + (Meff_pl_max - Meff_pl_min)/2)),
+#   list('start_date' = last_start_date - (last_start_date - first_start_date)/4, 
+#        'R0' = R0_max - (R0_max - R0_min)/4, 
+#        'Meff' = Meff_max - (Meff_max - Meff_min)/4, 
+#        'Meff_pl' = (Meff_pl_max - (Meff_pl_max - Meff_pl_min)/4))
+# )
+# pars_min = list('start_date' = first_start_date, 'R0' = R0_min, 'Meff' = Meff_min, 'Meff_pl' = Meff_pl_min)
+# pars_max = list('start_date' = last_start_date, 'R0' = R0_max, 'Meff' = Meff_max, 'Meff_pl' = Meff_pl_max)
+# pars_discrete = list('start_date' = TRUE, 'R0' = FALSE, 'Meff' = FALSE, 'Meff_pl' = FALSE)
+# pars_obs = list(phi_cases = 1, k_cases = 2, phi_death = 1, k_death = 2, exp_noise = 1e6)
 
 ## -----------------------------------------------------------------------------
 ## Step 3b: Fit Stochastic Model
@@ -422,7 +387,6 @@ forecast <- 0
 d <- deaths_plot_single(out, data, date = date,date_0 = date_0, forecast = forecast, single = TRUE) + 
   theme(legend.position = "none")
 
-#intervention <- intervention_plot(interventions[[iso3c]], date)
 intervention <- intervention_plot_google(interventions[[iso3c]], date, data, forecast)
 
 title <- cowplot::ggdraw() + 
@@ -439,7 +403,8 @@ line <- ggplot() + cowplot::draw_line(x = 0:10,y=1) +
         axis.ticks = element_blank())
 
 pdf("fitting.pdf",width = 8.5,height = 12)
-suppressWarnings(print(cowplot::plot_grid(title,line,top_row,intervention,d,ncol=1,rel_heights = c(0.1,0.1,1,0.4,0.6))))
+suppressWarnings(print(cowplot::plot_grid(top_row,intervention,d,line,title,
+                                          ncol=1,rel_heights = c(1,0.4,0.6,0.1,0.1))))
 dev.off()
 
 dev.off()
@@ -494,7 +459,6 @@ reverse_3_months_lift <- squire::projections(out,
 ## -----------------------------------------------------------------------------
 
 ## Is capacity passed prior to today
-
 icu_cap <- squire:::get_ICU_bed_capacity(country)
 hosp_cap <- squire:::get_hosp_bed_capacity(country)
 
@@ -507,9 +471,33 @@ t_test_safe <- function(x, ...) {
   return(out)
 }
 
+# update for surged healthcare
+pmcmc <- out$pmcmc_results
+pmcmc$inputs$model_params$hosp_beds <- 1e10
+pmcmc$inputs$model_params$ICU_beds <- 1e10
+
+out_surged <- generate_draws_pmcmc(pmcmc = pmcmc,
+                                   burnin = ceiling(n_mcmc/10),
+                                   n_chains = n_chains,
+                                   squire_model = out$pmcmc_results$inputs$squire_model, 
+                                   replicates = replicates, 
+                                   n_particles = n_particles, 
+                                   forecast = 0, 
+                                   country = country, 
+                                   population = squire::get_population(iso3c = iso3c)$n, 
+                                   interventions = out$interventions, 
+                                   data = out$pmcmc_results$inputs$data)
+
+out_surged$model$set_user(ICU_beds = 1e10)
+out_surged$model$set_user(hosp_beds = 1e10)
+
+out_surged$parameters$hosp_bed_capacity <- 1e10
+out_surged$parameters$ICU_bed_capacity <- 1e10
+  
+# will surging be required within the next 28 day forecast
 icu <- format_output(maintain_3months_lift, "ICU_demand", date_0 = date_0)
 icu <- icu[icu$compartment == "ICU_demand",]
-icu_0 <- group_by(icu[icu$t==0,], replicate) %>% 
+icu_28 <- group_by(icu[icu$t==28,], replicate) %>% 
   summarise(tot = sum(y, na.rm = TRUE)) %>% 
   summarise(i_tot = mean(tot, na.rm = TRUE), 
             i_min = t_test_safe(tot)$conf.int[1],
@@ -517,103 +505,11 @@ icu_0 <- group_by(icu[icu$t==0,], replicate) %>%
 
 hosp <- format_output(maintain_3months_lift, "hospital_demand", date_0 = date_0)
 hosp <- hosp[hosp$compartment == "hospital_demand",]
-hosp_0 <- group_by(hosp[hosp$t==0,], replicate) %>% 
+hosp_28 <- group_by(hosp[hosp$t==28,], replicate) %>% 
   summarise(tot = sum(y, na.rm = TRUE)) %>% 
   summarise(i_tot = mean(tot, na.rm = TRUE), 
             i_min = t_test_safe(tot)$conf.int[1],
             i_max = t_test_safe(tot)$conf.int[2])
-
-# if it is then we need to redo the fit without it for our surged predictions
-if(icu_0$i_tot > icu_cap || hosp_0$i_tot > hosp_cap) {
-  
-  out_surged <- squire::pmcmc(data = data, 
-                       n_mcmc = n_mcmc,
-                       log_prior = logprior,
-                       n_particles = n_particles,
-                       steps_per_day = 4,
-                       log_likelihood = NULL,
-                       squire_model = squire:::deterministic_model(),
-                       output_proposals = FALSE,
-                       n_chains = n_chains,
-                       Rt_func = Rt_func,
-                       pars_obs = pars_obs,
-                       pars_init = pars_init,
-                       pars_min = pars_min,
-                       pars_max = pars_max,
-                       pars_discrete = pars_discrete,
-                       proposal_kernel = proposal_kernel,
-                       country = country, 
-                       R0_change = R0_change,
-                       date_R0_change = date_R0_change,
-                       date_Meff_change = pld, 
-                       burnin = ceiling(n_mcmc/10),
-                       replicates = replicates,
-                       required_acceptance_ratio = 0.13,
-                       start_covariance_adaptation = 150,
-                       start_scaling_factor_adaptation = 10,
-                       initial_scaling_factor = 0.05,
-                       baseline_hosp_bed_capacity = 1e10, 
-                       baseline_ICU_bed_capacity = 1e10
-  )
-  
-  out_surged$pmcmc_results$inputs$squire_model <- explicit_model()
-  out_surged$pmcmc_results$inputs$model_params$dt <- 0.05
-  pmcmc <- out_surged$pmcmc_results
-  out_surged <- generate_draws_pmcmc(pmcmc = pmcmc,
-                              burnin = ceiling(n_mcmc/10),
-                              n_chains = n_chains,
-                              squire_model = out_surged$pmcmc_results$inputs$squire_model,
-                              replicates = replicates,
-                              n_particles = n_particles,
-                              forecast = 0,
-                              country = country,
-                              population = squire::get_population(iso3c = iso3c)$n,
-                              interventions = out_surged$interventions,
-                              data = out_surged$pmcmc_results$inputs$data)
- 
-  surging <- TRUE
-  
-} else {
-  
-  # if not then we can use the current fit with altered capacity:
-  pmcmc <- out$pmcmc_results
-  pmcmc$inputs$model_params$hosp_beds <- 1e10
-  pmcmc$inputs$model_params$ICU_beds <- 1e10
-  
-  out_surged <- generate_draws_pmcmc(pmcmc = pmcmc,
-                                     burnin = ceiling(n_mcmc/10),
-                                     n_chains = n_chains,
-                                     squire_model = out$pmcmc_results$inputs$squire_model, 
-                                     replicates = replicates, 
-                                     n_particles = n_particles, 
-                                     forecast = 0, 
-                                     country = country, 
-                                     population = squire::get_population(iso3c = iso3c)$n, 
-                                     interventions = out$interventions, 
-                                     data = out$pmcmc_results$inputs$data)
-  
-  # will surging be required within the next 28 day forecast
-  icu <- format_output(maintain_3months_lift, "ICU_demand", date_0 = date_0)
-  icu <- icu[icu$compartment == "ICU_demand",]
-  icu_28 <- group_by(icu[icu$t==28,], replicate) %>% 
-    summarise(tot = sum(y, na.rm = TRUE)) %>% 
-    summarise(i_tot = mean(tot, na.rm = TRUE), 
-              i_min = t_test_safe(tot)$conf.int[1],
-              i_max = t_test_safe(tot)$conf.int[2])
-  
-  hosp <- format_output(maintain_3months_lift, "hospital_demand", date_0 = date_0)
-  hosp <- hosp[hosp$compartment == "hospital_demand",]
-  hosp_28 <- group_by(hosp[hosp$t==28,], replicate) %>% 
-    summarise(tot = sum(y, na.rm = TRUE)) %>% 
-    summarise(i_tot = mean(tot, na.rm = TRUE), 
-              i_min = t_test_safe(tot)$conf.int[1],
-              i_max = t_test_safe(tot)$conf.int[2])
-  
-  out_surged$model$set_user(ICU_beds = 1e10)
-  out_surged$model$set_user(hosp_beds = 1e10)
-  
-  out_surged$parameters$hosp_bed_capacity <- 1e10
-  out_surged$parameters$ICU_bed_capacity <- 1e10
   
   if(icu_28$i_tot > icu_cap || hosp_28$i_tot > hosp_cap) {
     
@@ -624,8 +520,7 @@ if(icu_0$i_tot > icu_cap || hosp_0$i_tot > hosp_cap) {
     surging <- FALSE
     
   }
-  
-}
+
 
 ## Now simulate the surged scenarios
 out_surged$pmcmc_results$chains <- NULL

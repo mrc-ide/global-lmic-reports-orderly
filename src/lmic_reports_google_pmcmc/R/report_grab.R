@@ -174,10 +174,6 @@ pmcmc_samples <- squire:::sample_pmcmc(pmcmc_results = pmcmc,
                              replicates = 1,
                              time_period = nrow(pmcmc_samples$trajectories))
   
-  # first let's add our pmcmc results for a nice return
-  # we'll save our inputs so it is easy to recreate later
-  r$inputs <- pmcmc_samples$inputs
-  
   # and add the parameters that changed between each simulation, i.e. posterior draws
   r$replicate_parameters <- pmcmc_samples$sampled_PMCMC_Results
   
@@ -286,7 +282,7 @@ rt_creation <- function(out, date_0, max_date) {
   head(tail(sum_rt, -1),-1)
 }
 
-post_lockdown_date <- function(x, above = 1.1) {
+post_lockdown_date <- function(x, above = 1.1, max_date) {
   
   if(nrow(x)==0) {
     
@@ -294,11 +290,21 @@ post_lockdown_date <- function(x, above = 1.1) {
     
   } else {
     
+    if(any(x$observed)) {
     m <- predict(loess(C~as.numeric(date), data=x, span = 0.2), type = "response")
+    } else {
+      m <- x$C
+    }
     min_mob <- min(m)
-    above15 <- which(m > above*min_mob)
+    above15 <- which(m >= above*min_mob)
     pl <- above15[which(above15>which.min(m))[1]]
-    return(x$date[pl])
+    
+    if(x$date[pl] > max_date) {
+        min_f <- which(diff(sign(diff(m)))==2)+1
+        pl <- min_f[tail(which(x$date[min_f] < max_date),1)]
+    }
+    
+    return(as.Date(x$date[pl])-3)
     
   }
 
