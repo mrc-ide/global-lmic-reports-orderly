@@ -162,7 +162,7 @@ proposal_kernel["start_date", "start_date"] <- 1.5
 # MCMC Functions - Prior and Likelihood Calculation
 logprior <- function(pars){
   squire:::assert_in(names(pars), c("start_date", "R0", "Meff", "Meff_pl")) # good sanity check
-  ret <- dunif(x = pars[["start_date"]], min = -55, max = -10, log = TRUE) +
+  ret <- dunif(x = pars[["start_date"]], min = -45, max = -10, log = TRUE) +
     dnorm(x = pars[["R0"]], mean = 3, sd = 0.5, log = TRUE) +
     dnorm(x = pars[["Meff"]], mean = 2, sd = 2, log = TRUE) +
     dnorm(x = pars[["Meff_pl"]], mean = 6, sd = 3, log = TRUE)
@@ -349,6 +349,7 @@ pars_obs = list(phi_cases = 1, k_cases = 2, phi_death = 1, k_death = 2, exp_nois
 
 out <- out_det
 out$pmcmc_results$inputs$squire_model <- explicit_model()
+out$pmcmc_results$inputs$model_params$dt <- 0.05
 pmcmc <- out$pmcmc_results
 out <- generate_draws_pmcmc(pmcmc = pmcmc,
                             burnin = ceiling(n_mcmc/10),
@@ -556,6 +557,7 @@ if(icu_0$i_tot > icu_cap || hosp_0$i_tot > hosp_cap) {
   )
   
   out_surged$pmcmc_results$inputs$squire_model <- explicit_model()
+  out_surged$pmcmc_results$inputs$model_params$dt <- 0.05
   pmcmc <- out_surged$pmcmc_results
   out_surged <- generate_draws_pmcmc(pmcmc = pmcmc,
                               burnin = ceiling(n_mcmc/10),

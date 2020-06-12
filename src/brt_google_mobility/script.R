@@ -207,7 +207,7 @@ res <- lapply(res,function(x){
   
 })
 
-# adjust the unobserved data if it is against the regression of the observed
+# adjust the unobserved data in the future to be the mean of the last 2 weeks
 for(r in seq_along(res)) {
   
   if(any(res[[r]]$observed)) {
@@ -216,13 +216,11 @@ for(r in seq_along(res)) {
     lw <- res[[r]]$C[which(res[[r]]$observed)][1:7]
     res[[r]]$C[1:(which(res[[r]]$observed)[1]-1)] <- mean(lw)
     
-    # for the end check to see if it is less than the mean of the final week
-    rw <- tail(res[[r]]$C[which(res[[r]]$observed)], 7)
+    # for the end use the mean of the final 2 weeks
+    rw <- tail(res[[r]]$C[which(res[[r]]$observed)], 14)
     rw_end <- tail(which(res[[r]]$observed),1)
     rw_7 <- res[[r]]$C[(rw_end+1):(rw_end+7)] 
-    if(mean(rw_7) < mean(rw)) {
-      res[[r]]$C[(rw_end+1):nrow(res[[r]])] <- mean(rw)
-    }
+    res[[r]]$C[(rw_end+1):nrow(res[[r]])] <- mean(rw)
     
   }
   
