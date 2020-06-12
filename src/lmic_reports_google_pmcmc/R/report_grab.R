@@ -170,6 +170,7 @@ pmcmc_samples <- squire:::sample_pmcmc(pmcmc_results = pmcmc,
                              ICU_bed_capacity = pmcmc$inputs$model_params$ICU_bed_capacity,
                              tt_ICU_beds = pmcmc$inputs$model_params$tt_ICU_beds,
                              population = population,
+                             day_return = TRUE,
                              replicates = 1,
                              time_period = nrow(pmcmc_samples$trajectories))
   

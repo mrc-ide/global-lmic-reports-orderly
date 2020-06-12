@@ -1,7 +1,7 @@
 orderly_id <- tryCatch(orderly::orderly_run_info()$id,
                        error = function(e) "<id>") # bury this in the html, docx
 
-version_min <- "0.4.18"
+version_min <- "0.4.19"
 if(packageVersion("squire") < version_min) {
   stop("squire needs to be updated to at least ", version_min)
 }
@@ -259,7 +259,7 @@ writeLines(jsonlite::toJSON(df,pretty = TRUE), "input_params.json")
 
 # First redo the deterministic model fit based on 20 seeds to get the parameter space
 out_det <- squire::pmcmc(data = data, 
-                         n_mcmc = n_mcmc*2,
+                         n_mcmc = n_mcmc,
                          log_prior = logprior,
                          n_particles = 1,
                          steps_per_day = 4,
@@ -347,33 +347,48 @@ pars_obs = list(phi_cases = 1, k_cases = 2, phi_death = 1, k_death = 2, exp_nois
 ## Step 3b: Fit Stochastic Model
 ## -----------------------------------------------------------------------------
 
-out <- squire::pmcmc(data = data, 
-                         n_mcmc = n_mcmc,
-                         log_prior = logprior,
-                         n_particles = n_particles,
-                         steps_per_day = 4,
-                         log_likelihood = NULL,
-                         squire_model = squire:::explicit_model(),
-                         output_proposals = FALSE,
-                         n_chains = n_chains,
-                         Rt_func = Rt_func,
-                         pars_obs = pars_obs,
-                         pars_init = pars_init,
-                         pars_min = pars_min,
-                         pars_max = pars_max,
-                         pars_discrete = pars_discrete,
-                         proposal_kernel = proposal_kernel,
-                         country = country, 
-                         R0_change = R0_change,
-                         date_R0_change = date_R0_change,
-                         date_Meff_change = pld, 
-                         burnin = ceiling(n_mcmc/10),
-                         replicates = replicates,
-                         required_acceptance_ratio = 0.13,
-                         start_covariance_adaptation = 1000,
-                         start_scaling_factor_adaptation = 850,
-                         initial_scaling_factor = 0.05
-)
+out <- out_det
+out$pmcmc_results$inputs$squire_model <- explicit_model()
+pmcmc <- out$pmcmc_results
+out <- generate_draws_pmcmc(pmcmc = pmcmc,
+                            burnin = ceiling(n_mcmc/10),
+                            n_chains = n_chains,
+                            squire_model = out$pmcmc_results$inputs$squire_model,
+                            replicates = 100,
+                            n_particles = 50,
+                            forecast = 0,
+                            country = country,
+                            population = squire::get_population(iso3c = iso3c)$n,
+                            interventions = out$interventions,
+                            data = out$pmcmc_results$inputs$data)
+
+# out <- squire::pmcmc(data = data, 
+#                          n_mcmc = n_mcmc,
+#                          log_prior = logprior,
+#                          n_particles = n_particles,
+#                          steps_per_day = 4,
+#                          log_likelihood = NULL,
+#                          squire_model = squire:::explicit_model(),
+#                          output_proposals = FALSE,
+#                          n_chains = n_chains,
+#                          Rt_func = Rt_func,
+#                          pars_obs = pars_obs,
+#                          pars_init = pars_init,
+#                          pars_min = pars_min,
+#                          pars_max = pars_max,
+#                          pars_discrete = pars_discrete,
+#                          proposal_kernel = proposal_kernel,
+#                          country = country, 
+#                          R0_change = R0_change,
+#                          date_R0_change = date_R0_change,
+#                          date_Meff_change = pld, 
+#                          burnin = ceiling(n_mcmc/10),
+#                          replicates = replicates,
+#                          required_acceptance_ratio = 0.13,
+#                          start_covariance_adaptation = 1000,
+#                          start_scaling_factor_adaptation = 850,
+#                          initial_scaling_factor = 0.05
+# )
 
 # Reassign the Rt_func_replace with stats environment as for some reason this is grabbing the environment
 # and adding like 50Mb plus to the object being saved!
@@ -383,6 +398,12 @@ Rt_func_replace <- function(R0_change, R0, Meff) {
 out$pmcmc_results$inputs$Rt_func <- as.function(c(formals(Rt_func_replace), 
                                                  body(Rt_func_replace)), 
                                                envir = new.env(parent = environment(stats::acf)))
+
+# remove states to keep object memory save down
+for(i in seq_along(out$pmcmc_results$chains)) {
+  out$pmcmc_results$chains[[i]]$states <- NULL
+}
+
 saveRDS(out, "grid_out.rds")
 
 ## -----------------------------------------------------------------------------
@@ -390,7 +411,7 @@ saveRDS(out, "grid_out.rds")
 ## -----------------------------------------------------------------------------
 
 ## summarise what we have
-top_row <- plot(out$pmcmc_results)
+top_row <- plot(out$pmcmc_results, thin = 0.1)
 top_row <- recordPlot()
 
 
@@ -510,7 +531,7 @@ if(icu_0$i_tot > icu_cap || hosp_0$i_tot > hosp_cap) {
                        n_particles = n_particles,
                        steps_per_day = 4,
                        log_likelihood = NULL,
-                       squire_model = out$pmcmc_results$inputs$squire_model,
+                       squire_model = squire:::deterministic_model(),
                        output_proposals = FALSE,
                        n_chains = n_chains,
                        Rt_func = Rt_func,
@@ -533,6 +554,20 @@ if(icu_0$i_tot > icu_cap || hosp_0$i_tot > hosp_cap) {
                        baseline_hosp_bed_capacity = 1e10, 
                        baseline_ICU_bed_capacity = 1e10
   )
+  
+  out_surged$pmcmc_results$inputs$squire_model <- explicit_model()
+  pmcmc <- out_surged$pmcmc_results
+  out_surged <- generate_draws_pmcmc(pmcmc = pmcmc,
+                              burnin = ceiling(n_mcmc/10),
+                              n_chains = n_chains,
+                              squire_model = out_surged$pmcmc_results$inputs$squire_model,
+                              replicates = 100,
+                              n_particles = 50,
+                              forecast = 0,
+                              country = country,
+                              population = squire::get_population(iso3c = iso3c)$n,
+                              interventions = out_surged$interventions,
+                              data = out_surged$pmcmc_results$inputs$data)
  
   surging <- TRUE
   
@@ -572,6 +607,12 @@ if(icu_0$i_tot > icu_cap || hosp_0$i_tot > hosp_cap) {
               i_min = t_test_safe(tot)$conf.int[1],
               i_max = t_test_safe(tot)$conf.int[2])
   
+  out_surged$model$set_user(ICU_beds = 1e10)
+  out_surged$model$set_user(hosp_beds = 1e10)
+  
+  out_surged$parameters$hosp_bed_capacity <- 1e10
+  out_surged$parameters$ICU_bed_capacity <- 1e10
+  
   if(icu_28$i_tot > icu_cap || hosp_28$i_tot > hosp_cap) {
     
     surging <- TRUE
@@ -585,6 +626,7 @@ if(icu_0$i_tot > icu_cap || hosp_0$i_tot > hosp_cap) {
 }
 
 ## Now simulate the surged scenarios
+out_surged$pmcmc_results$chains <- NULL
 
 maintain_3months_lift_surged <- squire::projections(out_surged, 
                                                     R0_change = c(1, rel_R0(0)), 

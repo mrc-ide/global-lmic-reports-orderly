@@ -1246,12 +1246,23 @@ rt_plot <- function(out) {
                                                start_date = out$replicate_parameters$start_date[y],
                                                steps_per_day = 1/out$parameters$dt)
     
+    if(wh == "scan_results") {
+      Rt <- c(out$replicate_parameters$R0[y], 
+             vapply(tt$change, out[[wh]]$inputs$Rt_func, numeric(1), 
+                    R0 = out$replicate_parameters$R0[y], Meff = out$replicate_parameters$Meff[y])) 
+    } else {
+      Rt <- squire:::evaluate_Rt(R0_change = out$interventions$R0_change[out$interventions$date_R0_change>out$replicate_parameters$start_date[y]], 
+                                 R0 = out$replicate_parameters$R0[y], 
+                                 Meff = out$replicate_parameters$Meff[y], 
+                                 Meff_pl = out$replicate_parameters$Meff_pl[y],
+                                 date_R0_change = out$interventions$date_R0_change[out$interventions$date_R0_change>out$replicate_parameters$start_date[y]],
+                                 date_Meff_change = out$interventions$date_Meff_change, 
+                                 Rt_func = out$pmcmc_results$inputs$Rt_func) 
+    }
+    
     df <- data.frame(
-      "Rt" = c(out$replicate_parameters$R0[y], 
-               vapply(tt$change, out[[wh]]$inputs$Rt_func, numeric(1), 
-                      R0 = out$replicate_parameters$R0[y], Meff = out$replicate_parameters$Meff[y])),
-      "date" = c(as.character(out$replicate_parameters$start_date[y]), 
-                 as.character(out$interventions$date_R0_change[match(tt$change, out$interventions$R0_change)])),
+      "Rt" = Rt,
+      "date" = seq.Date(as.Date(out$replicate_parameters$start_date[y]), as.Date(date), by = 1),
       "iso" = iso3c,
       rep = y,
       stringsAsFactors = FALSE)
