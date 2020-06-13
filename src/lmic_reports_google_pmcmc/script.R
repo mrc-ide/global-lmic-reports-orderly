@@ -85,7 +85,7 @@ if(short_run) {
 } else {
   n_particles <- 50
   replicates <- 100
-  n_mcmc <- 12500
+  n_mcmc <- 5000
   n_chains <- 3
 }
 
