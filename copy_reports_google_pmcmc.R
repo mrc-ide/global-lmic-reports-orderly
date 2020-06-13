@@ -80,7 +80,8 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
             "index_files/figure-html",
             "projections.csv",
             "index.pdf",
-            "input_params.json")
+            "input_params.json",
+            "input_params_dashboard.json")
   
   for (i in seq_along(dest)) {
     message(sprintf("Copying %s (%s)", dest[[i]], reports$id[[i]]))

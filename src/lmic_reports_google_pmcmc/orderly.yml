@@ -76,6 +76,7 @@ artefacts:
         - index.md
         - summary_df.rds
         - input_params.json
+        - input_params_dashboard.json
         - grid_out.rds
         - fitting.pdf
         - projections.csv
