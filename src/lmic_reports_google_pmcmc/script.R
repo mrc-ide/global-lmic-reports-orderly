@@ -101,7 +101,7 @@ Meff_max <- 10
 Meff_pl_min <- 0.1
 Meff_pl_max <- 15
 last_start_date <- as.Date(null_na(min_death_date))-10
-first_start_date <- max(as.Date("2020-01-04"),last_start_date - 55, na.rm = TRUE)
+first_start_date <- as.Date(null_na(min_death_date))-55
 
 ## -----------------------------------------------------------------------------
 ## Step 2b: Sourcing previous fits to start pmcmc nearby
@@ -114,23 +114,18 @@ json <- tryCatch({
   suppressWarnings(jsonlite::read_json(json_path))
 }, error = function(e){NULL})
 
-if (!is.null(json) && !is.null(json$Meff)) {
+if (!is.null(json) && !is.null(json[[1]]$Meff_pl)) {
   
   R0_start <- json[[1]]$Rt
   date_start <- json[[1]]$date
   Meff_start <- json[[1]]$Meff
-  
-  if(is.null(json[[1]]$Meff_pl)) {
-    Meff_pl_start <- Meff_start*1.2
-  } else {
-    Meff_pl_start <- json[[1]]$Meff_pl
-  }
+  Meff_pl_start <- json[[1]]$Meff_pl
   
 } else {
   
   # have at least a week span for start date
   span_date_currently <- seq.Date(first_start_date, last_start_date, 1)
-  day_step <- as.numeric(round((last_start_date - first_start_date + 1)/10))
+  day_step <- as.numeric(round((last_start_date - first_start_date + 1)/12))
   
   Sys.setenv("SQUIRE_PARALLEL_DEBUG" = "TRUE")
   
@@ -139,11 +134,11 @@ if (!is.null(json) && !is.null(json$Meff)) {
     data = data,
     R0_min = R0_min,
     R0_max = R0_max,
-    R0_step = (R0_max - R0_min)/9,
+    R0_step = (R0_max - R0_min)/11,
     R0_prior = R0_prior,
     Meff_min = Meff_min,
     Meff_max = Meff_max,
-    Meff_step = (Meff_max - Meff_min)/9,
+    Meff_step = (Meff_max - Meff_min)/11,
     Rt_func = Rt_func,
     first_start_date = first_start_date,
     last_start_date = last_start_date,
@@ -166,10 +161,10 @@ if (!is.null(json) && !is.null(json$Meff)) {
   pos <- which(out_det$scan_results$mat_log_ll == max(out_det$scan_results$mat_log_ll), arr.ind = TRUE)
   
   # get tthe R0, betas and times into a data frame
-  R0_start <- out_det$scan_results$x[pos[1]]
-  date_start <- out_det$scan_results$y[pos[2]]
-  Meff_start <- out_det$scan_results$z[pos[3]]
-  Meff_pl_start <- Meff_start*1.2
+  R0_start <- min(max(out_det$scan_results$x[pos[1]], R0_min), R0_max)
+  date_start <- min(max(as.Date(out_det$scan_results$y[pos[2]]), as.Date(first_start_date)), as.Date(last_start_date))
+  Meff_start <- min(max(out_det$scan_results$z[pos[3]], Meff_min), Meff_max)
+  Meff_pl_start <- min(max(Meff_start*1.2, Meff_pl_min), Meff_pl_max)
   
 }
 
@@ -199,7 +194,7 @@ logprior <- function(pars){
   ret <- dunif(x = pars[["start_date"]], min = -55, max = -10, log = TRUE) +
     dnorm(x = pars[["R0"]], mean = 2.7, sd = 0.5, log = TRUE) +
     dnorm(x = pars[["Meff"]], mean = 2, sd = 2, log = TRUE) +
-    dnorm(x = pars[["Meff_pl"]], mean = 8, sd = 4, log = TRUE)
+    dnorm(x = pars[["Meff_pl"]], mean = 6, sd = 3, log = TRUE)
   return(ret)
 }
 
@@ -308,23 +303,18 @@ json <- tryCatch({
   suppressWarnings(jsonlite::read_json(json_path))
 }, error = function(e){NULL})
 
-if (!is.null(json) && !is.null(json$Meff)) {
+if (!is.null(json) && !is.null(json[[1]]$Meff_pl)) {
   
   R0_start <- json[[1]]$R0
   date_start <- json[[1]]$start_date
   Meff_start <- json[[1]]$Meff
-  
-  if(is.null(json[[1]]$Meff_pl)) {
-    Meff_pl_start <- Meff_start*1.2
-  } else {
-    Meff_pl_start <- json[[1]]$Meff_pl
-  }
-  
+  Meff_pl_start <- json[[1]]$Meff_pl
+
 } else {
   
   # have at least a week span for start date
   span_date_currently <- seq.Date(first_start_date, last_start_date, 1)
-  day_step <- as.numeric(round((last_start_date - first_start_date + 1)/10))
+  day_step <- as.numeric(round((last_start_date - first_start_date + 1)/12))
   
   Sys.setenv("SQUIRE_PARALLEL_DEBUG" = "TRUE")
   
@@ -333,11 +323,11 @@ if (!is.null(json) && !is.null(json$Meff)) {
     data = data,
     R0_min = R0_min,
     R0_max = R0_max,
-    R0_step = (R0_max - R0_min)/9,
+    R0_step = (R0_max - R0_min)/11,
     R0_prior = R0_prior,
     Meff_min = Meff_min,
     Meff_max = Meff_max,
-    Meff_step = (Meff_max - Meff_min)/9,
+    Meff_step = (Meff_max - Meff_min)/11,
     Rt_func = Rt_func,
     first_start_date = first_start_date,
     last_start_date = last_start_date,
@@ -359,10 +349,10 @@ if (!is.null(json) && !is.null(json$Meff)) {
   pos <- which(out_det$scan_results$mat_log_ll == max(out_det$scan_results$mat_log_ll), arr.ind = TRUE)
   
   # get tthe R0, betas and times into a data frame
-  R0_start <- out_det$scan_results$x[pos[1]]
-  date_start <- out_det$scan_results$y[pos[2]]
-  Meff_start <- out_det$scan_results$z[pos[3]]
-  Meff_pl_start <- Meff_start*1.2
+  R0_start <- min(max(out_det$scan_results$x[pos[1]], R0_min), R0_max)
+  date_start <- min(max(as.Date(out_det$scan_results$y[pos[2]]), as.Date(first_start_date)), as.Date(last_start_date))
+  Meff_start <- min(max(out_det$scan_results$z[pos[3]], Meff_min), Meff_max)
+  Meff_pl_start <- min(max(Meff_start*1.2, Meff_pl_min), Meff_pl_max)
   
 }
 
