@@ -446,7 +446,7 @@ cases_plot <- function(df, data, date = Sys.Date(), date_0) {
                      ymax = .data$quants[[1]][5],
                      yinner_min = .data$quants[[1]][2],
                      yinner_max = .data$quants[[1]][4],
-                     y = median(.data$y))
+                     y = mean(.data$y))
   
   # format cases
   data$cases <- rev(c(tail(data$cases,1), diff(rev(data$cases))))
@@ -705,7 +705,7 @@ deaths_plot_contrast_triple <- function(o1, o2, o3, data, date_0, date = Sys.Dat
                      ymax = round(.data$quants[[1]][5]),
                      yinner_min = round(.data$quants[[1]][2]),
                      yinner_max = round(.data$quants[[1]][4]),
-                     y = median(.data$y),
+                     y = mean(.data$y),
                      n = dplyr::n())
   
   
@@ -782,7 +782,7 @@ cases_contrast_triple <- function(o1, o2, o3, data, date_0, date = Sys.Date(),
                      ymax = round(.data$quants[[1]][5]),
                      yinner_min = round(.data$quants[[1]][2]),
                      yinner_max = round(.data$quants[[1]][4]),
-                     y = median(.data$y),
+                     y = mean(.data$y),
                      n = dplyr::n())
   ymax <- max(pd_group$ymax[pd_group$day<(date+forecast) & pd_group$day>(date-forecast)])
   
@@ -858,7 +858,7 @@ cases_contrast_triple_bars <- function(o1, o2, o3, data, date_0, date = Sys.Date
   pd_group <- dplyr::group_by(sub, .data$day, .data$Scenario) %>%
     dplyr::summarise(quants = list(quantile(.data$y, c(0.25, 0.5, 0.75))),
                      ymin = .data$quants[[1]][1],
-                     y = median(.data$y),
+                     y = mean(.data$y),
                      ymax = .data$quants[[1]][3])
   ymax <- max(pd_group$y[pd_group$day<(date+forecast) & pd_group$day>(date-forecast)])
   
@@ -931,7 +931,7 @@ healthcare_plot_contrast <- function(o1, o2, data, date_0, date = Sys.Date(), fo
   pd_group <- dplyr::group_by(sub, .data$day, .data$Scenario) %>%
     dplyr::summarise(quants = list(quantile(.data$y, c(0.25, 0.5, 0.75))),
                      ymin = .data$quants[[1]][1],
-                     y = median(.data$y),
+                     y = mean(.data$y),
                      ymax = .data$quants[[1]][3])
   
   
@@ -1002,7 +1002,7 @@ healthcare_plot_contrast_lines <- function(o1, o2, data, date_0, date = Sys.Date
     dplyr::summarise(quants = list(quantile(.data$y, c(0.25, 0.5, 0.75))),
                      ymin = .data$quants[[1]][1],
                      ymin_t = t.test(.data$y)$conf.int[1],
-                     y = median(.data$y),
+                     y = mean(.data$y),
                      ymax = .data$quants[[1]][3],
                      ymin_t = t.test(.data$y)$conf.int[2])
   
@@ -1071,7 +1071,7 @@ healthcare_plot_contrast_triple <- function(o1, o2, o3, data, date_0, date = Sys
   pd_group <- dplyr::group_by(sub, .data$day, .data$Scenario) %>%
     dplyr::summarise(quants = list(quantile(.data$y, c(0.25, 0.5, 0.75))),
                      ymin = .data$quants[[1]][1],
-                     y = median(.data$y),
+                     y = mean(.data$y),
                      ymax = .data$quants[[1]][3])
   
   
@@ -1289,7 +1289,7 @@ rt_plot <- function(out) {
               Rt_q25 = quantile(Rt, 0.25),
               Rt_q75 = quantile(Rt, 0.75),
               Rt_max = quantile(Rt, 0.975),
-              Rt = median(Rt)))
+              Rt = mean(Rt)))
   
   country_plot <- function(vjust = -1.2) {
     ggplot(sum_rt, aes(x=date, y = Rt, ymin=Rt_min, ymax = Rt_max, group = iso, fill = iso)) +
