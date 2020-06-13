@@ -142,7 +142,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
       
       df <- data.frame(
         "Rt" = c(out$replicate_parameters$R0[y], 
-                 vapply(tt$change, out$scan_results$inputs$Rt_func, numeric(1), 
+                 vapply(tt$change, out$pmcmc_results$inputs$Rt_func, numeric(1), 
                         R0 = out$replicate_parameters$R0[y], Meff = out$replicate_parameters$Meff[y])),
         "date" = c(as.character(out$replicate_parameters$start_date[y]), 
                    as.character(out$interventions$date_R0_change[match(tt$change, out$interventions$R0_change)])),
