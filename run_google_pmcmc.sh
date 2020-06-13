@@ -36,7 +36,7 @@ echo "*** Google BRT data"
 ./orderly run brt_google_mobility date=$DATE short_run=$SHORT_RUN
 
 echo "*** Updating country list"
-./update_run_sh.R $DATE $HICs
+./update_run_sh.R date=$DATE HICSs=$HICs
 
 echo "*** Running country reports"
 
