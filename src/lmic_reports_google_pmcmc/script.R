@@ -96,9 +96,9 @@ if (parallel) {
 # Defualt edges
 R0_min <- 1.6
 R0_max <- 5.6
-Meff_min <- 0.1
+Meff_min <- 0.5
 Meff_max <- 10
-Meff_pl_min <- 0.1
+Meff_pl_min <- 0.5
 Meff_pl_max <- 15
 last_start_date <- as.Date(null_na(min_death_date))-10
 first_start_date <- as.Date(null_na(min_death_date))-55
@@ -199,7 +199,7 @@ logprior <- function(pars){
 }
 
 # Meff_date_change. Need min date to ensure Meff switch occurs
-pld <- post_lockdown_date(interventions[[iso3c]], 1, 
+pld <- post_lockdown_date(interventions[[iso3c]], 1.2, 
                           max_date = as.Date("2020-06-06"), 
                           min_date = as.Date(last_start_date)+2)
 
