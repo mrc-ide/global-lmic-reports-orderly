@@ -64,5 +64,5 @@ update_run_sh <- function(date, HICs = FALSE) {
 if(!interactive()) {
   usage <- "Usage:\n./update_run_sh.R [<date>] [<HICs>]"
   args <- docopt::docopt(usage)
-  update_run_sh(args$date)
+  update_run_sh(args$date, args$HICs)
 }
