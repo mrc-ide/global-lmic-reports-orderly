@@ -25,7 +25,7 @@ echo "*** Short Run: $SHORT_RUN"
 echo "*** Full Scenarios: $FULL_SCENARIOS"
 
 echo "*** Updating country list"
-./update_run_sh.R date=$DATE HICs=$HICs
+./update_run_sh.R $DATE $HICs
 
 echo "*** Running country reports"
 
