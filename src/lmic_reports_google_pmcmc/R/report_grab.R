@@ -296,15 +296,21 @@ post_lockdown_date <- function(x, above = 1.1, max_date, min_date) {
       m <- x$C
     }
     min_mob <- min(m)
+    
+    pl <- NA
+    while(is.na(pl)) {
     above15 <- which(m >= above*min_mob)
     pl <- above15[which(above15>which.min(m))[1]]
-    
-    if(x$date[pl] > max_date) {
-        min_f <- which(diff(sign(diff(m)))==2)+1
-        pl <- min_f[tail(which(x$date[min_f] < max_date),1)]
+    above <- above*0.99
     }
     
-    return(max(min_date, as.Date(x$date[pl])-3))
+    # if past max date then take the minimum and grow by 4 days
+    if(x$date[pl] > max_date) {
+        min_f <- which(diff(sign(diff(m)))==2)+1
+        pl <- min_f[tail(which(x$date[min_f] < max_date),1)] + 4
+    } 
+    
+    return(max(min_date, as.Date(x$date[pl])))
     
   }
 

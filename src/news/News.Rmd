@@ -160,6 +160,10 @@ Here, we detail the major version changes to the reports produced in this websit
 
 ---
 
+#### Version 3: 2020-06-13
+
+* Impact of mobility on transmision estimated both pre and post lockdown for each country, allowing mobility and transmission to be able to decouple after lockdowns are relaxed if the data supports this. 
+
 #### Version 2: 2020-05-31
   
 * Data on mobility from the [Google Community Mobility Reports](https://www.google.com/covid19/mobility/) to inform changes in transmission.
@@ -169,7 +173,7 @@ Here, we detail the major version changes to the reports produced in this websit
 * Regional overviews provided
 * Surged healthcare capacity explored (2020-06-02)
 * Fix for looking at healthcare capacity being surged (2020-06-09)
-* Scenario projections provided in zipped files (2020-06-09)
+* Scenario projections provided in zipped files and update historically for each of pipelines (2020-06-09)
 
 <br>
 

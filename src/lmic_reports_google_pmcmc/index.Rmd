@@ -460,7 +460,7 @@ suppressWarnings(suppressMessages(print(cases_plot(params$o_list[[1]], data = da
 
 `r pagebreak()`
 
-By fitting to the time series of deaths, we are able to estimate a time-varying reproduction number, $R_t$. $R_t$ is the the average number of secondary infections caused by a single infected person at a given time. If $R_t$ is above 1, the rate of transmission is increasing and the number of new infections is increasing. $R_t$ is assumed to change in relation to mobility  fall in proportion. When fitting out model we assume that 100% of COVID-19 related deaths have been reported (please see our [FAQ](https://mrc-ide.github.io/global-lmic-reports/FAQ.html#how-have-you-accounted-for-unreported-deaths) section for more information about this assumption). 
+By fitting to the time series of deaths, we are able to estimate a time-varying reproduction number, $R_t$. $R_t$ is the the average number of secondary infections caused by a single infected person at a given time. If $R_t$ is above 1, the rate of transmission is increasing and the number of new infections is increasing. $R_t$ is assumed to change in relation to mobility  fall in proportion. When fitting our model we assume that 100% of COVID-19 related deaths have been reported (please see our [FAQ](https://mrc-ide.github.io/global-lmic-reports/FAQ.html#how-have-you-accounted-for-unreported-deaths) section for more information about this assumption). We also assume a fixed date at which the impact of mobility on transmission changes from pre-lockdown levels to post-lockdown levels, which may cause large changes in Rt. We are working to refine how this switch occurs and to formally calculate its shape.
 
 <br>
 

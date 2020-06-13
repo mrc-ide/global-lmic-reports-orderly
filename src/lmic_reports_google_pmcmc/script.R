@@ -84,8 +84,8 @@ if(short_run) {
   n_chains <- 3
 } else {
   n_particles <- 50
-  replicates <- 100
-  n_mcmc <- 5000
+  replicates <- 200
+  n_mcmc <- 10000
   n_chains <- 3
 }
 
@@ -450,7 +450,7 @@ out$pmcmc_results$inputs$Rt_func <- as.function(c(formals(Rt_func_replace),
 ## -----------------------------------------------------------------------------
 
 ## summarise what we have
-top_row <- plot(out$pmcmc_results, thin = 0.1)
+top_row <- plot(out$pmcmc_results, thin = 0.25)
 top_row <- recordPlot()
 
 index <- squire:::odin_index(out$model)
