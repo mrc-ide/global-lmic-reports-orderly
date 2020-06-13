@@ -80,7 +80,7 @@ Rt_func <- function(R0_change, R0, Meff) {
 if(short_run) {
   n_particles <- 2
   replicates <- 2
-  n_mcmc <- 5
+  n_mcmc <- 100
   n_chains <- 3
 } else {
   n_particles <- 50
