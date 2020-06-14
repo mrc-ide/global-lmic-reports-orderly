@@ -16,6 +16,7 @@ parameters:
 
 resources:
   - World_Bank_Country_Metadata.csv
+  - acaps.xlsx
 
 # You must list at least one artefact that your report will generate.
 # Each artefact consists of one or more files.  The format is to list

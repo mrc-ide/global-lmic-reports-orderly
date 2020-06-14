@@ -66,11 +66,15 @@ wb_metadata <- read.csv("World_Bank_Country_Metadata.csv", fileEncoding="UTF-8-B
   filter(region != "")
 
 # Loading in ACAPs Data
-acap_site <- "https://www.acaps.org/covid19-government-measures-dataset"
+
+# HTPPS ISSUE - TEMPORARY FIX TO MANUALLY PLACE
+acap_site <- "http://www.acaps.org/covid19-government-measures-dataset"
 xml <- xml2::read_html(acap_site)
 url <- rvest::html_attr(rvest::html_nodes(xml, ".file a"), "href")
-  
 acap_tf <- download_url(url)
+
+#acap_tf <- "acap.xlsx"
+
 acap <- readxl::read_excel(acap_tf, progress = FALSE, sheet = "Database")
 
 # country name fixes. We want to use the ISO3C eventually but there are typos...
