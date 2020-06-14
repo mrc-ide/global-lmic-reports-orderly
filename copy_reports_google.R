@@ -71,7 +71,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   ## Remove HICs
   rl <- readLines(file.path(here::here(),"countries"))
   to_remove <- stringr::str_sub(rl[(grep("Other HICs", rl) + 1) : length(rl)], -3)
-  reports <- reports[-which(reports$country %in% to_remove),]
+  reports <- reports[!reports$country %in% to_remove,]
   
   ## ---------------------------------------------------------------------------
   ## copy reports --------------------------------------------------------------
