@@ -82,11 +82,13 @@ if(short_run) {
   replicates <- 2
   n_mcmc <- 100
   n_chains <- 3
+  grid_spread <- 2
 } else {
   n_particles <- 50
   replicates <- 200
   n_mcmc <- 10000
   n_chains <- 3
+  grid_spread <- 11
 }
 
 if (parallel) {
@@ -134,11 +136,11 @@ if (!is.null(json) && !is.null(json[[1]]$Meff_pl)) {
     data = data,
     R0_min = R0_min,
     R0_max = R0_max,
-    R0_step = (R0_max - R0_min)/11,
+    R0_step = (R0_max - R0_min)/grid_spread,
     R0_prior = R0_prior,
     Meff_min = Meff_min,
     Meff_max = Meff_max,
-    Meff_step = (Meff_max - Meff_min)/11,
+    Meff_step = (Meff_max - Meff_min)/grid_spread,
     Rt_func = Rt_func,
     first_start_date = first_start_date,
     last_start_date = last_start_date,
@@ -198,9 +200,19 @@ logprior <- function(pars){
   return(ret)
 }
 
-# Meff_date_change. Need min date to ensure Meff switch occurs
-pld <- post_lockdown_date(interventions[[iso3c]], 1.2, 
-                          max_date = as.Date("2020-06-06"), 
+# Meff_date_change. look at when mobility has increased by 20%
+above <- 1.2
+
+# These countries have peculiar weekend effects that are slghtly messing with calculating this so switch to 1.1
+if (iso3c %in% c("BRA", "MEX", "OMA")){
+  above <- 1.1
+}
+
+# The followign countries h
+
+# Need min and max date to ensure Meff switch occurs correctly in countries with inferred mobility from ACAPs 
+pld <- post_lockdown_date(interventions[[iso3c]], above, 
+                          max_date = as.Date("2020-06-03"), 
                           min_date = as.Date(last_start_date)+2)
 
 out_det <- squire::pmcmc(data = data, 
@@ -323,11 +335,11 @@ if (!is.null(json) && !is.null(json[[1]]$Meff_pl)) {
     data = data,
     R0_min = R0_min,
     R0_max = R0_max,
-    R0_step = (R0_max - R0_min)/11,
+    R0_step = (R0_max - R0_min)/grid_spread,
     R0_prior = R0_prior,
     Meff_min = Meff_min,
     Meff_max = Meff_max,
-    Meff_step = (Meff_max - Meff_min)/11,
+    Meff_step = (Meff_max - Meff_min)/grid_spread,
     Rt_func = Rt_func,
     first_start_date = first_start_date,
     last_start_date = last_start_date,
@@ -450,16 +462,9 @@ out$pmcmc_results$inputs$Rt_func <- as.function(c(formals(Rt_func_replace),
 ## -----------------------------------------------------------------------------
 
 ## summarise what we have
-top_row <- plot(out$pmcmc_results, thin = 0.25)
-top_row <- recordPlot()
-
-index <- squire:::odin_index(out$model)
-forecast <- 0
-
-suppressWarnings(d <- deaths_plot_single(out, data, date = date,date_0 = date_0, forecast = forecast, single = TRUE) + 
-  theme(legend.position = "none"))
-
-intervention <- intervention_plot_google(interventions[[iso3c]], date, data, forecast)
+png("top_row.png", height = 6, width = 8, units = "in", res = 300)
+plot(out$pmcmc_results, thin = 0.25)
+dev.off()
 
 title <- cowplot::ggdraw() + 
   cowplot::draw_label(
@@ -468,18 +473,47 @@ title <- cowplot::ggdraw() +
     x = 0.5
   )
 
-line <- ggplot() + cowplot::draw_line(x = 0:10,y=1) + 
+line <- ggplot() + cowplot::draw_line(x = 0:10, y=1) + 
   theme(panel.background = element_blank(),
         axis.title = element_blank(), 
         axis.text = element_blank(), 
         axis.ticks = element_blank())
 
-pdf("fitting.pdf",width = 8.5,height = 12)
-suppressWarnings(print(cowplot::plot_grid(top_row,intervention,d,line,title,
-                                          ncol=1,rel_heights = c(1,0.4,0.6,0.1,0.1))))
+header <- cowplot::plot_grid(title, line, ncol = 1)
+
+png("header.png", height = 0.5, width = 8, units = "in", res = 300)
+header
 dev.off()
 
+
+index <- squire:::odin_index(out$model)
+forecast <- 0
+
+suppressWarnings(d <- deaths_plot_single(out, data, date = date,date_0 = date_0, forecast = forecast, single = TRUE) + 
+                   theme(legend.position = "none"))
+
+intervention <- intervention_plot_google(interventions[[iso3c]], date, data, forecast)
+
+
+bottom <- cowplot::plot_grid(intervention, d,
+                   ncol=1,
+                   rel_heights = c(0.4,0.6))
+cowplot::save_plot("bottom.png", bottom, base_height = 6, base_width = 8)
+
+plots <- list() 
+
+nms <- c("header.png", "top_row.png", "bottom.png")
+for(i in 1:3) {
+  x <- nms[i]
+  img <- png::readPNG(x)
+  plots[[i]] <- grid::rasterGrob(img, interpolate = FALSE)
+}
+
+ggsave("fitting.pdf",width=7, height=11, 
+       gridExtra::marrangeGrob(grobs = plots[1:3], nrow=3, ncol=1,top=NULL, heights = c(1.5, 6, 6)))
 dev.off()
+file.remove(nms)
+file.remove("Rplots.pdf")
 
 ## Save the grid out object
 

@@ -49,6 +49,8 @@ RUN install_packages --repo=https://ncov-ic.github.io/drat \
         plotly \
         purrr \
         qpdf \
+        grid \
+        gridExtra \
         readxl \
         stringdist \
         gbm \

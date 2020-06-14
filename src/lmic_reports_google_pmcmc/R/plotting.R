@@ -602,7 +602,7 @@ deaths_plot_single_surge <- function(out, out2, data, date_0, date = Sys.Date(),
                                              ymax = .data$ymax,
                                              fill = .data$Scenario,
                                              linetype = .data$compartment),
-                                alpha = 0.25, col = "black")
+                                alpha = 0.25, col = NA)
   
   # Add remaining formatting
   gg <- p +
@@ -852,6 +852,7 @@ cases_contrast_triple_bars <- function(o1, o2, o3, data, date_0, date = Sys.Date
     dplyr::group_by(.data$day, .data$replicate, .data$Scenario) %>%
     dplyr::summarise(y = mean(.data$y), n=dplyr::n()) %>%
     dplyr::filter(.data$day <= date + forecast) %>% 
+    dplyr::filter(.data$day >= date - 7) %>% 
     dplyr::filter(!is.na(.data$y))
   
   sub$Scenario <- factor(sub$Scenario, levels = c( "No","Worse", "Yes"))
@@ -860,7 +861,7 @@ cases_contrast_triple_bars <- function(o1, o2, o3, data, date_0, date = Sys.Date
                      ymin = .data$quants[[1]][1],
                      y = mean(.data$y),
                      ymax = .data$quants[[1]][3])
-  ymax <- max(pd_group$y[pd_group$day<(date+forecast) & pd_group$day>(date-forecast)])
+  ymax <- max(pd_group$y[pd_group$day<=(date+forecast) & pd_group$day>(date-forecast)])
   
   # Plot
   suppressMessages(suppressWarnings(
@@ -891,7 +892,6 @@ cases_contrast_triple_bars <- function(o1, o2, o3, data, date_0, date = Sys.Date
       ggplot2::scale_fill_manual(name = "", labels = (c( "Maintain Status Quo","Relax Interventions 50%","Additional 50% Reduction")),
                                  values = (c("#9eeccd","#c59e96","#3f8ea7"))) +
       ggplot2::scale_x_date(date_breaks = "1 week", date_labels = "%b %d", 
-                            limits = c(date_0-7, date_0 + forecast),
                             expand = c(0, 0)) +
       ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, colour = "black"),
                      axis.title.x = ggplot2::element_blank(),
@@ -1064,7 +1064,8 @@ healthcare_plot_contrast_triple <- function(o1, o2, o3, data, date_0, date = Sys
               df$date <=  date + forecast + 1,] %>%
     dplyr::group_by(.data$day, .data$replicate, .data$Scenario) %>%
     dplyr::summarise(y = mean(.data$y), n=dplyr::n()) %>%
-    dplyr::filter(.data$day <= date + forecast) %>% 
+    dplyr::filter(.data$day <= date + forecast) %>%
+    dplyr::filter(.data$day >= date - 7) %>% 
     dplyr::filter(!is.na(.data$y))
   
   sub$Scenario <- factor(sub$Scenario, levels = c( "No","Worse", "Yes"))
@@ -1110,8 +1111,7 @@ healthcare_plot_contrast_triple <- function(o1, o2, o3, data, date_0, date = Sys
       ggplot2::scale_y_continuous(expand = c(0,0)) +
       ggplot2::scale_fill_manual(name = "", labels = (c( "Maintain Status Quo","Relax Interventions 50%","Additional 50% Reduction")),
                                  values = (c("#9eeccd","#c59e96","#3f8ea7"))) +
-      ggplot2::scale_x_date(date_breaks = "1 week", date_labels = "%b %d", 
-                            limits = c(date_0-7, date_0 + forecast),
+      ggplot2::scale_x_date(date_breaks = "1 week", date_labels = "%b %d",
                             expand = c(0, 0)) +
       ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, colour = "black"),
                      axis.title.x = ggplot2::element_blank(),
