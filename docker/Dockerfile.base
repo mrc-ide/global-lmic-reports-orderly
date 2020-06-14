@@ -51,6 +51,7 @@ RUN install_packages --repo=https://ncov-ic.github.io/drat \
         qpdf \
         grid \
         gridExtra \
+        png \
         readxl \
         stringdist \
         gbm \
