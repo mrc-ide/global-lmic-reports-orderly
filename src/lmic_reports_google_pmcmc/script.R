@@ -204,8 +204,10 @@ logprior <- function(pars){
 above <- 1.2
 
 # These countries have peculiar weekend effects that are slghtly messing with calculating this so switch to 1.1
-if (iso3c %in% c("BRA", "OMA")){
+if (iso3c %in% c("BRA", "OMA", "USA")){
   above <- 1.1
+} else if(iso3c %in% c("SWE")) {
+  above <- 1.05
 }
 
 # The followign countries h
