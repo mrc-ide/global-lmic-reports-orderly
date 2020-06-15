@@ -234,9 +234,13 @@ rt_creation <- function(out, date_0, max_date) {
                                                steps_per_day = 1/out$parameters$dt)
     
     df <- data.frame(
-      "Rt" = c(out$replicate_parameters$R0[y], 
-               vapply(tt$change, out$pmcmc_results$inputs$Rt_func, numeric(1), 
-                      R0 = out$replicate_parameters$R0[y], Meff = out$replicate_parameters$Meff[y])),
+      "Rt" = squire:::evaluate_Rt(R0_change = out$interventions$R0_change[out$interventions$date_R0_change>out$replicate_parameters$start_date[y]], 
+                                  R0 = out$replicate_parameters$R0[y], 
+                                  Meff = out$replicate_parameters$Meff[y], 
+                                  Meff_pl = out$replicate_parameters$Meff_pl[y],
+                                  date_R0_change = out$interventions$date_R0_change[out$interventions$date_R0_change>out$replicate_parameters$start_date[y]],
+                                  date_Meff_change = out$interventions$date_Meff_change, 
+                                  Rt_func = out$pmcmc_results$inputs$Rt_func) ,
       "date" = c(as.character(out$replicate_parameters$start_date[y]), 
                  as.character(out$interventions$date_R0_change[match(tt$change, out$interventions$R0_change)])),
       rep = y,
