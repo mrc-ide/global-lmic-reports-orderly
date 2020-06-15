@@ -203,11 +203,14 @@ logprior <- function(pars){
 # Meff_date_change. look at when mobility has increased by 20%
 above <- 1.2
 
-# These countries have peculiar weekend effects that are slghtly messing with calculating this so switch to 1.1
+# These countries have peculiar weekend effects that are slghtly messing with calculating this
+# so have to switch the point at which we calculate their lockdown date
 if (iso3c %in% c("BRA", "OMA", "USA")){
   above <- 1.1
 } else if(iso3c %in% c("SWE")) {
   above <- 1.05
+} else if(iso3c %in% c("MEX")) {
+  above <- 1.025
 }
 
 # The followign countries h
