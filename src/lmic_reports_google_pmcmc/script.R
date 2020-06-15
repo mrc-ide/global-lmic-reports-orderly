@@ -203,7 +203,7 @@ logprior <- function(pars){
 # Meff_date_change. look at when mobility has increased by 20%
 above <- 1.2
 
-# These countries have peculiar weekend effects that are slghtly messing with calculating this
+# These countries have peculiar weekend effec ts that are slghtly messing with calculating this
 # so have to switch the point at which we calculate their lockdown date
 if (iso3c %in% c("BRA", "OMA", "USA")){
   above <- 1.1
@@ -213,7 +213,7 @@ if (iso3c %in% c("BRA", "OMA", "USA")){
   above <- 1.025
 }
 
-# The followign countries h
+# N.B. look at strucchange and segmented for maybe a better way to do this
 
 # Need min and max date to ensure Meff switch occurs correctly in countries with inferred mobility from ACAPs 
 pld <- post_lockdown_date(interventions[[iso3c]], above, 

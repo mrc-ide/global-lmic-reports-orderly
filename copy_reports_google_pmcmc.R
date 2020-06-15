@@ -123,8 +123,11 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
                          lapply(file.path(src, "projections.csv"), read.csv))
   dir.create("gh-pages/data", FALSE, TRUE)
   write.csv(projections, paste0("gh-pages/data/",date,"_v3.csv"), row.names = FALSE, quote = FALSE)
-  zip(paste0("gh-pages/data/",date,"_v3.csv.zip"),paste0("gh-pages/data/",date,"_v3.csv"))
-  file.remove(paste0("gh-pages/data/",date,"_v3.csv"))
+  cwd <- getwd()
+  setwd("gh-pages/data/")
+  zip(paste0(date,"_v3.csv.zip"),paste0(date,"_v3.csv"))
+  file.remove(paste0(date,"_v3.csv"))
+  setwd(cwd)
   saveRDS(projections, paste0("src/index_page/all_data.rds"))
   saveRDS(projections, paste0("src/regional_page/all_data.rds"))
   
@@ -146,9 +149,14 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
                                                  steps_per_day = 1/out$parameters$dt)
       
       df <- data.frame(
-        "Rt" = c(out$replicate_parameters$R0[y], 
-                 vapply(tt$change, out$pmcmc_results$inputs$Rt_func, numeric(1), 
-                        R0 = out$replicate_parameters$R0[y], Meff = out$replicate_parameters$Meff[y])),
+        "Rt" = squire:::evaluate_Rt(
+          R0_change = out$interventions$R0_change[out$interventions$date_R0_change>out$replicate_parameters$start_date[y]], 
+          R0 = out$replicate_parameters$R0[y], 
+          Meff = out$replicate_parameters$Meff[y], 
+          Meff_pl = out$replicate_parameters$Meff_pl[y],
+          date_R0_change = out$interventions$date_R0_change[out$interventions$date_R0_change>out$replicate_parameters$start_date[y]],
+          date_Meff_change = out$interventions$date_Meff_change, 
+          Rt_func = out$pmcmc_results$inputs$Rt_func) ,
         "date" = c(as.character(out$replicate_parameters$start_date[y]), 
                    as.character(out$interventions$date_R0_change[match(tt$change, out$interventions$R0_change)])),
         "iso" = iso,
