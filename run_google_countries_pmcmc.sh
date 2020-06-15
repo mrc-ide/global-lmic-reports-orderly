@@ -18,11 +18,20 @@ PARALLEL=${4:-$DEFAULT_PARALLEL}
 DEFAULT_HICs="FALSE"
 HICs=${5:-$DEFAULT_HICs}
 
+DEFAULT_COUNTRIES="countries"
+COUNTRIES=${6:-$DEFAULT_COUNTRIES}
+
 echo "*** Date: $DATE"
 
 echo "*** Short Run: $SHORT_RUN"
 
 echo "*** Full Scenarios: $FULL_SCENARIOS"
+
+echo "*** Parallel: $PARALLEL"
+
+echo "*** HICs: $HICs"
+
+echo "*** Countries: $COUNTRIES"
 
 echo "*** Updating country list"
 ./update_run_sh.R $DATE $HICs
@@ -30,6 +39,6 @@ echo "*** Updating country list"
 echo "*** Running country reports"
 
 # Parallel
-grep -E '^[A-Z]{3}\s*' countries | \
+grep -E '^[A-Z]{3}\s*' $COUNTRIES | \
 parallel --progress -j 21  ./orderly run lmic_reports_google_pmcmc iso3c={} date=$DATE short_run=$SHORT_RUN parallel=$PARALLEL full_scenarios=$FULL_SCENARIOS
 
