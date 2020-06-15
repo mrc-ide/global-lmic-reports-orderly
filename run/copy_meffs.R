@@ -88,6 +88,8 @@ copy_meffs <- function(date = NULL, is_latest = TRUE) {
     rownames(reports) <- NULL
   }
   
+  if(nrow(reports) > 0) {
+  
   reports$date <- as.character(date)
   
   # copy lmic_reports_google key bits
@@ -99,6 +101,8 @@ copy_meffs <- function(date = NULL, is_latest = TRUE) {
     append <- c("fitting.pdf", "grid_out.rds", "projections.csv", "orderly_run.rds")
     file_copy(file.path(from, append), to)
   }, from = src, to = dest)
+  
+  }
   
   ##  --------------------------------------------------------------------------
   ##  LMIC PMCMC COPY ----------------------------------------------------------
@@ -131,6 +135,8 @@ copy_meffs <- function(date = NULL, is_latest = TRUE) {
     rownames(reports) <- NULL
   }
   
+  if(nrow(reports) > 0) {
+  
   reports$date <- as.character(date)
   
   # copy lmic_reports_google_pmcmc key bits
@@ -143,6 +149,7 @@ copy_meffs <- function(date = NULL, is_latest = TRUE) {
     file_copy(file.path(from, append), to)
   }, from = src, to = dest)
   
+  }
   
   ##  --------------------------------------------------------------------------
   ## BRT COPY ------------------------------------------------------------------
