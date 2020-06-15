@@ -119,7 +119,7 @@ json <- tryCatch({
 if (!is.null(json) && !is.null(json[[1]]$Meff_pl)) {
   
   R0_start <- json[[1]]$Rt
-  date_start <- json[[1]]$date
+  date_start <- as.Date(json[[1]]$date)
   Meff_start <- json[[1]]$Meff
   Meff_pl_start <- json[[1]]$Meff_pl
   
@@ -163,12 +163,17 @@ if (!is.null(json) && !is.null(json[[1]]$Meff_pl)) {
   pos <- which(out_det$scan_results$mat_log_ll == max(out_det$scan_results$mat_log_ll), arr.ind = TRUE)
   
   # get tthe R0, betas and times into a data frame
-  R0_start <- min(max(out_det$scan_results$x[pos[1]], R0_min), R0_max)
-  date_start <- min(max(as.Date(out_det$scan_results$y[pos[2]]), as.Date(first_start_date)), as.Date(last_start_date))
-  Meff_start <- min(max(out_det$scan_results$z[pos[3]], Meff_min), Meff_max)
-  Meff_pl_start <- min(max(Meff_start*1.2, Meff_pl_min), Meff_pl_max)
+  R0_start <- out_det$scan_results$x[pos[1]]
+  date_start <- as.Date(out_det$scan_results$y[pos[2]])
+  Meff_start <- out_det$scan_results$z[pos[3]]
+  Meff_pl_start <- Meff_start*1.2
   
 }
+
+R0_start <- min(max(R0_start, R0_min), R0_max)
+date_start <- min(max(as.Date(date_start), as.Date(first_start_date)), as.Date(last_start_date))
+Meff_start <- min(max(Meff_start, Meff_min), Meff_max)
+Meff_pl_start <- min(max(Meff_pl_start), Meff_pl_max)
 
 
 ## -----------------------------------------------------------------------------
@@ -323,7 +328,7 @@ json <- tryCatch({
 if (!is.null(json) && !is.null(json[[1]]$Meff_pl)) {
   
   R0_start <- json[[1]]$R0
-  date_start <- json[[1]]$start_date
+  date_start <- as.Date(json[[1]]$start_date)
   Meff_start <- json[[1]]$Meff
   Meff_pl_start <- json[[1]]$Meff_pl
 
@@ -366,12 +371,17 @@ if (!is.null(json) && !is.null(json[[1]]$Meff_pl)) {
   pos <- which(out_det$scan_results$mat_log_ll == max(out_det$scan_results$mat_log_ll), arr.ind = TRUE)
   
   # get tthe R0, betas and times into a data frame
-  R0_start <- min(max(out_det$scan_results$x[pos[1]], R0_min), R0_max)
-  date_start <- min(max(as.Date(out_det$scan_results$y[pos[2]]), as.Date(first_start_date)), as.Date(last_start_date))
-  Meff_start <- min(max(out_det$scan_results$z[pos[3]], Meff_min), Meff_max)
-  Meff_pl_start <- min(max(Meff_start*1.2, Meff_pl_min), Meff_pl_max)
+  R0_start <- out_det$scan_results$x[pos[1]]
+  date_start <- as.Date(out_det$scan_results$y[pos[2]])
+  Meff_start <- out_det$scan_results$z[pos[3]]
+  Meff_pl_start <- Meff_start*1.2
   
 }
+
+R0_start <- min(max(R0_start, R0_min), R0_max)
+date_start <- min(max(as.Date(date_start), as.Date(first_start_date)), as.Date(last_start_date))
+Meff_start <- min(max(Meff_start, Meff_min), Meff_max)
+Meff_pl_start <- min(max(Meff_pl_start), Meff_pl_max)
 
 ## -----------------------------------------------------------------------------
 ## Step 3b: PMCMC parameter set up
