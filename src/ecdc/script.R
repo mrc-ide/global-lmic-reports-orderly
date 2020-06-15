@@ -42,6 +42,8 @@ d[which(d$countryterritoryCode=="PAN" & as.Date(d$dateRep)=="2020-06-04"),]$deat
   d[which(d$countryterritoryCode=="PAN" & as.Date(d$dateRep)=="2020-06-03"),]$deaths 
 d[which(d$countryterritoryCode=="PAN" & as.Date(d$dateRep)=="2020-06-03"),]$deaths <- 0
 
+# fix spain's negative deaths
+d$deaths[d$countryterritoryCode == "ESP" & d$deaths<0] <- 0
 
 # save 
 saveRDS(d, "ecdc_all.rds")

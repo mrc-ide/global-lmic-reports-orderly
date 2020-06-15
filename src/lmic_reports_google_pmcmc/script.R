@@ -225,33 +225,35 @@ pld <- post_lockdown_date(interventions[[iso3c]], above,
                           max_date = as.Date("2020-06-03"), 
                           min_date = as.Date(last_start_date)+2)
 
+# sleep so parallel is chill
+Sys.sleep(time = runif(1, 0, 120))
 out_det <- squire::pmcmc(data = data, 
-           n_mcmc = n_mcmc,
-           log_prior = logprior,
-           n_particles = 1,
-           steps_per_day = 4,
-           log_likelihood = NULL,
-           squire_model = squire:::deterministic_model(),
-           output_proposals = FALSE,
-           n_chains = n_chains,
-           Rt_func = Rt_func,
-           pars_obs = pars_obs,
-           pars_init = pars_init,
-           pars_min = pars_min,
-           pars_max = pars_max,
-           pars_discrete = pars_discrete,
-           proposal_kernel = proposal_kernel,
-           country = country, 
-           R0_change = R0_change,
-           date_R0_change = date_R0_change,
-           date_Meff_change = pld, 
-           burnin = ceiling(n_mcmc/10),
-           seeding_cases = 5,
-           replicates = replicates,
-           required_acceptance_ratio = 0.13,
-           start_covariance_adaptation = 1000,
-           start_scaling_factor_adaptation = 850,
-           initial_scaling_factor = 0.05
+                         n_mcmc = n_mcmc,
+                         log_prior = logprior,
+                         n_particles = 1,
+                         steps_per_day = 4,
+                         log_likelihood = NULL,
+                         squire_model = squire:::deterministic_model(),
+                         output_proposals = FALSE,
+                         n_chains = n_chains,
+                         Rt_func = Rt_func,
+                         pars_obs = pars_obs,
+                         pars_init = pars_init,
+                         pars_min = pars_min,
+                         pars_max = pars_max,
+                         pars_discrete = pars_discrete,
+                         proposal_kernel = proposal_kernel,
+                         country = country, 
+                         R0_change = R0_change,
+                         date_R0_change = date_R0_change,
+                         date_Meff_change = pld, 
+                         burnin = ceiling(n_mcmc/10),
+                         seeding_cases = 5,
+                         replicates = replicates,
+                         required_acceptance_ratio = 0.13,
+                         start_covariance_adaptation = 1000,
+                         start_scaling_factor_adaptation = 850,
+                         initial_scaling_factor = 0.05
 )
 
 ## -----------------------------------------------------------------------------
@@ -331,7 +333,7 @@ if (!is.null(json) && !is.null(json[[1]]$Meff_pl)) {
   date_start <- as.Date(json[[1]]$start_date)
   Meff_start <- json[[1]]$Meff
   Meff_pl_start <- json[[1]]$Meff_pl
-
+  
 } else {
   
   # have at least a week span for start date
@@ -394,6 +396,10 @@ pars_init = list('start_date' = date_start,
                  'Meff_pl' = Meff_pl_start)
 
 # First redo the deterministic model fit based on 20 seeds to get the parameter space
+
+# sleep so parallel is chill
+Sys.sleep(time = runif(1, 0, 120))
+
 out_det <- squire::pmcmc(data = data, 
                          n_mcmc = n_mcmc,
                          log_prior = logprior,
@@ -431,7 +437,7 @@ R0 <- best$R0
 start_date <- squire:::offset_to_start_date(data$date[1],round(best$start_date))
 Meff <- best$Meff
 Meff_pl <- best$Meff_pl
-
+  
 df <- data.frame(start_date = start_date, 
                  R0 = R0, 
                  Meff = Meff,
@@ -469,8 +475,8 @@ Rt_func_replace <- function(R0_change, R0, Meff) {
   R0 * (2 * plogis(-(R0_change-1) * -Meff))
 }
 out$pmcmc_results$inputs$Rt_func <- as.function(c(formals(Rt_func_replace), 
-                                                 body(Rt_func_replace)), 
-                                               envir = new.env(parent = environment(stats::acf)))
+                                                  body(Rt_func_replace)), 
+                                                envir = new.env(parent = environment(stats::acf)))
 
 ## -----------------------------------------------------------------------------
 ## Step 3d: Summarise Fits
@@ -511,8 +517,8 @@ intervention <- intervention_plot_google(interventions[[iso3c]], date, data, for
 
 
 bottom <- cowplot::plot_grid(intervention, d,
-                   ncol=1,
-                   rel_heights = c(0.4,0.6))
+                             ncol=1,
+                             rel_heights = c(0.4,0.6))
 cowplot::save_plot("bottom.png", bottom, base_height = 6, base_width = 8)
 
 plots <- list() 
@@ -554,13 +560,13 @@ rel_R0 <- function(rel = 0.5, Meff_mult = 1) {
   R0_ch <- 1-((1-fr0)*rel)
   wanted <- vapply(seq_along(out$replicate_parameters$R0), function(i){
     out$pmcmc_results$inputs$Rt_func(R0_ch, 
-                                    R0 = out$replicate_parameters$R0[i], 
-                                    Meff = out$replicate_parameters$Meff[i]*Meff_mult)
+                                     R0 = out$replicate_parameters$R0[i], 
+                                     Meff = out$replicate_parameters$Meff[i]*Meff_mult)
   }, numeric(1))
   current <- vapply(seq_along(out$replicate_parameters$R0), function(i){
     out$pmcmc_results$inputs$Rt_func(fr0, 
-                                    R0 = out$replicate_parameters$R0[i], 
-                                    Meff = out$replicate_parameters$Meff[i])
+                                     R0 = out$replicate_parameters$R0[i], 
+                                     Meff = out$replicate_parameters$Meff[i])
   }, numeric(1))
   mean(wanted/current)
 }
@@ -622,7 +628,7 @@ out_surged$model$set_user(hosp_beds = 1e10)
 
 out_surged$parameters$hosp_bed_capacity <- 1e10
 out_surged$parameters$ICU_bed_capacity <- 1e10
-  
+
 # will surging be required within the next 28 day forecast
 icu <- format_output(maintain_3months_lift, "ICU_demand", date_0 = date_0)
 icu <- icu[icu$compartment == "ICU_demand",]
@@ -639,16 +645,16 @@ hosp_28 <- group_by(hosp[hosp$t==28,], replicate) %>%
   summarise(i_tot = mean(tot, na.rm = TRUE), 
             i_min = t_test_safe(tot)$conf.int[1],
             i_max = t_test_safe(tot)$conf.int[2])
+
+if(icu_28$i_tot > icu_cap || hosp_28$i_tot > hosp_cap) {
   
-  if(icu_28$i_tot > icu_cap || hosp_28$i_tot > hosp_cap) {
-    
-    surging <- TRUE
-    
-  } else {
-    
-    surging <- FALSE
-    
-  }
+  surging <- TRUE
+  
+} else {
+  
+  surging <- FALSE
+  
+}
 
 
 ## Now simulate the surged scenarios
@@ -778,7 +784,7 @@ if (full_scenarios) {
       mitigation_3months_lift_surged,
       reverse_3_months_lift_surged
     )
-
+  
 }
 
 r_list_pass <- r_list
