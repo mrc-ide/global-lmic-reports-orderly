@@ -76,7 +76,7 @@ copy_meffs <- function(date = NULL, is_latest = TRUE) {
             JOIN parameters
               ON parameters.report_version = report_version.id
            WHERE report_version_artefact.report_version IN (%s)
-             AND report = "lmic_reports_google_pmcmc"
+             AND report = "lmic_reports_google_pmcmc_no_decouple"
              AND parameters.name = "iso3c"
            ORDER BY country, report_version.id'
   sql <- sprintf(sql, paste(sprintf('"%s"', id), collapse = ", "))
@@ -91,8 +91,8 @@ copy_meffs <- function(date = NULL, is_latest = TRUE) {
   reports$date <- as.character(date)
   
   # copy lmic_reports_google key bits
-  src <- file.path("archive", "lmic_reports_google_pmcmc", reports$id)
-  dest <- file.path(target,sprintf("%s/%s/%s", "archive", "lmic_reports_google_pmcmc",reports$id))
+  src <- file.path("archive", "lmic_reports_google_pmcmc_no_decouple", reports$id)
+  dest <- file.path(target,sprintf("%s/%s/%s", "archive", "lmic_reports_google_pmcmc_no_decouple",reports$id))
   worked <- vapply(dest, dir.create, logical(1), recursive = TRUE)
   
   worked <- mapply(function(from, to){
@@ -119,7 +119,7 @@ copy_meffs <- function(date = NULL, is_latest = TRUE) {
             JOIN parameters
               ON parameters.report_version = report_version.id
            WHERE report_version_artefact.report_version IN (%s)
-             AND report = "lmic_reports_google"
+             AND report = "lmic_reports_google_pmcmc"
              AND parameters.name = "iso3c"
            ORDER BY country, report_version.id'
   sql <- sprintf(sql, paste(sprintf('"%s"', id), collapse = ", "))
@@ -133,9 +133,9 @@ copy_meffs <- function(date = NULL, is_latest = TRUE) {
   
   reports$date <- as.character(date)
   
-  # copy lmic_reports_google key bits
-  src <- file.path("archive", "lmic_reports_google", reports$id)
-  dest <- file.path(target,sprintf("%s/%s/%s", "archive", "lmic_reports_google",reports$id))
+  # copy lmic_reports_google_pmcmc key bits
+  src <- file.path("archive", "lmic_reports_google_pmcmc", reports$id)
+  dest <- file.path(target,sprintf("%s/%s/%s", "archive", "lmic_reports_google_pmcmc",reports$id))
   worked <- vapply(dest, dir.create, logical(1), recursive = TRUE)
   
   worked <- mapply(function(from, to){

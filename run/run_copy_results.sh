@@ -9,5 +9,5 @@ DATE=${1:-$TODAY}
 echo "*** Date: $DATE"
 
 echo "*** Copying results"
-./copy_results.R $DATE
+./run/copy_results.R $DATE
 

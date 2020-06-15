@@ -9,5 +9,5 @@ DATE=${1:-$TODAY}
 echo "*** Date: $DATE"
 
 echo "*** Copying results"
-./copy_meffs.R $DATE
+./run/copy_meffs.R $DATE
 

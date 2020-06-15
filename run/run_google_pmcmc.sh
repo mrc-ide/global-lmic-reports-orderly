@@ -36,7 +36,7 @@ echo "*** Google BRT data"
 ./orderly run brt_google_mobility date=$DATE short_run=$SHORT_RUN
 
 echo "*** Updating country list"
-./update_run_sh.R $DATE $HICs
+./run/update_run_sh.R $DATE $HICs
 
 echo "*** Running country reports"
 
@@ -51,7 +51,7 @@ parallel --progress -j 21 ./orderly run lmic_reports_google_pmcmc iso3c={} date=
 # done
 
 echo "*** Copying reports"
-./copy_reports_google_pmcmc.R $DATE
+./run/copy_reports_google_pmcmc.R $DATE
 
 echo "*** Index page"
 ./orderly run index_page date=$DATE
@@ -75,8 +75,8 @@ echo "*** News page"
 ./orderly run news date=$DATE
 
 echo "*** data schema"
-./write_data_schema.R
+./run/write_data_schema.R
 
 echo "*** Copying files"
-./copy_index.R $DATE
-./copy_regionals.R $DATE
+./run/copy_index.R $DATE
+./run/copy_regionals.R $DATE

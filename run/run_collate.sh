@@ -9,7 +9,7 @@ DATE=${1:-$TODAY}
 echo "*** Date: $DATE"
 
 echo "*** Copying reports"
-./copy_reports.R $DATE
+./run/copy_reports.R $DATE
 
 echo "*** Index page"
 ./orderly run index_page date=$DATE
@@ -23,7 +23,7 @@ echo "*** News page"
 ./orderly run news date=$DATE
 
 echo "*** data schema"
-./write_data_schema.R
+./run/write_data_schema.R
 
 echo "*** Copying files"
-./copy_index.R $DATE
+./run/copy_index.R $DATE

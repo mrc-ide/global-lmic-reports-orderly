@@ -1,7 +1,7 @@
 orderly_id <- tryCatch(orderly::orderly_run_info()$id,
                        error = function(e) "<id>") # bury this in the html, docx
 
-version_min <- "0.4.19"
+version_min <- "0.4.20"
 if(packageVersion("squire") < version_min) {
   stop("squire needs to be updated to at least ", version_min)
 }
@@ -205,25 +205,8 @@ logprior <- function(pars){
   return(ret)
 }
 
-# Meff_date_change. look at when mobility has increased by 20%
-above <- 1.2
-
-# These countries have peculiar weekend effec ts that are slghtly messing with calculating this
-# so have to switch the point at which we calculate their lockdown date
-if (iso3c %in% c("BRA", "OMA", "USA")){
-  above <- 1.1
-} else if(iso3c %in% c("SWE")) {
-  above <- 1.05
-} else if(iso3c %in% c("MEX")) {
-  above <- 1.025
-}
-
-# N.B. look at strucchange and segmented for maybe a better way to do this
-
-# Need min and max date to ensure Meff switch occurs correctly in countries with inferred mobility from ACAPs 
-pld <- post_lockdown_date(interventions[[iso3c]], above, 
-                          max_date = as.Date("2020-06-03"), 
-                          min_date = as.Date(last_start_date)+2)
+# I've been to the year 3000, not much has changed including the mobility effect size
+pld <- as.Date("3000-01-01")
 
 # sleep so parallel is chill
 Sys.sleep(time = runif(1, 0, 120))

@@ -15,5 +15,5 @@ docker run -it --rm \
         -u $USER_STR \
         -v $PACKAGE_ROOT:/orderly \
         -w /orderly \
-        --entrypoint /orderly/run_country_google.sh \
+        --entrypoint /orderly/run/run_country_google.sh \
         $TAG_BRANCH $*
