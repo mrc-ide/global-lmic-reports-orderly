@@ -158,11 +158,13 @@ SARS-CoV-2 is a novel virus and we gain new information on its transmission almo
 
 Here, we detail the major version changes to the reports produced in this website (minor changes, such as typo fixes and small edits to plots and text are not documented here). These major changes represent either a new methodology or new information being presented. We hope the following overview will help users understand the changes implemented throughout the pandemic. 
 
-As we move from one version to the next, we will still have the last date at which the previous version was run available to be viewed. To access a previous version, append `/vx` to the country page url, where `x` is the version number. For example, to access the version 1 page for Algeria, the full url would be: [https://mrc-ide.github.io/global-lmic-reports/DZA/v1](https://mrc-ide.github.io/global-lmic-reports/DZA/v1). 
+As we move from one version to the next, we will still have the last date at which the previous version was run available to be viewed. To access a previous version, append `/vx` to the country page url, where `x` is the version number. For example, to access the version 1 page for Algeria, the full url would be: [https://mrc-ide.github.io/global-lmic-reports/DZA/v1](https://mrc-ide.github.io/global-lmic-reports/DZA/v1).
+
+Lastly, as we switch from one version to the next, there is likely to be a small delay in keeping the sebsite up to date. We apologise for the delays.
 
 ---
 
-#### Version 3: 2020-06-13
+#### Version 3: 2020-06-14
 
 * Impact of mobility on transmision estimated both pre and post lockdown for each country, allowing mobility and transmission to be able to decouple after lockdowns are relaxed if the data supports this. 
 
