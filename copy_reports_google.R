@@ -86,6 +86,10 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
             "projections.csv",
             "index.pdf",
             "input_params.json")
+  copy_to <- c("v2.html",
+               "projections.csv",
+               "v2.pdf",
+               "input_params.json")
   
   for (i in seq_along(dest)) {
     message(sprintf("Copying %s (%s)", dest[[i]], reports$id[[i]]))
@@ -95,8 +99,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
       dest_latest <- dirname(dest[[i]])
       prev <- dir(dest_latest, full.names = TRUE, pattern = "\\.")
       unlink(c(prev[-grep("v1", prev)], file.path(dest_latest, "figures")), recursive = TRUE)
-      file_copy(dir(dest[[i]], full.names = TRUE), dest_latest)
-      
+      file_copy(file.path(dest[[i]], copy), file.path(dest_latest, copy_to))
       # remove report if no deaths in last 20 days
       if(sum(head(ecdc[which(ecdc$countryterritoryCode == reports$country[i]),]$deaths,20), na.rm = TRUE)==0) {
           prev <- dir(dest_latest, full.names = TRUE, pattern = "\\.")
