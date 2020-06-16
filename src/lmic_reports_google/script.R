@@ -69,7 +69,7 @@ date_R0_change <- int_unique$dates_change
 date_contact_matrix_set_change <- NULL
 squire_model <- squire::explicit_model()
 pars_obs <- NULL
-R0_prior <- list("func" = dnorm, args = list("mean"= 3, "sd"= 0.5, "log" = TRUE))
+R0_prior <- list("func" = dnorm, args = list("mean"= 3, "sd"= 1.5, "log" = TRUE))
 Rt_func <- function(R0_change, R0, Meff) {
   R0 * (2 * plogis(-(R0_change-1) * -Meff))
 }
