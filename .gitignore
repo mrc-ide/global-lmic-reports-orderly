@@ -64,6 +64,14 @@ src/lmic_reports_google_pmcmc/input_params.json
 src/lmic_reports_google_pmcmc/input_params_dashboard.json
 src/lmic_reports_google_pmcmc/fitting.pdf
 src/lmic_reports_google_pmcmc/projections.csv
+src/lmic_reports_google_pmcmc_no_decouple/index.html
+src/lmic_reports_google_pmcmc_no_decouple/index.md
+src/lmic_reports_google_pmcmc_no_decouple/index.pdf
+src/lmic_reports_google_pmcmc_no_decouple/header.tex
+src/lmic_reports_google_pmcmc_no_decouple/input_params.json
+src/lmic_reports_google_pmcmc_no_decouple/input_params_dashboard.json
+src/lmic_reports_google_pmcmc_no_decouple/fitting.pdf
+src/lmic_reports_google_pmcmc_no_decouple/projections.csv
 src/FAQ/FAQ.html
 src/FAQ/FAQ.md
 src/news/News.html
