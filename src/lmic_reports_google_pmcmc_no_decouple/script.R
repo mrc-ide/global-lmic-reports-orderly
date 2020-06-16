@@ -80,15 +80,17 @@ Rt_func <- function(R0_change, R0, Meff) {
 if(short_run) {
   n_particles <- 2
   replicates <- 2
-  n_mcmc <- 100
+  n_mcmc <- 200
   n_chains <- 3
   grid_spread <- 2
+  sleep <- 2
 } else {
   n_particles <- 50
   replicates <- 200
   n_mcmc <- 10000
   n_chains <- 3
   grid_spread <- 11
+  sleep <- 120
 }
 
 if (parallel) {
@@ -199,7 +201,7 @@ proposal_kernel["start_date", "start_date"] <- 1.5
 logprior <- function(pars){
   squire:::assert_in(names(pars), c("start_date", "R0", "Meff", "Meff_pl")) # good sanity check
   ret <- dunif(x = pars[["start_date"]], min = -55, max = -10, log = TRUE) +
-    dnorm(x = pars[["R0"]], mean = 3, sd = 0.75, log = TRUE) +
+    dnorm(x = pars[["R0"]], mean = 2.7, sd = 0.5, log = TRUE) +
     dnorm(x = pars[["Meff"]], mean = 2, sd = 2, log = TRUE) +
     dnorm(x = pars[["Meff_pl"]], mean = 6, sd = 3, log = TRUE)
   return(ret)
@@ -209,7 +211,7 @@ logprior <- function(pars){
 pld <- as.Date("3000-01-01")
 
 # sleep so parallel is chill
-Sys.sleep(time = runif(1, 0, 120))
+Sys.sleep(time = runif(1, 0, sleep))
 out_det <- squire::pmcmc(data = data, 
                          n_mcmc = n_mcmc,
                          log_prior = logprior,
@@ -381,7 +383,7 @@ pars_init = list('start_date' = date_start,
 # First redo the deterministic model fit based on 20 seeds to get the parameter space
 
 # sleep so parallel is chill
-Sys.sleep(time = runif(1, 0, 120))
+Sys.sleep(time = runif(1, 0, sleep))
 
 out_det <- squire::pmcmc(data = data, 
                          n_mcmc = n_mcmc,
@@ -435,6 +437,8 @@ writeLines(jsonlite::toJSON(df,pretty = TRUE), "input_params_dashboard.json")
 ## -----------------------------------------------------------------------------
 ## Step 3c: Fit Stochastic Model
 ## -----------------------------------------------------------------------------
+
+Sys.setenv("SQUIRE_PARALLEL_DEBUG" = "TRUE")
 
 out <- out_det
 out$pmcmc_results$inputs$squire_model <- explicit_model()
