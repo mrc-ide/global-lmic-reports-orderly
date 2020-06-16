@@ -42,8 +42,18 @@ d[which(d$countryterritoryCode=="PAN" & as.Date(d$dateRep)=="2020-06-04"),]$deat
   d[which(d$countryterritoryCode=="PAN" & as.Date(d$dateRep)=="2020-06-03"),]$deaths 
 d[which(d$countryterritoryCode=="PAN" & as.Date(d$dateRep)=="2020-06-03"),]$deaths <- 0
 
-# fix spain's negative deaths
+# fix spain's negative deaths and missing date
 d$deaths[d$countryterritoryCode == "ESP" & d$deaths<0] <- 0
-
+if(date >= as.Date("2020-06-15")) {
+  if(!any(as.Date(d$dateRep) == date & d$countryterritoryCode=="ESP", na.rm = TRUE)) {
+    to_add <- d[which(d$countryterritoryCode=="ESP"),][1,]
+    to_add$dateRep <- d$dateRep[which(as.Date(d$dateRep) == as.Date("2020-06-15"))][1]
+    to_add$day <- 15
+    to_add$cases <- NA
+    to_add$deaths <- 0
+    d <- rbind(d, to_add)
+  }
+}
+  
 # save 
 saveRDS(d, "ecdc_all.rds")
