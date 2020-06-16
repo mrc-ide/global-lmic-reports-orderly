@@ -83,12 +83,14 @@ if(short_run) {
   n_mcmc <- 100
   n_chains <- 3
   grid_spread <- 2
+  sleep <- 2
 } else {
   n_particles <- 50
   replicates <- 200
   n_mcmc <- 10000
   n_chains <- 3
   grid_spread <- 11
+  sleep <- 120
 }
 
 if (parallel) {
@@ -226,7 +228,7 @@ pld <- post_lockdown_date(interventions[[iso3c]], above,
                           min_date = as.Date(last_start_date)+2)
 
 # sleep so parallel is chill
-Sys.sleep(time = runif(1, 0, 120))
+Sys.sleep(time = runif(1, 0, sleep))
 out_det <- squire::pmcmc(data = data, 
                          n_mcmc = n_mcmc,
                          log_prior = logprior,
@@ -398,7 +400,7 @@ pars_init = list('start_date' = date_start,
 # First redo the deterministic model fit based on 20 seeds to get the parameter space
 
 # sleep so parallel is chill
-Sys.sleep(time = runif(1, 0, 120))
+Sys.sleep(time = runif(1, 0, sleep))
 
 out_det <- squire::pmcmc(data = data, 
                          n_mcmc = n_mcmc,

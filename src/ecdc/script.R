@@ -49,7 +49,7 @@ if(date >= as.Date("2020-06-15")) {
     to_add <- d[which(d$countryterritoryCode=="ESP"),][1,]
     to_add$dateRep <- d$dateRep[which(as.Date(d$dateRep) == as.Date("2020-06-15"))][1]
     to_add$day <- 15
-    to_add$cases <- NA
+    to_add$cases <- 0
     to_add$deaths <- 0
     d <- rbind(d, to_add)
   }
