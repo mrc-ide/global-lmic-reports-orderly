@@ -201,7 +201,7 @@ proposal_kernel["start_date", "start_date"] <- 1.5
 logprior <- function(pars){
   squire:::assert_in(names(pars), c("start_date", "R0", "Meff", "Meff_pl")) # good sanity check
   ret <- dunif(x = pars[["start_date"]], min = -55, max = -10, log = TRUE) +
-    dnorm(x = pars[["R0"]], mean = 2.7, sd = 0.5, log = TRUE) +
+    dnorm(x = pars[["R0"]], mean = 3, sd = 1, log = TRUE) +
     dnorm(x = pars[["Meff"]], mean = 2, sd = 2, log = TRUE) +
     dnorm(x = pars[["Meff_pl"]], mean = 6, sd = 3, log = TRUE)
   return(ret)
