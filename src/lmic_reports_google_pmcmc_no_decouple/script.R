@@ -112,18 +112,15 @@ first_start_date <- as.Date(null_na(min_death_date))-55
 ## -----------------------------------------------------------------------------
 
 # 1. Do we have a previous run for this country
-json <- NULL
-json <- tryCatch({
-  json_path <- file.path("https://raw.githubusercontent.com/mrc-ide/global-lmic-reports/master/",iso3c,"input_params.json")
-  suppressWarnings(jsonlite::read_json(json_path))
-}, error = function(e){NULL})
+pars_inits_old <- read.csv("pars_init.csv")
+found_old <- which(pars_inits_old$iso3c == iso3c)
 
-if (!is.null(json) && !is.null(json[[1]]$Meff_pl)) {
+if (length(found_old) == 1) {
   
-  R0_start <- json[[1]]$Rt
-  date_start <- as.Date(json[[1]]$date)
-  Meff_start <- json[[1]]$Meff
-  Meff_pl_start <- json[[1]]$Meff_pl
+  R0_start <- pars_inits_old$R0[found_old]
+  date_start <- as.Date(pars_inits_old$start_date[found_old])
+  Meff_start <- pars_inits_old$Meff[found_old]
+  Meff_pl_start <- pars_inits_old$Meff_pl[found_old]
   
 } else {
   
@@ -306,18 +303,12 @@ writeLines(jsonlite::toJSON(df,pretty = TRUE), "input_params.json")
 ## -----------------------------------------------------------------------------
 
 # 1. Do we have a previous run for this country
-json <- NULL
-json <- tryCatch({
-  json_path <- file.path("https://raw.githubusercontent.com/mrc-ide/global-lmic-reports/master/",iso3c,"input_params_dashboard.json")
-  suppressWarnings(jsonlite::read_json(json_path))
-}, error = function(e){NULL})
-
-if (!is.null(json) && !is.null(json[[1]]$Meff_pl)) {
+if (length(found_old) == 1) {
   
-  R0_start <- json[[1]]$R0
-  date_start <- as.Date(json[[1]]$start_date)
-  Meff_start <- json[[1]]$Meff
-  Meff_pl_start <- json[[1]]$Meff_pl
+  R0_start <- pars_inits_old$R0[found_old]
+  date_start <- as.Date(pars_inits_old$start_date[found_old])
+  Meff_start <- pars_inits_old$Meff[found_old]
+  Meff_pl_start <- pars_inits_old$Meff_pl[found_old]
   
 } else {
   
