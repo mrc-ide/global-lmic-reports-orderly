@@ -59,6 +59,7 @@ if(length(esp_miss) > 0) {
                        "countryterritoryCode" = "ESP",
                        "popData2018" = 46723749,
                        "continentExp" = "Europe")
+  d <- rbind(df_esp, d)
 }
 
   
