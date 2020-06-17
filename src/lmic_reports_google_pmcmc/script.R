@@ -202,8 +202,8 @@ logprior <- function(pars){
   squire:::assert_in(names(pars), c("start_date", "R0", "Meff", "Meff_pl")) # good sanity check
   ret <- dunif(x = pars[["start_date"]], min = -55, max = -10, log = TRUE) +
     dnorm(x = pars[["R0"]], mean = 3, sd = 1, log = TRUE) +
-    dnorm(x = pars[["Meff"]], mean = 2, sd = 2, log = TRUE) +
-    dnorm(x = pars[["Meff_pl"]], mean = 6, sd = 3, log = TRUE)
+    dnorm(x = pars[["Meff"]], mean = 3, sd = 3, log = TRUE) +
+    dnorm(x = pars[["Meff_pl"]], mean = 3, sd = 3, log = TRUE)
   return(ret)
 }
 
@@ -480,6 +480,10 @@ Rt_func_replace <- function(R0_change, R0, Meff) {
 }
 out$pmcmc_results$inputs$Rt_func <- as.function(c(formals(Rt_func_replace), 
                                                   body(Rt_func_replace)), 
+                                                envir = new.env(parent = environment(stats::acf)))
+
+out$pmcmc_results$inputs$prior <- as.function(c(formals(logprior), 
+                                                  body(logprior)), 
                                                 envir = new.env(parent = environment(stats::acf)))
 
 ## -----------------------------------------------------------------------------
