@@ -44,16 +44,23 @@ d[which(d$countryterritoryCode=="PAN" & as.Date(d$dateRep)=="2020-06-03"),]$deat
 
 # fix spain's negative deaths and missing date
 d$deaths[d$countryterritoryCode == "ESP" & d$deaths<0] <- 0
-if(date >= as.Date("2020-06-15")) {
-  if(!any(as.Date(d$dateRep) == date & d$countryterritoryCode=="ESP", na.rm = TRUE)) {
-    to_add <- d[which(d$countryterritoryCode=="ESP"),][1,]
-    to_add$dateRep <- d$dateRep[which(as.Date(d$dateRep) == as.Date("2020-06-15"))][1]
-    to_add$day <- 15
-    to_add$cases <- 0
-    to_add$deaths <- 0
-    d <- rbind(d, to_add)
-  }
+
+# spain seems to have stopped reporting now too...
+esp_miss <- unique(d$dateRep)[which(!unique(d$dateRep) %in% d$dateRep[d$countryterritoryCode=="ESP"])]
+if(length(esp_miss) > 0) {
+  df_esp <- data.frame("dateRep" = esp_miss, 
+                       "day" = as.numeric(format(as.Date(esp_miss), "%d")),
+                       "month" = as.numeric(format(as.Date(esp_miss), "%m")),
+                       "year" = as.numeric(format(as.Date(esp_miss), "%Y")),
+                       "cases" = 0, 
+                       "deaths" = 0,
+                       "Region" = "Spain", 
+                       "geoId" = "ES",
+                       "countryterritoryCode" = "ESP",
+                       "popData2018" = 46723749,
+                       "continentExp" = "Europe")
 }
+
   
 # save 
 saveRDS(d, "ecdc_all.rds")
