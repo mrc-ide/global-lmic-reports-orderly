@@ -1257,7 +1257,8 @@ rt_plot <- function(out) {
                                  Meff_pl = out$replicate_parameters$Meff_pl[y],
                                  date_R0_change = out$interventions$date_R0_change[out$interventions$date_R0_change>out$replicate_parameters$start_date[y]],
                                  date_Meff_change = out$interventions$date_Meff_change, 
-                                 Rt_func = out$pmcmc_results$inputs$Rt_func) 
+                                 Rt_func = out$pmcmc_results$inputs$Rt_func,
+                                 roll = out$pmcmc_results$inputs$roll) 
     }
     
     df <- data.frame(
