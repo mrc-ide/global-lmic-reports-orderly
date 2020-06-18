@@ -252,7 +252,8 @@ out_det <- squire::pmcmc(data = data,
                          required_acceptance_ratio = 0.13,
                          start_covariance_adaptation = 1000,
                          start_scaling_factor_adaptation = 850,
-                         initial_scaling_factor = 0.05
+                         initial_scaling_factor = 0.05, 
+                         roll = 14
 )
 
 ## -----------------------------------------------------------------------------
@@ -424,7 +425,8 @@ out_det <- squire::pmcmc(data = data,
                          required_acceptance_ratio = 0.13,
                          start_covariance_adaptation = 1000,
                          start_scaling_factor_adaptation = 850,
-                         initial_scaling_factor = 0.05
+                         initial_scaling_factor = 0.05, 
+                         roll = 14
 )
 
 ## take the density from the run and save the best fit
