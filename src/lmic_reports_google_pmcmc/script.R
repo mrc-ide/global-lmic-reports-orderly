@@ -253,7 +253,7 @@ out_det <- squire::pmcmc(data = data,
                          start_covariance_adaptation = 1000,
                          start_scaling_factor_adaptation = 850,
                          initial_scaling_factor = 0.05, 
-                         roll = as.numeric(pld - as.Date(pars_inits_old$mobility_start[found_old]))
+                         roll = 0
 )
 
 ## -----------------------------------------------------------------------------
@@ -293,8 +293,10 @@ beta_set <- squire:::beta_est(squire_model = squire_model,
                               R0 = R0)
 
 df <- data.frame(tt_beta = c(0,tt_beta$tt), beta_set = beta_set, 
-                 date = start_date + c(0,tt_beta$tt), Rt = R0, Meff = Meff,
+                 date = start_date + c(0,tt_beta$tt), Rt = R0, 
                  grey_bar_start = FALSE, 
+                 Meff = Meff,
+                 Meff_pl = Meff_pl,
                  rhat_start_date = out_det$pmcmc_results$rhat$psrf["start_date",1],
                  rhat_R0 = out_det$pmcmc_results$rhat$psrf["R0",1],
                  rhat_Meff = out_det$pmcmc_results$rhat$psrf["Meff",1],
@@ -426,7 +428,7 @@ out_det <- squire::pmcmc(data = data,
                          start_covariance_adaptation = 1000,
                          start_scaling_factor_adaptation = 850,
                          initial_scaling_factor = 0.05, 
-                         roll = as.numeric(pld - as.Date(pars_inits_old$mobility_start[found_old]))
+                         roll = 0
 )
 
 ## take the density from the run and save the best fit
