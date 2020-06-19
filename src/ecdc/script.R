@@ -58,7 +58,8 @@ if(length(esp_miss) > 0) {
                        "geoId" = "ES",
                        "countryterritoryCode" = "ESP",
                        "popData2018" = 46723749,
-                       "continentExp" = "Europe")
+                       "continentExp" = "Europe", 
+                       stringsAsFactors = FALSE)
   colnames(df_esp) <- colnames(d)
   d <- rbind(df_esp, d)
 }
