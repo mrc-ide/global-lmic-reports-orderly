@@ -1,7 +1,7 @@
 orderly_id <- tryCatch(orderly::orderly_run_info()$id,
                        error = function(e) "<id>") # bury this in the html, docx
 
-version_min <- "0.4.20"
+version_min <- "0.4.21"
 if(packageVersion("squire") < version_min) {
   stop("squire needs to be updated to at least ", version_min)
 }
@@ -221,7 +221,7 @@ if (iso3c %in% c("BRA", "OMA", "USA")){
 
 # Need min and max date to ensure Meff switch occurs correctly in countries with inferred mobility from ACAPs 
 pld <- post_lockdown_date(interventions[[iso3c]], above, 
-                          max_date = as.Date("2020-06-03"), 
+                          max_date = as.Date("2020-06-04"), 
                           min_date = as.Date(last_start_date)+2)
 
 # sleep so parallel is chill
@@ -253,7 +253,7 @@ out_det <- squire::pmcmc(data = data,
                          start_covariance_adaptation = 1000,
                          start_scaling_factor_adaptation = 850,
                          initial_scaling_factor = 0.05, 
-                         roll = 14
+                         roll = as.numeric(pld - as.Date(pars_inits_old$mobility_start[found_old]))
 )
 
 ## -----------------------------------------------------------------------------
@@ -426,7 +426,7 @@ out_det <- squire::pmcmc(data = data,
                          start_covariance_adaptation = 1000,
                          start_scaling_factor_adaptation = 850,
                          initial_scaling_factor = 0.05, 
-                         roll = 14
+                         roll = as.numeric(pld - as.Date(pars_inits_old$mobility_start[found_old]))
 )
 
 ## take the density from the run and save the best fit

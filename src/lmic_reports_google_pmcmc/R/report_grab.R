@@ -321,3 +321,77 @@ post_lockdown_date <- function(x, above = 1.1, max_date, min_date) {
   }
   
 }
+
+ede <- function (x, y, index) {
+    n = length(x)
+    if (index == 1) {
+      y = -y
+    }
+    ifelse(n >= 4, {
+      LF = y - (y[1] + (y[n] - y[1]) * (x - x[1])/(x[n] - x[1]))
+      jf1 = which.min(LF)
+      xf1 = x[jf1]
+      jf2 = which.max(LF)
+      xf2 = x[jf2]
+      ifelse(jf2 < jf1, {
+        xfx <- NaN
+      }, {
+        xfx <- 0.5 * (xf1 + xf2)
+      })
+    }, {
+      jf1 = NaN
+      jf2 = NaN
+      xfx = NaN
+    })
+    out = matrix(c(jf1, jf2, xfx), nrow = 1, ncol = 3, byrow = TRUE)
+    rownames(out) = "EDE"
+    colnames(out) = c("j1", "j2", "chi")
+    return(out)
+  }
+  
+
+
+mobility_decline_date <- function(x, above = 1.1, max_date, min_date) {
+  
+  message(x$iso3c[1])
+  
+  if(nrow(x)==0) {
+    
+    return(NA)
+    
+  } else {
+  
+  max_date <- as.Date(max_date)
+  min_date <- as.Date(min_date)
+  
+  x <- x[x$date > min_date,]
+  
+  if(any(x$observed)) {
+  
+    get <- x[,c("date","C")]
+  names(get) <- c("time","intensity")
+  
+  } else {
+    
+    m <- predict(loess(C~as.numeric(date), data=x, span = 0.2), type = "response")
+    get <- data.frame("time" = x$date, "intensity" = m)
+    
+  }
+  
+  get$intensity <- (get$intensity - min(get$intensity))/(max(get$intensity)-min(get$intensity))
+  get$time <- as.numeric(get$time)-as.numeric(get$time[1])
+  
+  fitObj <- sicegar::fitAndCategorize(get,
+                                      threshold_minimum_for_intensity_maximum = 0.3,
+                                      threshold_intensity_range = 0.2,
+                                      threshold_t0_max_int = 0.2)
+
+    
+    dat <- max(min_date, x$date[round(fitObj$doubleSigmoidalModel$startDeclinePoint_x)])
+    
+    return(dat)
+    
+  }
+  
+}
+
