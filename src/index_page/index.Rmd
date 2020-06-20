@@ -110,6 +110,7 @@ fig_center <- function() {
 
 # get the ecdc data
 df <- readRDS("ecdc_all.rds")
+names(df)[grep("popData20", names(df))] <- "popData"
 data <- df[,c("dateRep", "deaths", "cases","Region")]
 names(data)[1] <- "date"
 data$date <- as.Date(data$date)
@@ -121,7 +122,7 @@ countries_less_100 <- length(unique(data$Region[!data$Region %in% unique(data$Re
 
 # and with respect to population size
 summed <- group_by(df, Region) %>% summarise(tot = sum(deaths,na.rm=TRUE),
-                                             rel=tot/popData2018[1],
+                                             rel=tot/popData[1],
                                              early = tot<100 && rel < (10/1e6))
 countries_less_pop <- sum(summed$early, na.rm=TRUE)
 
