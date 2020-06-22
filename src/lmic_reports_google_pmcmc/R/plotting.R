@@ -545,13 +545,13 @@ deaths_plot_single <- function(out, data, date_0, date = Sys.Date(),
   if(single) {
     return(rg)
   } else {
-  
-  gg <- gg + theme(legend.position = "none") + ylab("") + ggtitle("Model Fit & 28 Day Projection")
-  
-  leg <- cowplot::get_legend(gg)
-  return(cowplot::plot_grid(leg, 
-                     cowplot::plot_grid(rg, gg+theme(legend.position = "none"),rel_widths=c(0.66,1)),
-                     ncol = 1, rel_heights = c(0.1,1)))
+    
+    gg <- gg + theme(legend.position = "none") + ylab("") + ggtitle("Model Fit & 28 Day Projection")
+    
+    leg <- cowplot::get_legend(gg)
+    return(cowplot::plot_grid(leg, 
+                              cowplot::plot_grid(rg, gg+theme(legend.position = "none"),rel_widths=c(0.66,1)),
+                              ncol = 1, rel_heights = c(0.1,1)))
   }
   
   
@@ -647,9 +647,9 @@ deaths_plot_single_surge <- function(out, out2, data, date_0, date = Sys.Date(),
     geom_vline(xintercept = date, linetype = "dashed")
   
   rg <- gg2 + ylab("Daily Deaths") +
-      ylim(c(0, max(gg2$data[gg2$data$x < date+1,]$ymax, out[[wh]]$inputs$data$deaths+1))) +
-      xlim(c(min(data$date[which(data$deaths>0)]), date)) +
-      theme(legend.position = "none") +
+    ylim(c(0, max(gg2$data[gg2$data$x < date+1,]$ymax, out[[wh]]$inputs$data$deaths+1))) +
+    xlim(c(min(data$date[which(data$deaths>0)]), date)) +
+    theme(legend.position = "none") +
     ggtitle("Model Fit up to Current Day")
   
   gg2 <- gg2 + theme(legend.position = "none") + ylab("") + ggtitle("Model Fit & 28 Day Projection")
@@ -1248,17 +1248,18 @@ rt_plot <- function(out) {
     
     if(wh == "scan_results") {
       Rt <- c(out$replicate_parameters$R0[y], 
-             vapply(tt$change, out[[wh]]$inputs$Rt_func, numeric(1), 
-                    R0 = out$replicate_parameters$R0[y], Meff = out$replicate_parameters$Meff[y])) 
+              vapply(tt$change, out[[wh]]$inputs$Rt_func, numeric(1), 
+                     R0 = out$replicate_parameters$R0[y], Meff = out$replicate_parameters$Meff[y])) 
     } else {
-      Rt <- squire:::evaluate_Rt(R0_change = out$interventions$R0_change[out$interventions$date_R0_change>out$replicate_parameters$start_date[y]], 
-                                 R0 = out$replicate_parameters$R0[y], 
-                                 Meff = out$replicate_parameters$Meff[y], 
-                                 Meff_pl = out$replicate_parameters$Meff_pl[y],
-                                 date_R0_change = out$interventions$date_R0_change[out$interventions$date_R0_change>out$replicate_parameters$start_date[y]],
-                                 date_Meff_change = out$interventions$date_Meff_change, 
-                                 Rt_func = out$pmcmc_results$inputs$Rt_func,
-                                 roll = out$pmcmc_results$inputs$roll) 
+      Rt <- squire:::evaluate_Rt_pmcmc(
+        R0_change = out$interventions$R0_change[out$interventions$date_R0_change>out$replicate_parameters$start_date[y]], 
+        R0 = out$replicate_parameters$R0[y], 
+        Meff = out$replicate_parameters$Meff[y], 
+        Meff_pl = out$replicate_parameters$Meff_pl[y],
+        date_R0_change = out$interventions$date_R0_change[out$interventions$date_R0_change>out$replicate_parameters$start_date[y]],
+        date_Meff_change = out$interventions$date_Meff_change, 
+        roll = out$pmcmc_results$inputs$roll,
+        start_date = out$replicate_parameters$start_date[y]) 
     }
     
     df <- data.frame(
@@ -1286,11 +1287,11 @@ rt_plot <- function(out) {
   new_rt_all <- fill(new_rt_all, all_of(column_names), .direction = c("up"))
   
   suppressMessages(sum_rt <- group_by(new_rt_all, iso, date) %>% 
-    summarise(Rt_min = quantile(Rt, 0.025),
-              Rt_q25 = quantile(Rt, 0.25),
-              Rt_q75 = quantile(Rt, 0.75),
-              Rt_max = quantile(Rt, 0.975),
-              Rt = mean(Rt)))
+                     summarise(Rt_min = quantile(Rt, 0.025),
+                               Rt_q25 = quantile(Rt, 0.25),
+                               Rt_q75 = quantile(Rt, 0.75),
+                               Rt_max = quantile(Rt, 0.975),
+                               Rt = mean(Rt)))
   
   country_plot <- function(vjust = -1.2) {
     ggplot(sum_rt, aes(x=date, y = Rt, ymin=Rt_min, ymax = Rt_max, group = iso, fill = iso)) +

@@ -1,7 +1,7 @@
 orderly_id <- tryCatch(orderly::orderly_run_info()$id,
                        error = function(e) "<id>") # bury this in the html, docx
 
-version_min <- "0.4.21"
+version_min <- "0.4.22"
 if(packageVersion("squire") < version_min) {
   stop("squire needs to be updated to at least ", version_min)
 }
@@ -72,7 +72,7 @@ date_contact_matrix_set_change <- NULL
 
 squire_model <- squire::explicit_model()
 pars_obs <- NULL
-R0_prior <- list("func" = dnorm, args = list("mean"= 3, "sd"= 0.5, "log" = TRUE))
+R0_prior <- list("func" = dnorm, args = list("mean"= 3, "sd"= 1, "log" = TRUE))
 Rt_func <- function(R0_change, R0, Meff) {
   R0 * (2 * plogis(-(R0_change-1) * -Meff))
 }
@@ -102,8 +102,10 @@ R0_min <- 1.6
 R0_max <- 5.6
 Meff_min <- 0.5
 Meff_max <- 10
-Meff_pl_min <- 0.5
-Meff_pl_max <- 15
+#Meff_pl_min <- -3
+Meff_pl_min <- 0
+#Meff_pl_max <- 5
+Meff_pl_max <- 1
 last_start_date <- as.Date(null_na(min_death_date))-10
 first_start_date <- as.Date(null_na(min_death_date))-55
 
@@ -112,15 +114,19 @@ first_start_date <- as.Date(null_na(min_death_date))-55
 ## -----------------------------------------------------------------------------
 
 # 1. Do we have a previous run for this country
-pars_inits_old <- read.csv("pars_init.csv")
-found_old <- which(pars_inits_old$iso3c == iso3c)
+# 1. Do we have a previous run for this country
+json <- NULL
+json <- tryCatch({
+  json_path <- file.path("https://raw.githubusercontent.com/mrc-ide/global-lmic-reports/master/",iso3c,"input_params_dashboard.json")
+  suppressWarnings(jsonlite::read_json(json_path))
+}, error = function(e){NULL})
 
-if (length(found_old) == 1) {
+if (!is.null(json) && !is.null(json$Meff) && json$Meff_pl[1]<=1) {
   
-  R0_start <- pars_inits_old$R0[found_old]
-  date_start <- as.Date(pars_inits_old$start_date[found_old])
-  Meff_start <- pars_inits_old$Meff[found_old]
-  Meff_pl_start <- pars_inits_old$Meff_pl[found_old]
+  R0_start <- json[[1]]$Rt
+  date_start <- json[[1]]$date
+  Meff_start <- json[[1]]$Meff
+  Meff_pl_start <- json[[1]]$Meff_pl
   
 } else {
   
@@ -158,14 +164,14 @@ if (length(found_old) == 1) {
   
   Sys.setenv("SQUIRE_PARALLEL_DEBUG" = FALSE)
   
-  ## and save the info for the interface
+  ## and get the best  position
   pos <- which(out_det$scan_results$mat_log_ll == max(out_det$scan_results$mat_log_ll), arr.ind = TRUE)
   
   # get tthe R0, betas and times into a data frame
   R0_start <- out_det$scan_results$x[pos[1]]
   date_start <- as.Date(out_det$scan_results$y[pos[2]])
   Meff_start <- out_det$scan_results$z[pos[3]]
-  Meff_pl_start <- Meff_start*1.2
+  Meff_pl_start <- 0.2
   
 }
 
@@ -195,12 +201,21 @@ rownames(proposal_kernel) <- colnames(proposal_kernel) <- names(pars_init)
 proposal_kernel["start_date", "start_date"] <- 1.5
 
 # MCMC Functions - Prior and Likelihood Calculation
+# logprior <- function(pars){
+#   squire:::assert_in(names(pars), c("start_date", "R0", "Meff", "Meff_pl")) # good sanity check
+#   ret <- dunif(x = pars[["start_date"]], min = -55, max = -10, log = TRUE) +
+#     dnorm(x = pars[["R0"]], mean = 3, sd = 1, log = TRUE) +
+#     dnorm(x = pars[["Meff"]], mean = 3, sd = 3, log = TRUE) +
+#     dnorm(x = pars[["Meff_pl"]], mean = 0, sd = 3, log = TRUE)
+#   return(ret)
+# }
+
 logprior <- function(pars){
   squire:::assert_in(names(pars), c("start_date", "R0", "Meff", "Meff_pl")) # good sanity check
   ret <- dunif(x = pars[["start_date"]], min = -55, max = -10, log = TRUE) +
     dnorm(x = pars[["R0"]], mean = 3, sd = 1, log = TRUE) +
     dnorm(x = pars[["Meff"]], mean = 3, sd = 3, log = TRUE) +
-    dnorm(x = pars[["Meff_pl"]], mean = 3, sd = 3, log = TRUE)
+    dunif(x = pars[["Meff_pl"]], min = 0, max = 1, log = TRUE)
   return(ret)
 }
 
@@ -218,12 +233,10 @@ if (iso3c %in% c("BRA", "OMA", "USA")){
 }
 
 # N.B. look at strucchange and segmented for maybe a better way to do this
-
-# Need min and max date to ensure Meff switch occurs correctly in countries with inferred mobility from ACAPs 
-pld <- post_lockdown_date(interventions[[iso3c]], above, 
-                          max_date = as.Date("2020-06-04"), 
-                          min_date = as.Date(last_start_date)+2)
-
+pld <- post_lockdown_date(interventions[[iso3c]], 1, 
+                          max_date = as.Date("2020-06-04"),
+                          min_date = as.Date("2020-02-01"))
+                        
 # sleep so parallel is chill
 Sys.sleep(time = runif(1, 0, sleep))
 out_det <- squire::pmcmc(data = data, 
@@ -235,7 +248,6 @@ out_det <- squire::pmcmc(data = data,
                          squire_model = squire:::deterministic_model(),
                          output_proposals = FALSE,
                          n_chains = n_chains,
-                         Rt_func = Rt_func,
                          pars_obs = pars_obs,
                          pars_init = pars_init,
                          pars_min = pars_min,
@@ -249,12 +261,9 @@ out_det <- squire::pmcmc(data = data,
                          burnin = ceiling(n_mcmc/10),
                          seeding_cases = 5,
                          replicates = replicates,
-                         required_acceptance_ratio = 0.13,
-                         start_covariance_adaptation = 1000,
-                         start_scaling_factor_adaptation = 850,
-                         initial_scaling_factor = 0.05, 
-                         roll = 0
-)
+                         required_acceptance_ratio = 0.20,
+                         start_adaptation = 1000,
+                         roll = 7)
 
 ## -----------------------------------------------------------------------------
 ## Step 2b: Summarise Fits for Interface
@@ -270,6 +279,9 @@ start_date <- squire:::offset_to_start_date(data$date[1],round(best$start_date))
 Meff <- best$Meff
 Meff_pl <- best$Meff_pl
 
+df_dash <- data.frame("start_date" = start_date, "R0" = R0, "Meff" = Meff, "Meff_pl" = Meff_pl, 
+                      "iso3c" = iso3c, "run_date" = date, "pld" = pld)
+
 if(!is.null(date_R0_change)) {
   tt_beta <- squire:::intervention_dates_for_odin(dates = date_R0_change,
                                                   change = R0_change,
@@ -280,11 +292,11 @@ if(!is.null(date_R0_change)) {
 }
 
 if(!is.null(R0_change)) {
-  R0 <- squire:::evaluate_Rt(R0_change = tt_beta$change, R0 = R0, Meff = Meff, 
-                             Meff_pl = Meff_pl, 
+  R0 <- squire:::evaluate_Rt_pmcmc(R0_change = tt_beta$change, R0 = R0, Meff = Meff, 
+                             Meff_pl = Meff_pl, start_date = start_date,
                              date_R0_change = date_R0_change[date_R0_change>start_date], 
                              date_Meff_change = out_det$pmcmc_results$inputs$interventions$date_Meff_change,
-                             Rt_func = Rt_func)
+                             roll = 7)
 } else {
   R0 <- R0
 }
@@ -294,13 +306,7 @@ beta_set <- squire:::beta_est(squire_model = squire_model,
 
 df <- data.frame(tt_beta = c(0,tt_beta$tt), beta_set = beta_set, 
                  date = start_date + c(0,tt_beta$tt), Rt = R0, 
-                 grey_bar_start = FALSE, 
-                 Meff = Meff,
-                 Meff_pl = Meff_pl,
-                 rhat_start_date = out_det$pmcmc_results$rhat$psrf["start_date",1],
-                 rhat_R0 = out_det$pmcmc_results$rhat$psrf["R0",1],
-                 rhat_Meff = out_det$pmcmc_results$rhat$psrf["Meff",1],
-                 rhat_Meff_pl = out_det$pmcmc_results$rhat$psrf["Meff_pl",1])
+                 grey_bar_start = FALSE)
 
 # add in grey bar start for interface
 ox_interventions <- readRDS("oxford_grt.rds")
@@ -308,6 +314,7 @@ ox_interventions_unique <- squire:::interventions_unique(ox_interventions[[iso3c
 df$grey_bar_start[which.min(abs(as.numeric(df$date - ox_interventions_unique$dates_change[1])))] <- TRUE
 
 writeLines(jsonlite::toJSON(df,pretty = TRUE), "input_params.json")
+writeLines(jsonlite::toJSON(df_dash,pretty = TRUE), "input_params_dashboard.json")
 
 
 ## -----------------------------------------------------------------------------
@@ -315,145 +322,7 @@ writeLines(jsonlite::toJSON(df,pretty = TRUE), "input_params.json")
 ## -----------------------------------------------------------------------------
 
 ## -----------------------------------------------------------------------------
-## Step 3a: Fit Detreministic Model Again
-## -----------------------------------------------------------------------------
-
-## -----------------------------------------------------------------------------
-## Step 3a: Sourcing previous fits to start pmcmc nearby
-## -----------------------------------------------------------------------------
-
-# 1. Do we have a previous run for this country
-# json <- NULL
-# json <- tryCatch({
-#   json_path <- file.path("https://raw.githubusercontent.com/mrc-ide/global-lmic-reports/master/",iso3c,"input_params_dashboard.json")
-#   suppressWarnings(jsonlite::read_json(json_path))
-# }, error = function(e){NULL})
-
-if (length(found_old) > 0) {
-  
-  R0_start <- pars_inits_old$R0[found_old]
-  date_start <- as.Date(pars_inits_old$start_date[found_old])
-  Meff_start <- pars_inits_old$Meff[found_old]
-  Meff_pl_start <- pars_inits_old$Meff_pl[found_old]
-  
-} else {
-  
-  # have at least a week span for start date
-  span_date_currently <- seq.Date(first_start_date, last_start_date, 1)
-  day_step <- as.numeric(round((last_start_date - first_start_date + 1)/12))
-  
-  Sys.setenv("SQUIRE_PARALLEL_DEBUG" = "TRUE")
-  
-  # do coarse grid search to get in the right ball park
-  out_det <- squire::calibrate(
-    data = data,
-    R0_min = R0_min,
-    R0_max = R0_max,
-    R0_step = (R0_max - R0_min)/grid_spread,
-    R0_prior = R0_prior,
-    Meff_min = Meff_min,
-    Meff_max = Meff_max,
-    Meff_step = (Meff_max - Meff_min)/grid_spread,
-    Rt_func = Rt_func,
-    first_start_date = first_start_date,
-    last_start_date = last_start_date,
-    day_step = day_step,
-    squire_model = squire:::deterministic_model(),
-    pars_obs = pars_obs,
-    n_particles = 1,
-    reporting_fraction = reporting_fraction,
-    R0_change = R0_change,
-    date_R0_change = date_R0_change,
-    replicates = replicates,
-    country = country,
-    forecast = 0
-  )
-  
-  Sys.setenv("SQUIRE_PARALLEL_DEBUG" = FALSE)
-  
-  ## and get the best point
-  pos <- which(out_det$scan_results$mat_log_ll == max(out_det$scan_results$mat_log_ll), arr.ind = TRUE)
-  
-  # get tthe R0, betas and times into a data frame
-  R0_start <- out_det$scan_results$x[pos[1]]
-  date_start <- as.Date(out_det$scan_results$y[pos[2]])
-  Meff_start <- out_det$scan_results$z[pos[3]]
-  Meff_pl_start <- Meff_start*1.2
-  
-}
-
-R0_start <- min(max(R0_start, R0_min), R0_max)
-date_start <- min(max(as.Date(date_start), as.Date(first_start_date)), as.Date(last_start_date))
-Meff_start <- min(max(Meff_start, Meff_min), Meff_max)
-Meff_pl_start <- min(max(Meff_pl_start), Meff_pl_max)
-
-## -----------------------------------------------------------------------------
-## Step 3b: PMCMC parameter set up
-## -----------------------------------------------------------------------------
-
-# PMCMC Parameters
-pars_init = list('start_date' = date_start, 
-                 'R0' = R0_start, 
-                 'Meff' = Meff_start, 
-                 'Meff_pl' = Meff_pl_start)
-
-# First redo the deterministic model fit based on 20 seeds to get the parameter space
-
-# sleep so parallel is chill
-Sys.sleep(time = runif(1, 0, sleep))
-
-out_det <- squire::pmcmc(data = data, 
-                         n_mcmc = n_mcmc,
-                         log_prior = logprior,
-                         n_particles = 1,
-                         steps_per_day = 20,
-                         log_likelihood = NULL,
-                         squire_model = squire:::deterministic_model(),
-                         output_proposals = FALSE,
-                         n_chains = n_chains,
-                         Rt_func = Rt_func,
-                         pars_obs = pars_obs,
-                         pars_init = pars_init,
-                         pars_min = pars_min,
-                         pars_max = pars_max,
-                         pars_discrete = pars_discrete,
-                         proposal_kernel = proposal_kernel,
-                         country = country, 
-                         R0_change = R0_change,
-                         date_R0_change = date_R0_change,
-                         date_Meff_change = pld, 
-                         burnin = ceiling(n_mcmc/10),
-                         replicates = replicates,
-                         required_acceptance_ratio = 0.13,
-                         start_covariance_adaptation = 1000,
-                         start_scaling_factor_adaptation = 850,
-                         initial_scaling_factor = 0.05, 
-                         roll = 0
-)
-
-## take the density from the run and save the best fit
-all_chains <- do.call(rbind,lapply(out_det$pmcmc_results$chains, "[[", "results"))
-best <- all_chains[which.max(all_chains$log_posterior), ]
-
-# get the R0, betas and times into a data frame
-R0 <- best$R0
-start_date <- squire:::offset_to_start_date(data$date[1],round(best$start_date))
-Meff <- best$Meff
-Meff_pl <- best$Meff_pl
-  
-df <- data.frame(start_date = start_date, 
-                 R0 = R0, 
-                 Meff = Meff,
-                 Meff_pl = Meff_pl, 
-                 rhat_start_date = out_det$pmcmc_results$rhat$psrf["start_date",1],
-                 rhat_R0 = out_det$pmcmc_results$rhat$psrf["R0",1],
-                 rhat_Meff = out_det$pmcmc_results$rhat$psrf["Meff",1],
-                 rhat_Meff_pl = out_det$pmcmc_results$rhat$psrf["Meff_pl",1])
-
-writeLines(jsonlite::toJSON(df,pretty = TRUE), "input_params_dashboard.json")
-
-## -----------------------------------------------------------------------------
-## Step 3c: Fit Stochastic Model
+## Step 3a: Fit Stochastic Model
 ## -----------------------------------------------------------------------------
 
 Sys.setenv("SQUIRE_PARALLEL_DEBUG" = "TRUE")
@@ -474,15 +343,7 @@ out <- generate_draws_pmcmc(pmcmc = pmcmc,
                             interventions = out$interventions,
                             data = out$pmcmc_results$inputs$data)
 
-# Reassign the Rt_func_replace with stats environment as for some reason this is grabbing the environment
-# and adding like 50Mb plus to the object being saved!
-Rt_func_replace <- function(R0_change, R0, Meff) {
-  R0 * (2 * plogis(-(R0_change-1) * -Meff))
-}
-out$pmcmc_results$inputs$Rt_func <- as.function(c(formals(Rt_func_replace), 
-                                                  body(Rt_func_replace)), 
-                                                envir = new.env(parent = environment(stats::acf)))
-
+# Add the prior
 out$pmcmc_results$inputs$prior <- as.function(c(formals(logprior), 
                                                   body(logprior)), 
                                                 envir = new.env(parent = environment(stats::acf)))
@@ -540,7 +401,10 @@ for(i in 1:3) {
 }
 
 ggsave("fitting.pdf",width=7, height=11, 
-       gridExtra::marrangeGrob(grobs = plots[1:3], nrow=3, ncol=1,top=NULL, heights = c(1.5, 6, 6)))
+       gridExtra::marrangeGrob(grobs = c(list(cowplot::as_grob(header)),
+                                         plots[2],
+                                         list(cowplot::as_grob(bottom))), 
+                               nrow=3, ncol=1,top=NULL, heights = c(1.5, 6, 6)))
 dev.off()
 file.remove(nms)
 file.remove("Rplots.pdf")
@@ -567,16 +431,51 @@ fr0 <- tail(out$interventions$R0_change,1)
 time_period <- 365
 rel_R0 <- function(rel = 0.5, Meff_mult = 1) {
   R0_ch <- 1-((1-fr0)*rel)
-  wanted <- vapply(seq_along(out$replicate_parameters$R0), function(i){
-    out$pmcmc_results$inputs$Rt_func(R0_ch, 
-                                     R0 = out$replicate_parameters$R0[i], 
-                                     Meff = out$replicate_parameters$Meff[i]*Meff_mult)
+  
+  current <-  vapply(seq_along(out$replicate_parameters$R0), function(y){
+    
+    if(!is.null(date_R0_change)) {
+      tt_beta <- squire:::intervention_dates_for_odin(dates = out$interventions$date_R0_change,
+                                                      change = out$interventions$R0_change,
+                                                      start_date = out$replicate_parameters$start_date[y],
+                                                      steps_per_day = 1/out$parameters$dt)
+    } else {
+      tt_beta <- 0
+    }
+    
+    tail(squire:::evaluate_Rt_pmcmc(
+      R0_change = c(out$interventions$R0_change[out$interventions$date_R0_change>out$replicate_parameters$start_date[y]],fr0), 
+      R0 = out$replicate_parameters$R0[y], 
+      Meff = out$replicate_parameters$Meff[y], 
+      Meff_pl = out$replicate_parameters$Meff_pl[y],
+      date_R0_change = c(out$interventions$date_R0_change[out$interventions$date_R0_change>out$replicate_parameters$start_date[y]],as.Date(date)+1),
+      date_Meff_change = out$interventions$date_Meff_change, 
+      roll = out$pmcmc_results$inputs$roll,
+      start_date = out$replicate_parameters$start_date[y]),1)
   }, numeric(1))
-  current <- vapply(seq_along(out$replicate_parameters$R0), function(i){
-    out$pmcmc_results$inputs$Rt_func(fr0, 
-                                     R0 = out$replicate_parameters$R0[i], 
-                                     Meff = out$replicate_parameters$Meff[i])
+  
+  wanted <-  vapply(seq_along(out$replicate_parameters$R0), function(y){
+    
+    if(!is.null(date_R0_change)) {
+      tt_beta <- squire:::intervention_dates_for_odin(dates = out$interventions$date_R0_change,
+                                                      change = out$interventions$R0_change,
+                                                      start_date = out$replicate_parameters$start_date[y],
+                                                      steps_per_day = 1/out$parameters$dt)
+    } else {
+      tt_beta <- 0
+    }
+    
+    tail(squire:::evaluate_Rt_pmcmc(
+      R0_change = c(out$interventions$R0_change[out$interventions$date_R0_change>out$replicate_parameters$start_date[y]],R0_ch), 
+      R0 = out$replicate_parameters$R0[y], 
+      Meff = out$replicate_parameters$Meff[y], 
+      Meff_pl = out$replicate_parameters$Meff_pl[y],
+      date_R0_change = c(out$interventions$date_R0_change[out$interventions$date_R0_change>out$replicate_parameters$start_date[y]],as.Date(date)+1),
+      date_Meff_change = out$interventions$date_Meff_change, 
+      roll = out$pmcmc_results$inputs$roll,
+      start_date = out$replicate_parameters$start_date[y]),1)
   }, numeric(1))
+  
   mean(wanted/current)
 }
 
