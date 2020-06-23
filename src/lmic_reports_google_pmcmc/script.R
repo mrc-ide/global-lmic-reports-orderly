@@ -102,10 +102,10 @@ R0_min <- 1.6
 R0_max <- 5.6
 Meff_min <- 0.5
 Meff_max <- 10
-#Meff_pl_min <- -3
-Meff_pl_min <- 0
-#Meff_pl_max <- 5
-Meff_pl_max <- 1
+Meff_pl_min <- -3
+#Meff_pl_min <- 0
+Meff_pl_max <- 10
+#Meff_pl_max <- 1
 last_start_date <- as.Date(null_na(min_death_date))-10
 first_start_date <- as.Date(null_na(min_death_date))-55
 
@@ -201,26 +201,26 @@ rownames(proposal_kernel) <- colnames(proposal_kernel) <- names(pars_init)
 proposal_kernel["start_date", "start_date"] <- 1.5
 
 # MCMC Functions - Prior and Likelihood Calculation
-# logprior <- function(pars){
-#   squire:::assert_in(names(pars), c("start_date", "R0", "Meff", "Meff_pl")) # good sanity check
-#   ret <- dunif(x = pars[["start_date"]], min = -55, max = -10, log = TRUE) +
-#     dnorm(x = pars[["R0"]], mean = 3, sd = 1, log = TRUE) +
-#     dnorm(x = pars[["Meff"]], mean = 3, sd = 3, log = TRUE) +
-#     dnorm(x = pars[["Meff_pl"]], mean = 0, sd = 3, log = TRUE)
-#   return(ret)
-# }
-
 logprior <- function(pars){
   squire:::assert_in(names(pars), c("start_date", "R0", "Meff", "Meff_pl")) # good sanity check
   ret <- dunif(x = pars[["start_date"]], min = -55, max = -10, log = TRUE) +
     dnorm(x = pars[["R0"]], mean = 3, sd = 1, log = TRUE) +
     dnorm(x = pars[["Meff"]], mean = 3, sd = 3, log = TRUE) +
-    dunif(x = pars[["Meff_pl"]], min = 0, max = 1, log = TRUE)
+    dnorm(x = pars[["Meff_pl"]], mean = 0, sd = 1, log = TRUE)
   return(ret)
 }
 
+# logprior <- function(pars){
+#   squire:::assert_in(names(pars), c("start_date", "R0", "Meff", "Meff_pl")) # good sanity check
+#   ret <- dunif(x = pars[["start_date"]], min = -55, max = -10, log = TRUE) +
+#     dnorm(x = pars[["R0"]], mean = 3, sd = 1, log = TRUE) +
+#     dnorm(x = pars[["Meff"]], mean = 3, sd = 3, log = TRUE) +
+#     dunif(x = pars[["Meff_pl"]], min = 0, max = 1, log = TRUE)
+#   return(ret)
+# }
+
 # Meff_date_change. look at when mobility has increased by 20%
-above <- 1.2
+above <- 1.1
 
 # These countries have peculiar weekend effec ts that are slghtly messing with calculating this
 # so have to switch the point at which we calculate their lockdown date
@@ -321,7 +321,7 @@ writeLines(jsonlite::toJSON(df_dash,pretty = TRUE), "input_params_dashboard.json
 ## Step 3: Particle Filter
 ## -----------------------------------------------------------------------------
 
-## -----------------------------------------------------------------------------
+## -----------------------------------------------------------------------------  
 ## Step 3a: Fit Stochastic Model
 ## -----------------------------------------------------------------------------
 
@@ -493,7 +493,7 @@ mitigation_3months_lift <- squire::projections(out,
 
 # Relax by 50% for 3 months and then return to pre-intervention levels 
 reverse_3_months_lift <- squire::projections(out, 
-                                             R0_change = c(rel_R0(0.5), rel_R0(0)), 
+                                             R0_change = c(1.5, rel_R0(0)), 
                                              tt_R0 = c(0, 90), 
                                              time_period = time_period)
 
@@ -579,7 +579,7 @@ mitigation_3months_lift_surged <- squire::projections(out_surged,
                                                       time_period = time_period)
 
 reverse_3_months_lift_surged <- squire::projections(out_surged, 
-                                                    R0_change = c(rel_R0(0.5), rel_R0(0)), 
+                                                    R0_change = c(1.5, rel_R0(0)), 
                                                     tt_R0 = c(0, 90), 
                                                     time_period = time_period)
 
