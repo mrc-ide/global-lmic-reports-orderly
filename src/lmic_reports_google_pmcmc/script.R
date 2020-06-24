@@ -206,7 +206,7 @@ logprior <- function(pars){
   ret <- dunif(x = pars[["start_date"]], min = -55, max = -10, log = TRUE) +
     dnorm(x = pars[["R0"]], mean = 3, sd = 1, log = TRUE) +
     dnorm(x = pars[["Meff"]], mean = 3, sd = 3, log = TRUE) +
-    dnorm(x = pars[["Meff_pl"]], mean = 0, sd = 1, log = TRUE)
+    dnorm(x = pars[["Meff_pl"]], mean = 0, sd = 3, log = TRUE)
   return(ret)
 }
 
@@ -233,7 +233,7 @@ if (iso3c %in% c("BRA", "OMA", "USA")){
 }
 
 # N.B. look at strucchange and segmented for maybe a better way to do this
-pld <- post_lockdown_date(interventions[[iso3c]], 1, 
+pld <- post_lockdown_date(interventions[[iso3c]], 1.2, 
                           max_date = as.Date("2020-06-04"),
                           min_date = as.Date("2020-02-01"))
                         

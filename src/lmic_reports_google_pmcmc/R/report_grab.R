@@ -323,6 +323,44 @@ post_lockdown_date <- function(x, above = 1.1, max_date, min_date) {
   
 }
 
+post_lockdown_date_relative <- function(x, above = 1.1, max_date, min_date) {
+  
+  if(nrow(x)==0) {
+    
+    return(NA)
+    
+  } else {
+    
+    if(any(x$observed)) {
+      m <- predict(loess(C~as.numeric(date), data=x, span = 0.2), type = "response")
+    } else {
+      m <- predict(loess(C~as.numeric(date), data=x, span = 0.2), type = "response")
+      #m <- x$C
+    }
+    min_mob <- min(m)
+    diff <- 1 - min_mob
+    
+    pl <- NA
+    while(is.na(pl)) {
+      above15 <- which(m >= above*min_mob)
+      pl <- above15[which(above15>which.min(m))[1]]
+      above <- above*0.99
+    }
+    
+    # if past max date then take the last local  minimum and grow by 4 days
+    if(x$date[pl] > max_date) {
+      min_f <- which(diff(sign(diff(m)))==2)+1
+      pl <- min_f[tail(which(x$date[min_f] < max_date),1)] + 4
+    } 
+    
+    dat <- max(min_date, as.Date(x$date[pl]))
+    
+    return(dat)
+    
+  }
+  
+}
+
 ede <- function (x, y, index) {
   n = length(x)
   if (index == 1) {
