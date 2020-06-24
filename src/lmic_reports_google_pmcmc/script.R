@@ -406,7 +406,6 @@ ggsave("fitting.pdf",width=7, height=14,
                                          plots[1],
                                          list(cowplot::as_grob(bottom))), 
                                nrow=3, ncol=1,top=NULL, heights = c(1, 5, 6)))
-dev.off()
 file.remove("top_row.png")
 
 
