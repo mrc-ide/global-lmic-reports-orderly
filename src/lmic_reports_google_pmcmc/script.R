@@ -221,7 +221,7 @@ if (iso3c %in% c("BRA", "OMA", "USA")){
 
 # Need min and max date to ensure Meff switch occurs correctly in countries with inferred mobility from ACAPs 
 pld <- post_lockdown_date(interventions[[iso3c]], above, 
-                          max_date = as.Date("2020-06-04"), 
+                          max_date = as.Date("2020-06-02"), 
                           min_date = as.Date(last_start_date)+2)
 
 # sleep so parallel is chill
