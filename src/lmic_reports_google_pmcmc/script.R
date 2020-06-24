@@ -224,17 +224,17 @@ above <- 1.1
 
 # These countries have peculiar weekend effec ts that are slghtly messing with calculating this
 # so have to switch the point at which we calculate their lockdown date
-if (iso3c %in% c("BRA", "OMA", "USA")){
-  above <- 1.1
-} else if(iso3c %in% c("SWE")) {
-  above <- 1.05
-} else if(iso3c %in% c("MEX")) {
-  above <- 1.025
-}
+# if (iso3c %in% c("BRA", "OMA", "USA")){
+#   above <- 1.1
+# } else if(iso3c %in% c("SWE")) {
+#   above <- 1.05
+# } else if(iso3c %in% c("MEX")) {
+#   above <- 1.025
+# }
 
 # N.B. look at strucchange and segmented for maybe a better way to do this
-pld <- post_lockdown_date(interventions[[iso3c]], 1.2, 
-                          max_date = as.Date("2020-06-04"),
+pld <- post_lockdown_date_relative(interventions[[iso3c]], above, 
+                          max_date = as.Date("2020-06-02"),
                           min_date = as.Date("2020-02-01"))
                         
 # sleep so parallel is chill

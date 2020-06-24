@@ -342,7 +342,7 @@ post_lockdown_date_relative <- function(x, above = 1.1, max_date, min_date) {
     
     pl <- NA
     while(is.na(pl)) {
-      above15 <- which(m >= above*min_mob)
+      above15 <- which(m >= ((above-1)*diff)+min_mob)
       pl <- above15[which(above15>which.min(m))[1]]
       above <- above*0.99
     }
