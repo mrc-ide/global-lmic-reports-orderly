@@ -1221,7 +1221,7 @@ intervention_plot_google <- function(res, date, data, forecast) {
     geom_point() + 
     scale_color_discrete(name = "Observed") +
     theme_bw() + 
-    theme(legend.position = c(0.1,0.3)) + 
+    theme(legend.position = "top") + 
     ylab("% Mobility") + 
     xlab("Date")
   

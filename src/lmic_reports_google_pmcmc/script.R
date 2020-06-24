@@ -21,6 +21,13 @@ ecdc <- readRDS("ecdc_all.rds")
 country <- squire::population$country[match(iso3c, squire::population$iso3c)[1]]
 df <- ecdc[which(ecdc$countryterritoryCode == iso3c),]
 
+# Remove any deaths at beginning that were followed by 21 days of no deaths as we have no information in these situations
+if(sum(df$deaths>0)>1) {
+if(tail(diff(which(df$deaths>0)),1) > 21) {
+  df$deaths[tail(which(df$deaths>0),1)] <- 0
+}
+}
+
 # get the raw data correct
 data <- df[,c("dateRep", "deaths", "cases")]
 names(data)[1] <- "date"
@@ -219,8 +226,8 @@ logprior <- function(pars){
 #   return(ret)
 # }
 
-# Meff_date_change. look at when mobility has increased by 20%
-above <- 1.1
+# Meff_date_change. look at when mobility has increased by 10%
+above <- 1.05
 
 # These countries have peculiar weekend effec ts that are slghtly messing with calculating this
 # so have to switch the point at which we calculate their lockdown date
@@ -236,7 +243,7 @@ above <- 1.1
 pld <- post_lockdown_date_relative(interventions[[iso3c]], above, 
                           max_date = as.Date("2020-06-02"),
                           min_date = as.Date("2020-02-01"))
-                        
+                 
 # sleep so parallel is chill
 Sys.sleep(time = runif(1, 0, sleep))
 out_det <- squire::pmcmc(data = data, 
@@ -372,42 +379,36 @@ line <- ggplot() + cowplot::draw_line(x = 0:10, y=1) +
 
 header <- cowplot::plot_grid(title, line, ncol = 1)
 
-png("header.png", height = 0.5, width = 8, units = "in", res = 300)
-header
-dev.off()
-
-
 index <- squire:::odin_index(out$model)
 forecast <- 0
 
 suppressWarnings(d <- deaths_plot_single(out, data, date = date,date_0 = date_0, forecast = forecast, single = TRUE) + 
                    theme(legend.position = "none"))
 
-intervention <- intervention_plot_google(interventions[[iso3c]], date, data, forecast)
+intervention <- intervention_plot_google(interventions[[iso3c]], date, data, forecast) + 
+  geom_vline(xintercept = pld)
 
+rtp <- rt_plot(out)$plot
 
-bottom <- cowplot::plot_grid(intervention, d,
+bottom <- cowplot::plot_grid(intervention + scale_x_date(limits = as.Date(c(data$date[data$deaths>0][1],date_0))), 
+                             d,
+                             rtp + scale_x_date(limits = as.Date(c(data$date[data$deaths>0][1],date_0))),
                              ncol=1,
-                             rel_heights = c(0.4,0.6))
-cowplot::save_plot("bottom.png", bottom, base_height = 6, base_width = 8)
+                             rel_heights = c(0.4,0.6,0.4))
 
 plots <- list() 
+img <- png::readPNG("top_row.png")
+plots[[1]] <- grid::rasterGrob(img, interpolate = FALSE)
 
-nms <- c("header.png", "top_row.png", "bottom.png")
-for(i in 1:3) {
-  x <- nms[i]
-  img <- png::readPNG(x)
-  plots[[i]] <- grid::rasterGrob(img, interpolate = FALSE)
-}
 
-ggsave("fitting.pdf",width=7, height=11, 
+ggsave("fitting.pdf",width=7, height=14, 
        gridExtra::marrangeGrob(grobs = c(list(cowplot::as_grob(header)),
-                                         plots[2],
+                                         plots[1],
                                          list(cowplot::as_grob(bottom))), 
-                               nrow=3, ncol=1,top=NULL, heights = c(1.5, 6, 6)))
+                               nrow=3, ncol=1,top=NULL, heights = c(1, 5, 6)))
 dev.off()
-file.remove(nms)
-file.remove("Rplots.pdf")
+file.remove("top_row.png")
+
 
 ## Save the grid out object
 
@@ -698,7 +699,8 @@ if (full_scenarios) {
 r_list_pass <- r_list
 
 o_list <- lapply(r_list_pass, squire::format_output,
-                 var_select = c("infections","deaths","hospital_demand","ICU_demand", "D"),
+                 var_select = c("infections","deaths","hospital_demand",
+                                "ICU_demand", "D", "hospital_incidence","ICU_incidence"),
                  date_0 = date_0)
 
 ## -----------------------------------------------------------------------------
@@ -788,6 +790,7 @@ data_sum$iso3c <- iso3c
 data_sum$report_date <- date
 data_sum <- data_sum[data_sum$compartment != "D",]
 data_sum$version <- "v3"
+data_sum <- dplyr::mutate(data_sum, across(dplyr::starts_with("y_"), ~round(.x,digits = 2)))
 write.csv(data_sum, "projections.csv", row.names = FALSE, quote = FALSE)
 
 ## -----------------------------------------------------------------------------
