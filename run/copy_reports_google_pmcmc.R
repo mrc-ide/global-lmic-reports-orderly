@@ -68,6 +68,26 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   
   reports$date <- as.character(date)
   
+  ## ---------------------------------------------------------------------------
+  ## initial conditions --------------------------------------------------------
+  ## ---------------------------------------------------------------------------
+  
+  initial_conditions <- lapply(seq_along(reports$id), function(x){
+    
+    out <- readRDS(file.path("archive/lmic_reports_google_pmcmc",reports$id[x],"grid_out.rds"))
+    mc <- do.call(rbind, lapply(out$pmcmc_results$chains, "[[", "results"))
+    best <- mc[which.max(mc$log_posterior),]  
+    best$start_date <- squire:::offset_to_start_date(round(out$pmcmc_results$inputs$data$date[1]), best$start_date)
+    best <- best[,1:4]
+    best$pld <- out$interventions$date_Meff_change
+    rownames(best) <- NULL
+    best$iso3c <- reports$country[x]
+    return(best)  
+  })
+  
+  pars_init <- do.call(rbind, initial_conditions)
+  saveRDS(pars_init, "src/lmic_reports_google_pmcmc/pars_init.rds")
+  
   ## Remove HICs
   rl <- readLines(file.path(here::here(),"countries"))
   to_remove <- stringr::str_sub(rl[(grep("Other HICs", rl) + 1) : length(rl)], -3)
@@ -195,6 +215,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   sum_rt$continent <- countrycode::countrycode(sum_rt$iso, "iso3c", "continent")
   saveRDS(sum_rt, paste0("src/index_page/sum_rt.rds"))
   saveRDS(sum_rt, paste0("src/regional_page/sum_rt.rds"))
+
 
   
 }
