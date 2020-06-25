@@ -87,10 +87,11 @@ Rt_func <- function(R0_change, R0, Meff) {
 if(short_run) {
   n_particles <- 2
   replicates <- 2
-  n_mcmc <- 100
+  n_mcmc <- 250
   n_chains <- 3
   grid_spread <- 2
   sleep <- 2
+  start_adaptation <- 50
 } else {
   n_particles <- 50
   replicates <- 200
@@ -98,6 +99,7 @@ if(short_run) {
   n_chains <- 3
   grid_spread <- 11
   sleep <- 120
+  start_adaptation <- 1000
 }
 
 if (parallel) {
@@ -243,7 +245,7 @@ out_det <- squire::pmcmc(data = data,
                          seeding_cases = 5,
                          replicates = replicates,
                          required_acceptance_ratio = 0.20,
-                         start_adaptation = 1000,
+                         start_adaptation = start_adaptation,
                          roll = 7)
 
 ## -----------------------------------------------------------------------------
