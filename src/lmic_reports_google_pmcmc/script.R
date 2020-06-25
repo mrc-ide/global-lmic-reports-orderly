@@ -121,19 +121,16 @@ first_start_date <- as.Date(null_na(min_death_date))-55
 ## -----------------------------------------------------------------------------
 
 # 1. Do we have a previous run for this country
-# 1. Do we have a previous run for this country
-json <- NULL
-json <- tryCatch({
-  json_path <- file.path("https://raw.githubusercontent.com/mrc-ide/global-lmic-reports/master/",iso3c,"input_params_dashboard.json")
-  suppressWarnings(jsonlite::read_json(json_path))
-}, error = function(e){NULL})
+pars_former <- readRDS("pars_init.rds")
+pars_former <- pars_former[pars_former$iso3c == iso3c,]
 
-if (!is.null(json) && !is.null(json$Meff) && json$Meff_pl[1]<=1) {
+if (nrow(pars_former) == 1) {
   
-  R0_start <- json[[1]]$Rt
-  date_start <- json[[1]]$date
-  Meff_start <- json[[1]]$Meff
-  Meff_pl_start <- json[[1]]$Meff_pl
+  R0_start <- pars_former$R0
+  date_start <- pars_former$start_date
+  Meff_start <- pars_former$Meff
+  Meff_pl_start <- pars_former$Meff_pl
+  pld <- pars_former$pld
   
 } else {
   
@@ -180,6 +177,10 @@ if (!is.null(json) && !is.null(json$Meff) && json$Meff_pl[1]<=1) {
   Meff_start <- out_det$scan_results$z[pos[3]]
   Meff_pl_start <- 0.2
   
+  pld <- post_lockdown_date_relative(interventions[[iso3c]], 1.05, 
+                                     max_date = as.Date("2020-06-02"),
+                                     min_date = as.Date("2020-02-01"))
+  
 }
 
 R0_start <- min(max(R0_start, R0_min), R0_max)
@@ -217,33 +218,6 @@ logprior <- function(pars){
   return(ret)
 }
 
-# logprior <- function(pars){
-#   squire:::assert_in(names(pars), c("start_date", "R0", "Meff", "Meff_pl")) # good sanity check
-#   ret <- dunif(x = pars[["start_date"]], min = -55, max = -10, log = TRUE) +
-#     dnorm(x = pars[["R0"]], mean = 3, sd = 1, log = TRUE) +
-#     dnorm(x = pars[["Meff"]], mean = 3, sd = 3, log = TRUE) +
-#     dunif(x = pars[["Meff_pl"]], min = 0, max = 1, log = TRUE)
-#   return(ret)
-# }
-
-# Meff_date_change. look at when mobility has increased by 10%
-above <- 1.05
-
-# These countries have peculiar weekend effec ts that are slghtly messing with calculating this
-# so have to switch the point at which we calculate their lockdown date
-# if (iso3c %in% c("BRA", "OMA", "USA")){
-#   above <- 1.1
-# } else if(iso3c %in% c("SWE")) {
-#   above <- 1.05
-# } else if(iso3c %in% c("MEX")) {
-#   above <- 1.025
-# }
-
-# N.B. look at strucchange and segmented for maybe a better way to do this
-pld <- post_lockdown_date_relative(interventions[[iso3c]], above, 
-                          max_date = as.Date("2020-06-02"),
-                          min_date = as.Date("2020-02-01"))
-                 
 # sleep so parallel is chill
 Sys.sleep(time = runif(1, 0, sleep))
 out_det <- squire::pmcmc(data = data, 
@@ -286,9 +260,6 @@ start_date <- squire:::offset_to_start_date(data$date[1],round(best$start_date))
 Meff <- best$Meff
 Meff_pl <- best$Meff_pl
 
-df_dash <- data.frame("start_date" = start_date, "R0" = R0, "Meff" = Meff, "Meff_pl" = Meff_pl, 
-                      "iso3c" = iso3c, "run_date" = date, "pld" = pld)
-
 if(!is.null(date_R0_change)) {
   tt_beta <- squire:::intervention_dates_for_odin(dates = date_R0_change,
                                                   change = R0_change,
@@ -321,7 +292,6 @@ ox_interventions_unique <- squire:::interventions_unique(ox_interventions[[iso3c
 df$grey_bar_start[which.min(abs(as.numeric(df$date - ox_interventions_unique$dates_change[1])))] <- TRUE
 
 writeLines(jsonlite::toJSON(df,pretty = TRUE), "input_params.json")
-writeLines(jsonlite::toJSON(df_dash,pretty = TRUE), "input_params_dashboard.json")
 
 
 ## -----------------------------------------------------------------------------
