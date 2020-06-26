@@ -93,7 +93,7 @@ if(short_run) {
   sleep <- 2
   start_adaptation <- 50
 } else {
-  n_particles <- 5
+  n_particles <- 10
   replicates <- 200
   n_mcmc <- 10000
   n_chains <- 3
@@ -308,7 +308,7 @@ Sys.setenv("SQUIRE_PARALLEL_DEBUG" = "TRUE")
 
 out <- out_det
 out$pmcmc_results$inputs$squire_model <- explicit_model()
-out$pmcmc_results$inputs$model_params$dt <- 0.01
+out$pmcmc_results$inputs$model_params$dt <- 0.05
 pmcmc <- out$pmcmc_results
 out <- generate_draws_pmcmc(pmcmc = pmcmc,
                             burnin = ceiling(n_mcmc/10),

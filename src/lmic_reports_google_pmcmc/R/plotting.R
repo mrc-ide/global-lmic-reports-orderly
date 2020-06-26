@@ -1264,7 +1264,8 @@ rt_plot <- function(out) {
     
     df <- data.frame(
       "Rt" = Rt,
-      "date" = seq.Date(as.Date(out$replicate_parameters$start_date[y]), as.Date(date), by = 1),
+      "date" = c(as.Date(out$replicate_parameters$start_date[y]), 
+                 as.Date(out$replicate_parameters$start_date[y]) + round((tt$tt*(out$parameters$dt)))),
       "iso" = iso3c,
       rep = y,
       stringsAsFactors = FALSE)
