@@ -77,7 +77,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
     out <- readRDS(file.path("archive/lmic_reports_google_pmcmc",reports$id[x],"grid_out.rds"))
     mc <- do.call(rbind, lapply(out$pmcmc_results$chains, "[[", "results"))
     best <- mc[which.max(mc$log_posterior),]  
-    best$start_date <- squire:::offset_to_start_date(round(out$pmcmc_results$inputs$data$date[1]), best$start_date)
+    best$start_date <- as.character(squire:::offset_to_start_date(out$pmcmc_results$inputs$data$date[1], round(best$start_date)))
     best <- best[,1:4]
     best$pld <- out$interventions$date_Meff_change
     rownames(best) <- NULL
@@ -169,14 +169,15 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
                                                  steps_per_day = 1/out$parameters$dt)
       
       df <- data.frame(
-        "Rt" = squire:::evaluate_Rt(
+        "Rt" = squire:::evaluate_Rt_pmcmc(
           R0_change = out$interventions$R0_change[out$interventions$date_R0_change>out$replicate_parameters$start_date[y]], 
           R0 = out$replicate_parameters$R0[y], 
           Meff = out$replicate_parameters$Meff[y], 
           Meff_pl = out$replicate_parameters$Meff_pl[y],
           date_R0_change = out$interventions$date_R0_change[out$interventions$date_R0_change>out$replicate_parameters$start_date[y]],
           date_Meff_change = out$interventions$date_Meff_change, 
-          Rt_func = out$pmcmc_results$inputs$Rt_func) ,
+          roll = out$pmcmc_results$inputs$roll,
+          start_date = out$replicate_parameters$start_date[y]) ,
         "date" = c(as.character(out$replicate_parameters$start_date[y]), 
                    as.character(out$interventions$date_R0_change[match(tt$change, out$interventions$R0_change)])),
         "iso" = iso,
