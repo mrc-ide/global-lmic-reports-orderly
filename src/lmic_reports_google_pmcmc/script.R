@@ -256,6 +256,8 @@ out_det <- squire::pmcmc(data = data,
                          replicates = replicates,
                          required_acceptance_ratio = 0.20,
                          start_adaptation = start_adaptation,
+                         baseline_hosp_bed_capacity = hosp_beds, 
+                         baseline_ICU_bed_capacity = icu_beds, 
                          roll = 7)
 
 ## -----------------------------------------------------------------------------
