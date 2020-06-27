@@ -23,9 +23,9 @@ df <- ecdc[which(ecdc$countryterritoryCode == iso3c),]
 
 # Remove any deaths at beginning that were followed by 21 days of no deaths as we have no information in these situations
 if(sum(df$deaths>0)>1) {
-if(tail(diff(which(df$deaths>0)),1) > 21) {
-  df$deaths[tail(which(df$deaths>0),1)] <- 0
-}
+  if(tail(diff(which(df$deaths>0)),1) > 21) {
+    df$deaths[tail(which(df$deaths>0),1)] <- 0
+  }
 }
 
 # get the raw data correct
@@ -228,6 +228,8 @@ icu_beds <- squire:::get_ICU_bed_capacity(country)
 if (iso3c == "BRA") {
   # https://g1.globo.com/bemestar/coronavirus/noticia/2020/06/08/casos-de-coronavirus-e-numero-de-mortes-no-brasil-em-8-de-junho.ghtml - date we predicted ICU to be at capacity and reported to be at 70% 
   icu_beds <- icu_beds / 0.7
+} else if(iso3c == "MEX") {
+  icu_beds <- 
 }
 
 # sleep so parallel is chill
@@ -285,10 +287,10 @@ if(!is.null(date_R0_change)) {
 
 if(!is.null(R0_change)) {
   R0 <- squire:::evaluate_Rt_pmcmc(R0_change = tt_beta$change, R0 = R0, Meff = Meff, 
-                             Meff_pl = Meff_pl, start_date = start_date,
-                             date_R0_change = date_R0_change[date_R0_change>start_date], 
-                             date_Meff_change = out_det$pmcmc_results$inputs$interventions$date_Meff_change,
-                             roll = 7)
+                                   Meff_pl = Meff_pl, start_date = start_date,
+                                   date_R0_change = date_R0_change[date_R0_change>start_date], 
+                                   date_Meff_change = out_det$pmcmc_results$inputs$interventions$date_Meff_change,
+                                   roll = 7)
 } else {
   R0 <- R0
 }
@@ -336,8 +338,8 @@ out <- generate_draws_pmcmc(pmcmc = pmcmc,
 
 # Add the prior
 out$pmcmc_results$inputs$prior <- as.function(c(formals(logprior), 
-                                                  body(logprior)), 
-                                                envir = new.env(parent = environment(stats::acf)))
+                                                body(logprior)), 
+                                              envir = new.env(parent = environment(stats::acf)))
 
 ## -----------------------------------------------------------------------------
 ## Step 3d: Summarise Fits
