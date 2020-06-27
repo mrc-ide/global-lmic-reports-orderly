@@ -68,6 +68,26 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   
   reports$date <- as.character(date)
   
+  ## ---------------------------------------------------------------------------
+  ## initial conditions --------------------------------------------------------
+  ## ---------------------------------------------------------------------------
+  
+  initial_conditions <- lapply(seq_along(reports$id), function(x){
+    
+    out <- readRDS(file.path("archive/lmic_reports_google_pmcmc",reports$id[x],"grid_out.rds"))
+    mc <- do.call(rbind, lapply(out$pmcmc_results$chains, "[[", "results"))
+    best <- mc[which.max(mc$log_posterior),]  
+    best$start_date <- as.character(squire:::offset_to_start_date(out$pmcmc_results$inputs$data$date[1], round(best$start_date)))
+    best <- best[,1:4]
+    best$pld <- out$interventions$date_Meff_change
+    rownames(best) <- NULL
+    best$iso3c <- reports$country[x]
+    return(best)  
+  })
+  
+  pars_init <- do.call(rbind, initial_conditions)
+  saveRDS(pars_init, "src/lmic_reports_google_pmcmc/pars_init.rds")
+  
   ## Remove HICs
   rl <- readLines(file.path(here::here(),"countries"))
   to_remove <- stringr::str_sub(rl[(grep("Other HICs", rl) + 1) : length(rl)], -3)
@@ -85,8 +105,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
             "index_files/figure-html",
             "projections.csv",
             "index.pdf",
-            "input_params.json",
-            "input_params_dashboard.json")
+            "input_params.json")
   
   for (i in seq_along(dest)) {
     message(sprintf("Copying %s (%s)", dest[[i]], reports$id[[i]]))
@@ -149,14 +168,15 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
                                                  steps_per_day = 1/out$parameters$dt)
       
       df <- data.frame(
-        "Rt" = squire:::evaluate_Rt(
+        "Rt" = squire:::evaluate_Rt_pmcmc(
           R0_change = out$interventions$R0_change[out$interventions$date_R0_change>out$replicate_parameters$start_date[y]], 
           R0 = out$replicate_parameters$R0[y], 
           Meff = out$replicate_parameters$Meff[y], 
           Meff_pl = out$replicate_parameters$Meff_pl[y],
           date_R0_change = out$interventions$date_R0_change[out$interventions$date_R0_change>out$replicate_parameters$start_date[y]],
           date_Meff_change = out$interventions$date_Meff_change, 
-          Rt_func = out$pmcmc_results$inputs$Rt_func) ,
+          roll = out$pmcmc_results$inputs$roll,
+          start_date = out$replicate_parameters$start_date[y]) ,
         "date" = c(as.character(out$replicate_parameters$start_date[y]), 
                    as.character(out$interventions$date_R0_change[match(tt$change, out$interventions$R0_change)])),
         "iso" = iso,
@@ -195,6 +215,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   sum_rt$continent <- countrycode::countrycode(sum_rt$iso, "iso3c", "continent")
   saveRDS(sum_rt, paste0("src/index_page/sum_rt.rds"))
   saveRDS(sum_rt, paste0("src/regional_page/sum_rt.rds"))
+
 
   
 }

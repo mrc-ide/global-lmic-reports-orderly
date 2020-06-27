@@ -1221,7 +1221,7 @@ intervention_plot_google <- function(res, date, data, forecast) {
     geom_point() + 
     scale_color_discrete(name = "Observed") +
     theme_bw() + 
-    theme(legend.position = "top") + 
+    theme(legend.position = c(0.1,0.3)) + 
     ylab("% Mobility") + 
     xlab("Date")
   
@@ -1259,13 +1259,13 @@ rt_plot <- function(out) {
         date_R0_change = out$interventions$date_R0_change[out$interventions$date_R0_change>out$replicate_parameters$start_date[y]],
         date_Meff_change = out$interventions$date_Meff_change, 
         roll = out$pmcmc_results$inputs$roll,
+        R0_pl_shift = out$replicate_parameters$R0_pl_shift[y],
         start_date = out$replicate_parameters$start_date[y]) 
     }
     
     df <- data.frame(
       "Rt" = Rt,
-      "date" = c(as.Date(out$replicate_parameters$start_date[y]), 
-                 as.Date(out$replicate_parameters$start_date[y]) + round((tt$tt*(out$parameters$dt)))),
+      "date" = seq.Date(as.Date(out$replicate_parameters$start_date[y]), as.Date(date), by = 1),
       "iso" = iso3c,
       rep = y,
       stringsAsFactors = FALSE)

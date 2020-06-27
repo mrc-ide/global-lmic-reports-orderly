@@ -64,6 +64,11 @@ src/lmic_reports_google_pmcmc/input_params.json
 src/lmic_reports_google_pmcmc/input_params_dashboard.json
 src/lmic_reports_google_pmcmc/fitting.pdf
 src/lmic_reports_google_pmcmc/projections.csv
+src/lmic_reports_google_pmcmc/bottom.png
+src/lmic_reports_google_pmcmc/header.png
+src/lmic_reports_google_pmcmc/pars_init.csv
+src/lmic_reports_google_pmcmc_no_decouple/pars_init.csv
+src/lmic_reports_google_pmcmc/top_row.png
 src/lmic_reports_google_pmcmc_no_decouple/index.html
 src/lmic_reports_google_pmcmc_no_decouple/index.md
 src/lmic_reports_google_pmcmc_no_decouple/index.pdf
@@ -84,3 +89,5 @@ ecdc.xlsx
 dummy
 todo.txt
 analysis
+fits
+reports

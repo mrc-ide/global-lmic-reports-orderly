@@ -21,13 +21,6 @@ ecdc <- readRDS("ecdc_all.rds")
 country <- squire::population$country[match(iso3c, squire::population$iso3c)[1]]
 df <- ecdc[which(ecdc$countryterritoryCode == iso3c),]
 
-# Remove any deaths at beginning that were followed by 21 days of no deaths as we have no information in these situations
-if(sum(df$deaths>0)>1) {
-  if(tail(diff(which(df$deaths>0)),1) > 21) {
-    df$deaths[tail(which(df$deaths>0),1)] <- 0
-  }
-}
-
 # get the raw data correct
 data <- df[,c("dateRep", "deaths", "cases")]
 names(data)[1] <- "date"
@@ -87,19 +80,17 @@ Rt_func <- function(R0_change, R0, Meff) {
 if(short_run) {
   n_particles <- 2
   replicates <- 2
-  n_mcmc <- 250
+  n_mcmc <- 100
   n_chains <- 3
   grid_spread <- 2
   sleep <- 2
-  start_adaptation <- 50
 } else {
-  n_particles <- 10
+  n_particles <- 50
   replicates <- 200
   n_mcmc <- 10000
   n_chains <- 3
   grid_spread <- 11
   sleep <- 120
-  start_adaptation <- 1000
 }
 
 if (parallel) {
@@ -111,28 +102,33 @@ R0_min <- 1.6
 R0_max <- 5.6
 Meff_min <- 0.5
 Meff_max <- 10
-Meff_pl_min <- -3
-#Meff_pl_min <- 0
-Meff_pl_max <- 10
-#Meff_pl_max <- 1
+#Meff_pl_min <- -3
+Meff_pl_min <- 0
+#Meff_pl_max <- 5
+Meff_pl_max <- 1
 last_start_date <- as.Date(null_na(min_death_date))-10
 first_start_date <- as.Date(null_na(min_death_date))-55
+R0_pl_shift_min <- -2
+R0_pl_shift_max <- 5
 
 ## -----------------------------------------------------------------------------
 ## Step 2b: Sourcing previous fits to start pmcmc nearby
 ## -----------------------------------------------------------------------------
 
 # 1. Do we have a previous run for this country
-pars_former <- readRDS("pars_init.rds")
-pars_former <- pars_former[pars_former$iso3c == iso3c,]
+# 1. Do we have a previous run for this country
+json <- NULL
+json <- tryCatch({
+  json_path <- file.path("https://raw.githubusercontent.com/mrc-ide/global-lmic-reports/master/",iso3c,"input_params_dashboard.json")
+  suppressWarnings(jsonlite::read_json(json_path))
+}, error = function(e){NULL})
 
-if (nrow(pars_former) == 1) {
+if (!is.null(json) && !is.null(json$Meff) && json$Meff_pl[1]<=1) {
   
-  R0_start <- pars_former$R0
-  date_start <- pars_former$start_date
-  Meff_start <- pars_former$Meff
-  Meff_pl_start <- pars_former$Meff_pl
-  pld <- pars_former$pld
+  R0_start <- json[[1]]$Rt
+  date_start <- json[[1]]$date
+  Meff_start <- json[[1]]$Meff
+  Meff_pl_start <- json[[1]]$Meff_pl
   
 } else {
   
@@ -178,17 +174,16 @@ if (nrow(pars_former) == 1) {
   date_start <- as.Date(out_det$scan_results$y[pos[2]])
   Meff_start <- out_det$scan_results$z[pos[3]]
   Meff_pl_start <- 0.2
-  
-  pld <- post_lockdown_date_relative(interventions[[iso3c]], 1.05, 
-                                     max_date = as.Date("2020-06-02"),
-                                     min_date = as.Date("2020-02-01"))
+  R0_pl_shift_start <- 0
   
 }
 
 R0_start <- min(max(R0_start, R0_min), R0_max)
 date_start <- min(max(as.Date(date_start), as.Date(first_start_date)), as.Date(last_start_date))
 Meff_start <- min(max(Meff_start, Meff_min), Meff_max)
-Meff_pl_start <- min(max(Meff_pl_start), Meff_pl_max)
+Meff_pl_start <- min(max(Meff_pl_start,Meff_pl_min), Meff_pl_max)
+R0_pl_shift_start <- min(max(R0_pl_shift_start,R0_pl_shift_min), R0_pl_shift_max)
+
 
 
 ## -----------------------------------------------------------------------------
@@ -199,10 +194,12 @@ Meff_pl_start <- min(max(Meff_pl_start), Meff_pl_max)
 pars_init = list('start_date' = date_start, 
                  'R0' = R0_start, 
                  'Meff' = Meff_start, 
-                 'Meff_pl' = Meff_pl_start)
-pars_min = list('start_date' = first_start_date, 'R0' = R0_min, 'Meff' = Meff_min, 'Meff_pl' = Meff_pl_min)
-pars_max = list('start_date' = last_start_date, 'R0' = R0_max, 'Meff' = Meff_max, 'Meff_pl' = Meff_pl_max)
-pars_discrete = list('start_date' = TRUE, 'R0' = FALSE, 'Meff' = FALSE, 'Meff_pl' = FALSE)
+                 'Meff_pl' = Meff_pl_start,
+                 'R0_pl_shift' = R0_pl_shift_start,
+                 )
+pars_min = list('start_date' = first_start_date, 'R0' = R0_min, 'Meff' = Meff_min, 'Meff_pl' = Meff_pl_min, 'R0_pl_shift' = R0_pl_shift_min)
+pars_max = list('start_date' = last_start_date, 'R0' = R0_max, 'Meff' = Meff_max, 'Meff_pl' = Meff_pl_max, 'R0_pl_shift' = R0_pl_shift_max)
+pars_discrete = list('start_date' = TRUE, 'R0' = FALSE, 'Meff' = FALSE, 'Meff_pl' = FALSE, 'R0_pl_shift' = FALSE)
 pars_obs = list(phi_cases = 1, k_cases = 2, phi_death = 1, k_death = 2, exp_noise = 1e6)
 
 # Covriance Matrix
@@ -211,34 +208,51 @@ rownames(proposal_kernel) <- colnames(proposal_kernel) <- names(pars_init)
 proposal_kernel["start_date", "start_date"] <- 1.5
 
 # MCMC Functions - Prior and Likelihood Calculation
+# logprior <- function(pars){
+#   squire:::assert_in(names(pars), c("start_date", "R0", "Meff", "Meff_pl")) # good sanity check
+#   ret <- dunif(x = pars[["start_date"]], min = -55, max = -10, log = TRUE) +
+#     dnorm(x = pars[["R0"]], mean = 3, sd = 1, log = TRUE) +
+#     dnorm(x = pars[["Meff"]], mean = 3, sd = 3, log = TRUE) +
+#     dnorm(x = pars[["Meff_pl"]], mean = 0, sd = 3, log = TRUE)
+#   return(ret)
+# }
+
 logprior <- function(pars){
-  squire:::assert_in(names(pars), c("start_date", "R0", "Meff", "Meff_pl")) # good sanity check
+  squire:::assert_in(names(pars), c("start_date", "R0", "Meff", "Meff_pl", "R0_pl_shift")) # good sanity check
   ret <- dunif(x = pars[["start_date"]], min = -55, max = -10, log = TRUE) +
     dnorm(x = pars[["R0"]], mean = 3, sd = 1, log = TRUE) +
     dnorm(x = pars[["Meff"]], mean = 3, sd = 3, log = TRUE) +
-    dnorm(x = pars[["Meff_pl"]], mean = 0, sd = 3, log = TRUE)
+    dunif(x = pars[["Meff_pl"]], min = 0, max = 1, log = TRUE) +
+    dnorm(x = pars[["R0_pl_shift"]], mean = 0, sd = 0.5, log = TRUE) 
+    
   return(ret)
 }
 
-# input params
-hosp_beds <- squire:::get_hosp_bed_capacity(country)
-icu_beds <- squire:::get_ICU_bed_capacity(country)
+# Meff_date_change. look at when mobility has increased by 20%
+above <- 1.2
 
-# Increase ICU beds where known to be too low:
-if (iso3c == "BRA") {
-  # https://g1.globo.com/bemestar/coronavirus/noticia/2020/06/08/casos-de-coronavirus-e-numero-de-mortes-no-brasil-em-8-de-junho.ghtml - date we predicted ICU to be at capacity and reported to be at 70% 
-  icu_beds <- icu_beds / 0.7
-} else if(iso3c == "MEX") {
-  icu_beds <- 
+# These countries have peculiar weekend effec ts that are slghtly messing with calculating this
+# so have to switch the point at which we calculate their lockdown date
+if (iso3c %in% c("BRA", "OMA", "USA")){
+  above <- 1.1
+} else if(iso3c %in% c("SWE")) {
+  above <- 1.05
+} else if(iso3c %in% c("MEX")) {
+  above <- 1.025
 }
 
+# N.B. look at strucchange and segmented for maybe a better way to do this
+pld <- post_lockdown_date(interventions[[iso3c]], 1, 
+                          max_date = as.Date("2020-06-04"),
+                          min_date = as.Date("2020-02-01"))
+                        
 # sleep so parallel is chill
 Sys.sleep(time = runif(1, 0, sleep))
 out_det <- squire::pmcmc(data = data, 
                          n_mcmc = n_mcmc,
                          log_prior = logprior,
                          n_particles = 1,
-                         steps_per_day = 1,
+                         steps_per_day = 4,
                          log_likelihood = NULL,
                          squire_model = squire:::deterministic_model(),
                          output_proposals = FALSE,
@@ -257,9 +271,7 @@ out_det <- squire::pmcmc(data = data,
                          seeding_cases = 5,
                          replicates = replicates,
                          required_acceptance_ratio = 0.20,
-                         start_adaptation = start_adaptation,
-                         baseline_hosp_bed_capacity = hosp_beds, 
-                         baseline_ICU_bed_capacity = icu_beds, 
+                         start_adaptation = 1000,
                          roll = 7)
 
 ## -----------------------------------------------------------------------------
@@ -276,6 +288,9 @@ start_date <- squire:::offset_to_start_date(data$date[1],round(best$start_date))
 Meff <- best$Meff
 Meff_pl <- best$Meff_pl
 
+df_dash <- data.frame("start_date" = start_date, "R0" = R0, "Meff" = Meff, "Meff_pl" = Meff_pl, 
+                      "iso3c" = iso3c, "run_date" = date, "pld" = pld)
+
 if(!is.null(date_R0_change)) {
   tt_beta <- squire:::intervention_dates_for_odin(dates = date_R0_change,
                                                   change = R0_change,
@@ -287,10 +302,10 @@ if(!is.null(date_R0_change)) {
 
 if(!is.null(R0_change)) {
   R0 <- squire:::evaluate_Rt_pmcmc(R0_change = tt_beta$change, R0 = R0, Meff = Meff, 
-                                   Meff_pl = Meff_pl, start_date = start_date,
-                                   date_R0_change = date_R0_change[date_R0_change>start_date], 
-                                   date_Meff_change = out_det$pmcmc_results$inputs$interventions$date_Meff_change,
-                                   roll = 7)
+                             Meff_pl = Meff_pl, start_date = start_date,
+                             date_R0_change = date_R0_change[date_R0_change>start_date], 
+                             date_Meff_change = out_det$pmcmc_results$inputs$interventions$date_Meff_change,
+                             roll = 7)
 } else {
   R0 <- R0
 }
@@ -308,13 +323,14 @@ ox_interventions_unique <- squire:::interventions_unique(ox_interventions[[iso3c
 df$grey_bar_start[which.min(abs(as.numeric(df$date - ox_interventions_unique$dates_change[1])))] <- TRUE
 
 writeLines(jsonlite::toJSON(df,pretty = TRUE), "input_params.json")
+writeLines(jsonlite::toJSON(df_dash,pretty = TRUE), "input_params_dashboard.json")
 
 
 ## -----------------------------------------------------------------------------
 ## Step 3: Particle Filter
 ## -----------------------------------------------------------------------------
 
-## -----------------------------------------------------------------------------  
+## -----------------------------------------------------------------------------
 ## Step 3a: Fit Stochastic Model
 ## -----------------------------------------------------------------------------
 
@@ -338,8 +354,8 @@ out <- generate_draws_pmcmc(pmcmc = pmcmc,
 
 # Add the prior
 out$pmcmc_results$inputs$prior <- as.function(c(formals(logprior), 
-                                                body(logprior)), 
-                                              envir = new.env(parent = environment(stats::acf)))
+                                                  body(logprior)), 
+                                                envir = new.env(parent = environment(stats::acf)))
 
 ## -----------------------------------------------------------------------------
 ## Step 3d: Summarise Fits
@@ -365,35 +381,42 @@ line <- ggplot() + cowplot::draw_line(x = 0:10, y=1) +
 
 header <- cowplot::plot_grid(title, line, ncol = 1)
 
+png("header.png", height = 0.5, width = 8, units = "in", res = 300)
+header
+dev.off()
+
+
 index <- squire:::odin_index(out$model)
 forecast <- 0
 
 suppressWarnings(d <- deaths_plot_single(out, data, date = date,date_0 = date_0, forecast = forecast, single = TRUE) + 
                    theme(legend.position = "none"))
 
-intervention <- intervention_plot_google(interventions[[iso3c]], date, data, forecast) + 
-  geom_vline(xintercept = pld)
+intervention <- intervention_plot_google(interventions[[iso3c]], date, data, forecast)
 
-rtp <- rt_plot(out)$plot
 
-bottom <- cowplot::plot_grid(intervention + scale_x_date(limits = as.Date(c(data$date[data$deaths>0][1],date_0))), 
-                             d,
-                             rtp + scale_x_date(limits = as.Date(c(data$date[data$deaths>0][1],date_0))),
+bottom <- cowplot::plot_grid(intervention, d,
                              ncol=1,
-                             rel_heights = c(0.4,0.6,0.4))
+                             rel_heights = c(0.4,0.6))
+cowplot::save_plot("bottom.png", bottom, base_height = 6, base_width = 8)
 
 plots <- list() 
-img <- png::readPNG("top_row.png")
-plots[[1]] <- grid::rasterGrob(img, interpolate = FALSE)
 
+nms <- c("header.png", "top_row.png", "bottom.png")
+for(i in 1:3) {
+  x <- nms[i]
+  img <- png::readPNG(x)
+  plots[[i]] <- grid::rasterGrob(img, interpolate = FALSE)
+}
 
-ggsave("fitting.pdf",width=7, height=14, 
+ggsave("fitting.pdf",width=7, height=11, 
        gridExtra::marrangeGrob(grobs = c(list(cowplot::as_grob(header)),
-                                         plots[1],
+                                         plots[2],
                                          list(cowplot::as_grob(bottom))), 
-                               nrow=3, ncol=1,top=NULL, heights = c(1, 5, 6)))
-file.remove("top_row.png")
-
+                               nrow=3, ncol=1,top=NULL, heights = c(1.5, 6, 6)))
+dev.off()
+file.remove(nms)
+file.remove("Rplots.pdf")
 
 ## Save the grid out object
 
@@ -479,7 +502,7 @@ mitigation_3months_lift <- squire::projections(out,
 
 # Relax by 50% for 3 months and then return to pre-intervention levels 
 reverse_3_months_lift <- squire::projections(out, 
-                                             R0_change = c(1.5, rel_R0(0)), 
+                                             R0_change = c(rel_R0(0.5), rel_R0(0)), 
                                              tt_R0 = c(0, 90), 
                                              time_period = time_period)
 
@@ -565,7 +588,7 @@ mitigation_3months_lift_surged <- squire::projections(out_surged,
                                                       time_period = time_period)
 
 reverse_3_months_lift_surged <- squire::projections(out_surged, 
-                                                    R0_change = c(1.5, rel_R0(0)), 
+                                                    R0_change = c(rel_R0(0.5), rel_R0(0)), 
                                                     tt_R0 = c(0, 90), 
                                                     time_period = time_period)
 
@@ -684,8 +707,7 @@ if (full_scenarios) {
 r_list_pass <- r_list
 
 o_list <- lapply(r_list_pass, squire::format_output,
-                 var_select = c("infections","deaths","hospital_demand",
-                                "ICU_demand", "D", "hospital_incidence","ICU_incidence"),
+                 var_select = c("infections","deaths","hospital_demand","ICU_demand", "D"),
                  date_0 = date_0)
 
 ## -----------------------------------------------------------------------------
@@ -775,7 +797,6 @@ data_sum$iso3c <- iso3c
 data_sum$report_date <- date
 data_sum <- data_sum[data_sum$compartment != "D",]
 data_sum$version <- "v3"
-data_sum <- dplyr::mutate(data_sum, across(dplyr::starts_with("y_"), ~round(.x,digits = 2)))
 write.csv(data_sum, "projections.csv", row.names = FALSE, quote = FALSE)
 
 ## -----------------------------------------------------------------------------

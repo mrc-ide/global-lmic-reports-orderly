@@ -33,14 +33,14 @@ if(is.na(as.Date(d$dateRep[1], "%Y-%m-%d"))) {
 
 # Data corrections
 
-# remove imported early death in Philippines
-d[which(d$countryterritoryCode=="PHL" & as.Date(d$dateRep) == as.Date("2020-02-02")),]$deaths <- 0
-
 # fix panama's negative deaths
 d[which(d$countryterritoryCode=="PAN" & as.Date(d$dateRep)=="2020-06-04"),]$deaths <-
   d[which(d$countryterritoryCode=="PAN" & as.Date(d$dateRep)=="2020-06-04"),]$deaths +
   d[which(d$countryterritoryCode=="PAN" & as.Date(d$dateRep)=="2020-06-03"),]$deaths 
 d[which(d$countryterritoryCode=="PAN" & as.Date(d$dateRep)=="2020-06-03"),]$deaths <- 0
+
+# fix italy's negative deaths and missing date
+d$deaths[d$countryterritoryCode == "ITA" & d$deaths<0] <- 0
 
 # fix spain's negative deaths and missing date
 d$deaths[d$countryterritoryCode == "ESP" & d$deaths<0] <- 0
@@ -64,6 +64,5 @@ if(length(esp_miss) > 0) {
   d <- rbind(df_esp, d)
 }
 
-  
 # save 
 saveRDS(d, "ecdc_all.rds")
