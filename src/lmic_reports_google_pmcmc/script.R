@@ -220,13 +220,23 @@ logprior <- function(pars){
   return(ret)
 }
 
+# input params
+hosp_beds <- squire:::get_hosp_bed_capacity(country)
+icu_beds <- squire:::get_ICU_bed_capacity(country)
+
+# Increase ICU beds where known to be too low:
+if (iso3c == "BRA") {
+  # https://g1.globo.com/bemestar/coronavirus/noticia/2020/06/08/casos-de-coronavirus-e-numero-de-mortes-no-brasil-em-8-de-junho.ghtml - date we predicted ICU to be at capacity and reported to be at 70% 
+  icu_beds <- icu_beds / 0.7
+}
+
 # sleep so parallel is chill
 Sys.sleep(time = runif(1, 0, sleep))
 out_det <- squire::pmcmc(data = data, 
                          n_mcmc = n_mcmc,
                          log_prior = logprior,
                          n_particles = 1,
-                         steps_per_day = 4,
+                         steps_per_day = 1,
                          log_likelihood = NULL,
                          squire_model = squire:::deterministic_model(),
                          output_proposals = FALSE,
