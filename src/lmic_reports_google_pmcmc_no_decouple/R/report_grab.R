@@ -49,17 +49,17 @@ reports_day <- function(date = NULL) {
     DBI::dbDisconnect(db)
     return(NULL)
   } else {
-  
-  if (any(duplicated(reports$country))) {
-    keep <- tapply(seq_len(nrow(reports)), reports$country, max)
-    reports <- reports[keep, ]
-    rownames(reports) <- NULL
-  }
-  
-  reports$date <- as.character(date)
-  DBI::dbDisconnect(db)
-  return(reports)
-  
+    
+    if (any(duplicated(reports$country))) {
+      keep <- tapply(seq_len(nrow(reports)), reports$country, max)
+      reports <- reports[keep, ]
+      rownames(reports) <- NULL
+    }
+    
+    reports$date <- as.character(date)
+    DBI::dbDisconnect(db)
+    return(reports)
+    
   }
 }
 
@@ -144,23 +144,23 @@ generate_draws <- function(scan_results, squire_model, replicates, n_particles, 
 
 
 generate_draws_pmcmc <- function(pmcmc, burnin, n_chains, squire_model, replicates, n_particles, forecast,
-                           country, population, interventions, data) {
+                                 country, population, interventions, data) {
   
-
-#--------------------------------------------------------
-# Section 3 of pMCMC Wrapper: Sample PMCMC Results
-#--------------------------------------------------------
-pmcmc_samples <- squire:::sample_pmcmc(pmcmc_results = pmcmc,
-                              burnin = burnin,
-                              n_chains = n_chains,
-                              n_trajectories = replicates,
-                              n_particles = n_particles,
-                              forecast_days = forecast)
-
-#--------------------------------------------------------
-# Section 4 of pMCMC Wrapper: Tidy Output
-#--------------------------------------------------------
-
+  
+  #--------------------------------------------------------
+  # Section 3 of pMCMC Wrapper: Sample PMCMC Results
+  #--------------------------------------------------------
+  pmcmc_samples <- squire:::sample_pmcmc(pmcmc_results = pmcmc,
+                                         burnin = burnin,
+                                         n_chains = n_chains,
+                                         n_trajectories = replicates,
+                                         n_particles = n_particles,
+                                         forecast_days = forecast)
+  
+  #--------------------------------------------------------
+  # Section 4 of pMCMC Wrapper: Tidy Output
+  #--------------------------------------------------------
+  
   # create a fake run object and fill in the required elements
   r <- squire_model$run_func(country = country,
                              contact_matrix_set = pmcmc$inputs$model_params$contact_matrix_set,
@@ -196,22 +196,22 @@ pmcmc_samples <- squire:::sample_pmcmc(pmcmc_results = pmcmc,
     }
     r$output[,"time",i] <- full_to_place
   }
-
-# second let's recreate the output
-r$model <- pmcmc_samples$inputs$squire_model$odin_model(
-  user = pmcmc_samples$inputs$model_params, unused_user_action = "ignore"
-)
-
-# we will add the interventions here so that we know what times are needed for projection
-r$interventions <- interventions
-
-# and fix the replicates
-r$parameters$replicates <- replicates
-r$parameters$time_period <- as.numeric(diff(as.Date(range(rownames(r$output)))))
-r$parameters$dt <- pmcmc$inputs$model_params$dt
-
-return(r)
-
+  
+  # second let's recreate the output
+  r$model <- pmcmc_samples$inputs$squire_model$odin_model(
+    user = pmcmc_samples$inputs$model_params, unused_user_action = "ignore"
+  )
+  
+  # we will add the interventions here so that we know what times are needed for projection
+  r$interventions <- interventions
+  
+  # and fix the replicates
+  r$parameters$replicates <- replicates
+  r$parameters$time_period <- as.numeric(diff(as.Date(range(rownames(r$output)))))
+  r$parameters$dt <- pmcmc$inputs$model_params$dt
+  
+  return(r)
+  
 }
 
 named_list <- function(...) {
@@ -234,56 +234,57 @@ rt_creation <- function(out, date_0, max_date) {
                                                steps_per_day = 1/out$parameters$dt)
     
     df <- data.frame(
-      "Rt" = squire:::evaluate_Rt(R0_change = out$interventions$R0_change[out$interventions$date_R0_change>out$replicate_parameters$start_date[y]], 
-                                  R0 = out$replicate_parameters$R0[y], 
-                                  Meff = out$replicate_parameters$Meff[y], 
-                                  Meff_pl = out$replicate_parameters$Meff_pl[y],
-                                  date_R0_change = out$interventions$date_R0_change[out$interventions$date_R0_change>out$replicate_parameters$start_date[y]],
-                                  date_Meff_change = out$interventions$date_Meff_change, 
-                                  Rt_func = out$pmcmc_results$inputs$Rt_func) ,
-      "date" = c(as.character(out$replicate_parameters$start_date[y]), 
-                 as.character(out$interventions$date_R0_change[match(tt$change, out$interventions$R0_change)])),
-      rep = y,
-      stringsAsFactors = FALSE)
-    
-    if("projection_args" %in% names(out)) {
+      "Rt" = squire:::evaluate_Rt_pmcmc(
+        R0_change = out$interventions$R0_change[out$interventions$date_R0_change>out$replicate_parameters$start_date[y]], 
+        R0 = out$replicate_parameters$R0[y], 
+        Meff = out$replicate_parameters$Meff[y], 
+        Meff_pl = out$replicate_parameters$Meff_pl[y],
+        date_R0_change = out$interventions$date_R0_change[out$interventions$date_R0_change>out$replicate_parameters$start_date[y]],
+        date_Meff_change = out$interventions$date_Meff_change, 
+        roll = out$pmcmc_results$inputs$roll),
+        "date" = c(as.character(out$replicate_parameters$start_date[y]), 
+                   as.character(out$interventions$date_R0_change[match(tt$change, out$interventions$R0_change)])),
+        rep = y,
+        stringsAsFactors = FALSE)
       
-      extra <- data.frame("Rt" = tail(df$Rt, 1) * out$projection_args$R0_change,
-                          "date" = as.character(date_0 + 1 + out$projection_args$tt_R0),
-                          "rep" = y)
+      if("projection_args" %in% names(out)) {
+        
+        extra <- data.frame("Rt" = tail(df$Rt, 1) * out$projection_args$R0_change,
+                            "date" = as.character(date_0 + 1 + out$projection_args$tt_R0),
+                            "rep" = y)
+        
+        df <- rbind(df, extra)
+        
+      }
       
-      df <- rbind(df, extra)
-      
-    }
-    
-    df$pos <- seq_len(nrow(df))
-    return(df)
+      df$pos <- seq_len(nrow(df))
+      return(df)
   } )
-  
-  rt_all <- do.call(rbind, rts)
-  
-  rt_all$date <- as.Date(rt_all$date)
-  rt_all <- rt_all[,c(3,2,1,4)]
-  
-  new_rt_all <- rt_all %>%
-    dplyr::group_by(rep) %>% 
-    dplyr::arrange(date) %>% 
-    tidyr::complete(date = seq.Date(min(rt_all$date), max_date, by = "days")) 
-  
-  column_names <- colnames(new_rt_all)[-c(1,2)]
-  new_rt_all <- tidyr::fill(new_rt_all, tidyselect::all_of(column_names), .direction = c("down"))
-  new_rt_all <- tidyr::fill(new_rt_all, tidyselect::all_of(column_names), .direction = c("up"))
-  
-  sum_rt <- dplyr::group_by(new_rt_all, date) %>% 
-    dplyr::summarise(compartment = "Rt",
-                     y_025 = quantile(Rt, 0.025),
-                     y_25 = quantile(Rt, 0.25),
-                     y_median = median(Rt),
-                     y_mean = mean(Rt),
-                     y_75 = quantile(Rt, 0.75),
-                     y_975 = quantile(Rt, 0.975)) 
-  
-  head(tail(sum_rt, -1),-1)
+    
+    rt_all <- do.call(rbind, rts)
+    
+    rt_all$date <- as.Date(rt_all$date)
+    rt_all <- rt_all[,c(3,2,1,4)]
+    
+    new_rt_all <- rt_all %>%
+      dplyr::group_by(rep) %>% 
+      dplyr::arrange(date) %>% 
+      tidyr::complete(date = seq.Date(min(rt_all$date), max_date, by = "days")) 
+    
+    column_names <- colnames(new_rt_all)[-c(1,2)]
+    new_rt_all <- tidyr::fill(new_rt_all, tidyselect::all_of(column_names), .direction = c("down"))
+    new_rt_all <- tidyr::fill(new_rt_all, tidyselect::all_of(column_names), .direction = c("up"))
+    
+    sum_rt <- dplyr::group_by(new_rt_all, date) %>% 
+      dplyr::summarise(compartment = "Rt",
+                       y_025 = quantile(Rt, 0.025),
+                       y_25 = quantile(Rt, 0.25),
+                       y_median = median(Rt),
+                       y_mean = mean(Rt),
+                       y_75 = quantile(Rt, 0.75),
+                       y_975 = quantile(Rt, 0.975)) 
+    
+    head(tail(sum_rt, -1),-1)
 }
 
 post_lockdown_date <- function(x, above = 1.1, max_date, min_date) {
@@ -321,3 +322,115 @@ post_lockdown_date <- function(x, above = 1.1, max_date, min_date) {
   }
   
 }
+
+post_lockdown_date_relative <- function(x, above = 1.1, max_date, min_date) {
+  
+  if(nrow(x)==0) {
+    
+    return(NA)
+    
+  } else {
+    
+    if(any(x$observed)) {
+      m <- predict(loess(C~as.numeric(date), data=x, span = 0.2), type = "response")
+    } else {
+      m <- predict(loess(C~as.numeric(date), data=x, span = 0.2), type = "response")
+      #m <- x$C
+    }
+    min_mob <- min(m)
+    diff <- 1 - min_mob
+    
+    pl <- NA
+    while(is.na(pl)) {
+      above15 <- which(m >= ((above-1)*diff)+min_mob)
+      pl <- above15[which(above15>which.min(m))[1]]
+      above <- above*0.99
+    }
+    
+    # if past max date then take the last local  minimum and grow by 4 days
+    if(x$date[pl] > max_date) {
+      min_f <- which(diff(sign(diff(m)))==2)+1
+      pl <- min_f[tail(which(x$date[min_f] < max_date),1)] + 4
+    } 
+    
+    dat <- max(min_date, as.Date(x$date[pl]))
+    
+    return(dat)
+    
+  }
+  
+}
+
+ede <- function (x, y, index) {
+  n = length(x)
+  if (index == 1) {
+    y = -y
+  }
+  ifelse(n >= 4, {
+    LF = y - (y[1] + (y[n] - y[1]) * (x - x[1])/(x[n] - x[1]))
+    jf1 = which.min(LF)
+    xf1 = x[jf1]
+    jf2 = which.max(LF)
+    xf2 = x[jf2]
+    ifelse(jf2 < jf1, {
+      xfx <- NaN
+    }, {
+      xfx <- 0.5 * (xf1 + xf2)
+    })
+  }, {
+    jf1 = NaN
+    jf2 = NaN
+    xfx = NaN
+  })
+  out = matrix(c(jf1, jf2, xfx), nrow = 1, ncol = 3, byrow = TRUE)
+  rownames(out) = "EDE"
+  colnames(out) = c("j1", "j2", "chi")
+  return(out)
+}
+
+
+
+mobility_decline_date <- function(x, above = 1.1, max_date, min_date) {
+  
+  message(x$iso3c[1])
+  
+  if(nrow(x)==0) {
+    
+    return(NA)
+    
+  } else {
+    
+    max_date <- as.Date(max_date)
+    min_date <- as.Date(min_date)
+    
+    x <- x[x$date > min_date,]
+    
+    if(any(x$observed)) {
+      
+      get <- x[,c("date","C")]
+      names(get) <- c("time","intensity")
+      
+    } else {
+      
+      m <- predict(loess(C~as.numeric(date), data=x, span = 0.2), type = "response")
+      get <- data.frame("time" = x$date, "intensity" = m)
+      
+    }
+    
+    get$intensity <- (get$intensity - min(get$intensity))/(max(get$intensity)-min(get$intensity))
+    get$time <- as.numeric(get$time)-as.numeric(get$time[1])
+    
+    fitObj <- sicegar::fitAndCategorize(get,
+                                        threshold_minimum_for_intensity_maximum = 0.3,
+                                        threshold_intensity_range = 0.2,
+                                        threshold_t0_max_int = 0.2)
+    
+    
+    dat <- max(min_date, x$date[round(fitObj$doubleSigmoidalModel$startDeclinePoint_x)])
+    
+    return(dat)
+    
+  }
+  
+}
+
