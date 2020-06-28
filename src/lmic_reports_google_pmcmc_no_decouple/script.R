@@ -373,7 +373,7 @@ suppressWarnings(d <- deaths_plot_single(out, data, date = date,date_0 = date_0,
                    theme(legend.position = "none"))
 
 intervention <- intervention_plot_google(interventions[[iso3c]], date, data, forecast) + 
-  geom_vline(xintercept = pld)
+  geom_vline(xintercept = as.Date(pld))
 
 rtp <- rt_plot(out)$plot
 
