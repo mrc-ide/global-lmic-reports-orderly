@@ -94,7 +94,7 @@ if(short_run) {
   start_adaptation <- 50
 } else {
   n_particles <- 100
-  replicates <- 200
+  replicates <- 100
   n_mcmc <- 10000
   n_chains <- 3
   grid_spread <- 11
