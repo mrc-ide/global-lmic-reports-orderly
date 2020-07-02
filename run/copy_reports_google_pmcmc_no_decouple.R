@@ -68,6 +68,32 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   
   reports$date <- as.character(date)
   
+  ## ---------------------------------------------------------------------------
+  ## initial conditions --------------------------------------------------------
+  ## ---------------------------------------------------------------------------
+  
+  # get old conditions
+  pars_init <- readRDS("src/lmic_reports_google_pmcmc_no_decouple/pars_init.rds")
+  
+  initial_conditions <- for(x in seq_along(reports$id)) {
+    
+    out <- readRDS(file.path("archive/lmic_reports_google_pmcmc_no_decouple",reports$id[x],"grid_out.rds"))
+    mc <- do.call(rbind, lapply(out$pmcmc_results$chains, "[[", "results"))
+    best <- mc[which.max(mc$log_posterior),]  
+    best$start_date <- as.character(squire:::offset_to_start_date(out$pmcmc_results$inputs$data$date[1], round(best$start_date)))
+    best <- best[,1:4]
+    best$pld <- out$interventions$date_Meff_change
+    rownames(best) <- NULL
+    best$iso3c <- reports$country[x]
+    
+    if(reports$country[x] %in% pars_init$iso3c) {
+      pars_init[which(pars_init$iso3c == reports$country[x]),] <- best
+    } 
+    
+  }
+  
+  saveRDS(pars_init, "src/lmic_reports_google_pmcmc_no_decouple/pars_init.rds")
+  
   ## Remove HICs
   rl <- readLines(file.path(here::here(),"countries"))
   to_remove <- stringr::str_sub(rl[(grep("Other HICs", rl) + 1) : length(rl)], -3)
@@ -85,8 +111,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
             "index_files/figure-html",
             "projections.csv",
             "index.pdf",
-            "input_params.json",
-            "input_params_dashboard.json")
+            "input_params.json")
   
   for (i in seq_along(dest)) {
     message(sprintf("Copying %s (%s)", dest[[i]], reports$id[[i]]))
@@ -100,8 +125,8 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
       
       # remove report if no deaths in last 20 days
       if(sum(head(ecdc[which(ecdc$countryterritoryCode == reports$country[i]),]$deaths,20), na.rm = TRUE)==0) {
-          prev <- dir(dest_latest, full.names = TRUE, pattern = "\\.")
-          unlink(grep("index", prev, value = TRUE), recursive = TRUE)
+        prev <- dir(dest_latest, full.names = TRUE, pattern = "\\.")
+        unlink(grep("index", prev, value = TRUE), recursive = TRUE)
       }
       
     }
@@ -141,24 +166,27 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
     out <- file.path("archive", "lmic_reports_google_pmcmc_no_decouple", reports$id[x], "grid_out.rds")
     out <- readRDS(out)
     
-    rts <- lapply(seq_len(nrow(out$replicate_parameters)), function(y) {
+    # create the Rt data frame
+    rts <- lapply(seq_len(length(out$replicate_parameters$R0)), function(y) {
       
       tt <- squire:::intervention_dates_for_odin(dates = out$interventions$date_R0_change, 
                                                  change = out$interventions$R0_change, 
                                                  start_date = out$replicate_parameters$start_date[y],
                                                  steps_per_day = 1/out$parameters$dt)
       
+      Rt <- squire:::evaluate_Rt_pmcmc(
+        R0_change = tt$change, 
+        date_R0_change = tt$dates, 
+        R0 = out$replicate_parameters$R0[y], 
+        pars = list(
+          Meff = out$replicate_parameters$Meff[y],
+          Meff_pl = out$replicate_parameters$Meff_pl[y]
+        ),
+        Rt_args = out$pmcmc_results$inputs$Rt_args) 
+      
       df <- data.frame(
-        "Rt" = squire:::evaluate_Rt(
-          R0_change = out$interventions$R0_change[out$interventions$date_R0_change>out$replicate_parameters$start_date[y]], 
-          R0 = out$replicate_parameters$R0[y], 
-          Meff = out$replicate_parameters$Meff[y], 
-          Meff_pl = out$replicate_parameters$Meff_pl[y],
-          date_R0_change = out$interventions$date_R0_change[out$interventions$date_R0_change>out$replicate_parameters$start_date[y]],
-          date_Meff_change = out$interventions$date_Meff_change, 
-          Rt_func = out$pmcmc_results$inputs$Rt_func) ,
-        "date" = c(as.character(out$replicate_parameters$start_date[y]), 
-                   as.character(out$interventions$date_R0_change[match(tt$change, out$interventions$R0_change)])),
+        "Rt" = Rt,
+        "date" = tt$dates,
         "iso" = iso,
         rep = y,
         stringsAsFactors = FALSE)
@@ -188,14 +216,15 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   
   sum_rt <- dplyr::group_by(new_rt_all, iso, date) %>% 
     dplyr::summarise(Rt_min = quantile(Rt, 0.025),
-              Rt_q25 = quantile(Rt, 0.25),
-              Rt_q75 = quantile(Rt, 0.75),
-              Rt_max = quantile(Rt, 0.975),
-              Rt = median(Rt)) 
+                     Rt_q25 = quantile(Rt, 0.25),
+                     Rt_q75 = quantile(Rt, 0.75),
+                     Rt_max = quantile(Rt, 0.975),
+                     Rt = median(Rt)) 
   sum_rt$continent <- countrycode::countrycode(sum_rt$iso, "iso3c", "continent")
   saveRDS(sum_rt, paste0("src/index_page/sum_rt.rds"))
   saveRDS(sum_rt, paste0("src/regional_page/sum_rt.rds"))
-
+  
+  
   
 }
 

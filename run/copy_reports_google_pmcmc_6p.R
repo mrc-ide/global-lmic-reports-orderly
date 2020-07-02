@@ -190,7 +190,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
       df <- data.frame(
         "Rt" = Rt,
         "date" = tt$dates,
-        "iso" = iso3c,
+        "iso" = iso,
         rep = y,
         stringsAsFactors = FALSE)
       df$pos <- seq_len(nrow(df))
