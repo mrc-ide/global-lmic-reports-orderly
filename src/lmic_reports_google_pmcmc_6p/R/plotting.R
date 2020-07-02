@@ -1253,7 +1253,7 @@ rt_plot <- function(out) {
     } else {
       Rt <- squire:::evaluate_Rt_pmcmc(
         R0_change = tt$change, 
-        date_R0_change = out$interventions$date_R0_change[out$interventions$date_R0_change>=out$replicate_parameters$start_date[y]], 
+        date_R0_change = tt$dates, 
         R0 = out$replicate_parameters$R0[y], 
         pars = list(
           Meff = out$replicate_parameters$Meff[y],
@@ -1266,7 +1266,7 @@ rt_plot <- function(out) {
     
     df <- data.frame(
       "Rt" = Rt,
-      "date" = c(as.Date(out$replicate_parameters$start_date[y]) + round((tt$tt*(out$parameters$dt)))),
+      "date" = tt$dates,
       "iso" = iso3c,
       rep = y,
       stringsAsFactors = FALSE)

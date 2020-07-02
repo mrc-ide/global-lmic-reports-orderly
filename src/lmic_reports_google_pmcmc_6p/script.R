@@ -305,7 +305,7 @@ if(!is.null(date_R0_change)) {
 
 if(!is.null(R0_change)) {
   R0 <- squire:::evaluate_Rt_pmcmc(R0_change = tt_beta$change, 
-                                   date_R0_change = tt$dates, 
+                                   date_R0_change = tt_beta$dates, 
                                    R0 = R0, 
                                    pars = list(
                                      Meff = Meff,
@@ -455,9 +455,9 @@ rel_R0 <- function(rel = 0.5, Meff_mult = 1) {
     }
     
     Rt <- tail(squire:::evaluate_Rt_pmcmc(
-      R0_change = c(tt$change,R0_ch), 
+      R0_change = c(tt_beta$change,R0_ch), 
       date_R0_change = c(
-        out$interventions$date_R0_change[out$interventions$date_R0_change>=out$replicate_parameters$start_date[y]], 
+        tt_beta$dates, 
         tail(out$pmcmc_results$inputs$data$date,1)+1),
       R0 = out$replicate_parameters$R0[y], 
       pars = list(

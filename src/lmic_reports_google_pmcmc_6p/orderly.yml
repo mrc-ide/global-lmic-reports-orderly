@@ -76,7 +76,6 @@ artefacts:
         - index.md
         - summary_df.rds
         - input_params.json
-        - input_params_dashboard.json
         - grid_out.rds
         - fitting.pdf
         - projections.csv
@@ -136,7 +135,7 @@ sources:
 #
 resources:
   - index.Rmd
-  - pars_init.csv
+  - pars_init.rds
 
 global_resources:
   _navbar.html: _navbar.html

@@ -72,20 +72,27 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   ## initial conditions --------------------------------------------------------
   ## ---------------------------------------------------------------------------
   
-  initial_conditions <- lapply(seq_along(reports$id), function(x){
+  # get old conditions
+  pars_init <- readRDS("src/lmic_reports_google_pmcmc_6p/pars_init.rds")
+  
+  initial_conditions <- for(x in seq_along(reports$id)) {
     
     out <- readRDS(file.path("archive/lmic_reports_google_pmcmc_6p",reports$id[x],"grid_out.rds"))
     mc <- do.call(rbind, lapply(out$pmcmc_results$chains, "[[", "results"))
     best <- mc[which.max(mc$log_posterior),]  
     best$start_date <- as.character(squire:::offset_to_start_date(out$pmcmc_results$inputs$data$date[1], round(best$start_date)))
-    best <- best[,1:4]
-    best$pld <- out$interventions$date_Meff_change
+    best <- best[,1:6]
     rownames(best) <- NULL
     best$iso3c <- reports$country[x]
-    return(best)  
-  })
+    best$date_Meff_change <- out$pmcmc_results$inputs$Rt_args$date_Meff_change
+    best$Rt_shift_duration <- out$pmcmc_results$inputs$Rt_args$Rt_shift_duration
+    
+   if(reports$country[x] %in% pars_init$iso3c) {
+     pars_init[which(pars_init$iso3c == reports$country[x]),] <- best
+   } 
+    
+  }
   
-  pars_init <- do.call(rbind, initial_conditions)
   saveRDS(pars_init, "src/lmic_reports_google_pmcmc_6p/pars_init.rds")
   
   ## Remove HICs
@@ -170,7 +177,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
       
       Rt <- squire:::evaluate_Rt_pmcmc(
         R0_change = tt$change, 
-        date_R0_change = out$interventions$date_R0_change[out$interventions$date_R0_change>=out$replicate_parameters$start_date[y]], 
+        date_R0_change = tt$dates, 
         R0 = out$replicate_parameters$R0[y], 
         pars = list(
           Meff = out$replicate_parameters$Meff[y],
@@ -182,7 +189,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
       
       df <- data.frame(
         "Rt" = Rt,
-        "date" = c(as.Date(out$replicate_parameters$start_date[y]) + round((tt$tt*(out$parameters$dt)))),
+        "date" = tt$dates,
         "iso" = iso3c,
         rep = y,
         stringsAsFactors = FALSE)
