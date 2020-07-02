@@ -235,15 +235,17 @@ rt_creation <- function(out, date_0, max_date) {
     
     df <- data.frame(
       "Rt" = squire:::evaluate_Rt_pmcmc(
-        R0_change = out$interventions$R0_change[out$interventions$date_R0_change>out$replicate_parameters$start_date[y]], 
+        R0_change = tt$change, 
+        date_R0_change = tt$dates, 
         R0 = out$replicate_parameters$R0[y], 
-        Meff = out$replicate_parameters$Meff[y], 
-        Meff_pl = out$replicate_parameters$Meff_pl[y],
-        date_R0_change = out$interventions$date_R0_change[out$interventions$date_R0_change>out$replicate_parameters$start_date[y]],
-        date_Meff_change = out$interventions$date_Meff_change, 
-        roll = out$pmcmc_results$inputs$roll),
-        "date" = c(as.character(out$replicate_parameters$start_date[y]), 
-                   as.character(out$interventions$date_R0_change[match(tt$change, out$interventions$R0_change)])),
+        pars = list(
+          Meff = out$replicate_parameters$Meff[y],
+          Meff_pl = out$replicate_parameters$Meff_pl[y],
+          Rt_shift = out$replicate_parameters$Rt_shift[y],
+          Rt_shift_scale = out$replicate_parameters$Rt_shift_scale[y]
+        ),
+        Rt_args = out$pmcmc_results$inputs$Rt_args) ,
+        "date" = tt$dates,
         rep = y,
         stringsAsFactors = FALSE)
       
@@ -284,7 +286,7 @@ rt_creation <- function(out, date_0, max_date) {
                        y_75 = quantile(Rt, 0.75),
                        y_975 = quantile(Rt, 0.975)) 
     
-    head(tail(sum_rt, -1),-1)
+    head(sum_rt,-1)
 }
 
 post_lockdown_date <- function(x, above = 1.1, max_date, min_date) {

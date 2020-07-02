@@ -54,7 +54,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
             JOIN parameters
               ON parameters.report_version = report_version.id
            WHERE report_version_artefact.report_version IN (%s)
-             AND report = "lmic_reports_google_pmcmc"
+             AND report = "lmic_reports_google_pmcmc_6p"
              AND parameters.name = "iso3c"
            ORDER BY country, report_version.id'
   sql <- sprintf(sql, paste(sprintf('"%s"', id), collapse = ", "))
@@ -73,26 +73,27 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   ## ---------------------------------------------------------------------------
   
   # get old conditions
-  pars_init <- readRDS("src/lmic_reports_google_pmcmc/pars_init.rds")
+  pars_init <- readRDS("src/lmic_reports_google_pmcmc_6p/pars_init.rds")
   
   initial_conditions <- for(x in seq_along(reports$id)) {
     
-    out <- readRDS(file.path("archive/lmic_reports_google_pmcmc",reports$id[x],"grid_out.rds"))
+    out <- readRDS(file.path("archive/lmic_reports_google_pmcmc_6p",reports$id[x],"grid_out.rds"))
     mc <- do.call(rbind, lapply(out$pmcmc_results$chains, "[[", "results"))
     best <- mc[which.max(mc$log_posterior),]  
     best$start_date <- as.character(squire:::offset_to_start_date(out$pmcmc_results$inputs$data$date[1], round(best$start_date)))
-    best <- best[,1:4]
-    best$pld <- out$interventions$date_Meff_change
+    best <- best[,1:6]
     rownames(best) <- NULL
     best$iso3c <- reports$country[x]
+    best$date_Meff_change <- out$pmcmc_results$inputs$Rt_args$date_Meff_change
+    best$Rt_shift_duration <- out$pmcmc_results$inputs$Rt_args$Rt_shift_duration
     
-    if(reports$country[x] %in% pars_init$iso3c) {
-      pars_init[which(pars_init$iso3c == reports$country[x]),] <- best
-    } 
+   if(reports$country[x] %in% pars_init$iso3c) {
+     pars_init[which(pars_init$iso3c == reports$country[x]),] <- best
+   } 
     
   }
   
-  saveRDS(pars_init, "src/lmic_reports_google_pmcmc/pars_init.rds")
+  saveRDS(pars_init, "src/lmic_reports_google_pmcmc_6p/pars_init.rds")
   
   ## Remove HICs
   rl <- readLines(file.path(here::here(),"countries"))
@@ -105,7 +106,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   
   target <- "gh-pages"
   
-  src <- file.path("archive", "lmic_reports_google_pmcmc", reports$id)
+  src <- file.path("archive", "lmic_reports_google_pmcmc_6p", reports$id)
   dest <- sprintf("gh-pages/%s/%s", reports$country, reports$date)
   copy <- c("index.html",
             "index_files/figure-html",
@@ -125,8 +126,8 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
       
       # remove report if no deaths in last 20 days
       if(sum(head(ecdc[which(ecdc$countryterritoryCode == reports$country[i]),]$deaths,20), na.rm = TRUE)==0) {
-          prev <- dir(dest_latest, full.names = TRUE, pattern = "\\.")
-          unlink(grep("index", prev, value = TRUE), recursive = TRUE)
+        prev <- dir(dest_latest, full.names = TRUE, pattern = "\\.")
+        unlink(grep("index", prev, value = TRUE), recursive = TRUE)
       }
       
     }
@@ -150,8 +151,8 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   write.csv(projections, paste0("gh-pages/data/",date,"_v3.csv"), row.names = FALSE, quote = FALSE)
   cwd <- getwd()
   setwd("gh-pages/data/")
-  zip(paste0(date,"_v3.csv.zip"),paste0(date,"_v3.csv"))
-  file.remove(paste0(date,"_v3.csv"))
+  zip(paste0(date,"_v4.csv.zip"),paste0(date,"_v4.csv"))
+  file.remove(paste0(date,"_v4.csv"))
   setwd(cwd)
   saveRDS(projections, paste0("src/index_page/all_data.rds"))
   saveRDS(projections, paste0("src/regional_page/all_data.rds"))
@@ -163,7 +164,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   rt <- lapply(seq_along(reports$id), function(x) {
     
     iso <- reports$country[x]
-    out <- file.path("archive", "lmic_reports_google_pmcmc", reports$id[x], "grid_out.rds")
+    out <- file.path("archive", "lmic_reports_google_pmcmc_6p", reports$id[x], "grid_out.rds")
     out <- readRDS(out)
     
     # create the Rt data frame
@@ -180,7 +181,9 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
         R0 = out$replicate_parameters$R0[y], 
         pars = list(
           Meff = out$replicate_parameters$Meff[y],
-          Meff_pl = out$replicate_parameters$Meff_pl[y]
+          Meff_pl = out$replicate_parameters$Meff_pl[y],
+          Rt_shift = out$replicate_parameters$Rt_shift[y],
+          Rt_shift_scale = out$replicate_parameters$Rt_shift_scale[y]
         ),
         Rt_args = out$pmcmc_results$inputs$Rt_args) 
       
@@ -216,15 +219,15 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   
   sum_rt <- dplyr::group_by(new_rt_all, iso, date) %>% 
     dplyr::summarise(Rt_min = quantile(Rt, 0.025),
-              Rt_q25 = quantile(Rt, 0.25),
-              Rt_q75 = quantile(Rt, 0.75),
-              Rt_max = quantile(Rt, 0.975),
-              Rt = median(Rt)) 
+                     Rt_q25 = quantile(Rt, 0.25),
+                     Rt_q75 = quantile(Rt, 0.75),
+                     Rt_max = quantile(Rt, 0.975),
+                     Rt = median(Rt)) 
   sum_rt$continent <- countrycode::countrycode(sum_rt$iso, "iso3c", "continent")
   saveRDS(sum_rt, paste0("src/index_page/sum_rt.rds"))
   saveRDS(sum_rt, paste0("src/regional_page/sum_rt.rds"))
-
-
+  
+  
   
 }
 
