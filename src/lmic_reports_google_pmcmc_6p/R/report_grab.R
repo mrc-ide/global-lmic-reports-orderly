@@ -235,56 +235,58 @@ rt_creation <- function(out, date_0, max_date) {
     
     df <- data.frame(
       "Rt" = squire:::evaluate_Rt_pmcmc(
-        R0_change = out$interventions$R0_change[out$interventions$date_R0_change>out$replicate_parameters$start_date[y]], 
+        R0_change = tt$change, 
+        date_R0_change = tt$dates, 
         R0 = out$replicate_parameters$R0[y], 
-        Meff = out$replicate_parameters$Meff[y], 
-        Meff_pl = out$replicate_parameters$Meff_pl[y],
-        date_R0_change = out$interventions$date_R0_change[out$interventions$date_R0_change>out$replicate_parameters$start_date[y]],
-        date_Meff_change = out$interventions$date_Meff_change, 
-        roll = out$pmcmc_results$inputs$roll),
-        "date" = c(as.character(out$replicate_parameters$start_date[y]), 
-                   as.character(out$interventions$date_R0_change[match(tt$change, out$interventions$R0_change)])),
-        rep = y,
-        stringsAsFactors = FALSE)
+        pars = list(
+          Meff = out$replicate_parameters$Meff[y],
+          Meff_pl = out$replicate_parameters$Meff_pl[y],
+          Rt_shift = out$replicate_parameters$Rt_shift[y],
+          Rt_shift_scale = out$replicate_parameters$Rt_shift_scale[y]
+        ),
+        Rt_args = out$pmcmc_results$inputs$Rt_args) ,
+      "date" = tt$dates,
+      rep = y,
+      stringsAsFactors = FALSE)
+    
+    if("projection_args" %in% names(out)) {
       
-      if("projection_args" %in% names(out)) {
-        
-        extra <- data.frame("Rt" = tail(df$Rt, 1) * out$projection_args$R0_change,
-                            "date" = as.character(date_0 + 1 + out$projection_args$tt_R0),
-                            "rep" = y)
-        
-        df <- rbind(df, extra)
-        
-      }
+      extra <- data.frame("Rt" = tail(df$Rt, 1) * out$projection_args$R0_change,
+                          "date" = as.character(date_0 + 1 + out$projection_args$tt_R0),
+                          "rep" = y)
       
-      df$pos <- seq_len(nrow(df))
-      return(df)
+      df <- rbind(df, extra)
+      
+    }
+    
+    df$pos <- seq_len(nrow(df))
+    return(df)
   } )
-    
-    rt_all <- do.call(rbind, rts)
-    
-    rt_all$date <- as.Date(rt_all$date)
-    rt_all <- rt_all[,c(3,2,1,4)]
-    
-    new_rt_all <- rt_all %>%
-      dplyr::group_by(rep) %>% 
-      dplyr::arrange(date) %>% 
-      tidyr::complete(date = seq.Date(min(rt_all$date), max_date, by = "days")) 
-    
-    column_names <- colnames(new_rt_all)[-c(1,2)]
-    new_rt_all <- tidyr::fill(new_rt_all, tidyselect::all_of(column_names), .direction = c("down"))
-    new_rt_all <- tidyr::fill(new_rt_all, tidyselect::all_of(column_names), .direction = c("up"))
-    
-    sum_rt <- dplyr::group_by(new_rt_all, date) %>% 
-      dplyr::summarise(compartment = "Rt",
-                       y_025 = quantile(Rt, 0.025),
-                       y_25 = quantile(Rt, 0.25),
-                       y_median = median(Rt),
-                       y_mean = mean(Rt),
-                       y_75 = quantile(Rt, 0.75),
-                       y_975 = quantile(Rt, 0.975)) 
-    
-    head(tail(sum_rt, -1),-1)
+  
+  rt_all <- do.call(rbind, rts)
+  
+  rt_all$date <- as.Date(rt_all$date)
+  rt_all <- rt_all[,c(3,2,1,4)]
+  
+  new_rt_all <- rt_all %>%
+    dplyr::group_by(rep) %>% 
+    dplyr::arrange(date) %>% 
+    tidyr::complete(date = seq.Date(min(rt_all$date), max_date, by = "days")) 
+  
+  column_names <- colnames(new_rt_all)[-c(1,2)]
+  new_rt_all <- tidyr::fill(new_rt_all, tidyselect::all_of(column_names), .direction = c("down"))
+  new_rt_all <- tidyr::fill(new_rt_all, tidyselect::all_of(column_names), .direction = c("up"))
+  
+  sum_rt <- dplyr::group_by(new_rt_all, date) %>% 
+    dplyr::summarise(compartment = "Rt",
+                     y_025 = quantile(Rt, 0.025),
+                     y_25 = quantile(Rt, 0.25),
+                     y_median = median(Rt),
+                     y_mean = mean(Rt),
+                     y_75 = quantile(Rt, 0.75),
+                     y_975 = quantile(Rt, 0.975)) 
+  
+  head(sum_rt,-1)
 }
 
 post_lockdown_date <- function(x, above = 1.1, max_date, min_date) {
@@ -305,6 +307,44 @@ post_lockdown_date <- function(x, above = 1.1, max_date, min_date) {
     pl <- NA
     while(is.na(pl)) {
       above15 <- which(m >= above*min_mob)
+      pl <- above15[which(above15>which.min(m))[1]]
+      above <- above*0.99
+    }
+    
+    # if past max date then take the last local  minimum and grow by 4 days
+    if(x$date[pl] > max_date) {
+      min_f <- which(diff(sign(diff(m)))==2)+1
+      pl <- min_f[tail(which(x$date[min_f] < max_date),1)] + 4
+    } 
+    
+    dat <- max(min_date, as.Date(x$date[pl]))
+    
+    return(dat)
+    
+  }
+  
+}
+
+post_lockdown_date_relative <- function(x, above = 1.1, max_date, min_date) {
+  
+  if(nrow(x)==0) {
+    
+    return(NA)
+    
+  } else {
+    
+    if(any(x$observed)) {
+      m <- predict(loess(C~as.numeric(date), data=x, span = 0.2), type = "response")
+    } else {
+      m <- predict(loess(C~as.numeric(date), data=x, span = 0.2), type = "response")
+      #m <- x$C
+    }
+    min_mob <- min(m)
+    diff <- 1 - min_mob
+    
+    pl <- NA
+    while(is.na(pl)) {
+      above15 <- which(m >= ((above-1)*diff)+min_mob)
       pl <- above15[which(above15>which.min(m))[1]]
       above <- above*0.99
     }

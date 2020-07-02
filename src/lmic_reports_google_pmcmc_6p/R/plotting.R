@@ -1221,7 +1221,7 @@ intervention_plot_google <- function(res, date, data, forecast) {
     geom_point() + 
     scale_color_discrete(name = "Observed") +
     theme_bw() + 
-    theme(legend.position = c(0.1,0.3)) + 
+    theme(legend.position = "top") + 
     ylab("% Mobility") + 
     xlab("Date")
   
@@ -1252,20 +1252,21 @@ rt_plot <- function(out) {
                      R0 = out$replicate_parameters$R0[y], Meff = out$replicate_parameters$Meff[y])) 
     } else {
       Rt <- squire:::evaluate_Rt_pmcmc(
-        R0_change = out$interventions$R0_change[out$interventions$date_R0_change>out$replicate_parameters$start_date[y]], 
+        R0_change = tt$change, 
+        date_R0_change = out$interventions$date_R0_change[out$interventions$date_R0_change>=out$replicate_parameters$start_date[y]], 
         R0 = out$replicate_parameters$R0[y], 
-        Meff = out$replicate_parameters$Meff[y], 
-        Meff_pl = out$replicate_parameters$Meff_pl[y],
-        date_R0_change = out$interventions$date_R0_change[out$interventions$date_R0_change>out$replicate_parameters$start_date[y]],
-        date_Meff_change = out$interventions$date_Meff_change, 
-        roll = out$pmcmc_results$inputs$roll,
-        R0_pl_shift = out$replicate_parameters$R0_pl_shift[y],
-        start_date = out$replicate_parameters$start_date[y]) 
+        pars = list(
+          Meff = out$replicate_parameters$Meff[y],
+          Meff_pl = out$replicate_parameters$Meff_pl[y],
+          Rt_shift = out$replicate_parameters$Rt_shift[y],
+          Rt_shift_scale = out$replicate_parameters$Rt_shift_scale[y]
+        ),
+        Rt_args = out$pmcmc_results$inputs$Rt_args) 
     }
     
     df <- data.frame(
       "Rt" = Rt,
-      "date" = seq.Date(as.Date(out$replicate_parameters$start_date[y]), as.Date(date), by = 1),
+      "date" = c(as.Date(out$replicate_parameters$start_date[y]) + round((tt$tt*(out$parameters$dt)))),
       "iso" = iso3c,
       rep = y,
       stringsAsFactors = FALSE)

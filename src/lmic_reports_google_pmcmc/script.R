@@ -284,11 +284,14 @@ if(!is.null(date_R0_change)) {
 }
 
 if(!is.null(R0_change)) {
-  R0 <- squire:::evaluate_Rt_pmcmc(R0_change = tt_beta$change, R0 = R0, Meff = Meff, 
-                                   Meff_pl = Meff_pl, start_date = start_date,
-                                   date_R0_change = date_R0_change[date_R0_change>start_date], 
-                                   date_Meff_change = out_det$pmcmc_results$inputs$interventions$date_Meff_change,
-                                   roll = 7)
+  R0 <- squire:::evaluate_Rt_pmcmc(R0_change = tt_beta$change, 
+                                   date_R0_change = tt$dates, 
+                                   R0 = R0, 
+                                   pars = list(
+                                     Meff = Meff,
+                                     Meff_pl = Meff_pl
+                                   ),
+                                   Rt_args = out_det$pmcmc_results$inputs$Rt_args)
 } else {
   R0 <- R0
 }
@@ -296,8 +299,8 @@ beta_set <- squire:::beta_est(squire_model = squire_model,
                               model_params = out_det$pmcmc_results$inputs$model_params,
                               R0 = R0)
 
-df <- data.frame(tt_beta = c(0,tt_beta$tt), beta_set = beta_set, 
-                 date = start_date + c(0,tt_beta$tt), Rt = R0, 
+df <- data.frame(tt_beta = tt_beta$tt, beta_set = beta_set, 
+                 date = start_date + tt_beta$tt, Rt = R0, 
                  grey_bar_start = FALSE)
 
 # add in grey bar start for interface
@@ -415,28 +418,8 @@ fr0 <- tail(out$interventions$R0_change,1)
 time_period <- 365
 rel_R0 <- function(rel = 0.5, Meff_mult = 1) {
   R0_ch <- 1-((1-fr0)*rel)
-  
-  current <-  vapply(seq_along(out$replicate_parameters$R0), function(y){
-    
-    if(!is.null(date_R0_change)) {
-      tt_beta <- squire:::intervention_dates_for_odin(dates = out$interventions$date_R0_change,
-                                                      change = out$interventions$R0_change,
-                                                      start_date = out$replicate_parameters$start_date[y],
-                                                      steps_per_day = 1/out$parameters$dt)
-    } else {
-      tt_beta <- 0
-    }
-    
-    tail(squire:::evaluate_Rt_pmcmc(
-      R0_change = c(out$interventions$R0_change[out$interventions$date_R0_change>out$replicate_parameters$start_date[y]],fr0), 
-      R0 = out$replicate_parameters$R0[y], 
-      Meff = out$replicate_parameters$Meff[y], 
-      Meff_pl = out$replicate_parameters$Meff_pl[y],
-      date_R0_change = c(out$interventions$date_R0_change[out$interventions$date_R0_change>out$replicate_parameters$start_date[y]],as.Date(date)+1),
-      date_Meff_change = out$interventions$date_Meff_change, 
-      roll = out$pmcmc_results$inputs$roll,
-      start_date = out$replicate_parameters$start_date[y]),1)
-  }, numeric(1))
+  current <- squire:::t0_variables(out)
+  current <- unlist(lapply(current, "[[", "R0"))
   
   wanted <-  vapply(seq_along(out$replicate_parameters$R0), function(y){
     
@@ -449,15 +432,21 @@ rel_R0 <- function(rel = 0.5, Meff_mult = 1) {
       tt_beta <- 0
     }
     
-    tail(squire:::evaluate_Rt_pmcmc(
-      R0_change = c(out$interventions$R0_change[out$interventions$date_R0_change>out$replicate_parameters$start_date[y]],R0_ch), 
+    Rt <- tail(squire:::evaluate_Rt_pmcmc(
+      R0_change = c(tt$change,R0_ch), 
+      date_R0_change = c(
+        out$interventions$date_R0_change[out$interventions$date_R0_change>=out$replicate_parameters$start_date[y]], 
+        tail(out$pmcmc_results$inputs$data$date,1)+1),
       R0 = out$replicate_parameters$R0[y], 
-      Meff = out$replicate_parameters$Meff[y], 
-      Meff_pl = out$replicate_parameters$Meff_pl[y],
-      date_R0_change = c(out$interventions$date_R0_change[out$interventions$date_R0_change>out$replicate_parameters$start_date[y]],as.Date(date)+1),
-      date_Meff_change = out$interventions$date_Meff_change, 
-      roll = out$pmcmc_results$inputs$roll,
-      start_date = out$replicate_parameters$start_date[y]),1)
+      pars = list(
+        Meff = out$replicate_parameters$Meff[y],
+        Meff_pl = out$replicate_parameters$Meff_pl[y],
+        Rt_shift = out$replicate_parameters$Rt_shift[y],
+        Rt_shift_scale = out$replicate_parameters$Rt_shift_scale[y]
+      ),
+      Rt_args = out$pmcmc_results$inputs$Rt_args) ,1)
+    
+    
   }, numeric(1))
   
   mean(wanted/current)
