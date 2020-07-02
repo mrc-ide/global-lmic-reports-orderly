@@ -111,10 +111,14 @@ R0_min <- 1.6
 R0_max <- 5.6
 Meff_min <- 0.5
 Meff_max <- 10
-Meff_pl_min <- -3
-#Meff_pl_min <- 0
-Meff_pl_max <- 10
-#Meff_pl_max <- 1
+Meff_pl_min <- 0
+Meff_pl_max <- 1
+Rt_shift_min <- 0
+Rt_shift_max <- 5
+Rt_shift_scale_min <- 0.1
+Rt_shift_scale_max <- 10
+
+
 last_start_date <- as.Date(null_na(min_death_date))-10
 first_start_date <- as.Date(null_na(min_death_date))-55
 
@@ -132,7 +136,10 @@ if (nrow(pars_former) == 1) {
   date_start <- pars_former$start_date
   Meff_start <- pars_former$Meff
   Meff_pl_start <- pars_former$Meff_pl
-  pld <- pars_former$pld
+  Rt_shift_start <- pars_former$Rt_shift
+  Rt_shift_scale_start <- pars_former$Rt_shift_scale
+  date_Meff_change <- pars_former$date_Meff_change
+  Rt_shift_duration <- pars_former$Rt_shift_duration
   
 } else {
   
@@ -178,17 +185,22 @@ if (nrow(pars_former) == 1) {
   date_start <- as.Date(out_det$scan_results$y[pos[2]])
   Meff_start <- out_det$scan_results$z[pos[3]]
   Meff_pl_start <- 0.2
+  Rt_shift_start <- 0.5
+  Rt_shift_scale_start <- 2
   
-  pld <- post_lockdown_date_relative(interventions[[iso3c]], 1.05, 
+  date_Meff_change <- post_lockdown_date_relative(interventions[[iso3c]], 1.05, 
                                      max_date = as.Date("2020-06-02"),
                                      min_date = as.Date("2020-02-01"))
+  Rt_shift_duration <- 30
   
 }
 
 R0_start <- min(max(R0_start, R0_min), R0_max)
 date_start <- min(max(as.Date(date_start), as.Date(first_start_date)), as.Date(last_start_date))
 Meff_start <- min(max(Meff_start, Meff_min), Meff_max)
-Meff_pl_start <- min(max(Meff_pl_start), Meff_pl_max)
+Meff_pl_start <- min(max(Meff_pl_start, Meff_pl_min), Meff_pl_max)
+Rt_shift_start <- min(max(Rt_shift_start, Rt_shift_min), Rt_shift_max)
+Rt_shift_scale_start <- min(max(Rt_shift_scale_start, Rt_shift_scale_min), Rt_shift_scale_max)
 
 
 ## -----------------------------------------------------------------------------
@@ -199,21 +211,21 @@ Meff_pl_start <- min(max(Meff_pl_start), Meff_pl_max)
 pars_init = list('start_date' = date_start, 
                  'R0' = R0_start, 
                  'Meff' = Meff_start, 
-                 'Meff_pl' = 0.5,
-                 "Rt_shift" = 1,
-                 "Rt_shift_scale" = 1)
+                 'Meff_pl' = Meff_pl_start,
+                 "Rt_shift" = Rt_shift_start,
+                 "Rt_shift_scale" = Rt_shift_scale_start)
 pars_min = list('start_date' = first_start_date, 
                 'R0' = R0_min, 
                 'Meff' = Meff_min, 
-                'Meff_pl' = 0,
-                "Rt_shift" = 0,
-                "Rt_shift_scale" = 0.1)
+                'Meff_pl' = Meff_pl_min,
+                "Rt_shift" = Rt_shift_min,
+                "Rt_shift_scale" = Rt_shift_scale_min)
 pars_max = list('start_date' = last_start_date, 
                 'R0' = R0_max, 
                 'Meff' = Meff_max, 
-                'Meff_pl' = 1,
-                "Rt_shift" = 3,
-                "Rt_shift_scale" = 5)
+                'Meff_pl' = Meff_pl_max,
+                "Rt_shift" = Rt_shift_max,
+                "Rt_shift_scale" = Rt_shift_scale_max)
 pars_discrete = list('start_date' = TRUE, 'R0' = FALSE, 'Meff' = FALSE, 
                      'Meff_pl' = FALSE, "Rt_shift" = FALSE, "Rt_shift_scale" = FALSE)
 pars_obs = list(phi_cases = 1, k_cases = 2, phi_death = 1, k_death = 2, exp_noise = 1e6)
@@ -229,9 +241,9 @@ logprior <- function(pars){
   ret <- dunif(x = pars[["start_date"]], min = -55, max = -10, log = TRUE) +
     dnorm(x = pars[["R0"]], mean = 3, sd = 1, log = TRUE) +
     dnorm(x = pars[["Meff"]], mean = 3, sd = 3, log = TRUE) +
-    dunif(x = pars[["Meff_pl"]], min = 0, max = 1, log = TRUE) +
+    dunif(x = pars[["Meff_pl"]], min = Meff_pl_min, max = Meff_pl_max, log = TRUE) +
     dnorm(x = pars[["Rt_shift"]], mean = 0, sd = 1, log = TRUE) +
-    dunif(x = pars[["Rt_shift_scale"]], min = 0, max = 5, log = TRUE)
+    dunif(x = pars[["Rt_shift_scale"]], min = Rt_shift_scale_min, max = Rt_shift_scale_max, log = TRUE)
   return(ret)
 }
 
@@ -267,9 +279,9 @@ out_det <- squire::pmcmc(data = data,
                          R0_change = R0_change,
                          date_R0_change = date_R0_change,
                          Rt_args = squire:::Rt_args_list(
-                           date_Meff_change = pld,
+                           date_Meff_change = date_Meff_change,
                            scale_Meff_pl = TRUE,
-                           Rt_shift_duration = 60), 
+                           Rt_shift_duration = Rt_shift_duration), 
                          burnin = ceiling(n_mcmc/10),
                          seeding_cases = 5,
                          replicates = replicates,

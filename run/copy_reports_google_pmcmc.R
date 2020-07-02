@@ -72,7 +72,10 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   ## initial conditions --------------------------------------------------------
   ## ---------------------------------------------------------------------------
   
-  initial_conditions <- lapply(seq_along(reports$id), function(x){
+  # get old conditions
+  pars_init <- readRDS("src/lmic_reports_google_pmcmc/pars_init.rds")
+  
+  initial_conditions <- for(x in seq_along(reports$id)) {
     
     out <- readRDS(file.path("archive/lmic_reports_google_pmcmc",reports$id[x],"grid_out.rds"))
     mc <- do.call(rbind, lapply(out$pmcmc_results$chains, "[[", "results"))
@@ -82,10 +85,13 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
     best$pld <- out$interventions$date_Meff_change
     rownames(best) <- NULL
     best$iso3c <- reports$country[x]
-    return(best)  
-  })
+    
+    if(reports$country[x] %in% pars_init$iso3c) {
+      pars_init[which(pars_init$iso3c == reports$country[x]),] <- best
+    } 
+    
+  }
   
-  pars_init <- do.call(rbind, initial_conditions)
   saveRDS(pars_init, "src/lmic_reports_google_pmcmc/pars_init.rds")
   
   ## Remove HICs
