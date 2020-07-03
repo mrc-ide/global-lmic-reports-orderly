@@ -511,7 +511,7 @@ deaths_plot_single <- function(out, data, date_0, date = Sys.Date(),
   }
   
   date <- as.Date(date)
-  gg <- plot(out, "deaths", date_0 = date_0, x_var = "date") 
+  gg <- plot(out, "deaths", date_0 = date_0, x_var = "date", summary_f = median) 
   ymax <- max(out[[wh]]$inputs$data$deaths, gg$layers[[1]]$data$ymax[gg$layers[[1]]$data$x<=(as.Date(date)+forecast)])
   
   gg <- gg + 
@@ -574,7 +574,7 @@ deaths_plot_single_surge <- function(out, out2, data, date_0, date = Sys.Date(),
                     var_select = "deaths",
                     x_var = "date", 
                     q = c(0.025, 0.975),
-                    summary_f = mean,
+                    summary_f = median,
                     date_0 = date_0)
   
   # append scenarios

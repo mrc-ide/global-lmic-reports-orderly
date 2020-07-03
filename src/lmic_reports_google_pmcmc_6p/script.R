@@ -95,7 +95,7 @@ if(short_run) {
 } else {
   n_particles <- 10
   replicates <- 100
-  n_mcmc <- 12500
+  n_mcmc <- 10000
   n_chains <- 3
   grid_spread <- 11
   sleep <- 120
@@ -449,7 +449,7 @@ saveRDS(out, "grid_out.rds")
 
 ## Functions for working out the relative changes in R0 for given scenarios
 fr0 <- tail(out$interventions$R0_change,1)
-time_period <- 80
+time_period <- 90
 rel_R0 <- function(rel = 0.5, Meff_mult = 1) {
   R0_ch <- 1-((1-fr0)*rel)
   current <- squire:::t0_variables(out)
