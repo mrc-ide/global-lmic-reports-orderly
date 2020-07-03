@@ -121,7 +121,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
     if (is_latest) {
       dest_latest <- dirname(dest[[i]])
       prev <- dir(dest_latest, full.names = TRUE, pattern = "\\.")
-      unlink(c(prev[-grep("v1|v2", prev)], file.path(dest_latest, "figures")), recursive = TRUE)
+      unlink(c(prev[-grep("v1|v2|v3", prev)], file.path(dest_latest, "figures")), recursive = TRUE)
       file_copy(dir(dest[[i]], full.names = TRUE), dest_latest)
       
       # remove report if no deaths in last 20 days
@@ -148,7 +148,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   projections <- do.call(rbind,
                          lapply(file.path(src, "projections.csv"), read.csv))
   dir.create("gh-pages/data", FALSE, TRUE)
-  write.csv(projections, paste0("gh-pages/data/",date,"_v3.csv"), row.names = FALSE, quote = FALSE)
+  write.csv(projections, paste0("gh-pages/data/",date,"_v4.csv"), row.names = FALSE, quote = FALSE)
   cwd <- getwd()
   setwd("gh-pages/data/")
   zip(paste0(date,"_v4.csv.zip"),paste0(date,"_v4.csv"))
@@ -190,7 +190,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
       df <- data.frame(
         "Rt" = Rt,
         "date" = tt$dates,
-        "iso" = iso3c,
+        "iso" = iso,
         rep = y,
         stringsAsFactors = FALSE)
       df$pos <- seq_len(nrow(df))
