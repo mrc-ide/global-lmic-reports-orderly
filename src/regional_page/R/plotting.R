@@ -236,8 +236,6 @@ rt_plot <- function(cont) {
   sum_rt <- readRDS("sum_rt.rds")
   sum_rt <- sum_rt %>% filter(continent == cont)
   sum_rt <- sum_rt %>% filter(date <= today)
-  sum_rt <- group_by(sum_rt,iso) %>% 
-    filter(date >= date[rle(Rt)$lengths[1]])
   sum_rt$name <- countrycode::countrycode(sum_rt$iso, origin = "iso3c", destination = "cow.name", 
                                           custom_match = c("SRB"="Serbia",
                                                            "PSE"="State of Palestine"))
@@ -270,8 +268,6 @@ rt_continental_plot <- function(cont) {
   sum_rt <- readRDS("sum_rt.rds")
   sum_rt <- sum_rt %>% filter(continent == cont)
   sum_rt <- sum_rt %>% filter(date <= today)
-  sum_rt <- group_by(sum_rt,iso) %>% 
-    filter(date >= date[rle(Rt)$lengths[1]])
   
   ggplot(sum_rt, aes(x=date, y = Rt, ymin=Rt_min, ymax = Rt_max, group = iso, fill = iso)) +
     geom_ribbon(fill = "#96c4aa") +
