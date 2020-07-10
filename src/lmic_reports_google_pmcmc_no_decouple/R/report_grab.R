@@ -240,53 +240,51 @@ rt_creation <- function(out, date_0, max_date) {
         R0 = out$replicate_parameters$R0[y], 
         pars = list(
           Meff = out$replicate_parameters$Meff[y],
-          Meff_pl = out$replicate_parameters$Meff_pl[y],
-          Rt_shift = out$replicate_parameters$Rt_shift[y],
-          Rt_shift_scale = out$replicate_parameters$Rt_shift_scale[y]
+          Meff_pl = out$replicate_parameters$Meff_pl[y]
         ),
         Rt_args = out$pmcmc_results$inputs$Rt_args) ,
-        "date" = tt$dates,
-        rep = y,
-        stringsAsFactors = FALSE)
+      "date" = tt$dates,
+      rep = y,
+      stringsAsFactors = FALSE)
+    
+    if("projection_args" %in% names(out)) {
       
-      if("projection_args" %in% names(out)) {
-        
-        extra <- data.frame("Rt" = tail(df$Rt, 1) * out$projection_args$R0_change,
-                            "date" = as.character(date_0 + 1 + out$projection_args$tt_R0),
-                            "rep" = y)
-        
-        df <- rbind(df, extra)
-        
-      }
+      extra <- data.frame("Rt" = tail(df$Rt, 1) * out$projection_args$R0_change,
+                          "date" = as.character(date_0 + 1 + out$projection_args$tt_R0),
+                          "rep" = y)
       
-      df$pos <- seq_len(nrow(df))
-      return(df)
+      df <- rbind(df, extra)
+      
+    }
+    
+    df$pos <- seq_len(nrow(df))
+    return(df)
   } )
-    
-    rt_all <- do.call(rbind, rts)
-    
-    rt_all$date <- as.Date(rt_all$date)
-    rt_all <- rt_all[,c(3,2,1,4)]
-    
-    new_rt_all <- rt_all %>%
-      dplyr::group_by(rep) %>% 
-      dplyr::arrange(date) %>% 
-      tidyr::complete(date = seq.Date(min(rt_all$date), max_date, by = "days")) 
-    
-    column_names <- colnames(new_rt_all)[-c(1,2)]
-    new_rt_all <- tidyr::fill(new_rt_all, tidyselect::all_of(column_names), .direction = c("down"))
-    new_rt_all <- tidyr::fill(new_rt_all, tidyselect::all_of(column_names), .direction = c("up"))
-    
-    sum_rt <- dplyr::group_by(new_rt_all, date) %>% 
-      dplyr::summarise(compartment = "Rt",
-                       y_025 = quantile(Rt, 0.025),
-                       y_25 = quantile(Rt, 0.25),
-                       y_median = median(Rt),
-                       y_mean = mean(Rt),
-                       y_75 = quantile(Rt, 0.75),
-                       y_975 = quantile(Rt, 0.975)) 
-    
-    head(sum_rt,-1)
+  
+  rt_all <- do.call(rbind, rts)
+  
+  rt_all$date <- as.Date(rt_all$date)
+  rt_all <- rt_all[,c(3,2,1,4)]
+  
+  new_rt_all <- rt_all %>%
+    dplyr::group_by(rep) %>% 
+    dplyr::arrange(date) %>% 
+    tidyr::complete(date = seq.Date(min(rt_all$date), max_date, by = "days")) 
+  
+  column_names <- colnames(new_rt_all)[-c(1,2)]
+  new_rt_all <- tidyr::fill(new_rt_all, tidyselect::all_of(column_names), .direction = c("down"))
+  new_rt_all <- tidyr::fill(new_rt_all, tidyselect::all_of(column_names), .direction = c("up"))
+  
+  sum_rt <- dplyr::group_by(new_rt_all, date) %>% 
+    dplyr::summarise(compartment = "Rt",
+                     y_025 = quantile(Rt, 0.025),
+                     y_25 = quantile(Rt, 0.25),
+                     y_median = median(Rt),
+                     y_mean = mean(Rt),
+                     y_75 = quantile(Rt, 0.75),
+                     y_975 = quantile(Rt, 0.975)) 
+  
+  head(sum_rt,-1)
 }
 
 post_lockdown_date <- function(x, above = 1.1, max_date, min_date) {
