@@ -48,20 +48,16 @@ d$deaths[d$countryterritoryCode == "ESP" & d$deaths<0] <- 0
 # spain seems to have stopped reporting now too...
 esp_miss <- unique(d$dateRep)[which(!unique(d$dateRep) %in% d$dateRep[d$countryterritoryCode=="ESP"])]
 if(length(esp_miss) > 0) {
-  df_esp <- data.frame("dateRep" = esp_miss, 
-                       "day" = as.numeric(format(as.Date(esp_miss), "%d")),
-                       "month" = as.numeric(format(as.Date(esp_miss), "%m")),
-                       "year" = as.numeric(format(as.Date(esp_miss), "%Y")),
-                       "cases" = 0, 
-                       "deaths" = 0,
-                       "Region" = "Spain", 
-                       "geoId" = "ES",
-                       "countryterritoryCode" = "ESP",
-                       "popData2018" = 46723749,
-                       "continentExp" = "Europe", 
-                       stringsAsFactors = FALSE)
-  colnames(df_esp) <- colnames(d)
+  
+  df_esp <- (d %>% filter(countryterritoryCode=="ESP"))[1,]
+  df_esp$dateRep = esp_miss
+  df_esp$day = as.numeric(format(as.Date(esp_miss), "%d"))
+  df_esp$month = as.numeric(format(as.Date(esp_miss), "%m"))
+  df_esp$year = as.numeric(format(as.Date(esp_miss), "%Y"))
+  df_esp$cases = 0 
+  df_esp$deaths = 0
   d <- rbind(df_esp, d)
+  
 }
 
 # save 
