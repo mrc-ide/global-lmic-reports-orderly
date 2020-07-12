@@ -49,7 +49,7 @@ d$deaths[d$countryterritoryCode == "ESP" & d$deaths<0] <- 0
 esp_miss <- unique(d$dateRep)[which(!unique(d$dateRep) %in% d$dateRep[d$countryterritoryCode=="ESP"])]
 if(length(esp_miss) > 0) {
   
-  df_esp <- (d %>% filter(countryterritoryCode=="ESP"))[1,]
+  df_esp <- d[d$countryterritoryCode=="ESP",][1,]
   df_esp$dateRep = esp_miss
   df_esp$day = as.numeric(format(as.Date(esp_miss), "%d"))
   df_esp$month = as.numeric(format(as.Date(esp_miss), "%m"))
