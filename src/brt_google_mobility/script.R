@@ -143,6 +143,7 @@ max_trees <- 3000
 learning_rate <- 0.05
 x <- as.data.frame(overall_test)
 print(class(x$income_group))
+saveRDS(x, "what.rds")
 brt <- gbm.step(data = x, 
                 gbm.x = 2:ncol(x),
                 gbm.y = 1,
