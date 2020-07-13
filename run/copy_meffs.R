@@ -9,7 +9,12 @@ file_copy <- function(from, to) {
 
 ## Possibly useful:
 ## dir("gh-pages", pattern = "index\\.html$", recursive = TRUE)
-copy_meffs <- function(date = NULL, is_latest = TRUE) {
+copy_meffs <- function(date = NULL, what = "both", dic_only = TRUE, is_latest = TRUE) {
+  
+  dic_only <- as.logical(dic_only)
+  if(!((what) %in% c("both", "3p", "4p"))) {
+    stop("what is wrong")
+  }
   
   #system("echo pre-DB")
   db <- orderly::orderly_db("destination")
@@ -61,11 +66,13 @@ copy_meffs <- function(date = NULL, is_latest = TRUE) {
   ##  LMIC 3 Parameter ---------------------------------------------------------
   ##  --------------------------------------------------------------------------
   
-  #system("echo pre-report")
-  ## Then find all lmic_reports reports that use files from this ecdc
-  ## report.  This is a bit awful and I might add direct link or a
-  ## view to make this easier at some point.
-  sql <- 'SELECT report_version.id, parameters.value as country
+  if(what %in% c("both", "3p")) {
+    
+    #system("echo pre-report")
+    ## Then find all lmic_reports reports that use files from this ecdc
+    ## report.  This is a bit awful and I might add direct link or a
+    ## view to make this easier at some point.
+    sql <- 'SELECT report_version.id, parameters.value as country
             FROM report_version_artefact
             JOIN file_artefact
               ON file_artefact.artefact = report_version_artefact.id
@@ -79,40 +86,72 @@ copy_meffs <- function(date = NULL, is_latest = TRUE) {
              AND report = "lmic_reports_google_pmcmc_no_decouple"
              AND parameters.name = "iso3c"
            ORDER BY country, report_version.id'
-  sql <- sprintf(sql, paste(sprintf('"%s"', id), collapse = ", "))
-  reports <- DBI::dbGetQuery(db, sql)
-  
-  if (any(duplicated(reports$country))) {
-    keep <- tapply(seq_len(nrow(reports)), reports$country, max)
-    reports <- reports[keep, ]
-    rownames(reports) <- NULL
+    sql <- sprintf(sql, paste(sprintf('"%s"', id), collapse = ", "))
+    reports <- DBI::dbGetQuery(db, sql)
+    
+    if (any(duplicated(reports$country))) {
+      keep <- tapply(seq_len(nrow(reports)), reports$country, max)
+      reports <- reports[keep, ]
+      rownames(reports) <- NULL
+    }
+    
+    if(nrow(reports) > 0) {
+      
+      reports$date <- as.character(date)
+      
+      # copy lmic_reports_google key bits
+      if (as.logical(dic_only)) {
+        
+        src <- file.path("archive", "lmic_reports_google_pmcmc_no_decouple", reports$id)
+        dest <- file.path(target,sprintf("%s/%s/%s", "archive", "lmic_reports_google_pmcmc_no_decouple",reports$id))
+        worked <- vapply(dest, dir.create, logical(1), recursive = TRUE)
+        
+        worked <- mapply(function(from, to){
+          append <- c("grid_out.rds")
+          file_copy(file.path(from, append), to)
+        }, from = src, to = dest)
+        
+        for(i in length(dest)) {
+          out <- readRDS(file.path(dest[i], "grid_out.rds"))
+          out$output <- NULL
+          out$pmcmc_results$inputs$squire_model <- NULL
+          for(j in seq_len(length(out$pmcmc_results$chains))) {
+            out$pmcmc_results$chains[[j]]$covariance_matrix <- NULL
+            out$pmcmc_results$chains[[j]]$scaling_factor <- NULL
+            out$pmcmc_results$chains[[j]]$acceptances <- NULL
+          }
+          saveRDS(out, file.path(dest[i], "grid_out.rds"))
+        }
+        
+        
+      } else {
+        
+        src <- file.path("archive", "lmic_reports_google_pmcmc_no_decouple", reports$id)
+        dest <- file.path(target,sprintf("%s/%s/%s", "archive", "lmic_reports_google_pmcmc_no_decouple",reports$id))
+        worked <- vapply(dest, dir.create, logical(1), recursive = TRUE)
+        
+        worked <- mapply(function(from, to){
+          append <- c("fitting.pdf", "grid_out.rds", "projections.csv", "orderly_run.rds")
+          file_copy(file.path(from, append), to)
+        }, from = src, to = dest)
+        
+        
+      }
+      
+    }
+    
   }
-  
-  if(nrow(reports) > 0) {
-  
-  reports$date <- as.character(date)
-  
-  # copy lmic_reports_google key bits
-  src <- file.path("archive", "lmic_reports_google_pmcmc_no_decouple", reports$id)
-  dest <- file.path(target,sprintf("%s/%s/%s", "archive", "lmic_reports_google_pmcmc_no_decouple",reports$id))
-  worked <- vapply(dest, dir.create, logical(1), recursive = TRUE)
-  
-  worked <- mapply(function(from, to){
-    append <- c("fitting.pdf", "grid_out.rds", "projections.csv", "orderly_run.rds")
-    file_copy(file.path(from, append), to)
-  }, from = src, to = dest)
-  
-  }
-  
   ##  --------------------------------------------------------------------------
   ##  LMIC PMCMC COPY ----------------------------------------------------------
   ##  --------------------------------------------------------------------------
   
-  #system("echo pre-report")
-  ## Then find all lmic_reports reports that use files from this ecdc
-  ## report.  This is a bit awful and I might add direct link or a
-  ## view to make this easier at some point.
-  sql <- 'SELECT report_version.id, parameters.value as country
+  if(what %in% c("both", "4p")) {
+    
+    #system("echo pre-report")
+    ## Then find all lmic_reports reports that use files from this ecdc
+    ## report.  This is a bit awful and I might add direct link or a
+    ## view to make this easier at some point.
+    sql <- 'SELECT report_version.id, parameters.value as country
             FROM report_version_artefact
             JOIN file_artefact
               ON file_artefact.artefact = report_version_artefact.id
@@ -126,29 +165,60 @@ copy_meffs <- function(date = NULL, is_latest = TRUE) {
              AND report = "lmic_reports_google_pmcmc"
              AND parameters.name = "iso3c"
            ORDER BY country, report_version.id'
-  sql <- sprintf(sql, paste(sprintf('"%s"', id), collapse = ", "))
-  reports <- DBI::dbGetQuery(db, sql)
-  
-  if (any(duplicated(reports$country))) {
-    keep <- tapply(seq_len(nrow(reports)), reports$country, max)
-    reports <- reports[keep, ]
-    rownames(reports) <- NULL
-  }
-  
-  if(nrow(reports) > 0) {
-  
-  reports$date <- as.character(date)
-  
-  # copy lmic_reports_google_pmcmc key bits
-  src <- file.path("archive", "lmic_reports_google_pmcmc", reports$id)
-  dest <- file.path(target,sprintf("%s/%s/%s", "archive", "lmic_reports_google_pmcmc",reports$id))
-  worked <- vapply(dest, dir.create, logical(1), recursive = TRUE)
-  
-  worked <- mapply(function(from, to){
-    append <- c("fitting.pdf", "grid_out.rds", "projections.csv", "orderly_run.rds")
-    file_copy(file.path(from, append), to)
-  }, from = src, to = dest)
-  
+    sql <- sprintf(sql, paste(sprintf('"%s"', id), collapse = ", "))
+    reports <- DBI::dbGetQuery(db, sql)
+    
+    if (any(duplicated(reports$country))) {
+      keep <- tapply(seq_len(nrow(reports)), reports$country, max)
+      reports <- reports[keep, ]
+      rownames(reports) <- NULL
+    }
+    
+    if(nrow(reports) > 0) {
+      
+      reports$date <- as.character(date)
+      
+      # copy lmic_reports_google key bits
+      if (as.logical(dic_only)) {
+        
+        src <- file.path("archive", "lmic_reports_google_pmcmc", reports$id)
+        dest <- file.path(target,sprintf("%s/%s/%s", "archive", "lmic_reports_google_pmcmc",reports$id))
+        worked <- vapply(dest, dir.create, logical(1), recursive = TRUE)
+        
+        worked <- mapply(function(from, to){
+          append <- c("grid_out.rds")
+          file_copy(file.path(from, append), to)
+        }, from = src, to = dest)
+        
+        for(i in length(dest)) {
+          out <- readRDS(file.path(dest[i], "grid_out.rds"))
+          out$output <- NULL
+          out$pmcmc_results$inputs$squire_model <- NULL
+          for(j in seq_len(length(out$pmcmc_results$chains))) {
+            out$pmcmc_results$chains[[j]]$covariance_matrix <- NULL
+            out$pmcmc_results$chains[[j]]$scaling_factor <- NULL
+            out$pmcmc_results$chains[[j]]$acceptances <- NULL
+          }
+          saveRDS(out, file.path(dest[i], "grid_out.rds"))
+        }
+        
+        
+      } else {
+        
+        src <- file.path("archive", "lmic_reports_google_pmcmc", reports$id)
+        dest <- file.path(target,sprintf("%s/%s/%s", "archive", "lmic_reports_google_pmcmc",reports$id))
+        worked <- vapply(dest, dir.create, logical(1), recursive = TRUE)
+        
+        worked <- mapply(function(from, to){
+          append <- c("fitting.pdf", "grid_out.rds", "projections.csv", "orderly_run.rds")
+          file_copy(file.path(from, append), to)
+        }, from = src, to = dest)
+        
+        
+      }
+      
+    }
+   
   }
   
   ##  --------------------------------------------------------------------------
@@ -176,7 +246,7 @@ copy_meffs <- function(date = NULL, is_latest = TRUE) {
 
 
 if (!interactive()) {
-  usage <- "Usage:\n./copy_meffs.R [<date>]"
+  usage <- "Usage:\n./copy_meffs.R [<date>] [<what>] [<dic_only>]"
   args <- docopt::docopt(usage)
-  copy_meffs(args$date)
+  copy_meffs(args$date, args$what, args$dic_only)
 }
