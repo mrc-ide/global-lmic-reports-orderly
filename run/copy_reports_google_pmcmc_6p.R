@@ -98,7 +98,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   ## Remove HICs
   rl <- readLines(file.path(here::here(),"countries"))
   to_remove <- stringr::str_sub(rl[(grep("Other HICs", rl) + 1) : length(rl)], -3)
-  reports <- reports[!reports$country %in% to_remove,]
+  hic_pos <- which(reports$country %in% to_remove)
   
   ## ---------------------------------------------------------------------------
   ## copy reports --------------------------------------------------------------
@@ -133,7 +133,8 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
     }
   }
   
-  pdf_input <- file.path(src, "index.pdf")
+  # from here remove hic
+  pdf_input <- file.path(src[-hic_pos], "index.pdf")
   message(sprintf("Building combined pdf from %d files", length(pdf_input)))
   qpdf::pdf_combine(pdf_input, "gh-pages/combined_reports.pdf")
   
@@ -141,7 +142,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   ## the situation.  The alternative is to depend on _all_ the country
   ## tasks for that date.
   summaries <- do.call(rbind,
-                       lapply(file.path(src, "summary_df.rds"), readRDS))
+                       lapply(file.path(src[-hic_pos], "summary_df.rds"), readRDS))
   saveRDS(summaries, "src/index_page/summaries.rds")
   saveRDS(summaries, "src/regional_page/summaries.rds")
   
@@ -154,14 +155,16 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   zip(paste0(date,"_v4.csv.zip"),paste0(date,"_v4.csv"))
   file.remove(paste0(date,"_v4.csv"))
   setwd(cwd)
-  saveRDS(projections, paste0("src/index_page/all_data.rds"))
-  saveRDS(projections, paste0("src/regional_page/all_data.rds"))
+  saveRDS(projections[-hic_pos], paste0("src/index_page/all_data.rds"))
+  saveRDS(projections[-hic_pos], paste0("src/regional_page/all_data.rds"))
   
   ## ---------------------------------------------------------------------------
   ## rt grab -------------------------------------------------------------------
   ## ---------------------------------------------------------------------------
   
-  rt <- lapply(seq_along(reports$id), function(x) {
+  # HICs not needed here
+  reports <- reports[-hic_pos, ]
+  rt <- lapply(seq_along(reports$id[-hic_pos]), function(x) {
     
     iso <- reports$country[x]
     out <- file.path("archive", "lmic_reports_google_pmcmc_6p", reports$id[x], "grid_out.rds")
