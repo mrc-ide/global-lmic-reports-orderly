@@ -444,11 +444,7 @@ suppressWarnings(suppressMessages(print(cumulative_deaths_plot(country = country
 
 ### COVID-19 Transmission Modelling
 
-We assume that the deaths reported to date provide the best indication of the stage of the epidemic, as deaths are more consistently and accurately reported. Our current working estimate is that 1 death indicates that approximately 100 people will have been infected with the other 99 recovering (based on an infection fatality ratio of ~1%). These infections will have happened approximately 21 days previously – capturing a 5-day period from infection to onset of symptoms (the incubation period), 4 days from onset of symptoms to hospitalisation, and 12 days in hospital before death. With a 3-day doubling time, 100 infections that occurred 15 days ago will have generated 200 infections 12 days ago, 400 infections 9 days ago, 800 infections 6 days ago and 1,600 infections 3 days ago resulting in approximately 3,200 infections at the time the first death is observed.
-
-To explore this, we fit our age-structured SEIR model (see [Methods](https://mrc-ide.github.io/global-lmic-reports/parameters.html)) to the time series of deaths in a country, in order to estimate the start date of the epidemic and the baseline R0. We assume that 100% of COVID-19 related deaths have been reported. We have also included the impact of interventions that have been put in place and their effect on human mobility and transmission based on the [Google COVID-19 Community Mobility Reports](https://www.google.com/covid19/mobility/). Using our [mathematical model](https://github.com/mrc-ide/squire) that formalises this approach, we estimate that there has been a total of `r form(infs)` infections over the past 4 weeks.
-
-The figure below shows the estimated number of people infected over the past 4 weeks. The bar charts show, for comparison, the number of reported cases. The right-hand plot shows these data on a different scale as the estimated infections are likely to be much larger than the reported cases.  **Importantly**, the estimated infections includes both asymptomatic and mild cases that would not necessarily be identified through surveillance. Consequently, the estimated infections are likely to be significantly higher than the reported cases (see our [FAQ](https://mrc-ide.github.io/global-lmic-reports/FAQ.html#why-are-the-estimated-infections-so-much-higher-than-the-reported-cases) for further explanation of these differences and why the reported cases and estimated infections are unlikely to match). `r show_cases_sentence`
+The figure below shows the estimated number of people infected over the past 4 weeks. The bar charts show, for comparison, the number of reported cases. We estimate that there has been a total of `r form(infs)` infections over the past 4 weeks. The right-hand plot shows these data on a different scale as the estimated infections are likely to be much larger than the reported cases.  **Importantly**, the estimated infections includes both asymptomatic and mild cases that would not necessarily be identified through surveillance. Consequently, the estimated infections are likely to be significantly higher than the reported cases in all countries (see our [FAQ](https://mrc-ide.github.io/global-lmic-reports/FAQ.html#why-are-the-estimated-infections-so-much-higher-than-the-reported-cases) for further explanation of these differences and why the reported cases and estimated infections are unlikely to match). `r show_cases_sentence`
 
 <br>
 
@@ -460,7 +456,7 @@ suppressWarnings(suppressMessages(print(cases_plot(params$o_list[[1]], data = da
 
 `r pagebreak()`
 
-By fitting to the time series of deaths, we are able to estimate a time-varying reproduction number, $R_t$. $R_t$ is the the average number of secondary infections caused by a single infected person at a given time. If $R_t$ is above 1, the rate of transmission is increasing and the number of new infections is increasing. $R_t$ is assumed to change in relation to mobility  fall in proportion. When fitting our model we assume that 100% of COVID-19 related deaths have been reported (please see our [FAQ](https://mrc-ide.github.io/global-lmic-reports/FAQ.html#how-have-you-accounted-for-unreported-deaths) section for more information about this assumption). We also assume a fixed date at which the impact of mobility on transmission changes from pre-lockdown levels to post-lockdown levels, which may cause large changes in Rt. We are working to refine how this switch occurs and to formally calculate its shape.
+By fitting to the time series of deaths, we are able to estimate a time-varying reproduction number, $R_t$. $R_t$ is the the average number of secondary infections caused by a single infected person at a given time. If $R_t$ is above 1, the rate of transmission is increasing and the number of new infections is increasing. $R_t$ is assumed to change in relation to mobility  fall in proportion. When fitting our model we assume that 100% of COVID-19 related deaths have been reported (please see our [FAQ](https://mrc-ide.github.io/global-lmic-reports/FAQ.html#how-have-you-accounted-for-unreported-deaths) section for more information about this assumption).
 
 <br>
 
@@ -478,7 +474,7 @@ suppressWarnings(suppressMessages(print(rt$plot)))
 
 `r pagebreak()`
 
-Using the model fit, we can forecast the expected trajectory for cumulative deaths, which is shown in the figure below. This assumes a severity pattern by age that is consistent with that observed in China, Europe and the U.S to date. This projection assumes that transmission is maintained at the current level of transmission as estimated by the final $R_t$ value. `r show_capacity_sentence`
+Using the model fit, we can forecast the expected trajectory for cumulative deaths assuming the transmission level, represented by the final Rt value stays the same over the next 28 days. `r show_capacity_sentence`
 
 <br>
 

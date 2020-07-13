@@ -111,6 +111,7 @@ resources:
   - wellcome.png
   - ukaid.jpg
   - all_data.rds
+  - wb.csv
 
 global_resources:
   _navbar.html: _navbar.html

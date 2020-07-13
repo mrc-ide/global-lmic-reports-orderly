@@ -271,13 +271,13 @@ full_firework_plot <- function() {
 }
 
 full_plot <- function() {
-
-plots <- lapply(c("Asia","Europe","Africa","Americas","Oceania"), cumulative_deaths_plot_continent)
-plotted <- lapply(plots[1:4], function(x){x+theme(legend.position = "none")})
-leg <- cowplot::get_legend(plots[[1]] + theme(legend.position = "top"))
-main <- cowplot::plot_grid(plotlist = plotted[1:4], ncol = 2)
-get <- cowplot::plot_grid(main,leg,ncol=1,rel_heights = c(1, 0.05))
-get
+  
+  plots <- lapply(c("Asia","Europe","Africa","Americas","Oceania"), cumulative_deaths_plot_continent)
+  plotted <- lapply(plots[1:4], function(x){x+theme(legend.position = "none")})
+  leg <- cowplot::get_legend(plots[[1]] + theme(legend.position = "top"))
+  main <- cowplot::plot_grid(plotlist = plotted[1:4], ncol = 2)
+  get <- cowplot::plot_grid(main,leg,ncol=1,rel_heights = c(1, 0.05))
+  get
 }
 
 # define facet_zoom2 function to use FacetZoom2 instead of FacetZoom
@@ -536,13 +536,13 @@ summaries_cases_plot <- function(summaries) {
     scale_fill_manual("", labels = c("Estimated Infections", "Reported Infections", "Reported Deaths"),
                       values = viridis::viridis(3)) +
     scale_color_manual("", labels = c("Estimated Infections", "Reported Infections", "Reported Deaths"),
-                      values = viridis::viridis(3)) + 
+                       values = viridis::viridis(3)) + 
     theme_bw() +
     xlab("") +
     ylab("") + 
     facet_wrap(~continent, scales = "free") +
     theme(legend.key = element_rect(size = 5),
-      legend.key.size = unit(2, 'lines')) + 
+          legend.key.size = unit(2, 'lines')) + 
     coord_flip() 
   
 }
@@ -556,7 +556,7 @@ summaries_forecasts_plot <- function(summaries) {
   summaries$group_large[summaries$continent %in% c("Asia", "Americas")] <- "Asia & Americas"
   
   gg <- ggplot(summaries[summaries$variable %in% c("hospital_14","icu_14"),], 
-         aes(x = country, y = value, color = variable, fill = variable)) + 
+               aes(x = country, y = value, color = variable, fill = variable)) + 
     geom_bar(stat="identity",position = "dodge", width = 0.5) + 
     scale_y_continuous(labels = scales::comma) + 
     scale_fill_manual("", labels = c("Estimated Hospital Beds\nNeeded in 14 days",
@@ -606,4 +606,37 @@ healthcare_plot <- function(out, data) {
                      squire:::plot_calibration_healthcare_individual_barplot(df = o1, data = data, what = "ICU"),
                      ncol=2)
   
+}
+
+
+
+regional_plot_overview(date_0) {
+  
+  
+  wb <- read.csv("wb.csv")
+  ecdc <- readRDS("ecdc_all.rds")
+ 
+  ecdc$income <- wb$income_group[match(ecdc$countryterritoryCode,wb$country_code)]
+  ecdc$date <- as.Date(ecdc$dateRep)
+  
+  sum <- ecdc %>% group_by(date, income) %>% 
+    summarise(deaths = sum(deaths, na.rm=TRUE)) 
+  
+  sum <- na.omit(sum)
+  sum$income <- factor(sum$income, levels = rev(c("Low income", "Lower middle income",
+                                              "Upper middle income", "High income")))
+  
+  ggplot(sum, aes(x = date, y = deaths, fill = income)) + 
+    geom_bar(stat = "identity") + 
+    theme_bw() + 
+    scale_fill_brewer(name = "", type="qual", palette = 3) + 
+    ylab("Deaths") + 
+    xlab("") + 
+    theme(legend.position = "top",
+          panel.border = element_blank(), 
+          axis.line = element_line(size=0.5))
+    
+  
+
+
 }
