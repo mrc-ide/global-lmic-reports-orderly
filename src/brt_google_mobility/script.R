@@ -142,6 +142,7 @@ max_trees <- 3000
 }
 learning_rate <- 0.05
 x <- as.data.frame(overall_test)
+print(x$income_group)
 brt <- gbm.step(data = x, 
                 gbm.x = 2:ncol(x),
                 gbm.y = 1,
