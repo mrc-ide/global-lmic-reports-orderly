@@ -610,7 +610,7 @@ healthcare_plot <- function(out, data) {
 
 
 
-regional_plot_overview(date_0) {
+regional_plot_overview <- function(date_0) {
   
   
   wb <- read.csv("wb.csv")
@@ -630,6 +630,7 @@ regional_plot_overview(date_0) {
     geom_bar(stat = "identity") + 
     theme_bw() + 
     scale_fill_brewer(name = "", type="qual", palette = 3) + 
+    scale_x_date(date_breaks = "1 month") + 
     ylab("Deaths") + 
     xlab("") + 
     theme(legend.position = "top",

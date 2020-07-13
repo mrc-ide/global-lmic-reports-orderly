@@ -153,7 +153,7 @@ Here we aim to provide each country with an indication of where they are in thei
 
 <br>
 
-```{r fig1, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.align=fig_center(),fig.width=10, fig.height=fig_height(10,10), fig.cap=figRef("Cumulative Deaths since 10 deaths by continent for low- and middle-income countries. The projected deaths (assuming population mobility is maintained at today's level) are shown with dashed lines.")}
+```{r fig1, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.align=fig_center(),fig.width=9, fig.height=fig_height(5,5), fig.cap=figRef("")}
 
 # [FIGURE SHOWING TRAJECTORIES AND CASES OF EARLY-STAGE LMIC COUNTRIES RELATIVE TO HICS?]
 suppressMessages(suppressWarnings(
