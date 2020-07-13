@@ -60,7 +60,7 @@ mob <- goog %>%
   select(country_region, iso3c, date, overall)
 
 # Loading World Bank Metadata (Charlie can update to url as needed)
-wb_metadata <- read.csv("World_Bank_Country_Metadata.csv", fileEncoding="UTF-8-BOM") %>%
+wb_metadata <- read.csv("World_Bank_Country_Metadata.csv", fileEncoding="UTF-8-BOM", stringsAsFactors = TRUE) %>%
   rename(ISO = country_code) %>%
   select(ISO, income_group, region) %>%
   filter(region != "")
@@ -128,6 +128,15 @@ overall_test <- overall %>%
   ungroup(ISO) %>%
   select(overall, everything(), -ISO, -date)
 
+# # for some reason what used to be factors are now characters...
+# classes <- unlist(lapply(overall_test, class))
+# for(i in seq_along(classes)) {
+#   if(classes[i] == "character") {
+#     overall_test[[i]] <- as.factor(overall_test[[i]])
+#   }
+# }
+# 
+
 ## -----------------------------------------------------------------------------
 ## Step 3: BRT
 ## -----------------------------------------------------------------------------
@@ -142,8 +151,7 @@ max_trees <- 3000
 }
 learning_rate <- 0.05
 x <- as.data.frame(overall_test)
-print(class(x$income_group))
-saveRDS(x, "what.rds")
+
 brt <- gbm.step(data = x, 
                 gbm.x = 2:ncol(x),
                 gbm.y = 1,
