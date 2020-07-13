@@ -111,7 +111,7 @@ copy_meffs <- function(date = NULL, what = "both", dic_only = TRUE, is_latest = 
           file_copy(file.path(from, append), to)
         }, from = src, to = dest)
         
-        for(i in length(dest)) {
+        for(i in seq_len(length(dest))) {
           out <- readRDS(file.path(dest[i], "grid_out.rds"))
           out$output <- NULL
           out$pmcmc_results$inputs$squire_model <- NULL
@@ -119,6 +119,7 @@ copy_meffs <- function(date = NULL, what = "both", dic_only = TRUE, is_latest = 
             out$pmcmc_results$chains[[j]]$covariance_matrix <- NULL
             out$pmcmc_results$chains[[j]]$scaling_factor <- NULL
             out$pmcmc_results$chains[[j]]$acceptances <- NULL
+            out$pmcmc_results$chains[[j]]$results <- tail(out$pmcmc_results$chains[[j]]$results,5000)
           }
           saveRDS(out, file.path(dest[i], "grid_out.rds"))
         }
@@ -182,7 +183,7 @@ copy_meffs <- function(date = NULL, what = "both", dic_only = TRUE, is_latest = 
       if (as.logical(dic_only)) {
         
         src <- file.path("archive", "lmic_reports_google_pmcmc", reports$id)
-        dest <- file.path(target,sprintf("%s/%s/%s", "archive", "lmic_reports_google_pmcmc",reports$id))
+        dest <- file.path(target, sprintf("%s/%s/%s", "archive", "lmic_reports_google_pmcmc", reports$id))
         worked <- vapply(dest, dir.create, logical(1), recursive = TRUE)
         
         worked <- mapply(function(from, to){
@@ -190,7 +191,7 @@ copy_meffs <- function(date = NULL, what = "both", dic_only = TRUE, is_latest = 
           file_copy(file.path(from, append), to)
         }, from = src, to = dest)
         
-        for(i in length(dest)) {
+        for(i in seq_len(length(dest))) {
           out <- readRDS(file.path(dest[i], "grid_out.rds"))
           out$output <- NULL
           out$pmcmc_results$inputs$squire_model <- NULL
@@ -198,6 +199,7 @@ copy_meffs <- function(date = NULL, what = "both", dic_only = TRUE, is_latest = 
             out$pmcmc_results$chains[[j]]$covariance_matrix <- NULL
             out$pmcmc_results$chains[[j]]$scaling_factor <- NULL
             out$pmcmc_results$chains[[j]]$acceptances <- NULL
+            out$pmcmc_results$chains[[j]]$results <- tail(out$pmcmc_results$chains[[j]]$results,5000)
           }
           saveRDS(out, file.path(dest[i], "grid_out.rds"))
         }
