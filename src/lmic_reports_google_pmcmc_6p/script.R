@@ -241,9 +241,9 @@ logprior <- function(pars){
   ret <- dunif(x = pars[["start_date"]], min = -55, max = -10, log = TRUE) +
     dnorm(x = pars[["R0"]], mean = 3, sd = 1, log = TRUE) +
     dnorm(x = pars[["Meff"]], mean = 3, sd = 3, log = TRUE) +
-    dunif(x = pars[["Meff_pl"]], min = Meff_pl_min, max = Meff_pl_max, log = TRUE) +
+    dunif(x = pars[["Meff_pl"]], min = 0, max = 1, log = TRUE) +
     dnorm(x = pars[["Rt_shift"]], mean = 0, sd = 1, log = TRUE) +
-    dunif(x = pars[["Rt_shift_scale"]], min = Rt_shift_scale_min, max = Rt_shift_scale_max, log = TRUE)
+    dunif(x = pars[["Rt_shift_scale"]], min = 0.1, max = 10, log = TRUE)
   return(ret)
 }
 
