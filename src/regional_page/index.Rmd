@@ -205,6 +205,8 @@ This report uses data from the European Centre for Disease Control. These data a
 
 ```{r starter, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.width=fig_height(7,9), fig.height=fig_height(4,5),fig.align=fig_center()}
 
+d <- d[!is.na(d$country),]
+
 suppressMessages(suppressWarnings(print(d %>% filter(date < date_0) %>% 
   group_by(date, Continent) %>% 
   summarise(deaths = sum(cum_deaths)) %>% 

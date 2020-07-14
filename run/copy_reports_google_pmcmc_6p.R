@@ -149,14 +149,15 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   projections <- do.call(rbind,
                          lapply(file.path(src, "projections.csv"), read.csv))
   dir.create("gh-pages/data", FALSE, TRUE)
+  projections$version <- "v4"
   write.csv(projections, paste0("gh-pages/data/",date,"_v4.csv"), row.names = FALSE, quote = FALSE)
   cwd <- getwd()
   setwd("gh-pages/data/")
   zip(paste0(date,"_v4.csv.zip"),paste0(date,"_v4.csv"))
   file.remove(paste0(date,"_v4.csv"))
   setwd(cwd)
-  saveRDS(projections[-hic_pos], paste0("src/index_page/all_data.rds"))
-  saveRDS(projections[-hic_pos], paste0("src/regional_page/all_data.rds"))
+  saveRDS(projections[-hic_pos,], paste0("src/index_page/all_data.rds"))
+  saveRDS(projections[-hic_pos,], paste0("src/regional_page/all_data.rds"))
   
   ## ---------------------------------------------------------------------------
   ## rt grab -------------------------------------------------------------------

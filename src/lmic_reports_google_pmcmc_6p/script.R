@@ -807,7 +807,7 @@ data_sum$country <- country
 data_sum$iso3c <- iso3c
 data_sum$report_date <- date
 data_sum <- data_sum[data_sum$compartment != "D",]
-data_sum$version <- "v3"
+data_sum$version <- "v4"
 data_sum <- dplyr::mutate(data_sum, across(dplyr::starts_with("y_"), ~round(.x,digits = 2)))
 data_sum <- data_sum[]
 write.csv(data_sum, "projections.csv", row.names = FALSE, quote = FALSE)
