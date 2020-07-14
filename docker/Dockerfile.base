@@ -63,6 +63,7 @@ RUN install_packages --repo=https://ncov-ic.github.io/drat \
         gtools \
         scales \
         tidyr \
-        zoo
+        zoo \
+        RhpcBLASctl
 
 ENTRYPOINT ["bash"]

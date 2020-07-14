@@ -3,6 +3,15 @@ orderly_id <- tryCatch(orderly::orderly_run_info()$id,
 
 print(sessionInfo())
 
+print("----------------")
+print(paste("blas procs", RhpcBLASctl::blas_get_num_procs()))
+print(paste("omp max threads", RhpcBLASctl::omp_get_max_threads()))
+print(paste("omp procs", RhpcBLASctl::omp_get_num_procs()))
+print("----------------")
+
+RhpcBLASctl::blas_set_num_threads(1L)
+RhpcBLASctl::omp_set_num_threads(1L)
+
 version_min <- "0.4.26"
 if(packageVersion("squire") < version_min) {
   stop("squire needs to be updated to at least ", version_min)
