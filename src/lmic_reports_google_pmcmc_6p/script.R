@@ -1,6 +1,8 @@
 orderly_id <- tryCatch(orderly::orderly_run_info()$id,
                        error = function(e) "<id>") # bury this in the html, docx
 
+print(sessionInfo())
+
 version_min <- "0.4.26"
 if(packageVersion("squire") < version_min) {
   stop("squire needs to be updated to at least ", version_min)
