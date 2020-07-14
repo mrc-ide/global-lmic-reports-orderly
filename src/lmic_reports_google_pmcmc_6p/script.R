@@ -2,13 +2,6 @@ orderly_id <- tryCatch(orderly::orderly_run_info()$id,
                        error = function(e) "<id>") # bury this in the html, docx
 
 print(sessionInfo())
-
-print("----------------")
-print(paste("blas procs", RhpcBLASctl::blas_get_num_procs()))
-print(paste("omp max threads", RhpcBLASctl::omp_get_max_threads()))
-print(paste("omp procs", RhpcBLASctl::omp_get_num_procs()))
-print("----------------")
-
 RhpcBLASctl::blas_set_num_threads(1L)
 RhpcBLASctl::omp_set_num_threads(1L)
 

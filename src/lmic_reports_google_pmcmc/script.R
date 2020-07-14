@@ -1,6 +1,9 @@
 orderly_id <- tryCatch(orderly::orderly_run_info()$id,
                        error = function(e) "<id>") # bury this in the html, docx
 
+RhpcBLASctl::blas_set_num_threads(1L)
+RhpcBLASctl::omp_set_num_threads(1L)
+
 version_min <- "0.4.22"
 if(packageVersion("squire") < version_min) {
   stop("squire needs to be updated to at least ", version_min)
