@@ -374,19 +374,21 @@ header <- cowplot::plot_grid(title, line, ncol = 1)
 index <- squire:::odin_index(out$model)
 forecast <- 0
 
-suppressWarnings(d <- deaths_plot_single(out, data, date = date,date_0 = date_0, forecast = forecast, single = TRUE) + 
-                   theme(legend.position = "none"))
+suppressMessages(suppressWarnings(d <- deaths_plot_single(
+  out, data, date = date,date_0 = date_0, forecast = forecast, single = TRUE) + 
+    theme(legend.position = "none")))
 
 intervention <- intervention_plot_google(interventions[[iso3c]], date, data, forecast) + 
   geom_vline(xintercept = as.Date(pld))
 
 rtp <- rt_plot(out)$plot
 
-bottom <- cowplot::plot_grid(intervention + scale_x_date(limits = as.Date(c(data$date[data$deaths>0][1],date_0))), 
-                             d,
-                             rtp + scale_x_date(limits = as.Date(c(data$date[data$deaths>0][1],date_0))),
-                             ncol=1,
-                             rel_heights = c(0.4,0.6,0.4))
+suppressMessages(suppressWarnings(bottom <- cowplot::plot_grid(
+  intervention + scale_x_date(limits = as.Date(c(data$date[data$deaths>0][1],date_0))), 
+  d,
+  rtp + scale_x_date(limits = as.Date(c(data$date[data$deaths>0][1],date_0))),
+  ncol=1,
+  rel_heights = c(0.4,0.6,0.4))))
 
 plots <- list() 
 img <- png::readPNG("top_row.png")
