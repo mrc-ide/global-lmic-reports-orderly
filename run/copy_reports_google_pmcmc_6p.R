@@ -164,7 +164,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   
   # HICs not needed here
   reports <- reports[-hic_pos, ]
-  rt <- lapply(seq_along(reports$id[-hic_pos]), function(x) {
+  rt <- lapply(seq_along(reports$id), function(x) {
     
     iso <- reports$country[x]
     out <- file.path("archive", "lmic_reports_google_pmcmc_6p", reports$id[x], "grid_out.rds")
