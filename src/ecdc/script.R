@@ -33,23 +33,14 @@ if(is.na(as.Date(d$dateRep[1], "%Y-%m-%d"))) {
 
 # Data corrections
 
-# fix panama's negative deaths
-d[which(d$countryterritoryCode=="PAN" & as.Date(d$dateRep)=="2020-06-04"),]$deaths <-
-  d[which(d$countryterritoryCode=="PAN" & as.Date(d$dateRep)=="2020-06-04"),]$deaths +
-  d[which(d$countryterritoryCode=="PAN" & as.Date(d$dateRep)=="2020-06-03"),]$deaths 
-d[which(d$countryterritoryCode=="PAN" & as.Date(d$dateRep)=="2020-06-03"),]$deaths <- 0
-
-# fix italy's negative deaths and missing date
-d$deaths[d$countryterritoryCode == "ITA" & d$deaths<0] <- 0
-
-# fix spain's negative deaths and missing date
-d$deaths[d$countryterritoryCode == "ESP" & d$deaths<0] <- 0
+# fix negative deaths
+d$deaths[which(d$deaths<0)] <- 0
 
 # spain seems to have stopped reporting now too...
 esp_miss <- unique(d$dateRep)[which(!unique(d$dateRep) %in% d$dateRep[d$countryterritoryCode=="ESP"])]
 if(length(esp_miss) > 0) {
   
-  df_esp <- d[d$countryterritoryCode=="ESP",][1,]
+  df_esp <- d[which(d$countryterritoryCode=="ESP"),][1,]
   df_esp$dateRep = esp_miss
   df_esp$day = as.numeric(format(as.Date(esp_miss), "%d"))
   df_esp$month = as.numeric(format(as.Date(esp_miss), "%m"))
