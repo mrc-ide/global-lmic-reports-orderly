@@ -130,6 +130,12 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
         unlink(grep("index", prev, value = TRUE), recursive = TRUE)
       }
       
+      # remove report if HIC
+      if(i %in% hic_pos) {
+        prev <- dir(dest_latest, full.names = TRUE, pattern = "\\.")
+        unlink(grep("index\\.html", prev, value = TRUE), recursive = TRUE)
+      }
+      
     }
   }
   
