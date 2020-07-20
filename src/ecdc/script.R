@@ -35,6 +35,7 @@ if(is.na(as.Date(d$dateRep[1], "%Y-%m-%d"))) {
 
 # fix negative deaths
 d$deaths[which(d$deaths<0)] <- 0
+d$deaths[which(is.na(d$deaths))] <- 0
 
 # spain seems to have stopped reporting now too...
 esp_miss <- unique(d$dateRep)[which(!unique(d$dateRep) %in% d$dateRep[d$countryterritoryCode=="ESP"])]
