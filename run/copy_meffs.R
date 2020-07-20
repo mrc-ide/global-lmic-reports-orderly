@@ -12,6 +12,7 @@ file_copy <- function(from, to) {
 copy_meffs <- function(date = NULL, what = "both", dic_only = TRUE, is_latest = TRUE) {
   
   dic_only <- as.logical(dic_only)
+  library(dplyr)
   if(!((what) %in% c("both", "3p", "4p"))) {
     stop("what is wrong")
   }
@@ -132,7 +133,7 @@ copy_meffs <- function(date = NULL, what = "both", dic_only = TRUE, is_latest = 
                            "replicate" = as.numeric(mapply(rep, seq_len(out$parameters$replicates), nt)),
                            "compartment" = "deaths",
                            "y" = deaths)
-          df <- df %>%
+          df <- df %>% 
             dplyr::mutate(compartment = gsub("[1-2]$", "", .data$compartment)) %>%
             dplyr::group_by(.data$replicate, .data$compartment, .data$t) %>%
             dplyr::summarise(y = sum(.data$y)) %>%
