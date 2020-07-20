@@ -112,9 +112,9 @@ copy_meffs <- function(date = NULL, what = "both", dic_only = TRUE, is_latest = 
           file_copy(file.path(from, append), to)
         }, from = src, to = dest)
         
-        for(i in seq_len(length(dest))) {
-          out <- readRDS(file.path(dest[i], "grid_out.rds"))
-          system(paste0("echo ", dest[i]))
+        for(a in seq_len(length(dest))) {
+          out <- readRDS(file.path(dest[a], "grid_out.rds"))
+          # system(paste0("echo ", dest[a]))
           # sort deaths out in the output
           index <- squire:::odin_index(out$model)
           nt <-  nrow(out$output)
@@ -150,7 +150,7 @@ copy_meffs <- function(date = NULL, what = "both", dic_only = TRUE, is_latest = 
             out$pmcmc_results$chains[[j]]$acceptances <- NULL
             out$pmcmc_results$chains[[j]]$results <- tail(out$pmcmc_results$chains[[j]]$results,5000)
           }
-          saveRDS(out, file.path(dest[i], "grid_out.rds"))
+          saveRDS(out, file.path(dest[a], "grid_out.rds"))
         }
         
         
@@ -221,8 +221,8 @@ copy_meffs <- function(date = NULL, what = "both", dic_only = TRUE, is_latest = 
         }, from = src, to = dest)
         
         for(i in seq_len(length(dest))) {
-          out <- readRDS(file.path(dest[i], "grid_out.rds"))
-          system(paste0("echo ", dest[i]))
+          out <- readRDS(file.path(dest[a], "grid_out.rds"))
+          # system(paste0("echo ", dest[a]))
           # sort deaths out in the output
           index <- squire:::odin_index(out$model)
           nt <-  nrow(out$output)
@@ -258,7 +258,7 @@ copy_meffs <- function(date = NULL, what = "both", dic_only = TRUE, is_latest = 
             out$pmcmc_results$chains[[j]]$acceptances <- NULL
             out$pmcmc_results$chains[[j]]$results <- tail(out$pmcmc_results$chains[[j]]$results,5000)
           }
-          saveRDS(out, file.path(dest[i], "grid_out.rds"))
+          saveRDS(out, file.path(dest[a], "grid_out.rds"))
         }
         
         
