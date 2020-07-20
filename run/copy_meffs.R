@@ -116,6 +116,7 @@ copy_meffs <- function(date = NULL, what = "both", dic_only = TRUE, is_latest = 
           
           # sort deaths out in the output
           index <- squire:::odin_index(out$model)
+          nt <-  nrow(out$output)
           for(i in seq_along(out$parameters$population)) {
             collect <- vapply(1:out$parameters$replicates, function(j) {
               pos <- seq(i, length(index$D), by = length(out$parameters$population))
@@ -124,7 +125,6 @@ copy_meffs <- function(date = NULL, what = "both", dic_only = TRUE, is_latest = 
             }, FUN.VALUE = numeric(nt-1))
             out$output[1+seq_len(nt-1),index$delta_D[i],] <- collect
           }
-          nt <-  nrow(out$output)
           deaths <- squire:::odin_sv(out$output[,index$delta_D,], replicates = dim(out$output)[3], nt, reduce_age = TRUE)
           df <- data.frame("t" = as.numeric(out$output[,index$time,]), 
                            "replicate" = as.numeric(mapply(rep, seq_len(out$parameters$replicates), nt)),
@@ -217,6 +217,7 @@ copy_meffs <- function(date = NULL, what = "both", dic_only = TRUE, is_latest = 
           
           # sort deaths out in the output
           index <- squire:::odin_index(out$model)
+          nt <-  nrow(out$output)
           for(i in seq_along(out$parameters$population)) {
             collect <- vapply(1:out$parameters$replicates, function(j) {
               pos <- seq(i, length(index$D), by = length(out$parameters$population))
@@ -225,7 +226,6 @@ copy_meffs <- function(date = NULL, what = "both", dic_only = TRUE, is_latest = 
             }, FUN.VALUE = numeric(nt-1))
             out$output[1+seq_len(nt-1),index$delta_D[i],] <- collect
           }
-          nt <-  nrow(out$output)
           deaths <- squire:::odin_sv(out$output[,index$delta_D,], replicates = dim(out$output)[3], nt, reduce_age = TRUE)
           df <- data.frame("t" = as.numeric(out$output[,index$time,]), 
                            "replicate" = as.numeric(mapply(rep, seq_len(out$parameters$replicates), nt)),
