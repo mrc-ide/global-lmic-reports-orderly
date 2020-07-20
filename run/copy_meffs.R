@@ -113,7 +113,7 @@ copy_meffs <- function(date = NULL, what = "both", dic_only = TRUE, is_latest = 
         
         for(i in seq_len(length(dest))) {
           out <- readRDS(file.path(dest[i], "grid_out.rds"))
-          
+          system(paste0("echo ", dest[i]))
           # sort deaths out in the output
           index <- squire:::odin_index(out$model)
           nt <-  nrow(out$output)
@@ -125,11 +125,18 @@ copy_meffs <- function(date = NULL, what = "both", dic_only = TRUE, is_latest = 
             }, FUN.VALUE = numeric(nt-1))
             out$output[1+seq_len(nt-1),index$delta_D[i],] <- collect
           }
-          deaths <- squire:::odin_sv(out$output[,index$delta_D,], replicates = dim(out$output)[3], nt, reduce_age = TRUE)
+          temp <- out$output[,index$delta_D,]
+          temp_array <- array(temp, dim = c(dim(temp)[1], dim(temp)[2], out$parameters$replicates))
+          deaths <- squire:::odin_sv(temp_array, replicates = dim(out$output)[3], nt, reduce_age = TRUE)
           df <- data.frame("t" = as.numeric(out$output[,index$time,]), 
                            "replicate" = as.numeric(mapply(rep, seq_len(out$parameters$replicates), nt)),
                            "compartment" = "deaths",
                            "y" = deaths)
+          df <- df %>%
+            dplyr::mutate(compartment = gsub("[1-2]$", "", .data$compartment)) %>%
+            dplyr::group_by(.data$replicate, .data$compartment, .data$t) %>%
+            dplyr::summarise(y = sum(.data$y)) %>%
+            dplyr::ungroup()
           df$date <- as.Date(df$t + as.Date(date),
                               format = "%Y-%m-%d")
           out$output <- df
@@ -214,7 +221,7 @@ copy_meffs <- function(date = NULL, what = "both", dic_only = TRUE, is_latest = 
         
         for(i in seq_len(length(dest))) {
           out <- readRDS(file.path(dest[i], "grid_out.rds"))
-          
+          system(paste0("echo ", dest[i]))
           # sort deaths out in the output
           index <- squire:::odin_index(out$model)
           nt <-  nrow(out$output)
@@ -226,11 +233,18 @@ copy_meffs <- function(date = NULL, what = "both", dic_only = TRUE, is_latest = 
             }, FUN.VALUE = numeric(nt-1))
             out$output[1+seq_len(nt-1),index$delta_D[i],] <- collect
           }
-          deaths <- squire:::odin_sv(out$output[,index$delta_D,], replicates = dim(out$output)[3], nt, reduce_age = TRUE)
+          temp <- out$output[,index$delta_D,]
+          temp_array <- array(temp, dim = c(dim(temp)[1], dim(temp)[2], out$parameters$replicates))
+          deaths <- squire:::odin_sv(temp_array, replicates = dim(out$output)[3], nt, reduce_age = TRUE)
           df <- data.frame("t" = as.numeric(out$output[,index$time,]), 
                            "replicate" = as.numeric(mapply(rep, seq_len(out$parameters$replicates), nt)),
                            "compartment" = "deaths",
                            "y" = deaths)
+          df <- df %>%
+            dplyr::mutate(compartment = gsub("[1-2]$", "", .data$compartment)) %>%
+            dplyr::group_by(.data$replicate, .data$compartment, .data$t) %>%
+            dplyr::summarise(y = sum(.data$y)) %>%
+            dplyr::ungroup()
           df$date <- as.Date(df$t + as.Date(date),
                              format = "%Y-%m-%d")
           out$output <- df
