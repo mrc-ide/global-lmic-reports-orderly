@@ -113,7 +113,28 @@ copy_meffs <- function(date = NULL, what = "both", dic_only = TRUE, is_latest = 
         
         for(i in seq_len(length(dest))) {
           out <- readRDS(file.path(dest[i], "grid_out.rds"))
-          out$output <- NULL
+          
+          # sort deaths out in the output
+          index <- squire:::odin_index(out$model)
+          for(i in seq_along(out$parameters$population)) {
+            collect <- vapply(1:out$parameters$replicates, function(j) {
+              pos <- seq(i, length(index$D), by = length(out$parameters$population))
+              pos <- index$D[pos]
+              diff(out$output[,pos,j])
+            }, FUN.VALUE = numeric(nt-1))
+            out$output[1+seq_len(nt-1),index$delta_D[i],] <- collect
+          }
+          nt <-  nrow(out$output)
+          deaths <- squire:::odin_sv(out$output[,index$delta_D,], replicates = dim(out$output)[3], nt, reduce_age = TRUE)
+          df <- data.frame("t" = as.numeric(out$output[,index$time,]), 
+                           "replicate" = as.numeric(mapply(rep, seq_len(out$parameters$replicates), nt)),
+                           "compartment" = "deaths",
+                           "y" = deaths)
+          df$date <- as.Date(df$t + as.Date(date),
+                              format = "%Y-%m-%d")
+          out$output <- df
+          
+          # clear out what's not needed
           out$pmcmc_results$inputs$squire_model <- NULL
           for(j in seq_len(length(out$pmcmc_results$chains))) {
             out$pmcmc_results$chains[[j]]$covariance_matrix <- NULL
@@ -193,7 +214,28 @@ copy_meffs <- function(date = NULL, what = "both", dic_only = TRUE, is_latest = 
         
         for(i in seq_len(length(dest))) {
           out <- readRDS(file.path(dest[i], "grid_out.rds"))
-          out$output <- NULL
+          
+          # sort deaths out in the output
+          index <- squire:::odin_index(out$model)
+          for(i in seq_along(out$parameters$population)) {
+            collect <- vapply(1:out$parameters$replicates, function(j) {
+              pos <- seq(i, length(index$D), by = length(out$parameters$population))
+              pos <- index$D[pos]
+              diff(out$output[,pos,j])
+            }, FUN.VALUE = numeric(nt-1))
+            out$output[1+seq_len(nt-1),index$delta_D[i],] <- collect
+          }
+          nt <-  nrow(out$output)
+          deaths <- squire:::odin_sv(out$output[,index$delta_D,], replicates = dim(out$output)[3], nt, reduce_age = TRUE)
+          df <- data.frame("t" = as.numeric(out$output[,index$time,]), 
+                           "replicate" = as.numeric(mapply(rep, seq_len(out$parameters$replicates), nt)),
+                           "compartment" = "deaths",
+                           "y" = deaths)
+          df$date <- as.Date(df$t + as.Date(date),
+                             format = "%Y-%m-%d")
+          out$output <- df
+          
+          # clear out what's not needed
           out$pmcmc_results$inputs$squire_model <- NULL
           for(j in seq_len(length(out$pmcmc_results$chains))) {
             out$pmcmc_results$chains[[j]]$covariance_matrix <- NULL
