@@ -11,6 +11,7 @@ file_copy <- function(from, to) {
 ## dir("gh-pages", pattern = "index\\.html$", recursive = TRUE)
 copy_meffs <- function(date = NULL, what = "both", dic_only = TRUE, is_latest = TRUE) {
   
+  options("dplyr.summarise.inform"=FALSE)
   dic_only <- as.logical(dic_only)
   library(dplyr)
   if(!((what) %in% c("both", "3p", "4p"))) {
@@ -220,7 +221,7 @@ copy_meffs <- function(date = NULL, what = "both", dic_only = TRUE, is_latest = 
           file_copy(file.path(from, append), to)
         }, from = src, to = dest)
         
-        for(i in seq_len(length(dest))) {
+        for(a in seq_len(length(dest))) {
           out <- readRDS(file.path(dest[a], "grid_out.rds"))
           # system(paste0("echo ", dest[a]))
           # sort deaths out in the output
