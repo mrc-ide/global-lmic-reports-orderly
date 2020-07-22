@@ -143,7 +143,6 @@ if (nrow(pars_former) == 1) {
   Rt_shift_start <- pars_former$Rt_shift
   Rt_shift_scale_start <- pars_former$Rt_shift_scale
   date_Meff_change <- pars_former$date_Meff_change
-  Rt_shift_duration <- pars_former$Rt_shift_duration
   
 } else {
   
@@ -195,7 +194,6 @@ if (nrow(pars_former) == 1) {
   date_Meff_change <- post_lockdown_date_relative(interventions[[iso3c]], 1.05, 
                                      max_date = as.Date("2020-06-02"),
                                      min_date = as.Date("2020-02-01"))
-  Rt_shift_duration <- 30
   
 }
 
@@ -261,6 +259,8 @@ if (iso3c == "BRA") {
   # https://g1.globo.com/bemestar/coronavirus/noticia/2020/06/08/casos-de-coronavirus-e-numero-de-mortes-no-brasil-em-8-de-junho.ghtml - date we predicted ICU to be at capacity and reported to be at 70% 
   icu_beds <- icu_beds / 0.7
 } 
+
+Rt_shift_duration <- as.integer(as.Date(date) - as.Date(date_Meff_change))
 
 # sleep so parallel is chill
 Sys.sleep(time = runif(1, 0, sleep))
