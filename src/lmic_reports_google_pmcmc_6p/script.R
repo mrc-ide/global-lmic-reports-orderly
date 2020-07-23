@@ -141,6 +141,7 @@ if (nrow(pars_former) == 1) {
   Meff_start <- pars_former$Meff
   Meff_pl_start <- pars_former$Meff_pl
   Rt_shift_start <- pars_former$Rt_shift
+  Rt_shift_duration <- pars_former$Rt_shift_duration
   Rt_shift_scale_start <- pars_former$Rt_shift_scale
   date_Meff_change <- pars_former$date_Meff_change
   
@@ -190,6 +191,7 @@ if (nrow(pars_former) == 1) {
   Meff_pl_start <- 0.2
   Rt_shift_start <- 0.5
   Rt_shift_scale_start <- 2
+  Rt_shift_duration <- 30
   
   date_Meff_change <- post_lockdown_date_relative(interventions[[iso3c]], 1.05, 
                                      max_date = as.Date("2020-06-02"),
