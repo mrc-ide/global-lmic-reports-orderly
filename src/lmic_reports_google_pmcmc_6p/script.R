@@ -260,7 +260,7 @@ if (iso3c == "BRA") {
   icu_beds <- icu_beds / 0.7
 } 
 
-Rt_shift_duration <- as.integer(as.Date(date) - as.Date(date_Meff_change))
+Rt_shift_duration <- as.integer(as.Date(date) - as.Date(date_Meff_change)) - 21 # death duration
 
 # sleep so parallel is chill
 Sys.sleep(time = runif(1, 0, sleep))
@@ -767,6 +767,16 @@ data_sum <- lapply(o_list, function(pd){
     ungroup
   
   pd <- rbind(pd, cum_i)
+  
+  # add in cumulative deaths
+  # cum_i <- pd %>% 
+  #   filter(compartment == "deaths") %>% 
+  #   group_by(replicate) %>% 
+  #   mutate(y = cumsum(y),
+  #          compartment = "cumulative_deaths") %>% 
+  #   ungroup
+  # 
+  # pd <- rbind(pd, cum_i)
   
   # Format summary data
   pds <- pd %>%
