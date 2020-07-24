@@ -40,5 +40,5 @@ echo "*** Running country reports"
 
 # Parallel
 grep -E '^[A-Z]{3}\s*' $COUNTRIES | \
-parallel --progress -j 64  ./orderly run lmic_reports_google_pmcmc_6p iso3c={} date=$DATE short_run=$SHORT_RUN parallel=$PARALLEL full_scenarios=$FULL_SCENARIOS
+parallel --progress -j 32  ./orderly run lmic_reports_google_pmcmc_6p iso3c={} date=$DATE short_run=$SHORT_RUN parallel=$PARALLEL full_scenarios=$FULL_SCENARIOS
 
