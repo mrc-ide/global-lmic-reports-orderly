@@ -64,6 +64,19 @@ RUN install_packages --repo=https://ncov-ic.github.io/drat \
         scales \
         tidyr \
         zoo \
-        RhpcBLASctl
+        RhpcBLASctl \
+        data.table \
+        loo \
+        methods \
+        Rcpp \
+        rstan \
+        rstantools \
+        lme4 \
+        Matrix \
+        scales \
+        Rdpack \
+        rstanarm 
+        
+RUN install_remote --repo=ImperialCollegeLondon/epidemia \
 
 ENTRYPOINT ["bash"]
