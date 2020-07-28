@@ -32,6 +32,7 @@ RUN apt-get update \
 COPY bin /usr/local/bin/
 
 RUN install_packages --repo=https://ncov-ic.github.io/drat \
+        data.table \
         V8 \
         countrycode \
         cowplot \
@@ -65,7 +66,6 @@ RUN install_packages --repo=https://ncov-ic.github.io/drat \
         tidyr \
         zoo \
         RhpcBLASctl \
-        data.table \
         loo \
         methods \
         Rcpp \
@@ -77,6 +77,6 @@ RUN install_packages --repo=https://ncov-ic.github.io/drat \
         Rdpack \
         rstanarm 
         
-RUN install_remote --repo=ImperialCollegeLondon/epidemia \
+RUN install_remote --repo=ImperialCollegeLondon/epidemia
 
 ENTRYPOINT ["bash"]
