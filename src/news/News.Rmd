@@ -164,7 +164,7 @@ Lastly, as we switch from one version to the next, there is likely to be a small
 
 ---
 
-#### Version 4: 2020-07-02
+#### Version 4: 2020-06-28
 
 * Mobility independent change in transmission is now also modelled (alongside mobility dependent transmission) post lockdown to reflect change in people's behaviour that is not captured by mobility. 
 

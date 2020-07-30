@@ -73,7 +73,5 @@ RUN install_packages --repo=https://ncov-ic.github.io/drat \
         scales \
         Rdpack \
         rstanarm 
-        
-RUN install_remote --repo=ImperialCollegeLondon/epidemia
 
 ENTRYPOINT ["bash"]
