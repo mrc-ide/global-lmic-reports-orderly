@@ -44,22 +44,6 @@ done
 
 [[ -f /usr/local/bin/remotes.R ]] || error "Cannot find remotes.R! :("
 
-APKG_GCC="gcc musl-dev g++"
-
-if [[ -n "$APKG_COMPILERS"  ]]; then
-    APKG_FIN="$APKG_FIN $APKG_GCC"
-fi
-
-if [[ -n "$APKG_COMPILERS_TMP" ]]; then
-    APKG_TMP="$APKG_TMP $APKG_GCC"
-fi
-
-echo
-echo --------------------------------------
-[[ -n "$APKG_FIN" ]] && echo Adding "$APKG_FIN"
-[[ -n "$APKG_TMP" ]] && echo Temporarily adding "$APKG_TMP"
-apk add $APKG_FIN $APKG_TMP
-
 export R_REMOTES_STANDALONE="true"
 
 for remote in "$@"
@@ -76,12 +60,7 @@ do
 done
 
 echo
-echo --------------------------------------
-[[ -n "$APKG_TMP" ]] && echo Removing "$APKG_TMP"
-apk del $APKG_TMP
 
 echo
 echo --------------------------------------
 echo Cleaning up cache
-
-rm -rf /var/cache/apk/*
