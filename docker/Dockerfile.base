@@ -9,6 +9,9 @@ RUN apt-get update && apt-get -y install --no-install-recommends \
         parallel \
         zlib1g-dev
         
+        
+RUN ls /usr/bin
+
 # Install LaTeX
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
