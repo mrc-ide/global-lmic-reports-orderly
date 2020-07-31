@@ -35,7 +35,8 @@ COPY bin /usr/local/bin/
 
 RUN ls /usr/bin/env 
 
-RUN installr -d -t zlib-dev data.table
+# This was the attempts to use Gabor's installr
+# RUN installr -d -t zlib-dev data.table 
 
 RUN install_packages --repo=https://ncov-ic.github.io/drat \
         V8 \
