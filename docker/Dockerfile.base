@@ -37,8 +37,6 @@ RUN apt-get update \
 
 COPY bin /usr/local/bin/
 
-RUN installr -d -t zlib-dev data.table
-
 RUN install_packages --repo=https://ncov-ic.github.io/drat \
         V8 \
         countrycode \
