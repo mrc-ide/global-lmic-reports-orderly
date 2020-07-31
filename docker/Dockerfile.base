@@ -7,8 +7,7 @@ RUN apt-get update && apt-get -y install --no-install-recommends \
         libxml2-dev \
         libpng-dev \
         parallel \
-        zlib1g-dev \
-        zlib1g 
+        zlib1g-dev
         
 # Install LaTeX
 RUN apt-get update \
@@ -32,7 +31,7 @@ RUN apt-get update \
 
 COPY bin /usr/local/bin/
 
-RUN Rscript -e 'install.packages(c("data.table"))'
+RUN installr -d -t zlib-dev data.table
 
 RUN install_packages --repo=https://ncov-ic.github.io/drat \
         V8 \
