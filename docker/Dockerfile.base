@@ -1,6 +1,9 @@
-FROM vimc/orderly:master
 
 FROM rhub/r-minimal
+
+RUN installr -d -t zlib-dev data.table
+
+FROM vimc/orderly:master
 
 RUN apt-get update && apt-get -y install --no-install-recommends \
         libcurl4-openssl-dev \
@@ -11,7 +14,6 @@ RUN apt-get update && apt-get -y install --no-install-recommends \
         parallel \
         zlib1g-dev
 
-RUN installr -d -t zlib-dev data.table
 
 # Install LaTeX
 RUN apt-get update \
