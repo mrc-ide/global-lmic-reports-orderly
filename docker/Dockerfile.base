@@ -1,8 +1,4 @@
 
-FROM rhub/r-minimal
-
-RUN installr -d -t zlib-dev data.table
-
 FROM vimc/orderly:master
 
 RUN apt-get update && apt-get -y install --no-install-recommends \
@@ -36,6 +32,8 @@ RUN apt-get update \
   && updmap-sys
 
 COPY bin /usr/local/bin/
+
+RUN installr -d -t zlib-dev data.table
 
 RUN install_packages --repo=https://ncov-ic.github.io/drat \
         V8 \
