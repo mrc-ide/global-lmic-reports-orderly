@@ -7,6 +7,7 @@ RUN apt-get update && apt-get -y install --no-install-recommends \
         libv8-dev \
         libxml2-dev \
         libpng-dev \
+        pkg-config \
         parallel \
         zlib1g-dev
 
@@ -40,6 +41,7 @@ RUN ls /usr/bin/env
 
 RUN install_packages --repo=https://ncov-ic.github.io/drat \
         V8 \
+        data.table \
         countrycode \
         cowplot \
         curl \
