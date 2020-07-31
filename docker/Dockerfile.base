@@ -9,8 +9,6 @@ RUN apt-get update && apt-get -y install --no-install-recommends \
         parallel \
         zlib1g-dev 
         
-RUN locate zlib.h zconf.h
-        
 # Install LaTeX
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
@@ -34,6 +32,7 @@ RUN apt-get update \
 COPY bin /usr/local/bin/
 
 RUN install_packages --repo=https://ncov-ic.github.io/drat \
+        data.table \
         V8 \
         countrycode \
         cowplot \
