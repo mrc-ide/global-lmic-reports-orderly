@@ -1,4 +1,4 @@
-#! /usr/bin/bash 
+#! /usr/bin/ sh
 
 usage() {
     echo "Usage: $0 [ -c | -d ] [ -a pkgs ] [ -t temp-pkgs ] REMOTES ..."
@@ -42,7 +42,7 @@ do
     shift
 done
 
-# [[ -f /usr/local/bin/remotes.R ]] || error "Cannot find remotes.R! :("
+[[ -f /usr/local/bin/remotes.R ]] || error "Cannot find remotes.R! :("
 
 APKG_GCC="gcc musl-dev g++"
 
