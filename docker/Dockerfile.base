@@ -31,8 +31,9 @@ RUN apt-get update \
 
 COPY bin /usr/local/bin/
 
+RUN Rscript -e 'install.packages(c("data.table"))'
+
 RUN install_packages --repo=https://ncov-ic.github.io/drat \
-        data.table \
         V8 \
         countrycode \
         cowplot \
