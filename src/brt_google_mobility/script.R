@@ -50,14 +50,37 @@ goog$iso3c <- countrycode::countrycode(goog$country_region, "country.name", "iso
 
 
 # N.B. The date format changed recently in Google and may change again. Look out for errors related to this
-mob <- goog %>%
-  filter(sub_region_1 == "") %>%
+
+# the subregions change over time so catch for what is included
+if("sub_region_1" %in% names(goog)) {
+  
+  mob <- goog %>%
+    filter(sub_region_1 == "")
+  
+} 
+
+if("sub_region_2" %in% names(goog)) {
+  
+  mob <- goog %>%
+    filter(sub_region_2 == "")
+  
+} 
+
+if("metro_area" %in% names(goog)) {
+  
+  mob <- goog %>%
+    filter(metro_area == "")
+  
+} 
+
+mob <-  mob %>%
   mutate(overall = 1/4 * retail_and_recreation_percent_change_from_baseline +
            1/4 * grocery_and_pharmacy_percent_change_from_baseline + 
            1/4 * transit_stations_percent_change_from_baseline + 
            1/4 * workplaces_percent_change_from_baseline) %>%
   mutate(date = as.Date(date, format="%Y-%m-%d")) %>%
   select(country_region, iso3c, date, overall)
+
 
 # Loading World Bank Metadata (Charlie can update to url as needed)
 wb_metadata <- read.csv("World_Bank_Country_Metadata.csv", fileEncoding="UTF-8-BOM", stringsAsFactors = TRUE) %>%
