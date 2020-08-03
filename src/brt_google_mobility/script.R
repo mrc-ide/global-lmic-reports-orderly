@@ -51,29 +51,10 @@ goog$iso3c <- countrycode::countrycode(goog$country_region, "country.name", "iso
 
 # N.B. The date format changed recently in Google and may change again. Look out for errors related to this
 
-# the subregions change over time so catch for what is included
-if("sub_region_1" %in% names(goog)) {
-  
-  mob <- goog %>%
-    filter(sub_region_1 == "")
-  
-} 
-
-if("sub_region_2" %in% names(goog)) {
-  
-  mob <- goog %>%
-    filter(sub_region_2 == "")
-  
-} 
-
-if("metro_area" %in% names(goog)) {
-  
-  mob <- goog %>%
-    filter(metro_area == "")
-  
-} 
-
-mob <-  mob %>%
+# the subregions change over time so catch for what should be included if this breaks.
+# we just want to filter to country level measures
+mob <-  goog %>% 
+  filter(sub_region_1 == "" & sub_region_2 == "" & metro_area == "") %>% 
   mutate(overall = 1/4 * retail_and_recreation_percent_change_from_baseline +
            1/4 * grocery_and_pharmacy_percent_change_from_baseline + 
            1/4 * transit_stations_percent_change_from_baseline + 
