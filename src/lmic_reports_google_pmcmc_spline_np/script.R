@@ -358,12 +358,7 @@ if(!is.null(R0_change)) {
   R0 <- squire:::evaluate_Rt_pmcmc(R0_change = tt_beta$change, 
                                    date_R0_change = tt_beta$dates, 
                                    R0 = R0, 
-                                   pars = list(
-                                     Meff = Meff,
-                                     Meff_pl = Meff_pl,
-                                     Rt_shift = Rt_shift,
-                                     Rt_shift_scale = Rt_shift_scale
-                                   ),
+                                   pars = as.list(best[1,-(1:2)]),
                                    Rt_args = out_det$pmcmc_results$inputs$Rt_args)
 } else {
   R0 <- R0
