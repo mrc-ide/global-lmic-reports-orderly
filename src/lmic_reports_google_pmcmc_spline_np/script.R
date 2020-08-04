@@ -215,8 +215,8 @@ last_shift_date <- date_Meff_change + Rt_shift_duration
 remaining_days <- date_0 - last_shift_date
 
 # how many spline pars do we need
-Rt_rw_duration <- 21
-rw_needed <- as.numeric(ceiling(remaining_days/Rt_rw_duration))
+Rt_rw_duration <- 14
+rw_needed <- as.numeric(floor(remaining_days/Rt_rw_duration))
 
 # set up rw pars
 pars_init_rw <- as.list(rep(0, rw_needed))
@@ -606,12 +606,7 @@ rel_R0 <- function(rel = 0.5, Meff_mult = 1) {
         tt_beta$dates, 
         tail(out$pmcmc_results$inputs$data$date,1)+1),
       R0 = out$replicate_parameters$R0[y], 
-      pars = list(
-        Meff = out$replicate_parameters$Meff[y],
-        Meff_pl = out$replicate_parameters$Meff_pl[y],
-        Rt_shift = out$replicate_parameters$Rt_shift[y],
-        Rt_shift_scale = out$replicate_parameters$Rt_shift_scale[y]
-      ),
+      pars = as.list(out_det$replicate_parameters[1,-(1:2)]),
       Rt_args = out$pmcmc_results$inputs$Rt_args) ,1)
     
     
@@ -634,7 +629,7 @@ mitigation_3months_lift <- squire::projections(out,
 
 # Relax by 50% for 3 months 
 reverse_3_months_lift <- squire::projections(out, 
-                                             R0_change = c(1.5), 
+                                             R0_change = rel_R0(0.5), 
                                              tt_R0 = c(0), 
                                              time_period = time_period)
 
@@ -720,7 +715,7 @@ mitigation_3months_lift_surged <- squire::projections(out_surged,
                                                       time_period = time_period)
 
 reverse_3_months_lift_surged <- squire::projections(out_surged, 
-                                                    R0_change = c(1.5, rel_R0(0)), 
+                                                    R0_change = c(rel_R0(0.5), rel_R0(0)), 
                                                     tt_R0 = c(0, 90), 
                                                     time_period = time_period)
 
