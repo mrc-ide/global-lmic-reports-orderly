@@ -212,10 +212,10 @@ Rt_shift_scale_start <- min(max(Rt_shift_scale_start, Rt_shift_scale_min), Rt_sh
 ## -----------------------------------------------------------------------------
 
 last_shift_date <- date_Meff_change + Rt_shift_duration
-remaining_days <- date_0 - last_shift_date
+remaining_days <- date_0 - last_shift_date - 21 # reporting delay in place
 
 # how many spline pars do we need
-Rt_rw_duration <- 14
+Rt_rw_duration <- 7
 rw_needed <- as.numeric(floor(remaining_days/Rt_rw_duration))
 
 # set up rw pars
@@ -276,7 +276,7 @@ logprior <- function(pars){
   if(any(grepl("Rt_rw", names(pars)))) {
     Rt_rws <- pars[grepl("Rt_rw", names(pars))]
     for (i in seq_along(Rt_rws)) {
-      ret <- ret + dnorm(x = Rt_rws[[i]], mean = 0, sd = 1, log = TRUE)
+      ret <- ret + dnorm(x = Rt_rws[[i]], mean = 0, sd = 0.2, log = TRUE)
       }
   }
   return(ret)
@@ -316,7 +316,7 @@ out_det <- squire::pmcmc(data = data,
                          Rt_args = squire:::Rt_args_list(
                            date_Meff_change = date_Meff_change,
                            scale_Meff_pl = TRUE,
-                           Rt_shift_duration = Rt_shift_duration,
+                           Rt_shift_duration = 1,
                            Rt_rw_duration = Rt_rw_duration), 
                          burnin = ceiling(n_mcmc/10),
                          seeding_cases = 5,
@@ -586,7 +586,7 @@ rel_R0 <- function(rel = 0.5, Meff_mult = 1) {
   
   wanted <-  vapply(seq_along(out$replicate_parameters$R0), function(y){
     
-    if(!is.null(date_R0_change)) {
+    if(!is.null(out$interventions$date_R0_change)) {
       tt_beta <- squire:::intervention_dates_for_odin(dates = out$interventions$date_R0_change,
                                                       change = out$interventions$R0_change,
                                                       start_date = out$replicate_parameters$start_date[y],
@@ -601,7 +601,7 @@ rel_R0 <- function(rel = 0.5, Meff_mult = 1) {
         tt_beta$dates, 
         tail(out$pmcmc_results$inputs$data$date,1)+1),
       R0 = out$replicate_parameters$R0[y], 
-      pars = as.list(out_det$replicate_parameters[1,-(1:2)]),
+      pars = as.list(out$replicate_parameters[1,-(1:2)]),
       Rt_args = out$pmcmc_results$inputs$Rt_args) ,1)
     
     

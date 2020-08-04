@@ -238,7 +238,7 @@ rt_creation <- function(out, date_0, max_date) {
         R0_change = tt$change, 
         date_R0_change = tt$dates, 
         R0 = out$replicate_parameters$R0[y], 
-        pars = as.list(out_det$replicate_parameters[1,-(1:2)]),
+        pars = as.list(out$replicate_parameters[1,-(1:2)]),
         Rt_args = out$pmcmc_results$inputs$Rt_args),
       "date" = tt$dates,
       rep = y,
