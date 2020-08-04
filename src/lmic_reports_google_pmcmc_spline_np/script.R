@@ -1,5 +1,5 @@
 orderly_id <- tryCatch(orderly::orderly_run_info()$id,
-                       error = function(e) "<id>") # bury this in the html, docx
+                       error = function(e) "<id>") 
 
 print(sessionInfo())
 RhpcBLASctl::blas_set_num_threads(1L)
