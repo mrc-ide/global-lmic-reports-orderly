@@ -1255,7 +1255,7 @@ rt_plot <- function(out) {
         R0_change = tt$change, 
         date_R0_change = tt$dates, 
         R0 = out$replicate_parameters$R0[y], 
-        pars = as.list(out_det$replicate_parameters[1,-(1:2)]),
+        pars = as.list(out$replicate_parameters[y,]),
         Rt_args = out$pmcmc_results$inputs$Rt_args) 
     }
     
@@ -1288,10 +1288,14 @@ rt_plot <- function(out) {
                                Rt_q25 = quantile(Rt, 0.25),
                                Rt_q75 = quantile(Rt, 0.75),
                                Rt_max = quantile(Rt, 0.975),
+                               Rt_median = median(Rt),
                                Rt = mean(Rt)))
   
   country_plot <- function(vjust = -1.2) {
-    ggplot(sum_rt, aes(x=date, y = Rt, ymin=Rt_min, ymax = Rt_max, group = iso, fill = iso)) +
+    ggplot(sum_rt %>% filter(
+      date > as.Date(c(as.character(min(rt$date[rt$pos==1])))) &
+        date <= as.Date(as.character(date+as.numeric(lubridate::wday(date))))), 
+      aes(x=date, y = Rt, ymin=Rt_min, ymax = Rt_max, group = iso, fill = iso)) +
       geom_ribbon(fill = "#96c4aa") +
       geom_line(color = "#48996b") +
       geom_ribbon(mapping = aes(ymin = Rt_q25, ymax = Rt_q75), fill = "#48996b") +
@@ -1314,4 +1318,47 @@ rt_plot <- function(out) {
   
   res <- list("plot" = suppressWarnings(country_plot()), "rts" = sum_rt)
   return(res)  
+}
+
+
+simple_pmcmc_plot <- function(out) {
+  
+  master <- squire:::create_master_chain(out$pmcmc_results, 0)
+  master$chain <-  unlist(lapply(strsplit(rownames(master),".", fixed=TRUE), "[[", 1))
+  master$iteration <-  as.numeric(unlist(lapply(strsplit(rownames(master),".", fixed=TRUE), "[[", 2)))
+  
+  par_pos <- seq_len(which(names(master) == "log_prior")-1)
+  pars <- names(master)[par_pos]
+  
+  hists <- lapply(par_pos, function(i) {
+    
+    quants <- round(quantile(master[[pars[[i]]]][order(master$log_posterior, decreasing = TRUE)][1:1000], c(0.025, 0.5, 0.975)),2)[c(2,1,3)]
+    title <- paste0(pars[i],": ", quants[1], " (", quants[2], ", ", quants[3], ")")
+    
+    ggplot(master, mapping = aes_string(x = pars[i], color = "chain")) + 
+      geom_freqpoly(stat = "density") + theme_bw() + theme(legend.position = "none") +
+      theme(panel.border = element_blank(), axis.line = element_line()) + 
+      ggtitle(title) + scale_color_brewer(type = "qual")
+    
+  })
+  
+  chains <- lapply(par_pos, function(i) {
+    
+    ggplot(master, mapping = aes_string(y = pars[i], x = "iteration", color = "chain")) + 
+      geom_line() + theme_bw() +
+      theme(panel.border = element_blank(), axis.line = element_line()) +
+      theme(legend.position = "none") + scale_color_brewer(type = "qual")
+    
+  }) 
+  
+  p1 <- cowplot::plot_grid(plotlist = hists)
+  p2 <- cowplot::plot_grid(plotlist = chains)
+  line <- ggplot() + cowplot::draw_line(x = 1, y=0:10) + 
+    theme(panel.background = element_blank(),
+          axis.title = element_blank(), 
+          axis.text = element_blank(), 
+          axis.ticks = element_blank())
+  cowplot::plot_grid(p1, line, p2, rel_widths = c(1,0.1,1), ncol = 3)
+  
+  
 }

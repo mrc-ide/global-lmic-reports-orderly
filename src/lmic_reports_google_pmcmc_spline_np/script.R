@@ -216,7 +216,7 @@ remaining_days <- date_0 - last_shift_date - 21 # reporting delay in place
 
 # how many spline pars do we need
 Rt_rw_duration <- 7
-rw_needed <- as.numeric(floor(remaining_days/Rt_rw_duration))
+rw_needed <- as.numeric(round(remaining_days/Rt_rw_duration))
 
 # set up rw pars
 pars_init_rw <- as.list(rep(0, rw_needed))
@@ -503,8 +503,8 @@ out$pmcmc_results$inputs$prior <- as.function(c(formals(logprior),
 ## -----------------------------------------------------------------------------
 
 ## summarise what we have
-png("top_row.png", height = 12, width = 16, units = "in", res = 300)
-plot(out$pmcmc_results, thin = 0.25)
+png("top_row.png", height = 6, width = 8, units = "in", res = 300)
+simple_pmcmc_plot(out)
 dev.off()
 
 title <- cowplot::ggdraw() + 
@@ -533,7 +533,7 @@ suppressMessages(suppressWarnings(
     theme(legend.position = "none")))
 
 intervention <- intervention_plot_google(interventions[[iso3c]], date, data, forecast) + 
-  geom_vline(xintercept = as.Date(date_Meff_change))
+  geom_vline(xintercept = as.Date(date_Meff_change) + seq(Rt_rw_duration, Rt_rw_duration*rw_needed, by = Rt_rw_duration))
 
 rtp <- rt_plot(out)$plot
 
@@ -551,11 +551,11 @@ img <- png::readPNG("top_row.png")
 plots[[1]] <- grid::rasterGrob(img, interpolate = FALSE)
 
 
-ggsave("fitting.pdf",width=7, height=14, 
+ggsave("fitting.pdf",width=7, height=12, 
        gridExtra::marrangeGrob(grobs = c(list(cowplot::as_grob(header)),
                                          plots[1],
                                          list(cowplot::as_grob(bottom))), 
-                               nrow=3, ncol=1,top=NULL, heights = c(1, 5, 6)))
+                               nrow=3, ncol=1,top=NULL, heights = c(1, 4, 7)))
 file.remove("top_row.png")
 
 
