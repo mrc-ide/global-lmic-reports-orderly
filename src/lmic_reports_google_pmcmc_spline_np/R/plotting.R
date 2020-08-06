@@ -1332,7 +1332,7 @@ simple_pmcmc_plot <- function(out) {
   
   hists <- lapply(par_pos, function(i) {
     
-    quants <- round(quantile(master[[pars[[i]]]][order(master$log_posterior, decreasing = TRUE)][1:1000], c(0.025, 0.5, 0.975)),2)[c(2,1,3)]
+    quants <- round(quantile(master[[pars[[i]]]][order(master$log_posterior, decreasing = TRUE)][1:1000], c(0.025, 0.5, 0.975), na.rm = TRUE),2)[c(2,1,3)]
     title <- paste0(pars[i],": ", quants[1], " (", quants[2], ", ", quants[3], ")")
     
     ggplot(master, mapping = aes_string(x = pars[i], color = "chain")) + 
