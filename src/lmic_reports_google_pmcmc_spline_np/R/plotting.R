@@ -1224,8 +1224,6 @@ intervention_plot_google <- function(res, date, data, forecast, start_date) {
   
   date <- as.Date(date)
   
-  min_date
-  
   ggplot(res[res$date <= date+forecast & res$date >= start_date,], 
          aes(x = date, y = C, color = observed)) + 
     geom_point() + 
