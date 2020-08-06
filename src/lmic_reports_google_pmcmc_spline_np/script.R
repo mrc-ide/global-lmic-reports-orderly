@@ -503,9 +503,7 @@ out$pmcmc_results$inputs$prior <- as.function(c(formals(logprior),
 ## -----------------------------------------------------------------------------
 
 ## summarise what we have
-png("top_row.png", height = 6, width = 8, units = "in", res = 300)
-simple_pmcmc_plot(out)
-dev.off()
+g1 <- simple_pmcmc_plot(out) + theme(text = element_text(size = 2))
 
 title <- cowplot::ggdraw() + 
   cowplot::draw_label(
@@ -520,6 +518,13 @@ line <- ggplot() + cowplot::draw_line(x = 0:10, y=1) +
         axis.text = element_blank(), 
         axis.ticks = element_blank())
 
+line_v <- ggplot() + cowplot::draw_line(y = 0:10, x=1) + 
+  theme(panel.background = element_blank(),
+        axis.title = element_blank(), 
+        axis.text = element_blank(), 
+        axis.ticks = element_blank())
+
+
 header <- cowplot::plot_grid(title, line, ncol = 1)
 
 index <- squire:::odin_index(out$model)
@@ -529,34 +534,36 @@ suppressMessages(suppressWarnings(
   d <- deaths_plot_single(
     out, data, date = date,
     date_0 = date_0, forecast = forecast, 
-    single = TRUE) + 
+    single = TRUE, full = TRUE) + 
     theme(legend.position = "none")))
 
-intervention <- intervention_plot_google(interventions[[iso3c]], date, data, forecast) + 
-  geom_vline(xintercept = as.Date(date_Meff_change) + seq(Rt_rw_duration, Rt_rw_duration*rw_needed, by = Rt_rw_duration))
+intervention <- intervention_plot_google(
+  interventions[[iso3c]], date, data, 
+  forecast, 
+  start_date = min(as.Date(out$replicate_parameters$start_date))) + 
+  geom_vline(xintercept = as.Date(date_Meff_change) + seq(Rt_rw_duration, Rt_rw_duration*rw_needed, by = Rt_rw_duration),
+             linetype = "dashed") + xlab("") + theme(axis.text.x = element_text(angle=45, vjust = 0.5))
 
 rtp <- rt_plot(out)$plot
 
+date_range <- as.Date(c(min(as.Date(out$replicate_parameters$start_date)),date_0))
 suppressMessages(suppressWarnings(
   bottom <- cowplot::plot_grid(
-    intervention + scale_x_date(limits = as.Date(c(data$date[data$deaths>0][1],date_0))), 
-    d,
-    rtp + scale_x_date(limits = as.Date(c(data$date[data$deaths>0][1],date_0))),
+    intervention + scale_x_date(date_breaks = "1 month", date_labels = "%b" ,limits = date_range), 
+    d + scale_x_date(date_breaks = "1 month", date_labels = "%b" ,limits = date_range),
+    rtp + scale_x_date(date_breaks = "1 month", date_labels = "%b" ,limits = date_range),
     ncol=1,
     rel_heights = c(0.4,0.6,0.4))
 ))
 
-plots <- list() 
-img <- png::readPNG("top_row.png")
-plots[[1]] <- grid::rasterGrob(img, interpolate = FALSE)
+combined <- cowplot::plot_grid(header, 
+                               cowplot::plot_grid(g1, line_v, bottom, ncol = 3, rel_widths = c(3,0.1,1)), 
+                               ncol=1, rel_heights = c(1,15))
 
 
-ggsave("fitting.pdf",width=7, height=12, 
-       gridExtra::marrangeGrob(grobs = c(list(cowplot::as_grob(header)),
-                                         plots[1],
-                                         list(cowplot::as_grob(bottom))), 
-                               nrow=3, ncol=1,top=NULL, heights = c(1, 4, 7)))
-file.remove("top_row.png")
+
+ggsave("fitting.pdf",width=24, height=12, 
+       combined)
 
 
 ## Save the grid out object

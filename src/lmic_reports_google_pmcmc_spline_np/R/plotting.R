@@ -502,7 +502,15 @@ cases_plot <- function(df, data, date = Sys.Date(), date_0) {
 }
 
 deaths_plot_single <- function(out, data, date_0, date = Sys.Date(), 
-                               forecast = 14, single = FALSE) {
+                               forecast = 14, single = FALSE, full = TRUE) {
+  
+  
+  if(full) {
+    start_date <- min(as.Date(out$replicate_parameters$start_date))
+  } else {
+    start_date <- min(data$date[which(data$deaths>0)])
+  }
+    
   
   if("pmcmc_results" %in% names(out)) {
     wh <- "pmcmc_results"
@@ -520,7 +528,7 @@ deaths_plot_single <- function(out, data, date_0, date = Sys.Date(),
     ggplot2::theme_bw()  +
     ggplot2::scale_y_continuous(limits = c(0, ymax+1)) +
     ggplot2::scale_x_date(date_breaks = "1 week", date_labels = "%b %d",
-                          limits = c(min(data$date[which(data$deaths>0)]), date + forecast),
+                          limits = c(start_date, date + forecast),
                           expand = c(0, 0)) +
     ggplot2::scale_fill_manual(name = "", labels = rev(c("Estimated")),
                                values = (c("#c59e96"))) +
@@ -538,7 +546,7 @@ deaths_plot_single <- function(out, data, date_0, date = Sys.Date(),
   
   rg <- gg + ylab("Daily Deaths") +
     ylim(c(0, max(gg$layers[[1]]$data[gg$layers[[1]]$data$x < date+1,]$ymax,out[[wh]]$inputs$data$deaths+1))) +
-    xlim(c(min(data$date[which(data$deaths>0)]), date)) +
+    xlim(c(start_date, date)) +
     theme(legend.position = "none") +
     ggtitle("Model Fit up to Current Day")
   
@@ -1212,11 +1220,13 @@ intervention_plot <- function(res, date) {
   
 }
 
-intervention_plot_google <- function(res, date, data, forecast) {
+intervention_plot_google <- function(res, date, data, forecast, start_date) {
   
   date <- as.Date(date)
   
-  ggplot(res[res$date <= date+forecast & res$date >= (min(data$date[data$deaths>0])-30),], 
+  min_date
+  
+  ggplot(res[res$date <= date+forecast & res$date >= start_date,], 
          aes(x = date, y = C, color = observed)) + 
     geom_point() + 
     scale_color_discrete(name = "Observed") +
@@ -1291,10 +1301,11 @@ rt_plot <- function(out) {
                                Rt_median = median(Rt),
                                Rt = mean(Rt)))
   
+  min_date <- min(as.Date(out$replicate_parameters$start_date))
+  
   country_plot <- function(vjust = -1.2) {
     ggplot(sum_rt %>% filter(
-      date > as.Date(c(as.character(min(rt$date[rt$pos==1])))) &
-        date <= as.Date(as.character(date+as.numeric(lubridate::wday(date))))), 
+      date > min_date & date <= as.Date(as.character(date_0+as.numeric(lubridate::wday(date_0))))), 
       aes(x=date, y = Rt, ymin=Rt_min, ymax = Rt_max, group = iso, fill = iso)) +
       geom_ribbon(fill = "#96c4aa") +
       geom_line(color = "#48996b") +
@@ -1304,8 +1315,8 @@ rt_plot <- function(out) {
       theme(axis.text = element_text(size=12)) +
       xlab("") +
       scale_x_date(breaks = "1 week",
-                   limits = as.Date(c(as.character(min(rt$date[rt$pos==1])),
-                                      as.character(date+as.numeric(lubridate::wday(date))))), 
+                   limits = as.Date(c(as.character(min_date),
+                                      as.character(date_0+as.numeric(lubridate::wday(date_0))))), 
                    date_labels = "%d %b",
                    expand = c(0,0)) + 
       theme(legend.position = "none") +
@@ -1333,12 +1344,14 @@ simple_pmcmc_plot <- function(out) {
   hists <- lapply(par_pos, function(i) {
     
     quants <- round(quantile(master[[pars[[i]]]][order(master$log_posterior, decreasing = TRUE)][1:1000], c(0.025, 0.5, 0.975), na.rm = TRUE),2)[c(2,1,3)]
-    title <- paste0(pars[i],": ", quants[1], " (", quants[2], ", ", quants[3], ")")
+    title <- paste0(pars[i],":\n ", quants[1], " (", quants[2], ", ", quants[3], ")")
     
     ggplot(master, mapping = aes_string(x = pars[i], color = "chain")) + 
       geom_freqpoly(stat = "density") + theme_bw() + theme(legend.position = "none") +
       theme(panel.border = element_blank(), axis.line = element_line()) + 
-      ggtitle(title) + scale_color_brewer(type = "qual")
+      ggtitle(title) + scale_color_brewer(type = "qual") +
+      theme(axis.title = element_blank(),
+            title = element_text(size = 8))
     
   })
   
