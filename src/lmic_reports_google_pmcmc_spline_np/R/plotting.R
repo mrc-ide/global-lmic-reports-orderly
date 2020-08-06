@@ -1355,7 +1355,7 @@ simple_pmcmc_plot <- function(out) {
   
   chains <- lapply(par_pos, function(i) {
     
-    ggplot(master, mapping = aes_string(y = pars[i], x = "iteration", color = "chain")) + 
+    ggplot(master[seq(1,nrow(master),100),], mapping = aes_string(y = pars[i], x = "iteration", color = "chain")) + 
       geom_line() + theme_bw() +
       theme(panel.border = element_blank(), axis.line = element_line()) +
       theme(legend.position = "none") + scale_color_brewer(type = "qual")

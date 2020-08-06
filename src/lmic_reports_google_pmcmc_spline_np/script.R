@@ -118,7 +118,7 @@ Meff_max <- 10
 Meff_pl_min <- 0
 Meff_pl_max <- 1
 Rt_shift_min <- 0
-Rt_shift_max <- 5
+Rt_shift_max <- 0.001
 Rt_shift_scale_min <- 0.1
 Rt_shift_scale_max <- 10
 
@@ -211,7 +211,7 @@ Rt_shift_scale_start <- min(max(Rt_shift_scale_start, Rt_shift_scale_min), Rt_sh
 ## Step 2ab: Spline set up
 ## -----------------------------------------------------------------------------
 
-last_shift_date <- date_Meff_change + Rt_shift_duration
+last_shift_date <- date_Meff_change + 7
 remaining_days <- date_0 - last_shift_date - 21 # reporting delay in place
 
 # how many spline pars do we need
@@ -234,7 +234,7 @@ pars_init = list('start_date' = date_start,
                  'R0' = R0_start, 
                  'Meff' = Meff_start, 
                  'Meff_pl' = Meff_pl_start,
-                 "Rt_shift" = Rt_shift_start,
+                 "Rt_shift" = 0,
                  "Rt_shift_scale" = Rt_shift_scale_start)
 pars_min = list('start_date' = first_start_date, 
                 'R0' = R0_min, 
@@ -316,7 +316,7 @@ out_det <- squire::pmcmc(data = data,
                          Rt_args = squire:::Rt_args_list(
                            date_Meff_change = date_Meff_change,
                            scale_Meff_pl = TRUE,
-                           Rt_shift_duration = 1,
+                           Rt_shift_duration = 7,
                            Rt_rw_duration = Rt_rw_duration), 
                          burnin = ceiling(n_mcmc/10),
                          seeding_cases = 5,
@@ -586,7 +586,7 @@ saveRDS(out, "grid_out.rds")
 
 ## Functions for working out the relative changes in R0 for given scenarios
 fr0 <- tail(out$interventions$R0_change,1)
-time_period <- 90
+time_period <- 365
 rel_R0 <- function(rel = 0.5, Meff_mult = 1) {
   R0_ch <- 1-((1-fr0)*rel)
   current <- squire:::t0_variables(out)
@@ -632,7 +632,7 @@ mitigation_3months_lift <- squire::projections(out,
 
 # Relax by 50% for 3 months 
 reverse_3_months_lift <- squire::projections(out, 
-                                             R0_change = rel_R0(0.5), 
+                                             R0_change = 1.5, 
                                              tt_R0 = c(0), 
                                              time_period = time_period)
 
@@ -708,18 +708,18 @@ if(icu_28$i_tot > icu_cap || hosp_28$i_tot > hosp_cap) {
 out_surged$pmcmc_results$chains <- NULL
 
 maintain_3months_lift_surged <- squire::projections(out_surged, 
-                                                    R0_change = c(1, rel_R0(0)), 
-                                                    tt_R0 = c(0,90), 
+                                                    R0_change = c(1), 
+                                                    tt_R0 = c(0), 
                                                     time_period = time_period)
 
 mitigation_3months_lift_surged <- squire::projections(out_surged, 
-                                                      R0_change = c(0.5, rel_R0(0)), 
-                                                      tt_R0 = c(0,90), 
+                                                      R0_change = c(0.5), 
+                                                      tt_R0 = c(0), 
                                                       time_period = time_period)
 
 reverse_3_months_lift_surged <- squire::projections(out_surged, 
-                                                    R0_change = c(rel_R0(0.5), rel_R0(0)), 
-                                                    tt_R0 = c(0, 90), 
+                                                    R0_change = c(1.5), 
+                                                    tt_R0 = c(0), 
                                                     time_period = time_period)
 
 ## -----------------------------------------------------------------------------
