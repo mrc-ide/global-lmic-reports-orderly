@@ -571,6 +571,7 @@ ggsave("fitting.pdf",width=24, height=12,
 # remove states to keep object memory save down
 for(i in seq_along(out$pmcmc_results$chains)) {
   out$pmcmc_results$chains[[i]]$states <- NULL
+  out$pmcmc_results$chains[[i]]$covariance_matrix <- NULL
 }
 
 saveRDS(out, "grid_out.rds")
