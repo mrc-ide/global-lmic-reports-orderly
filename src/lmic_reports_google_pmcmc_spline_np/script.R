@@ -691,7 +691,7 @@ hosp_28 <- group_by(hosp, t) %>%
             i_min = t_test_safe(y)$conf.int[1],
             i_max = t_test_safe(y)$conf.int[2])
 
-if(any(icu_28$i_tot > icu_cap) || any(icu_28$i_tot > icu_cap)) {
+if(any(na.omit(icu_28$i_tot > icu_cap)) || any(na.omit(icu_28$i_tot > icu_cap))) {
   
   surging <- TRUE
   
