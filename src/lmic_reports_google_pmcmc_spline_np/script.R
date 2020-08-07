@@ -5,7 +5,7 @@ print(sessionInfo())
 RhpcBLASctl::blas_set_num_threads(1L)
 RhpcBLASctl::omp_set_num_threads(1L)
 
-version_min <- "0.4.30"
+version_min <- "0.4.31"
 if(packageVersion("squire") < version_min) {
   stop("squire needs to be updated to at least ", version_min)
 }
@@ -676,24 +676,22 @@ out_surged$model$set_user(hosp_beds = 1e10)
 out_surged$parameters$hosp_bed_capacity <- 1e10
 out_surged$parameters$ICU_bed_capacity <- 1e10
 
-# will surging be required within the next 28 day forecast
+# has surging been required 
 icu <- format_output(maintain_3months_lift, "ICU_demand", date_0 = date_0)
 icu <- icu[icu$compartment == "ICU_demand",]
-icu_28 <- group_by(icu[icu$t==28,], replicate) %>% 
-  summarise(tot = sum(y, na.rm = TRUE)) %>% 
-  summarise(i_tot = mean(tot, na.rm = TRUE), 
-            i_min = t_test_safe(tot)$conf.int[1],
-            i_max = t_test_safe(tot)$conf.int[2])
+icu_28 <- group_by(icu, t) %>% 
+  summarise(i_tot = mean(y, na.rm = TRUE), 
+            i_min = t_test_safe(y)$conf.int[1],
+            i_max = t_test_safe(y)$conf.int[2])
 
 hosp <- format_output(maintain_3months_lift, "hospital_demand", date_0 = date_0)
 hosp <- hosp[hosp$compartment == "hospital_demand",]
-hosp_28 <- group_by(hosp[hosp$t==28,], replicate) %>% 
-  summarise(tot = sum(y, na.rm = TRUE)) %>% 
-  summarise(i_tot = mean(tot, na.rm = TRUE), 
-            i_min = t_test_safe(tot)$conf.int[1],
-            i_max = t_test_safe(tot)$conf.int[2])
+hosp_28 <- group_by(hosp, t) %>%
+  summarise(i_tot = mean(y, na.rm = TRUE), 
+            i_min = t_test_safe(y)$conf.int[1],
+            i_max = t_test_safe(y)$conf.int[2])
 
-if(icu_28$i_tot > icu_cap || hosp_28$i_tot > hosp_cap) {
+if(any(icu_28$i_tot > icu_cap) || any(icu_28$i_tot > icu_cap)) {
   
   surging <- TRUE
   
