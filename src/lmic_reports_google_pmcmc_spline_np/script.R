@@ -132,9 +132,9 @@ first_start_date <- as.Date(null_na(min_death_date))-55
 
 # 1. Do we have a previous run for this country
 pars_former <- readRDS("pars_init.rds")
-pars_former <- pars_former[pars_former$iso3c == iso3c,]
+pars_former <- pars_former[[iso3c]]
 
-if (nrow(pars_former) == 1) {
+if (!is.null(pars_former)) {
   
   R0_start <- pars_former$R0
   date_start <- pars_former$start_date
@@ -143,7 +143,9 @@ if (nrow(pars_former) == 1) {
   Rt_shift_start <- pars_former$Rt_shift
   Rt_shift_duration <- pars_former$Rt_shift_duration
   Rt_shift_scale_start <- pars_former$Rt_shift_scale
+  Rt_rw_duration <- pars_former$Rt_rw_duration
   date_Meff_change <- pars_former$date_Meff_change
+  
   
 } else {
   
@@ -192,6 +194,7 @@ if (nrow(pars_former) == 1) {
   Rt_shift_start <- 0.5
   Rt_shift_scale_start <- 2
   Rt_shift_duration <- 30
+  Rt_rw_duration <- 14
   
   date_Meff_change <- post_lockdown_date_relative(interventions[[iso3c]], 1.05, 
                                      max_date = as.Date("2020-06-02"),
@@ -215,11 +218,18 @@ last_shift_date <- as.Date(date_Meff_change) + 7
 remaining_days <- as.Date(date_0) - last_shift_date - 21 # reporting delay in place
 
 # how many spline pars do we need
-Rt_rw_duration <- 14
 rw_needed <- as.numeric(round(remaining_days/Rt_rw_duration))
 
 # set up rw pars
-pars_init_rw <- as.list(rep(0, rw_needed))
+if (is.null(pars_former)) {
+  pars_init_rw <- as.list(rep(0, rw_needed))
+} else {
+  pars_init_rw <- as.list(pars_former[grep("Rt_rw_\\d",names(pars_former))])
+  if(length(pars_init_rw) < rw_needed) {
+    pars_init_rw[[rw_needed]] <- 0 
+  }
+}
+
 pars_min_rw <- as.list(rep(-5, rw_needed))
 pars_max_rw <- as.list(rep(5, rw_needed))
 pars_discrete_rw <- as.list(rep(FALSE, rw_needed))
