@@ -51,7 +51,7 @@ parallel --progress -j 32 ./orderly run lmic_reports_google_pmcmc_spline_np iso3
 # done
 
 echo "*** Copying reports"
-./run/copy_reports_google_pmcmc_6p.R $DATE
+./run/copy_reports_google_pmcmc_spline_np.R $DATE
 
 echo "*** Index page"
 ./orderly run index_page date=$DATE
