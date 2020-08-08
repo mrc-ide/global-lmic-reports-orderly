@@ -74,26 +74,33 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   
   # get old conditions
   pars_init <- readRDS("src/lmic_reports_google_pmcmc_spline_np/pars_init.rds")
-  
-  initial_conditions <- for(x in seq_along(reports$id)) {
+  pars <- vector("list", length(reports$id))
+  for(x in seq_along(reports$id)) {
     
     out <- readRDS(file.path("archive/lmic_reports_google_pmcmc_spline_np",reports$id[x],"grid_out.rds"))
     mc <- do.call(rbind, lapply(out$pmcmc_results$chains, "[[", "results"))
     best <- mc[which.max(mc$log_posterior),]  
-    best$start_date <- as.character(squire:::offset_to_start_date(out$pmcmc_results$inputs$data$date[1], round(best$start_date)))
-    best <- best[,1:6]
+    best <- best[,seq_len(ncol(best)-3)]
     rownames(best) <- NULL
     best$iso3c <- reports$country[x]
     best$date_Meff_change <- out$pmcmc_results$inputs$Rt_args$date_Meff_change
     best$Rt_shift_duration <- out$pmcmc_results$inputs$Rt_args$Rt_shift_duration
+    best$Rt_rw_duration <- out$pmcmc_results$inputs$Rt_args$Rt_rw_duration
     
-   if(reports$country[x] %in% pars_init$iso3c) {
-     pars_init[which(pars_init$iso3c == reports$country[x]),] <- best
-   } 
+    # for now combine here
+    pars[[x]] <- best
+
+       #  
+   # if(reports$country[x] %in% pars_init$iso3c) {
+   #   pars_init[which(pars_init$iso3c == reports$country[x]),] <- best
+   # } else {
+   #   pars_init <- rbind(pars_init, best)
+   # }
     
   }
+  names(pars) <- reports$country
   
-  saveRDS(pars_init, "src/lmic_reports_google_pmcmc_spline_np/pars_init.rds")
+  saveRDS(pars, "src/lmic_reports_google_pmcmc_spline_np/pars_init.rds")
   
   ## Remove HICs
   rl <- readLines(file.path(here::here(),"countries"))
