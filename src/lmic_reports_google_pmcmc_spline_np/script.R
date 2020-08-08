@@ -212,7 +212,7 @@ Rt_shift_scale_start <- min(max(Rt_shift_scale_start, Rt_shift_scale_min), Rt_sh
 ## -----------------------------------------------------------------------------
 
 last_shift_date <- as.Date(date_Meff_change) + 7
-remaining_days <- as.Date(date_0) - last_shift_date - 21 # reporting delay in place
+remaining_days <- as.Date(date_0) - last_shift_date - 7 # reporting delay in place
 
 # how many spline pars do we need
 Rt_rw_duration <- 7
