@@ -82,6 +82,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
     best <- mc[which.max(mc$log_posterior),]  
     best <- best[,seq_len(ncol(best)-3)]
     rownames(best) <- NULL
+    best$start_date <- as.character(squire:::offset_to_start_date(out$pmcmc_results$inputs$data$date[1], round(best$start_date)))
     best$iso3c <- reports$country[x]
     best$date_Meff_change <- out$pmcmc_results$inputs$Rt_args$date_Meff_change
     best$Rt_shift_duration <- out$pmcmc_results$inputs$Rt_args$Rt_shift_duration
