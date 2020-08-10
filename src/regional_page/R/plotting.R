@@ -238,11 +238,11 @@ rt_plot <- function(cont) {
   sum_rt <- sum_rt %>% filter(continent == cont)
   sum_rt <- sum_rt %>% filter(date <= today)
   
-  ggplot(sum_rt[sum_rt$compartment == "Reff",], 
-         aes(x=date, y = y, ymin=y_min, ymax = y_max, group = iso, fill = iso)) +
+  ggplot(sum_rt[sum_rt$compartment == "Reff" & sum_rt$scenario == "Maintain Status Quo",], 
+         aes(x=as.Date(date), y = y, ymin=y_025, ymax = y_975, group = iso3c, fill = iso3c)) +
     geom_ribbon(fill = "#96c4aa") +
     geom_line(color = "#48996b") +
-    geom_ribbon(mapping = aes(ymin = y_q25, ymax = y_q75), fill = "#48996b") +
+    geom_ribbon(mapping = aes(ymin = y_25, ymax = y_75), fill = "#48996b") +
     geom_hline(yintercept = 1, linetype = "dashed") +
     theme_bw() +
     theme(axis.text = element_text(size=12)) +
@@ -269,11 +269,11 @@ rt_continental_plot <- function(cont) {
   sum_rt <- sum_rt %>% filter(date <= today)
   
   
-  ggplot(sum_rt[sum_rt$compartment == "Reff",], 
-         aes(x=date, y = y, ymin=y_min, ymax = y_max, group = iso, fill = iso)) +
+  ggplot(sum_rt[sum_rt$compartment == "Reff" & sum_rt$scenario == "Maintain Status Quo",], 
+         aes(x=as.Date(date), y = y, ymin=y_025, ymax = y_975, group = iso3c, fill = iso3c)) +
     geom_ribbon(fill = "#96c4aa") +
     geom_line(color = "#48996b") +
-    geom_ribbon(mapping = aes(ymin = y_q25, ymax = y_q75), fill = "#48996b") +
+    geom_ribbon(mapping = aes(ymin = y_25, ymax = y_75), fill = "#48996b") +
     geom_hline(yintercept = 1, linetype = "dashed") +
     theme_bw() +
     theme(axis.text = element_text(size=12)) +
