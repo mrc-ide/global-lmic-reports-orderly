@@ -261,7 +261,7 @@ rt_creation <- function(out, date_0, max_date) {
     
     df <- data.frame(
       "Rt" = Rt,
-      "Reff" = Rt*na.omit(ratios[[y]]),
+      "Reff" = Rt*tail(na.omit(ratios[[y]]),length(Rt)),
       "date" = tt$dates,
       "iso" = iso3c,
       rep = y,
