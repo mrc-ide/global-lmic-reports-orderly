@@ -273,7 +273,7 @@ rt_creation <- function(out, date_0, max_date) {
   rt <- do.call(rbind, rts)
   rt$date <- as.Date(rt$date)
   
-  rt <- rt[,c(5,4,1,2,3,6,7)]
+  rt <- rt[,c(3,4,1,2,5,6)]
   
   new_rt_all <- rt %>%
     group_by(iso, rep) %>% 
