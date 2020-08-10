@@ -584,8 +584,6 @@ for(i in seq_along(out$pmcmc_results$chains)) {
   out$pmcmc_results$chains[[i]]$covariance_matrix <- NULL
 }
 
-saveRDS(out, "grid_out.rds")
-
 ## -----------------------------------------------------------------------------
 ## Step 4: Scenarios
 ## -----------------------------------------------------------------------------
@@ -633,6 +631,8 @@ maintain_3months_lift <- squire::projections(out,
                                              R0_change = c(1), 
                                              tt_R0 = c(0), 
                                              time_period = time_period)
+
+saveRDS(maintain_3months_lift, "grid_out.rds")
 
 # Enhancing movement restrictions for 3 months (50% further reduction in contacts) (Mitigation) 
 mitigation_3months_lift <- squire::projections(out, 
