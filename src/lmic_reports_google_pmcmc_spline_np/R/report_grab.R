@@ -226,41 +226,43 @@ rt_creation <- function(out, date_0, max_date) {
   
   date_0 <- as.Date(date_0)
   
-  rts <- lapply(seq_len(nrow(out$replicate_parameters)), function(y) {
+  # impact of immunity ratios
+  ratios <- get_immunity_ratios(out)
+  
+  # create the Rt data frame
+  rts <- lapply(seq_len(length(out$replicate_parameters$R0)), function(y) {
     
     tt <- squire:::intervention_dates_for_odin(dates = out$interventions$date_R0_change, 
                                                change = out$interventions$R0_change, 
                                                start_date = out$replicate_parameters$start_date[y],
                                                steps_per_day = 1/out$parameters$dt)
     
-    df <- data.frame(
-      "Rt" = squire:::evaluate_Rt_pmcmc(
+    if(wh == "scan_results") {
+      Rt <- c(out$replicate_parameters$R0[y], 
+              vapply(tt$change, out[[wh]]$inputs$Rt_func, numeric(1), 
+                     R0 = out$replicate_parameters$R0[y], Meff = out$replicate_parameters$Meff[y])) 
+    } else {
+      Rt <- squire:::evaluate_Rt_pmcmc(
         R0_change = tt$change, 
         date_R0_change = tt$dates, 
         R0 = out$replicate_parameters$R0[y], 
-        pars = as.list(out$replicate_parameters[1,-(1:2)]),
-        Rt_args = out$pmcmc_results$inputs$Rt_args),
-      "date" = tt$dates,
-      rep = y,
-      stringsAsFactors = FALSE)
-    
-    if("projection_args" %in% names(out)) {
-      
-      extra <- data.frame("Rt" = tail(df$Rt, 1) * out$projection_args$R0_change,
-                          "date" = as.character(date_0 + 1 + out$projection_args$tt_R0),
-                          "rep" = y)
-      
-      df <- rbind(df, extra)
-      
+        pars = as.list(out$replicate_parameters[y,]),
+        Rt_args = out$pmcmc_results$inputs$Rt_args) 
     }
     
+    df <- data.frame(
+      "Rt" = Rt*na.omit(ratios[[y]]),
+      "R0" = Rt[1]*na.omit(ratios[[y]]),
+      "date" = tt$dates,
+      "iso" = iso3c,
+      rep = y,
+      stringsAsFactors = FALSE)
     df$pos <- seq_len(nrow(df))
     return(df)
   } )
   
-  rt_all <- do.call(rbind, rts)
-  
-  rt_all$date <- as.Date(rt_all$date)
+  rt <- do.call(rbind, rts)
+  rt$date <- as.Date(rt$date)
   rt_all <- rt_all[,c(3,2,1,4)]
   
   new_rt_all <- rt_all %>%
