@@ -88,9 +88,11 @@ cumulative_deaths_plot_continent_projections <- function(continent, today, data,
   }))
   
   df_deaths_latest <- df_deaths[df_deaths$date == max(df_deaths$date),]
+  df_deaths$region <- countrycode::countrycode(df_deaths$iso3c, "iso3c", "region23")
+  df_deaths_latest$region <- countrycode::countrycode(df_deaths_latest$iso3c, "iso3c", "region23")
   
   
-  gg_deaths <- ggplot(df_deaths, aes(x=day_since, y=Cum_Deaths, group = country)) + 
+  gg_deaths <- ggplot(df_deaths[which(df_deaths$Continent == cont), ], aes(x=day_since, y=Cum_Deaths, group = country)) + 
     #geom_line(data = doubling_lines_deaths, aes(x=x, y=y, linetype = Doubling), inherit.aes = FALSE, color = "black") +
     geom_line(show.legend = FALSE, color = "grey", alpha = 0.3) +
     geom_line(data = df_deaths[which(df_deaths$Continent %in% continent & df_deaths$iso3c %in% lmics & df_deaths$observed),], 
@@ -209,7 +211,8 @@ summaries_forecasts_plot <- function(sums, cont) {
     mutate(value = ceiling(value)) %>% 
   filter(continent == cont)
 
-  gg <- ggplot(sums[sums$variable %in% c("hospital_28","icu_28"),], 
+  gg <- ggplot(sums[sums$variable %in% c("hospital_28","icu_28"),] %>% 
+                 filter(value > 1), 
                aes(x = country, y = value, color = variable, fill = variable)) + 
     geom_bar(stat="identity",position = "dodge", width = 0.5) + 
     scale_y_continuous(labels = scales::comma) + 
