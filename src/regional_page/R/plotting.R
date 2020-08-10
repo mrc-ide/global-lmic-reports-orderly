@@ -92,7 +92,7 @@ cumulative_deaths_plot_continent_projections <- function(continent, today, data,
   df_deaths_latest$region <- countrycode::countrycode(df_deaths_latest$iso3c, "iso3c", "region23")
   
   
-  gg_deaths <- ggplot(df_deaths[which(df_deaths$Continent == cont), ], aes(x=day_since, y=Cum_Deaths, group = country)) + 
+  gg_deaths <- ggplot(df_deaths[which(df_deaths$Continent == continent), ], aes(x=day_since, y=Cum_Deaths, group = country)) + 
     #geom_line(data = doubling_lines_deaths, aes(x=x, y=y, linetype = Doubling), inherit.aes = FALSE, color = "black") +
     geom_line(show.legend = FALSE, color = "grey", alpha = 0.3) +
     geom_line(data = df_deaths[which(df_deaths$Continent %in% continent & df_deaths$iso3c %in% lmics & df_deaths$observed),], 
