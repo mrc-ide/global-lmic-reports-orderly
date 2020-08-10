@@ -233,23 +233,21 @@ summaries_forecasts_plot <- function(sums, cont) {
 rt_plot <- function(cont) {
   
   today <- date
-  sum_rt <- readRDS("sum_rt.rds")
+  sum_rt <- readRDS("all_data.rds")
+  sum_rt$continent <- countrycode::countrycode(sum_rt$iso3c, "iso3c", "continent")
   sum_rt <- sum_rt %>% filter(continent == cont)
   sum_rt <- sum_rt %>% filter(date <= today)
-  sum_rt$name <- countrycode::countrycode(sum_rt$iso, origin = "iso3c", destination = "cow.name", 
-                                          custom_match = c("SRB"="Serbia",
-                                                           "PSE"="State of Palestine"))
-  sum_rt$name[sum_rt$name=="Democratic Republic of the Congo"] <- "DRC"
   
-  ggplot(sum_rt, aes(x=date, y = Rt, ymin=Rt_min, ymax = Rt_max, group = iso, fill = iso)) +
+  ggplot(sum_rt[sum_rt$compartment == "Reff",], 
+         aes(x=date, y = y, ymin=y_min, ymax = y_max, group = iso, fill = iso)) +
     geom_ribbon(fill = "#96c4aa") +
     geom_line(color = "#48996b") +
-    geom_ribbon(mapping = aes(ymin = Rt_q25, ymax = Rt_q75), fill = "#48996b") +
+    geom_ribbon(mapping = aes(ymin = y_q25, ymax = y_q75), fill = "#48996b") +
     geom_hline(yintercept = 1, linetype = "dashed") +
     theme_bw() +
     theme(axis.text = element_text(size=12)) +
     xlab("") +
-    facet_wrap(~name, ncol = 6) +
+    facet_wrap(~country, ncol = 6) +
     scale_x_date(breaks = "3 week",
                  date_labels = "%d %b") + 
     theme(legend.position = "none") +
@@ -265,26 +263,29 @@ rt_plot <- function(cont) {
 rt_continental_plot <- function(cont) {
   
   today <- date
-  sum_rt <- readRDS("sum_rt.rds")
+  sum_rt <- readRDS("all_data.rds")
+  sum_rt$continent <- countrycode::countrycode(sum_rt$iso3c, "iso3c", "continent")
   sum_rt <- sum_rt %>% filter(continent == cont)
   sum_rt <- sum_rt %>% filter(date <= today)
   
-  ggplot(sum_rt, aes(x=date, y = Rt, ymin=Rt_min, ymax = Rt_max, group = iso, fill = iso)) +
+  
+  ggplot(sum_rt[sum_rt$compartment == "Reff",], 
+         aes(x=date, y = y, ymin=y_min, ymax = y_max, group = iso, fill = iso)) +
     geom_ribbon(fill = "#96c4aa") +
     geom_line(color = "#48996b") +
-    geom_ribbon(mapping = aes(ymin = Rt_q25, ymax = Rt_q75), fill = "#48996b") +
+    geom_ribbon(mapping = aes(ymin = y_q25, ymax = y_q75), fill = "#48996b") +
     geom_hline(yintercept = 1, linetype = "dashed") +
     theme_bw() +
     theme(axis.text = element_text(size=12)) +
     xlab("") +
-    scale_x_date(breaks = "3 week", 
+    facet_wrap(~country, ncol = 6) +
+    scale_x_date(breaks = "3 week",
                  date_labels = "%d %b") + 
     theme(legend.position = "none") +
-    theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, colour = "black",size = 6),
-          axis.text.y = ggplot2::element_text(colour = "black",size = 8),
-          strip.text = ggplot2::element_text(colour = "black",size = 6),
+    theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, colour = "black", size = 8),
+          axis.text.y = ggplot2::element_text(colour = "black", size = 8),
           panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-          panel.border = element_blank(),
+          strip.background = element_blank(), 
           panel.background = element_blank(), axis.line = element_line(colour = "black")
     ) + geofacet::facet_geo(~code, grid = "africa_countries_grid1",label = "name")
   

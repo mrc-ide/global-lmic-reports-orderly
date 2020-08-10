@@ -1359,8 +1359,9 @@ get_immunity_ratios <- function(out) {
   
   index <- squire:::odin_index(out$model)
   pop <- out$parameters$population
+  t_now <- which(as.Date(rownames(out$output)) == max(out$pmcmc_results$inputs$data$date))
   prop_susc <- lapply(seq_len(dim(out$output)[3]), function(x) {
-    t(t(out$output[, index$S, x])/pop)
+    t(t(out$output[seq_len(t_now), index$S, x])/pop)
   } )
   
   relative_R0_by_age <- prob_hosp*dur_ICase + (1-prob_hosp)*dur_IMild
@@ -1429,7 +1430,8 @@ rt_plot_immunity <- function(out) {
     }
     
     df <- data.frame(
-      "Rt" = Rt*na.omit(ratios[[y]]),
+      "Rt" = Rt,
+      "Reff" = Rt*na.omit(ratios[[y]]),
       "R0" = na.omit(Rt)[1]*na.omit(ratios[[y]]),
       "date" = tt$dates,
       "iso" = iso3c,
@@ -1442,7 +1444,7 @@ rt_plot_immunity <- function(out) {
   rt <- do.call(rbind, rts)
   rt$date <- as.Date(rt$date)
   
-  rt <- rt[,c(3,2,1,4,5)]
+  rt <- rt[,c(5,4,1,2,3,6,7)]
   
   new_rt_all <- rt %>%
     group_by(iso, rep) %>% 
@@ -1465,7 +1467,13 @@ rt_plot_immunity <- function(out) {
                                R0_q75 = quantile(R0, 0.75),
                                R0_max = quantile(R0, 0.975),
                                R0_median = median(R0),
-                               R0 = mean(R0)))
+                               R0 = mean(R0),
+                               Reff_min = quantile(Reff, 0.025),
+                               Reff_q25 = quantile(Reff, 0.25),
+                               Reff_q75 = quantile(Reff, 0.75),
+                               Reff_max = quantile(Reff, 0.975),
+                               Reff_median = median(Reff),
+                               Reff = mean(Reff)))
   
   min_date <- min(as.Date(out$replicate_parameters$start_date))
   
@@ -1474,14 +1482,14 @@ rt_plot_immunity <- function(out) {
       date > min_date & date <= as.Date(as.character(date_0+as.numeric(lubridate::wday(date_0)))))) +
       geom_ribbon(mapping = aes(x=date, ymin=R0_min, ymax = R0_max, group = iso), fill = "#8cbbca") +
       geom_ribbon(mapping = aes(x = date, ymin = R0_q25, ymax = R0_q75, group = iso), fill = "#3f8da7") +
-      geom_ribbon(mapping = aes(x=date, ymin=Rt_min, ymax = Rt_max, group = iso), fill = "#96c4aa") +
-      geom_ribbon(mapping = aes(x = date, ymin = Rt_q25, ymax = Rt_q75, group = iso), fill = "#48996b") +
+      geom_ribbon(mapping = aes(x=date, ymin=Reff_min, ymax = Reff_max, group = iso), fill = "#96c4aa") +
+      geom_ribbon(mapping = aes(x = date, ymin = Reff_q25, ymax = Reff_q75, group = iso), fill = "#48996b") +
       geom_hline(yintercept = 1, linetype = "dashed") +
       geom_hline(yintercept = sum_rt$R0_median[1], linetype = "dashed") +
       theme_bw() +
       theme(axis.text = element_text(size=12)) +
       xlab("") +
-      ylab("Rt") +
+      ylab("Reff") +
       scale_x_date(breaks = "2 weeks",
                    limits = as.Date(c(as.character(min_date),
                                       as.character(date_0+as.numeric(lubridate::wday(date_0))))), 

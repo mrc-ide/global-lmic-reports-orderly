@@ -224,7 +224,16 @@ named_list <- function(...) {
 
 rt_creation <- function(out, date_0, max_date) {
   
-  date_0 <- as.Date(date_0)
+  iso3c <- squire::get_population(out$parameters$country)$iso3c[1]
+  
+  if("pmcmc_results" %in% names(out)) {
+    wh <- "pmcmc_results"
+  } else {
+    wh <- "scan_results"
+  }
+  
+  date <- max(as.Date(out$pmcmc_results$inputs$data$date))
+  date_0 <- date
   
   # impact of immunity ratios
   ratios <- get_immunity_ratios(out)
@@ -251,8 +260,8 @@ rt_creation <- function(out, date_0, max_date) {
     }
     
     df <- data.frame(
-      "Rt" = Rt*na.omit(ratios[[y]]),
-      "R0" = na.omit(Rt)[1]*na.omit(ratios[[y]]),
+      "Rt" = Rt,
+      "Reff" = Rt*na.omit(ratios[[y]]),
       "date" = tt$dates,
       "iso" = iso3c,
       rep = y,
@@ -263,16 +272,17 @@ rt_creation <- function(out, date_0, max_date) {
   
   rt <- do.call(rbind, rts)
   rt$date <- as.Date(rt$date)
-  rt_all <- rt_all[,c(3,2,1,4)]
   
-  new_rt_all <- rt_all %>%
-    dplyr::group_by(rep) %>% 
-    dplyr::arrange(date) %>% 
-    tidyr::complete(date = seq.Date(min(rt_all$date), max_date, by = "days")) 
+  rt <- rt[,c(5,4,1,2,3,6,7)]
   
-  column_names <- colnames(new_rt_all)[-c(1,2)]
-  new_rt_all <- tidyr::fill(new_rt_all, tidyselect::all_of(column_names), .direction = c("down"))
-  new_rt_all <- tidyr::fill(new_rt_all, tidyselect::all_of(column_names), .direction = c("up"))
+  new_rt_all <- rt %>%
+    group_by(iso, rep) %>% 
+    arrange(date) %>% 
+    complete(date = seq.Date(min(rt$date), date_0, by = "days")) 
+  
+  column_names <- colnames(new_rt_all)[-c(1,2,3)]
+  new_rt_all <- fill(new_rt_all, all_of(column_names), .direction = c("down"))
+  new_rt_all <- fill(new_rt_all, all_of(column_names), .direction = c("up"))
   
   sum_rt <- dplyr::group_by(new_rt_all, date) %>% 
     dplyr::summarise(compartment = "Rt",
@@ -282,8 +292,19 @@ rt_creation <- function(out, date_0, max_date) {
                      y_mean = mean(Rt),
                      y_75 = quantile(Rt, 0.75),
                      y_975 = quantile(Rt, 0.975)) 
+  sum_rt <- head(sum_rt,-1)
   
-  head(sum_rt,-1)
+  sum_reff <- dplyr::group_by(new_rt_all, date) %>% 
+    dplyr::summarise(compartment = "Reff",
+                     y_025 = quantile(Reff, 0.025),
+                     y_25 = quantile(Reff, 0.25),
+                     y_median = median(Reff),
+                     y_mean = mean(Reff),
+                     y_75 = quantile(Reff, 0.75),
+                     y_975 = quantile(Reff, 0.975)) 
+  sum_reff <- head(sum_reff,-1)
+  
+  return(rbind(sum_rt, sum_reff))
 }
 
 post_lockdown_date <- function(x, above = 1.1, max_date, min_date) {

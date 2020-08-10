@@ -7,6 +7,68 @@ file_copy <- function(from, to) {
   }
 }
 
+get_immunity_ratios <- function(out) {
+  
+  mixing_matrix <- squire:::process_contact_matrix_scaled_age(
+    out$pmcmc_results$inputs$model_params$contact_matrix_set[[1]],
+    out$pmcmc_results$inputs$model_params$population
+  )
+  
+  dur_ICase <- out$parameters$dur_ICase
+  dur_IMild <- out$parameters$dur_IMild
+  prob_hosp <- out$parameters$prob_hosp
+  
+  # assertions
+  squire:::assert_single_pos(dur_ICase, zero_allowed = FALSE)
+  squire:::assert_single_pos(dur_IMild, zero_allowed = FALSE)
+  squire:::assert_numeric(prob_hosp)
+  squire:::assert_numeric(mixing_matrix)
+  squire:::assert_square_matrix(mixing_matrix)
+  squire:::assert_same_length(mixing_matrix[,1], prob_hosp)
+  
+  if(sum(is.na(prob_hosp)) > 0) {
+    stop("prob_hosp must not contain NAs")
+  }
+  
+  if(sum(is.na(mixing_matrix)) > 0) {
+    stop("mixing_matrix must not contain NAs")
+  }
+  
+  index <- squire:::odin_index(out$model)
+  pop <- out$parameters$population
+  t_now <- which(as.Date(rownames(out$output)) == max(out$pmcmc_results$inputs$data$date))
+  prop_susc <- lapply(seq_len(dim(out$output)[3]), function(x) {
+    t(t(out$output[seq_len(t_now), index$S, x])/pop)
+  } )
+  
+  relative_R0_by_age <- prob_hosp*dur_ICase + (1-prob_hosp)*dur_IMild
+  
+  adjusted_eigens <- lapply(prop_susc, function(x) {
+    
+    unlist(lapply(seq_len(nrow(x)), function(y) {
+      if(any(is.na(x[y,]))) {
+        return(NA)
+      } else {
+        Re(eigen(mixing_matrix*x[y,]*relative_R0_by_age)$values[1])
+      }
+    }))
+    
+  })
+  
+  betas <- lapply(out$replicate_parameters$R0, function(x) {
+    squire:::beta_est(squire_model = out$pmcmc_results$inputs$squire_model, 
+                      model_params = out$pmcmc_results$inputs$model_params, 
+                      R0 = x)
+  })
+  
+  ratios <- lapply(seq_along(betas), function(x) {
+    (betas[[x]] * adjusted_eigens[[x]]) / out$replicate_parameters$R0[[x]]
+  })
+  
+  return(ratios)
+}
+
+
 ## Possibly useful:
 ## dir("gh-pages", pattern = "index\\.html$", recursive = TRUE)
 copy_outputs <- function(date = NULL, is_latest = TRUE) {
@@ -170,81 +232,11 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   zip(paste0(date,"_v5.csv.zip"),paste0(date,"_v5.csv"))
   file.remove(paste0(date,"_v5.csv"))
   setwd(cwd)
-  saveRDS(projections[-hic_pos,], paste0("src/index_page/all_data.rds"))
-  saveRDS(projections[-hic_pos,], paste0("src/regional_page/all_data.rds"))
   
-  ## ---------------------------------------------------------------------------
-  ## rt grab -------------------------------------------------------------------
-  ## ---------------------------------------------------------------------------
+  hic_pos_projections <- which(projections$iso3c %in% to_remove)
   
-  # HICs not needed here
-  reports <- reports[-hic_pos, ]
-  rt <- lapply(seq_along(reports$id), function(x) {
-    
-    iso <- reports$country[x]
-    out <- file.path("archive", "lmic_reports_google_pmcmc_spline_np", reports$id[x], "grid_out.rds")
-    out <- readRDS(out)
-    
-    # create the Rt data frame
-    rts <- lapply(seq_len(length(out$replicate_parameters$R0)), function(y) {
-      
-      tt <- squire:::intervention_dates_for_odin(dates = out$interventions$date_R0_change, 
-                                                 change = out$interventions$R0_change, 
-                                                 start_date = out$replicate_parameters$start_date[y],
-                                                 steps_per_day = 1/out$parameters$dt)
-      
-      Rt <- squire:::evaluate_Rt_pmcmc(
-        R0_change = tt$change, 
-        date_R0_change = tt$dates, 
-        R0 = out$replicate_parameters$R0[y], 
-        pars = list(
-          Meff = out$replicate_parameters$Meff[y],
-          Meff_pl = out$replicate_parameters$Meff_pl[y],
-          Rt_shift = out$replicate_parameters$Rt_shift[y],
-          Rt_shift_scale = out$replicate_parameters$Rt_shift_scale[y]
-        ),
-        Rt_args = out$pmcmc_results$inputs$Rt_args) 
-      
-      df <- data.frame(
-        "Rt" = Rt,
-        "date" = tt$dates,
-        "iso" = iso,
-        rep = y,
-        stringsAsFactors = FALSE)
-      df$pos <- seq_len(nrow(df))
-      return(df)
-    } )
-    
-    rt <- do.call(rbind, rts)
-    return(rt)
-  })
-  names(rt) <- reports$country
-  
-  rt_all <- do.call(rbind, rt)
-  rt_all$date <- as.Date(rt_all$date)
-  rt_all <- rt_all[,c(3,2,1,4,5)]
-  
-  library(magrittr)
-  date_0 <- as.Date(date)
-  new_rt_all <- rt_all %>%
-    dplyr::group_by(iso, rep) %>% 
-    dplyr::arrange(date) %>% 
-    tidyr::complete(date = seq.Date(min(rt_all$date), date_0, by = "days")) 
-  
-  column_names <- colnames(new_rt_all)[-c(1,2,3)]
-  new_rt_all <- tidyr::fill(new_rt_all, tidyselect::all_of(column_names), .direction = c("down"))
-  new_rt_all <- tidyr::fill(new_rt_all, tidyselect::all_of(column_names), .direction = c("up"))
-  
-  sum_rt <- dplyr::group_by(new_rt_all, iso, date) %>% 
-    dplyr::summarise(Rt_min = quantile(Rt, 0.025),
-                     Rt_q25 = quantile(Rt, 0.25),
-                     Rt_q75 = quantile(Rt, 0.75),
-                     Rt_max = quantile(Rt, 0.975),
-                     Rt = median(Rt)) 
-  sum_rt$continent <- countrycode::countrycode(sum_rt$iso, "iso3c", "continent")
-  saveRDS(sum_rt, paste0("src/index_page/sum_rt.rds"))
-  saveRDS(sum_rt, paste0("src/regional_page/sum_rt.rds"))
-  
+  saveRDS(projections[-hic_pos_projections,], paste0("src/index_page/all_data.rds"))
+  saveRDS(projections[-hic_pos_projections,], paste0("src/regional_page/all_data.rds"))
   
   
 }
