@@ -861,6 +861,36 @@ data_sum <- data_sum[]
 write.csv(data_sum, "projections.csv", row.names = FALSE, quote = FALSE)
 
 ## -----------------------------------------------------------------------------
+## Attack Rates
+## -----------------------------------------------------------------------------
+
+ar_list <- lapply(r_list_pass, function(x) {
+  
+  S <- x %>% squire::format_output(var_select = "S", date_0 = date) %>% 
+    group_by(t, date) %>% 
+    summarise(y = median(y,na.rm = TRUE))
+  S$ar <- 1-S$y/sum(squire::get_population(x$parameters$country)$n)
+  S$iso <- squire::get_population(x$parameters$country)$iso3c[1]
+  
+  S <- na.omit(S)
+  return(S)
+
+})
+
+ar_list[[1]]$scenario <- "Maintain Status Quo"
+ar_list[[2]]$scenario <- "Additional 50% Reduction"
+ar_list[[3]]$scenario <- "Relax Interventions 50%"
+ar_list[[4]]$scenario <- "Surged Maintain Status Quo"
+ar_list[[5]]$scenario <- "Surged Additional 50% Reduction"
+ar_list[[6]]$scenario <- "Surged Relax Interventions 50%"
+
+ars <- do.call(rbind, ar_list)
+ars$continent <- countrycode::countrycode(ars$iso, "iso3c", "continent")
+ars$region <- countrycode::countrycode(ars$iso, "iso3c", "region23")
+names(ars)[3] <- "uninfected"
+saveRDS(ars, "attack_rates.rds")
+
+## -----------------------------------------------------------------------------
 ## Step 6: Full saves
 ## -----------------------------------------------------------------------------
 

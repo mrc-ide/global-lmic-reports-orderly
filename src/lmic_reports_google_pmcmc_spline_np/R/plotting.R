@@ -1430,7 +1430,7 @@ rt_plot_immunity <- function(out) {
     
     df <- data.frame(
       "Rt" = Rt*na.omit(ratios[[y]]),
-      "R0" = Rt[1]*na.omit(ratios[[y]]),
+      "R0" = na.omit(Rt)[1]*na.omit(ratios[[y]]),
       "date" = tt$dates,
       "iso" = iso3c,
       rep = y,
