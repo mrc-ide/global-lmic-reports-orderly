@@ -243,6 +243,7 @@ rt_plot <- function(cont) {
   
   ggplot(sum_rt[sum_rt$compartment == "Reff" & sum_rt$scenario == "Maintain Status Quo",], 
          aes(x=as.Date(date), ymin=y_025, ymax = y_975, group = iso3c, fill = iso3c)) +
+    geom_line(aes(y = y_median), color = "#48996b") +
     geom_ribbon(fill = "#96c4aa") +
     geom_ribbon(mapping = aes(ymin = y_25, ymax = y_75), fill = "#48996b") +
     geom_hline(yintercept = 1, linetype = "dashed") +

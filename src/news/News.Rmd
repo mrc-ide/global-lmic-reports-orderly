@@ -165,7 +165,7 @@ Lastly, as we switch from one version to the next, there is likely to be a small
 #### Version 5: 2020-08-08
 
 * 2-week random walk to capture mobility independent human behaviour changes after the post lockdown shift and response to additional waves.
-* We now present the effective reproduction number, which incorporates the impact that immunity has on transmission as well as the impact of interventionss. Previously we presented the time varying reproductive reproductive number without immunity, which only represented changes in transmission due to interventions. 
+* We now present the effective reproduction number $R_{eff}$, which incorporates the impact that immunity has on transmission as well as the impact of interventions. Previously we presented the time varying reproductive number, $R_t$, which does not show the impat of immunity and only represents changes in transmission due to interventions. 
 
 #### Version 4: 2020-06-28
 

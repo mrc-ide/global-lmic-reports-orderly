@@ -527,7 +527,7 @@ deaths_plot_single <- function(out, data, date_0, date = Sys.Date(),
     ggplot2::geom_vline(xintercept = date, linetype = "dashed") +
     ggplot2::theme_bw()  +
     ggplot2::scale_y_continuous(limits = c(0, ymax+1)) +
-    ggplot2::scale_x_date(date_breaks = "1 week", date_labels = "%b %d",
+    ggplot2::scale_x_date(date_breaks = "2 weeks", date_labels = "%b %d",
                           limits = c(start_date, date + forecast),
                           expand = c(0, 0)) +
     ggplot2::scale_fill_manual(name = "", labels = rev(c("Estimated")),
@@ -742,7 +742,7 @@ deaths_plot_contrast_triple <- function(o1, o2, o3, data, date_0, date = Sys.Dat
     ggplot2::theme_bw()  +
     ggplot2::ylab(title) +
     ggplot2::scale_y_continuous(expand = c(0,0)) +
-    ggplot2::scale_x_date(date_breaks = "1 week", date_labels = "%b %d",
+    ggplot2::scale_x_date(date_breaks = "2 weeks", date_labels = "%b %d",
                           limits = c(date - 7, date + forecast)) +
     ggplot2::scale_fill_manual(name = "", labels = (c( "Maintain Status Quo","Relax Interventions 50%","Additional 50% Reduction")),
                                values = (c("#9eeccd","#c59e96","#3f8ea7"))) +
@@ -823,7 +823,7 @@ cases_contrast_triple <- function(o1, o2, o3, data, date_0, date = Sys.Date(),
     ggplot2::theme_bw()  +
     ggplot2::ylab(title) +
     ggplot2::scale_y_continuous(expand = c(0,0),limits=c(0,ymax)) +
-    ggplot2::scale_x_date(date_breaks = "1 week", date_labels = "%b %d",
+    ggplot2::scale_x_date(date_breaks = "2 weeks", date_labels = "%b %d",
                           limits = c(date - 7, date + forecast)) +
     ggplot2::scale_color_manual(name = "", labels = (c( "Maintain Status Quo","Relax Interventions 50%","Additional 50% Reduction")),
                                 values = (c("#9eeccd","#c59e96","#3f8ea7"))) +
@@ -899,7 +899,7 @@ cases_contrast_triple_bars <- function(o1, o2, o3, data, date_0, date = Sys.Date
       ggplot2::scale_y_continuous(expand = c(0,0), limits = c(0, ymax)) +
       ggplot2::scale_fill_manual(name = "", labels = (c( "Maintain Status Quo","Relax Interventions 50%","Additional 50% Reduction")),
                                  values = (c("#9eeccd","#c59e96","#3f8ea7"))) +
-      ggplot2::scale_x_date(date_breaks = "1 week", date_labels = "%b %d", 
+      ggplot2::scale_x_date(date_breaks = "2 weeks", date_labels = "%b %d", 
                             expand = c(0, 0)) +
       ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, colour = "black"),
                      axis.title.x = ggplot2::element_blank(),
@@ -972,7 +972,7 @@ healthcare_plot_contrast <- function(o1, o2, data, date_0, date = Sys.Date(), fo
       ggplot2::scale_y_continuous(expand = c(0,0)) +
       ggplot2::scale_fill_manual(name = "", labels = (c("Maintain Status Quo", "Additional 50% Reduction")),
                                  values = rev(c("#3f8ea7","#c59e96"))) +
-      ggplot2::scale_x_date(date_breaks = "1 week", date_labels = "%b %d", limits = c(date_0-7, date_0 + forecast)) +
+      ggplot2::scale_x_date(date_breaks = "2 weeks", date_labels = "%b %d", limits = c(date_0-7, date_0 + forecast)) +
       ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, colour = "black"),
                      axis.title.x = ggplot2::element_blank(),
                      panel.grid.major.x = ggplot2::element_blank(),
@@ -1041,7 +1041,7 @@ healthcare_plot_contrast_lines <- function(o1, o2, data, date_0, date = Sys.Date
       ggplot2::scale_y_continuous(expand = c(0,0)) +
       ggplot2::scale_fill_manual(name = "", labels = rev(c("Maintain Status Quo", "Additional 50% Reduction")),
                                  values = rev(c("#3f8ea7","#c59e96"))) +
-      ggplot2::scale_x_date(date_breaks = "1 week", date_labels = "%b %d", limits = c(date_0-7, date_0 + forecast)) +
+      ggplot2::scale_x_date(date_breaks = "2 weeks", date_labels = "%b %d", limits = c(date_0-7, date_0 + forecast)) +
       ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, colour = "black"),
                      axis.title.x = ggplot2::element_blank(),
                      panel.grid.major.x = ggplot2::element_blank(),
@@ -1119,7 +1119,7 @@ healthcare_plot_contrast_triple <- function(o1, o2, o3, data, date_0, date = Sys
       ggplot2::scale_y_continuous(expand = c(0,0)) +
       ggplot2::scale_fill_manual(name = "", labels = (c( "Maintain Status Quo","Relax Interventions 50%","Additional 50% Reduction")),
                                  values = (c("#9eeccd","#c59e96","#3f8ea7"))) +
-      ggplot2::scale_x_date(date_breaks = "1 week", date_labels = "%b %d",
+      ggplot2::scale_x_date(date_breaks = "2 weeks", date_labels = "%b %d",
                             expand = c(0, 0)) +
       ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, colour = "black"),
                      axis.title.x = ggplot2::element_blank(),
@@ -1312,7 +1312,7 @@ rt_plot <- function(out) {
       theme_bw() +
       theme(axis.text = element_text(size=12)) +
       xlab("") +
-      scale_x_date(breaks = "1 week",
+      scale_x_date(breaks = "2 weeks",
                    limits = as.Date(c(as.character(min_date),
                                       as.character(date_0+as.numeric(lubridate::wday(date_0))))), 
                    date_labels = "%d %b",
@@ -1484,6 +1484,7 @@ rt_plot_immunity <- function(out) {
       geom_ribbon(mapping = aes(x = date, ymin = R0_q25, ymax = R0_q75, group = iso), fill = "#3f8da7") +
       geom_ribbon(mapping = aes(x=date, ymin=Reff_min, ymax = Reff_max, group = iso), fill = "#96c4aa") +
       geom_ribbon(mapping = aes(x = date, ymin = Reff_q25, ymax = Reff_q75, group = iso), fill = "#48996b") +
+      geom_line(mapping = aes(x = date, y = Reff_median), color = "#48996b") +
       geom_hline(yintercept = 1, linetype = "dashed") +
       geom_hline(yintercept = sum_rt$R0_median[1], linetype = "dashed") +
       theme_bw() +
