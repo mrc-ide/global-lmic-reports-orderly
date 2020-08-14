@@ -422,7 +422,7 @@ This report uses data from the European Centre for Disease Control. These data a
 
 ### Epidemiological Situation
 
-| **Total Reported Cases** | **New Reported Cases** | **Total Reported Deaths** | **New Reported Deaths** | **Estimated $R_t$** |
+| **Total Reported Cases** | **New Reported Cases** | **Total Reported Deaths** | **New Reported Deaths** | **Estimated $R_{eff}$** |
 | ---- | ---- | ---- | ---- | ------ |
 | `r format(data$cases[1], big.mark=",")` | `r format(data$daily_cases[1], big.mark=",")` | `r format(data$deaths[1], big.mark=",")`|`r format(data$daily_deaths[1], big.mark=",")`| `r form_round_dig(rt$rts[nrow(rt$rts),c("Reff", "Reff_min", "Reff_max")])` |
 
