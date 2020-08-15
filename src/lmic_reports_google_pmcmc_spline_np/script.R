@@ -378,96 +378,37 @@ beta_set <- squire:::beta_est(squire_model = squire_model,
                               R0 = R0)
 
 
-# ## UPPER
-# ## -----------------------------------------------------------------------------
-# 
-# # do the same for the best and worst case
-# ft_d <- format_output(out_det, "deaths")
-# ft_d <- group_by(ft_d, replicate) %>% summarise(d = sum(y,na.rm=TRUE))
-# max_pos <- which.max(ft_d$d)
-# min_pos <- which.min(ft_d$d)
-# 
-# # get the R0, betas and times into a data frame
-# R0 <- out_det$replicate_parameters$R0[max_pos]
-# start_date <- squire:::offset_to_start_date(data$date[1],round(out_det$replicate_parameters$start_date[max_pos]))
-# Meff <- out_det$replicate_parameters$Meff[max_pos]
-# Meff_pl <- out_det$replicate_parameters$Meff_pl[max_pos]
-# Rt_shift <- out_det$replicate_parameters$Rt_shift[max_pos]
-# Rt_shift_scale <- out_det$replicate_parameters$Rt_shift_scale[max_pos]
-# 
-# if(!is.null(date_R0_change)) {
-#   tt_beta_upper <- squire:::intervention_dates_for_odin(dates = date_R0_change,
-#                                                   change = R0_change,
-#                                                   start_date = start_date,
-#                                                   steps_per_day = 1)
-# } else {
-#   tt_beta_upper <- 0
-# }
-# 
-# if(!is.null(R0_change)) {
-#   R0_upper <- squire:::evaluate_Rt_pmcmc(R0_change = tt_beta_upper$change, 
-#                                    date_R0_change = tt_beta_upper$dates, 
-#                                    R0 = R0, 
-#                                    pars = list(
-#                                      Meff = Meff,
-#                                      Meff_pl = Meff_pl,
-#                                      Rt_shift = Rt_shift,
-#                                      Rt_shift_scale = Rt_shift_scale
-#                                    ),
-#                                    Rt_args = out_det$pmcmc_results$inputs$Rt_args)
-# } else {
-#   R0_upper <- R0
-# }
-# 
-# beta_set_upper <- squire:::beta_est(squire_model = squire_model,
-#                               model_params = out_det$pmcmc_results$inputs$model_params,
-#                               R0 = R0_upper)
-# 
-# ## LOWER
-# ## -----------------------------------------------------------------------------
-# 
-# # get the R0, betas and times into a data frame
-# R0 <- out_det$replicate_parameters$R0[min_pos]
-# start_date <- squire:::offset_to_start_date(data$date[1],round(out_det$replicate_parameters$start_date[min_pos]))
-# Meff <- out_det$replicate_parameters$Meff[min_pos]
-# Meff_pl <- out_det$replicate_parameters$Meff_pl[min_pos]
-# Rt_shift <- out_det$replicate_parameters$Rt_shift[min_pos]
-# Rt_shift_scale <- out_det$replicate_parameters$Rt_shift_scale[min_pos]
-# 
-# if(!is.null(date_R0_change)) {
-#   tt_beta_lower <- squire:::intervention_dates_for_odin(dates = date_R0_change,
-#                                                         change = R0_change,
-#                                                         start_date = start_date,
-#                                                         steps_per_day = 1)
-# } else {
-#   tt_beta_lower <- 0
-# }
-# 
-# if(!is.null(R0_change)) {
-#   R0_lower <- squire:::evaluate_Rt_pmcmc(R0_change = tt_beta_lower$change, 
-#                                          date_R0_change = tt_beta_lower$dates, 
-#                                          R0 = R0, 
-#                                          pars = list(
-#                                            Meff = Meff,
-#                                            Meff_pl = Meff_pl,
-#                                            Rt_shift = Rt_shift,
-#                                            Rt_shift_scale = Rt_shift_scale
-#                                          ),
-#                                          Rt_args = out_det$pmcmc_results$inputs$Rt_args)
-# } else {
-#   R0_lower <- R0
-# }
-# 
-# beta_set_lower <- squire:::beta_est(squire_model = squire_model,
-#                                     model_params = out_det$pmcmc_results$inputs$model_params,
-#                                     R0 = R0_lower)
-
 ## -----------------------------------------------------------------------------
 
 
 df <- data.frame(tt_beta = tt_beta$tt, beta_set = beta_set, 
                  date = start_date + tt_beta$tt, Rt = R0, 
                  grey_bar_start = FALSE)
+
+
+## -----------------------------------------------------------------------------
+
+# add in uncertainty
+rts <- rt_plot_immunity(out)
+rt_df <- rts$rts[which(rts$rts$date %in% df$date),]
+
+df$Rt_min <- rt_df$Rt_min
+df$Rt_max <- rt_df$Rt_max
+df$Rt <- rt_df$Rt_median
+
+df$beta_set_min <- squire:::beta_est(squire_model = squire_model,
+                                     model_params = out_det$pmcmc_results$inputs$model_params,
+                                     R0 = df$Rt_min)
+
+df$beta_set_max <- squire:::beta_est(squire_model = squire_model,
+                                     model_params = out_det$pmcmc_results$inputs$model_params,
+                                     R0 = df$Rt_max)
+
+df$beta_set <- squire:::beta_est(squire_model = squire_model,
+                                 model_params = out_det$pmcmc_results$inputs$model_params,
+                                 R0 = df$Rt)
+
+## -----------------------------------------------------------------------------
 
 # add in grey bar start for interface
 ox_interventions <- readRDS("oxford_grt.rds")
