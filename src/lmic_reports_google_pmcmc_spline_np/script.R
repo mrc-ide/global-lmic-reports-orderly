@@ -389,7 +389,7 @@ df <- data.frame(tt_beta = tt_beta$tt, beta_set = beta_set,
 ## -----------------------------------------------------------------------------
 
 # add in uncertainty
-rts <- rt_plot_immunity(out)
+rts <- rt_plot_immunity(out_det)
 rt_df <- rts$rts[which(rts$rts$date %in% df$date),]
 
 df$Rt_min <- rt_df$Rt_min
