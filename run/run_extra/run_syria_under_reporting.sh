@@ -16,7 +16,7 @@ DEFAULT_CA="older"
 CA=${4:-$DEFAULT_CA}
 
 DEFAULT_HNU="0.2"
-HNU=${4:-$DEFAULT_HNU}
+HNU=${5:-$DEFAULT_HNU}
 
 echo "*** Date: $DATE"
 echo "*** Urban: $URBAN"
