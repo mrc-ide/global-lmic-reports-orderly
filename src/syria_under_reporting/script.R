@@ -102,9 +102,9 @@ Rt_func <- function(R0_change, R0, Meff) {
 # pmcmc arguments 
 n_particles <- 10
 replicates <- 100
-n_mcmc <- 2000
+n_mcmc <- 500
 n_chains <- 3
-start_adaptation <- 500
+start_adaptation <- 100
 
 # this should be in parallel
 suppressWarnings(future::plan(future::multiprocess()))
