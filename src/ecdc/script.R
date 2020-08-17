@@ -37,18 +37,26 @@ if(is.na(as.Date(d$dateRep[1], "%Y-%m-%d"))) {
 d$deaths[which(d$deaths<0)] <- 0
 d$deaths[which(is.na(d$deaths))] <- 0
 
+# date issues
+suppressWarnings(md <- lapply(unique(d$countryterritoryCode), function(x){
+  max(as.Date(d$dateRep[d$countryterritoryCode==x]),na.rm = TRUE)
+  }))
+
+to_fix <- na.omit(unique(d$countryterritoryCode)[which(unlist(md) != as.numeric(date))])
+
 # spain seems to have stopped reporting now too...
-esp_miss <- unique(d$dateRep)[which(!unique(d$dateRep) %in% d$dateRep[d$countryterritoryCode=="ESP"])]
-if(length(esp_miss) > 0) {
+if(length(to_fix) > 0) {
   
-  df_esp <- d[which(d$countryterritoryCode=="ESP"),][1,]
-  df_esp$dateRep = esp_miss
+  for(i in seq_along(to_fix)) {
+  df_esp <- d[which(d$countryterritoryCode==to_fix[i]),][1,]
+  df_esp$dateRep = max(d$dateRep)
   df_esp$day = as.numeric(format(as.Date(esp_miss), "%d"))
   df_esp$month = as.numeric(format(as.Date(esp_miss), "%m"))
   df_esp$year = as.numeric(format(as.Date(esp_miss), "%Y"))
   df_esp$cases = 0 
   df_esp$deaths = 0
   d <- rbind(df_esp, d)
+  }
   
 }
 
