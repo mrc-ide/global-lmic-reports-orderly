@@ -278,15 +278,21 @@ if (urban) {
   dam_pop <- dam_pop_rural
 }
 
-# younger_cities <- TRUE
-younger_cities <- as.logical(younger_cities)
-if (younger_cities) {
+# city_age <- "older"
+if (city_age == "younger") {
   altered_pop <- pop$n * (dexp(1:17, 1/20)/mean(dexp(1:17, 1/20)))
+  altered_pop <- altered_pop / sum(altered_pop)
+  population <- round(altered_pop*dam_pop)
+} else if (city_age == "older") {
+  altered_pop <- pop$n * rev((dexp(1:17, 1/20))/mean(dexp(1:17, 1/20)))
   altered_pop <- altered_pop / sum(altered_pop)
   population <- round(altered_pop*dam_pop)
 } else {
   population <- round((pop$n/sum(pop$n))*dam_pop)
 }
+
+# hospital_normal <- 0.2
+hospital_normal_use <- as.numeric(hospital_normal_use)
 
 ## -----------------------------------------------------------------------------
 ## Step 3: Run pmcmc
@@ -324,8 +330,8 @@ res <- squire::pmcmc(data = data,
                      replicates = replicates,
                      required_acceptance_ratio = 0.20,
                      start_adaptation = start_adaptation,
-                     baseline_hosp_bed_capacity = hosp_beds, 
-                     baseline_ICU_bed_capacity = icu_beds)
+                     baseline_hosp_bed_capacity = round(hosp_beds*hospital_normal_use), 
+                     baseline_ICU_bed_capacity = round(icu_beds*hospital_normal_use))
 
 # redraw using stochastic
 res$pmcmc_results$inputs$squire_model <- explicit_model()
@@ -416,7 +422,8 @@ model_fit_summary <- data.frame("ll_reported" = mean(ll_reported),
                                "range_includes_extra" = mean(ci_deaths$low < reported$extra_deaths & ci_deaths$high > reported$extra_deaths),
                                "urban" = urban,
                                "poorer_health_outcomes" = poorer_health_outcomes,
-                               "younger_cities" = younger_cities)
+                               "city_age" = city_age,
+                               "hospital_normal_use" = hospital_normal_use)
 
 ## -----------------------------------------------------------------------------
 ## Step 5: Quick forward simulation and then save

@@ -12,15 +12,18 @@ URBAN=${2:-$DEFAULT_URBAN}
 DEFAULT_PHO="TRUE"
 PHO=${3:-$DEFAULT_PHO}
 
-DEFAULT_YC="TRUE"
-YC=${4:-$DEFAULT_YC}
+DEFAULT_CA="older"
+CA=${4:-$DEFAULT_CA}
 
+DEFAULT_HNU="0.2"
+HNU=${4:-$DEFAULT_HNU}
 
 echo "*** Date: $DATE"
 echo "*** Urban: $URBAN"
 echo "*** Poorer Health Outcomes: $PHO"
-echo "*** Younger Cities: $YC"
+echo "*** City Age: $CA"
+echo "*** Hospital Normal Use: $HNU"
 
 # Parallel
 grep -E "*." rf.txt | \
-parallel --progress -j 8 ./orderly run syria_under_reporting reporting_fraction={} date=$DATE urban=$URBAN poorer_health_outcomes=$PHO younger_cities=$YC
+parallel --progress -j 8 ./orderly run syria_under_reporting reporting_fraction={} date=$DATE urban=$URBAN poorer_health_outcomes=$PHO city_age=$CA hospital_normal_use=$HNU

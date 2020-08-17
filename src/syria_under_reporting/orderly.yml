@@ -41,8 +41,11 @@ parameters:
       default: FALSE
     poorer_health_outcomes:
       default: FALSE
-    younger_cities:
-      default: FALSE
+    city_age:
+      default: "normal"
+    hospital_normal_use:
+      default: 0.2
+      
 
 # You must list at least one artefact that your report will generate.
 # Each artefact consists of one or more files.  The format is to list
