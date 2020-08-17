@@ -10,7 +10,7 @@ if(packageVersion("squire") < version_min) {
   stop("squire needs to be updated to at least ", version_min)
 }
 
-system(paste0("echo Syria Reporting. Reporting Fraction  ",reporting_fraction, ". Date = ", date, 
+system(paste0("echo Syria Reporting. Reporting Fraction = ",reporting_fraction, ". Date = ", date, 
               ". Urban = ", urban, ". Poorer Health Outcomes = ", poorer_health_outcomes ,
               ". Younger Cities = ", younger_cities))
 
@@ -86,7 +86,6 @@ null_na <- function(x) {if(is.null(x)) {NA} else {x}}
 min_death_date <- data$date[which(data$deaths>0)][1]
 
 # calibration arguments
-reporting_fraction = 1
 R0_change <- interventions[[iso3c]]$C
 date_R0_change <- interventions[[iso3c]]$date
 R0_change <- R0_change[as.Date(date_R0_change) <= date]
