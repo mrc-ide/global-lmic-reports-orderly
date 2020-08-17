@@ -53,7 +53,7 @@ if(length(to_remove) > 0) {
 # Maintaining daily sheet for deaths
 sheet <- readxl::read_xlsx("death_sheet.xlsx")
 sheet$Dam[is.na(sheet$Dam)] <- 0
-if (sheet$Deaths[1] != sum(data$deaths)) {
+if (sheet$Deaths[1] < sum(data$deaths)) {
   stop("Death Sheet out of sync with JHU data stream")
 }
 
