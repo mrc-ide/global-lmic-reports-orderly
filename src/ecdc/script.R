@@ -50,9 +50,9 @@ if(length(to_fix) > 0) {
   for(i in seq_along(to_fix)) {
   df_esp <- d[which(d$countryterritoryCode==to_fix[i]),][1,]
   df_esp$dateRep = max(d$dateRep)
-  df_esp$day = as.numeric(format(as.Date(esp_miss), "%d"))
-  df_esp$month = as.numeric(format(as.Date(esp_miss), "%m"))
-  df_esp$year = as.numeric(format(as.Date(esp_miss), "%Y"))
+  df_esp$day = as.numeric(format(as.Date(date), "%d"))
+  df_esp$month = as.numeric(format(as.Date(date), "%m"))
+  df_esp$year = as.numeric(format(as.Date(date), "%Y"))
   df_esp$cases = 0 
   df_esp$deaths = 0
   d <- rbind(df_esp, d)
