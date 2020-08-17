@@ -427,7 +427,6 @@ res_long <- squire::projections(res,
                                         time_period = 120)
 res_long$projection_args$r <- NULL
 
-ret_list <- list("res" = res_long, 
-                 "fit" = model_fit_summary)
 
-saveRDS(ret_list, "res.rds")
+saveRDS(res_long, "res.rds")
+saveRDS(model_fit_summary, "likelihood.rds")
