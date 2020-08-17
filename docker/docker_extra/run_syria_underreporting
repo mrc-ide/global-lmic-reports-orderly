@@ -15,5 +15,5 @@ docker run -it --rm \
         -u $USER_STR \
         -v $PACKAGE_ROOT:/orderly \
         -w /orderly \
-        --entrypoint /orderly/run_extra/run_syria_under_reporting.sh \
+        --entrypoint /orderly/run/run_extra/run_syria_under_reporting.sh \
         $TAG_BRANCH $*
