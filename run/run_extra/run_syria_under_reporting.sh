@@ -23,4 +23,4 @@ echo "*** Younger Cities: $YC"
 
 # Parallel
 grep -E "*." rf.txt | \
-parallel --progress --verbose -j 8 ./orderly run syria_under_reporting reporting_fraction={} date=$DATE urban=$URBAN poorer_health_outcomes=$PHO younger_cities=$YC
+parallel --progress -j 8 ./orderly run syria_under_reporting reporting_fraction={} date=$DATE urban=$URBAN poorer_health_outcomes=$PHO younger_cities=$YC

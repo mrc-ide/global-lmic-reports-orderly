@@ -405,6 +405,7 @@ res_long <- squire::projections(res,
                                         R0_change = c(1), 
                                         tt_R0 = c(0), 
                                         time_period = 120)
+res_long$projection_args$r <- NULL
 
 ret_list <- list("res" = res_long, 
                  "fit" = model_fit_summary)
