@@ -328,6 +328,27 @@ res <- squire::pmcmc(data = data,
                      baseline_hosp_bed_capacity = hosp_beds, 
                      baseline_ICU_bed_capacity = icu_beds)
 
+# redraw using stochastic
+res$pmcmc_results$inputs$squire_model <- explicit_model()
+res$pmcmc_results$inputs$model_params$dt <- 0.02
+pmcmc <- res$pmcmc_results
+res <- generate_draws_pmcmc(pmcmc = pmcmc,
+                            burnin = ceiling(n_mcmc/10),
+                            n_chains = n_chains,
+                            squire_model = res$pmcmc_results$inputs$squire_model,
+                            replicates = replicates,
+                            n_particles = n_particles,
+                            forecast = 0,
+                            country = country,
+                            population = res$parameters$population,
+                            interventions = res$interventions,
+                            data = res$pmcmc_results$inputs$data)
+
+# Add the prior
+res$pmcmc_results$inputs$prior <- as.function(c(formals(logprior), 
+                                                body(logprior)), 
+                                              envir = new.env(parent = environment(stats::acf)))
+
 # remove states to keep object memory save down
 for(i in seq_along(res$pmcmc_results$chains)) {
   res$pmcmc_results$chains[[i]]$states <- NULL
