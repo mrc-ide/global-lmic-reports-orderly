@@ -12,7 +12,7 @@ if(packageVersion("squire") < version_min) {
 
 system(paste0("echo Syria Reporting. Reporting Fraction = ",reporting_fraction, ". Date = ", date, 
               ". Urban = ", urban, ". Poorer Health Outcomes = ", poorer_health_outcomes ,
-              ". City Age = ", city_age, ". Hospital Use" = hospital_normal_use  ))
+              ". City Age = ", city_age, ". Hospital Use = ", hospital_normal_use  ))
 
 iso3c <- "SYR"
 country <- "Syria"
@@ -330,8 +330,8 @@ res <- squire::pmcmc(data = data,
                      replicates = replicates,
                      required_acceptance_ratio = 0.20,
                      start_adaptation = start_adaptation,
-                     baseline_hosp_bed_capacity = round(hosp_beds*hospital_normal_use), 
-                     baseline_ICU_bed_capacity = round(icu_beds*hospital_normal_use))
+                     baseline_hosp_bed_capacity = round(hosp_beds*(1-hospital_normal_use)), 
+                     baseline_ICU_bed_capacity = round(icu_beds*(1-hospital_normal_use)))
 
 # redraw using stochastic
 res$pmcmc_results$inputs$squire_model <- explicit_model()
