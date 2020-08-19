@@ -110,7 +110,7 @@ Rt_func <- function(R0_change, R0, Meff) {
 # pmcmc arguments 
 n_particles <- 2 # doesn't do anything because using the deterministic version
 replicates <- 100
-n_mcmc <- 10000
+n_mcmc <- 5000
 n_chains <- 3
 start_adaptation <- 500
 
@@ -255,7 +255,7 @@ icu_beds <- squire:::get_ICU_bed_capacity("Syria")
 dam_pop_city <- 1569394
 # dam_pop_city <- 1690000 # 2008 http://cbssyr.sy/index-EN.htm
 
-dam_pop_urban <- 2396587 # https://populationstat.com/syria/damascus
+dam_pop_urban <- 2397090 # https://populationstat.com/syria/damascus
 #dam_pop_urban <- 2392000 # https://www.macrotrends.net/cities/22610/damascus/population
 # dam_pop_urban <- 2011000 # http://cbssyr.sy/yearbook/2017/Data-Chapter2/TAB-3-2-2017.pdf - mid 2016e
 

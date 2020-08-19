@@ -30,4 +30,4 @@ echo "*** Hospital Normal Use: $HNU"
 
 # Parallel
 grep -E "*." rf.txt | \
-parallel --progress -j 12 ./orderly run syria_under_reporting reporting_fraction={} date=$DATE urban=$URBAN poorer_health_outcomes=$PHO city_age=$CA hosp_beds=$HOSP hospital_normal_use=$HNU
+parallel --progress -j 11 ./orderly run syria_under_reporting reporting_fraction={} date=$DATE urban=$URBAN poorer_health_outcomes=$PHO city_age=$CA hosp_beds=$HOSP hospital_normal_use=$HNU
