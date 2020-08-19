@@ -63,9 +63,17 @@ non_dam_match <- non_dam[match(data$date, as.Date(sheet$Date))]
 non_dam_match[is.na(non_dam_match)] <- 0
 data$deaths <- data$deaths - non_dam_match
 
-# Then there is 1 death in Aleppo and 1 in Homs not known as to what date so remove from day with most deaths for which we don't know where they cam
-data$deaths[which.max(data$deaths)] <- data$deaths[which.max(data$deaths)]-1
-data$deaths[which.max(data$deaths)] <- data$deaths[which.max(data$deaths)]-1
+# quick check it matches
+shared_days <- as.Date(names(which(table(c(data$date, as.Date(sheet$Date)))==2)))
+if (!identical(data$deaths[match(shared_days, data$date)],
+               sheet$Dam[match(shared_days, as.Date(sheet$Date))])) {
+  stop("Not identical Damascus days for shared dates between data sources")
+}
+
+# and then add any not in worldometers yet
+dates_to_add <- as.Date(sheet$Date[which(as.Date(sheet$Date)>max(data$date))])
+dam_deaths_to_add <- sheet$Dam[which(as.Date(sheet$Date)>max(data$date))]
+data <- rbind(data, data.frame("date" = dates_to_add, "deaths" = dam_deaths_to_add))
 
 # dat_0 is just the current date now
 date_0 <- date
@@ -100,11 +108,11 @@ Rt_func <- function(R0_change, R0, Meff) {
 }
 
 # pmcmc arguments 
-n_particles <- 10
+n_particles <- 2 # doesn't do anything because using the deterministic version
 replicates <- 100
-n_mcmc <- 500
+n_mcmc <- 10000
 n_chains <- 3
-start_adaptation <- 100
+start_adaptation <- 500
 
 # this should be in parallel
 suppressWarnings(future::plan(future::multiprocess()))
@@ -244,10 +252,16 @@ hosp_beds <- squire:::get_hosp_bed_capacity("Syria")
 icu_beds <- squire:::get_ICU_bed_capacity("Syria")
 
 # population for Damascus with demographics of Syria
-# dam_pop_city <- 1569394
+dam_pop_city <- 1569394
+# dam_pop_city <- 1690000 # 2008 http://cbssyr.sy/index-EN.htm
+
 dam_pop_urban <- 2396587 # https://populationstat.com/syria/damascus
+#dam_pop_urban <- 2392000 # https://www.macrotrends.net/cities/22610/damascus/population
+# dam_pop_urban <- 2011000 # http://cbssyr.sy/yearbook/2017/Data-Chapter2/TAB-3-2-2017.pdf - mid 2016e
+
+
 # https://en.wikipedia.org/wiki/Rif_Dimashq_Governorate (2011) - but population growth for Damscus urban has stayed same since 2011
-dam_pop_rural <- 2836000 
+# dam_pop_rural <- 2836000 
 
 pop <- squire::get_population("Syria")
 
@@ -256,10 +270,27 @@ mix_mat <- get_mixing_matrix("Syria")
 
 # https://eprints.lse.ac.uk/103841/1/CRP_covid_19_in_Syria_policy_memo_published.pdf
 icu_beds <- 96
-hosp_beds <- 1920
+
+# Hospital beds is harder
+# 101 health centres in 2016 http://cbssyr.sy/yearbook/2017/Data-Chapter12/TAB-6-12-2017.PDF
+
+# Total Beds appears to be anywhere between 3000 - 6000
+# 5190 in 2016 or 387 people/bed -> 6190?
+# HeRams has at 3245 functional public beds in 2019. Private roughly 40% -> 4543 beds?
+# HeRams has 18/10000 in public 2019 -> 4513. Private at 40% Gives -> 6039 beds?
+# Damascus had 17% of beds in Syria in 2016 from CBS -> 0.17*sum(pop$n)/10000*15.5 -> 4611. 40% private -> 6455 beds total 
+# https://reliefweb.int/sites/reliefweb.int/files/resources/wos_herams_q1_2020_v1.3_final.pdf -> 15091 beds total. (public)
+# ICU calculation had 30% of ICU beds in Damascus?
+
+# Then what level of beds are in use for non covid
+# ~53% occupied based on ICU? -> 2910 beds?
+# ~20% occupied based on (67153*3*2)/(6190*365) http://cbssyr.sy/yearbook/2017/Data-Chapter12/TAB-11-12-2017.PDF
+
+#hosp_beds <- 1920
+hosp_beds <- as.numeric(hosp_beds)
+
 
 # scan across a range of undereporting and IFR and assumptions about the excess mortality
-
 #reporting_fraction <- 0.01
 reporting_fraction <- as.numeric(reporting_fraction)
 
@@ -275,16 +306,17 @@ urban <- as.logical(urban)
 if (urban) {
   dam_pop <- dam_pop_urban
 } else {
-  dam_pop <- dam_pop_rural
+  dam_pop <- dam_pop_city
 }
 
 # city_age <- "older"
+# https://reliefweb.int/sites/reliefweb.int/files/resources/wos_herams_q1_2020_v1.3_final.pdf
 if (city_age == "younger") {
-  altered_pop <- pop$n * (dexp(1:17, 1/20)/mean(dexp(1:17, 1/20)))
+  altered_pop <- pop$n * (dexp(1:17, 1/50)/mean(dexp(1:17, 1/500)))
   altered_pop <- altered_pop / sum(altered_pop)
   population <- round(altered_pop*dam_pop)
 } else if (city_age == "older") {
-  altered_pop <- pop$n * rev((dexp(1:17, 1/20))/mean(dexp(1:17, 1/20)))
+  altered_pop <- pop$n * rev((dexp(1:17, 1/50))/mean(dexp(1:17, 1/50)))
   altered_pop <- altered_pop / sum(altered_pop)
   population <- round(altered_pop*dam_pop)
 } else {
@@ -334,20 +366,20 @@ res <- squire::pmcmc(data = data,
                      baseline_ICU_bed_capacity = round(icu_beds*(1-hospital_normal_use)))
 
 # redraw using stochastic
-res$pmcmc_results$inputs$squire_model <- explicit_model()
-res$pmcmc_results$inputs$model_params$dt <- 0.02
-pmcmc <- res$pmcmc_results
-res <- generate_draws_pmcmc(pmcmc = pmcmc,
-                            burnin = ceiling(n_mcmc/10),
-                            n_chains = n_chains,
-                            squire_model = res$pmcmc_results$inputs$squire_model,
-                            replicates = replicates,
-                            n_particles = n_particles,
-                            forecast = 0,
-                            country = country,
-                            population = res$parameters$population,
-                            interventions = res$interventions,
-                            data = res$pmcmc_results$inputs$data)
+# res$pmcmc_results$inputs$squire_model <- explicit_model()
+# res$pmcmc_results$inputs$model_params$dt <- 0.02
+# pmcmc <- res$pmcmc_results
+# res <- generate_draws_pmcmc(pmcmc = pmcmc,
+#                             burnin = ceiling(n_mcmc/10),
+#                             n_chains = n_chains,
+#                             squire_model = res$pmcmc_results$inputs$squire_model,
+#                             replicates = replicates,
+#                             n_particles = n_particles,
+#                             forecast = 0,
+#                             country = country,
+#                             population = res$parameters$population,
+#                             interventions = res$interventions,
+#                             data = res$pmcmc_results$inputs$data)
 
 # Add the prior
 res$pmcmc_results$inputs$prior <- as.function(c(formals(logprior), 
@@ -374,12 +406,13 @@ reported$deaths_low <- reported$deaths - 50
 reported$deaths_high <- reported$deaths - 15
 
 # https://www.facebook.com/MEENALMASOOL/photos/a.1277434595713288/3039607002829363/?type=3
+# CIA World Factbook: https://www.cia.gov/library/publications/the-world-factbook/geos/sy.html | 4 deaths/1,000 population (2018 est.) -> 26 deaths/day for urban
 reported$deaths <- reported$deaths -25
 
 ## Let's also compare to an assumption that there is even more excess mortlaity than historic due to secondary pressure on health systems
-reported$extra_deaths <- reported$deaths - 20
-reported$extra_deaths_low <- reported$deaths_low - 20
-reported$extra_deaths_high <- reported$deaths_high - 20
+reported$extra_deaths <- reported$deaths - 25
+reported$extra_deaths_low <- reported$deaths_low - 25
+reported$extra_deaths_high <- reported$deaths_high - 25
 
 # get the model run deaths for these dates:
 deaths <- squire::format_output(res, "deaths", date_0 = date)
@@ -433,6 +466,9 @@ res_long <- squire::projections(res,
                                         tt_R0 = c(0), 
                                         time_period = 120)
 res_long$projection_args$r <- NULL
+
+# round to save memory. 
+res_long$output <- round(res_long$output)
 
 
 saveRDS(res_long, "res.rds")

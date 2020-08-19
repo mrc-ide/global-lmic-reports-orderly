@@ -43,6 +43,8 @@ parameters:
       default: FALSE
     city_age:
       default: "normal"
+    hosp_beds:
+      default: 3000
     hospital_normal_use:
       default: 0.2
       
