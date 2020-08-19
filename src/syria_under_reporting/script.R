@@ -454,6 +454,7 @@ model_fit_summary <- data.frame("ll_reported" = mean(ll_reported),
                                "range_includes_reported" = mean(ci_deaths$low < reported$deaths & ci_deaths$high > reported$deaths),
                                "range_includes_extra" = mean(ci_deaths$low < reported$extra_deaths & ci_deaths$high > reported$extra_deaths),
                                "urban" = urban,
+                               "hosp_beds" = hosp_beds,
                                "poorer_health_outcomes" = poorer_health_outcomes,
                                "city_age" = city_age,
                                "hospital_normal_use" = hospital_normal_use)
