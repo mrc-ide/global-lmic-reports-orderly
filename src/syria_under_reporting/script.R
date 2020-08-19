@@ -110,7 +110,7 @@ Rt_func <- function(R0_change, R0, Meff) {
 # pmcmc arguments 
 n_particles <- 2 # doesn't do anything because using the deterministic version
 replicates <- 100
-n_mcmc <- 5000
+n_mcmc <- 7500
 n_chains <- 3
 start_adaptation <- 500
 
@@ -248,8 +248,7 @@ logprior <- function(pars){
 ## -----------------------------------------------------------------------------
 
 # input params
-hosp_beds <- squire:::get_hosp_bed_capacity("Syria")
-icu_beds <- squire:::get_ICU_bed_capacity("Syria")
+
 
 # population for Damascus with demographics of Syria
 dam_pop_city <- 1569394
