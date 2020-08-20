@@ -37,8 +37,8 @@ parameters:
     reporting_fraction:
       default: 0.1
     date: ~
-    urban:
-      default: FALSE
+    dam_pop:
+      default: 2079000
     poorer_health_outcomes:
       default: FALSE
     city_age:

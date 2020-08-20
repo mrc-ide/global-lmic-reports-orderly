@@ -110,9 +110,9 @@ Rt_func <- function(R0_change, R0, Meff) {
 # pmcmc arguments 
 n_particles <- 2 # doesn't do anything because using the deterministic version
 replicates <- 100
-n_mcmc <- 7500
+n_mcmc <- 10000
 n_chains <- 3
-start_adaptation <- 500
+start_adaptation <- 1000
 
 # this should be in parallel
 suppressWarnings(future::plan(future::multiprocess()))
@@ -249,12 +249,21 @@ logprior <- function(pars){
 
 # input params
 
+# syria pop
+pop <- squire::get_population("Syria")
+
+# matrix
+mix_mat <- get_mixing_matrix("Syria")
+
+# ------------------------------
+# POPULATION SIZE
+# ------------------------------
 
 # population for Damascus with demographics of Syria
-dam_pop_city <- 1569394
+# dam_pop_city <- 1569394
 # dam_pop_city <- 1690000 # 2008 http://cbssyr.sy/index-EN.htm
 
-dam_pop_urban <- 2079000 # CBS - mid 2019
+# dam_pop_urban <- 2079000 # CBS - mid 2019
 # dam_pop_urban <- 2397090 # https://populationstat.com/syria/damascus
 # dam_pop_urban <- 2392000 # https://www.macrotrends.net/cities/22610/damascus/population
 # dam_pop_urban <- 2011000 # http://cbssyr.sy/yearbook/2017/Data-Chapter2/TAB-3-2-2017.pdf - mid 2016e
@@ -263,10 +272,11 @@ dam_pop_urban <- 2079000 # CBS - mid 2019
 # https://en.wikipedia.org/wiki/Rif_Dimashq_Governorate (2011) - but population growth for Damscus urban has stayed same since 2011
 # dam_pop_rural <- 2836000 
 
-pop <- squire::get_population("Syria")
+dam_pop <- as.numeric(dam_pop)
 
-# matrix
-mix_mat <- get_mixing_matrix("Syria")
+# ------------------------------
+# BEDS
+# ------------------------------
 
 # https://eprints.lse.ac.uk/103841/1/CRP_covid_19_in_Syria_policy_memo_published.pdf
 icu_beds <- 96
@@ -276,21 +286,33 @@ icu_beds <- 96
 
 # Total Beds appears to be anywhere between 3000 - 6000
 # 5190 in 2016 or 387 people/bed -> 6190?
-# HeRams has at 3245 functional public beds in 2019. Private roughly 40% -> 4543 beds?
-# HeRams has 18/10000 in public 2019 -> 4513. Private at 40% Gives -> 6039 beds? Does that mean a quarter are not functional?
+# However that is all beds not functional
+# Last CBS abstract had Damascus with 32.7% private sector
+# HeRams has at 3245 functional public beds in 2019. Private -> 4300 beds?
+
+# HeRams has 18/10000 in public 2019 -> 3742 Private at 40% Gives -> 5300 beds? 
+
 # Damascus had 17% of beds in Syria in 2016 from CBS -> 0.17*Damascus Population/10000*15.5 -> 4611. 40% private -> 6455 beds total 
 # https://reliefweb.int/sites/reliefweb.int/files/resources/wos_herams_q1_2020_v1.3_final.pdf -> 15091 beds total. (public)
 # https://apps.who.int/iris/bitstream/handle/10665/333184/WHOEMSYR039E-eng.pdf?sequence=1&isAllowed=y
-# ICU calculation had 30% of ICU beds in Damascus?
-# Last CBS abstract had Damascus with 32.7% private
-
-# Then what level of beds are in use for non covid
-# ~53% occupied based on ICU? -> 2910 beds?
-# ~20% occupied based on (67153*3*2)/(5190*365) http://cbssyr.sy/yearbook/2017/Data-Chapter12/TAB-11-12-2017.PDF
 
 #hosp_beds <- 1920
 hosp_beds <- as.numeric(hosp_beds)
 
+# ------------------------------
+# NORMAL OCCUPANCY
+# ------------------------------
+
+# Then what level of beds are in use for non covid
+# ~53% occupied based on ICU? 
+# ~55% occupied based on ((352074*2.54)/(3245*1.37*365)) http://cbssyr.sy/yearbook/2019/Data-Chapter12/TAB-11-12-2017.PDF
+
+# hospital_normal <- 0.2
+hospital_normal_use <- as.numeric(hospital_normal_use)
+
+# ------------------------------
+# PARAMS TO SCAN
+# ------------------------------
 
 # scan across a range of undereporting and IFR and assumptions about the excess mortality
 #reporting_fraction <- 0.01
@@ -301,14 +323,6 @@ poorer_health_outcomes <- as.logical(poorer_health_outcomes)
 prob_nsdt <- squire:::probs$prob_non_severe_death_treatment
 if(poorer_health_outcomes) {
   prob_nsdt[seq_len(length(prob_nsdt)-1)] <- prob_nsdt[length(prob_nsdt)-1]
-}
-
-# urban <- TRUE
-urban <- as.logical(urban)
-if (urban) {
-  dam_pop <- dam_pop_urban
-} else {
-  dam_pop <- dam_pop_city
 }
 
 # city_age <- "older"
@@ -325,8 +339,9 @@ if (city_age == "younger") {
   population <- round((pop$n/sum(pop$n))*dam_pop)
 }
 
-# hospital_normal <- 0.2
-hospital_normal_use <- as.numeric(hospital_normal_use)
+
+
+
 
 ## -----------------------------------------------------------------------------
 ## Step 3: Run pmcmc
