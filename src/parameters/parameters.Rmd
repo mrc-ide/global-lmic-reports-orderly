@@ -116,13 +116,37 @@ Given initial inputs of hospital/ICU bed capacity and the average time cases spe
 
 ## Interventions
 
+### Version 5
+
+We continue the extensions made in version 4, by extending $R_t\sigma$ to consider more flexible mobility independent changes to transmission after $pld$. Starting one week after $pld$ we fit a shift to $R_t$ every 14 days, which is maintained after the 14 day period. In this way we model mobility independent changes to that change every 2 weeks. The last mobility independent change is maintained for the last 4 weeks prior to the current day to reflect our inability to estimate the size of this parameter, $R_t\rho_n$ below, due to the approximate 21 day delay between infection and death. $R_t$ is now given by:,  
+
+$$ R_{t,i} = R_{0,i} . f(-M_{eff}.(1-M_i(t)) -M_{eff.pld}.(M_i(t) - M_{pld}) -  R_t\rho_1 - R_t\rho_2\ \ ... \ -R_t\rho_n)$$
+where $R_t\rho_1$ is the first mobility independent change in transmission, which starts 7 days after $pld$, i.e. is equal to 0 before this, and is in effect for the remainder of the simulation. $R_t\rho_2$ is the second mobility independent change in transmission, which starts 21 days after $pld$, i.e. 2 weeks after $R_t\rho_1$. We use strong priors, ($N(0, 0.2)$, where $N$ is the normal distribution with a mean of 0 and a standarad deviation of 0.2) to ensure that where mobility is still informative of transmission (where mobility is increasing transmission is also increasing) it is the mobility parameters that are driving the epidemic trajectory rather than the mobility independent changes in transmission. 
+
+### Version 4
+
+We assume that transmission can decouple further from mobility, such that after lockdown transmission can be lower than $R_0$ at 100% mobility: 
+
+$$ R_{t,i} = R_{0,i} . f(-M_{eff}.(1-M_i(t)) -M_{eff.pld}.(M_i(t) - M_{pld}) - R_t\sigma)$$
+where $M_{pld}$ is the mobility at its nadir (at post lockdown date, $pld$) and is only in effect after $pld$ such that when $t <= pld$, $M_{eff.pld} = 0$.
+
+$R_t\sigma$ is a one time signmoidal shift in $R_t$ that occurs over 30 days after post lockdown date to reflect mobility independent changes to transmission resulting from changing behaviour. $R_t\sigma$ is thus equal to 0 prior to $pld$ and is equal to the maximum value of $R_t\sigma$ for all time points more than 30 days after $pld$.
+
+### Version 3
+
+We assume that the impact of mobility on transmission will be different after lockdown ends, with a new $M_{eff}$ parameter, $M_{eff.pld,i}$ estimated for after lockdown, with $R_t$ given by:
+
+$$ R_{t,i} = R_{0,i} . f(-M_{eff,i}.(1-M_i(t))),\ when\  t < Post\ Lockdown\ Date $$
+$$ R_{t,i} = R_{0,i} . f(-M_{eff.pld,i}.(1-M_i(t))),\ when\ t > Post\ Lockdown\ Date $$
+where the post lockdown date is inferred as when mobility is at its nadir. 
+
 ### Version 2
 
 We incorporate interventions using mobility data made publically available from [Google](https://www.google.com/covid19/mobility/), which provides data on movement in each country and includes the percent
 change in visits to places of interest (Grocery & Pharmacy, Parks, Transit Stations, Retail & Recreation, Residential, and Workplaces). Similar to Version 1, we assume that mobility changes will reduce contacts outside the household, whereas the increase in residential movement will not change household contacts. Consequently, we assume that the change in transmission over time can be summarised by averaging the mobility trends for all categories except for Residential and Parks (in which we assume significant contact events are negligable). Formally, $R_t$ (time varying reproductive number) for country $i$ is given by:
 
 $$ R_{t,i} = R_{0,i} . f(-M_{eff,i}.(1-M_i(t)))  $$
-where $f (x) = 2 exp(x)/(1 + exp(x))$ is tice the inverse logit function. $M_i(t)$ is the average mobility trend at time $t$ (in which 1 represnts 100% mobility (i.e. no change) and 0 represents 0% mobility) and $M_{eff,i}$ is the mobility effect size for country $i$. In countries in which mobility data is not available, we use a Boosted Regression Tree model, trained to government policy data from the [ACAPS Governement measures Dataset](https://www.acaps.org/covid19-government-measures-dataset), to predict the change in mobility. In scenario projections going forwards we use the mean of the last 7 days mobility as the assumed mobility in the absence of changs in interventions.  
+where $f (x) = 2 exp(x)/(1 + exp(x))$ is twice the inverse logit function. $M_i(t)$ is the average mobility trend at time $t$ (in which 1 represnts 100% mobility (i.e. no change) and 0 represents 0% mobility) and $M_{eff,i}$ is the mobility effect size for country $i$. In countries in which mobility data is not available, we use a Boosted Regression Tree model, trained to government policy data from the [ACAPS Government measures Dataset](https://www.acaps.org/covid19-government-measures-dataset), to predict the change in mobility. In scenario projections going forwards we use the mean of the last 7 days mobility as the assumed mobility in the absence of changs in interventions.  
 
 ### Version 1
 

@@ -82,15 +82,27 @@ acap_tf <- download_url(url)
 
 acap <- readxl::read_excel(acap_tf, progress = FALSE, sheet = "Database")
 
+## -----------------------------------------------------------------------------
+## Missing ACAPs Data to be sourced from Oxford and other sources
+## -----------------------------------------------------------------------------
+
+# Extra:
+acap_extra <- readxl::read_excel("acaps_missing.xlsx", progress = FALSE)
+acap <- rbind(acap, acap_extra)
+
 # country name fixes. We want to use the ISO3C eventually but there are typos...
 acap$ISO <- countrycode::countrycode(acap$COUNTRY, "country.name", "iso3c",
                                      custom_match = c("Eswatini"="SWZ", "Micronesia"="FSM"))
+
+## -----------------------------------------------------------------------------
+## Step 1: Data Loading
+## -----------------------------------------------------------------------------
 
 ACAPs_measure <- acap %>%
   rename(country = COUNTRY, measure = MEASURE, type = LOG_TYPE, date = DATE_IMPLEMENTED) %>%
   select(ISO, measure, type, date) %>%
   filter(measure != "", type != "") %>%
-  mutate(measure = as.numeric(factor(measure)), type = as.numeric(factor(type))) %>%
+  mutate(measure = as.numeric(factor(tolower(measure))), type = as.numeric(factor(type))) %>%
   mutate(combined = as.factor(paste0("m_",type, "_", measure))) %>%
   mutate(date = as.Date(date)) %>%
   select(ISO, date, combined) %>%

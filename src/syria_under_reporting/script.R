@@ -276,14 +276,15 @@ icu_beds <- 96
 # Total Beds appears to be anywhere between 3000 - 6000
 # 5190 in 2016 or 387 people/bed -> 6190?
 # HeRams has at 3245 functional public beds in 2019. Private roughly 40% -> 4543 beds?
-# HeRams has 18/10000 in public 2019 -> 4513. Private at 40% Gives -> 6039 beds?
-# Damascus had 17% of beds in Syria in 2016 from CBS -> 0.17*sum(pop$n)/10000*15.5 -> 4611. 40% private -> 6455 beds total 
+# HeRams has 18/10000 in public 2019 -> 4513. Private at 40% Gives -> 6039 beds? Does that mean a quarter are not functional?
+# Damascus had 17% of beds in Syria in 2016 from CBS -> 0.17*Damascus Population/10000*15.5 -> 4611. 40% private -> 6455 beds total 
 # https://reliefweb.int/sites/reliefweb.int/files/resources/wos_herams_q1_2020_v1.3_final.pdf -> 15091 beds total. (public)
+# https://apps.who.int/iris/bitstream/handle/10665/333184/WHOEMSYR039E-eng.pdf?sequence=1&isAllowed=y
 # ICU calculation had 30% of ICU beds in Damascus?
 
 # Then what level of beds are in use for non covid
 # ~53% occupied based on ICU? -> 2910 beds?
-# ~20% occupied based on (67153*3*2)/(6190*365) http://cbssyr.sy/yearbook/2017/Data-Chapter12/TAB-11-12-2017.PDF
+# ~20% occupied based on (67153*3*2)/(5190*365) http://cbssyr.sy/yearbook/2017/Data-Chapter12/TAB-11-12-2017.PDF
 
 #hosp_beds <- 1920
 hosp_beds <- as.numeric(hosp_beds)
@@ -406,6 +407,7 @@ reported$deaths_high <- reported$deaths - 15
 
 # https://www.facebook.com/MEENALMASOOL/photos/a.1277434595713288/3039607002829363/?type=3
 # CIA World Factbook: https://www.cia.gov/library/publications/the-world-factbook/geos/sy.html | 4 deaths/1,000 population (2018 est.) -> 26 deaths/day for urban
+# CBS Statistical Abstract | 11725 deaths in 2018. 32 deaths/day
 reported$deaths <- reported$deaths -25
 
 ## Let's also compare to an assumption that there is even more excess mortlaity than historic due to secondary pressure on health systems
