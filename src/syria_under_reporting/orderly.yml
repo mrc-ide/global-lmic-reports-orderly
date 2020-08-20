@@ -46,7 +46,7 @@ parameters:
     hosp_beds:
       default: 4543
     hospital_normal_use:
-      default: 0.2
+      default: 0.5
       
 
 # You must list at least one artefact that your report will generate.
