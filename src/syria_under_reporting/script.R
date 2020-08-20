@@ -326,7 +326,7 @@ if(poorer_health_outcomes) {
 }
 
 # city_age <- "older"
-# https://reliefweb.int/sites/reliefweb.int/files/resources/wos_herams_q1_2020_v1.3_final.pdf
+# https://reliefweb.int/sites/reliefweb.int/files/resources/map_2020.pdf
 if (city_age == "younger") {
   altered_pop <- pop$n * (dexp(1:17, 1/50)/mean(dexp(1:17, 1/500)))
   altered_pop <- altered_pop / sum(altered_pop)
