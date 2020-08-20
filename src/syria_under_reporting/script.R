@@ -254,10 +254,11 @@ logprior <- function(pars){
 dam_pop_city <- 1569394
 # dam_pop_city <- 1690000 # 2008 http://cbssyr.sy/index-EN.htm
 
-dam_pop_urban <- 2397090 # https://populationstat.com/syria/damascus
-#dam_pop_urban <- 2392000 # https://www.macrotrends.net/cities/22610/damascus/population
+dam_pop_urban <- 2079000 # CBS - mid 2019
+# dam_pop_urban <- 2397090 # https://populationstat.com/syria/damascus
+# dam_pop_urban <- 2392000 # https://www.macrotrends.net/cities/22610/damascus/population
 # dam_pop_urban <- 2011000 # http://cbssyr.sy/yearbook/2017/Data-Chapter2/TAB-3-2-2017.pdf - mid 2016e
-
+# dam_pop_urban <- 1835385 # https://apps.who.int/iris/bitstream/handle/10665/333184/WHOEMSYR039E-eng.pdf?sequence=1&isAllowed=y : 122359/hospital (15 total)
 
 # https://en.wikipedia.org/wiki/Rif_Dimashq_Governorate (2011) - but population growth for Damscus urban has stayed same since 2011
 # dam_pop_rural <- 2836000 
@@ -281,6 +282,7 @@ icu_beds <- 96
 # https://reliefweb.int/sites/reliefweb.int/files/resources/wos_herams_q1_2020_v1.3_final.pdf -> 15091 beds total. (public)
 # https://apps.who.int/iris/bitstream/handle/10665/333184/WHOEMSYR039E-eng.pdf?sequence=1&isAllowed=y
 # ICU calculation had 30% of ICU beds in Damascus?
+# Last CBS abstract had Damascus with 32.7% private
 
 # Then what level of beds are in use for non covid
 # ~53% occupied based on ICU? -> 2910 beds?
@@ -363,7 +365,7 @@ res <- squire::pmcmc(data = data,
                      required_acceptance_ratio = 0.20,
                      start_adaptation = start_adaptation,
                      baseline_hosp_bed_capacity = round(hosp_beds*(1-hospital_normal_use)), 
-                     baseline_ICU_bed_capacity = round(icu_beds*(1-hospital_normal_use)))
+                     baseline_ICU_bed_capacity = icu_beds) # ICU bed figure is already adjusted for availability
 
 # redraw using stochastic
 # res$pmcmc_results$inputs$squire_model <- explicit_model()
@@ -408,12 +410,12 @@ reported$deaths_high <- reported$deaths - 15
 # https://www.facebook.com/MEENALMASOOL/photos/a.1277434595713288/3039607002829363/?type=3
 # CIA World Factbook: https://www.cia.gov/library/publications/the-world-factbook/geos/sy.html | 4 deaths/1,000 population (2018 est.) -> 26 deaths/day for urban
 # CBS Statistical Abstract | 11725 deaths in 2018. 32 deaths/day
-reported$deaths <- reported$deaths -25
+reported$deaths <- reported$deaths - 32
 
-## Let's also compare to an assumption that there is even more excess mortlaity than historic due to secondary pressure on health systems
-reported$extra_deaths <- reported$deaths - 25
-reported$extra_deaths_low <- reported$deaths_low - 25
-reported$extra_deaths_high <- reported$deaths_high - 25
+## Let's also compare to an assumption that there is double the excess mortlaity than historic due to secondary pressure on health systems
+reported$extra_deaths <- reported$deaths - 32
+reported$extra_deaths_low <- reported$deaths_low - 32
+reported$extra_deaths_high <- reported$deaths_high - 32
 
 # get the model run deaths for these dates:
 deaths <- squire::format_output(res, "deaths", date_0 = date)
@@ -422,20 +424,20 @@ all_model_deaths <- deaths$y[deaths$date %in% data$date]
 
 # get likelihoods against the excess deaths
 ll_reported <- squire:::ll_nbinom(model = model_deaths, 
-                         data = rep(reported$deaths, nrow(res$replicate_parameters)), 
-                         phi = 1, k = 1, 
-                         exp_noise = res$pmcmc_results$inputs$pars_obs$exp_noise)
-
-ll_extra <- squire:::ll_nbinom(model = model_deaths, 
-                                  data = rep(reported$extra_deaths, nrow(res$replicate_parameters)), 
+                                  data = rep(reported$deaths, nrow(res$replicate_parameters)), 
                                   phi = 1, k = 1, 
                                   exp_noise = res$pmcmc_results$inputs$pars_obs$exp_noise)
 
+ll_extra <- squire:::ll_nbinom(model = model_deaths, 
+                               data = rep(reported$extra_deaths, nrow(res$replicate_parameters)), 
+                               phi = 1, k = 1, 
+                               exp_noise = res$pmcmc_results$inputs$pars_obs$exp_noise)
+
 ll_all <- squire:::ll_nbinom(model = all_model_deaths, 
-                                  data = rep(data$deaths, nrow(res$replicate_parameters)), 
-                                  phi = res$pmcmc_results$inputs$pars_obs$phi_death, 
-                                  k = 1, 
-                                  exp_noise = res$pmcmc_results$inputs$pars_obs$exp_noise)
+                             data = rep(data$deaths, nrow(res$replicate_parameters)), 
+                             phi = res$pmcmc_results$inputs$pars_obs$phi_death, 
+                             k = 1, 
+                             exp_noise = res$pmcmc_results$inputs$pars_obs$exp_noise)
 
 # how much do they appear within the "range"
 within_reported_range <- model_deaths < reported$deaths_high & model_deaths > reported$deaths_low
@@ -447,26 +449,29 @@ ci_deaths <- group_by(deaths[deaths$date %in% reported$date,], date) %>%
 
 # summarise these model fit metrics
 model_fit_summary <- data.frame("ll_reported" = mean(ll_reported),
-                               "ll_extra" = mean(ll_extra),
-                               "ll_all" = mean(ll_all),
-                               "within_reported_range" = mean(within_reported_range),
-                               "within_extra_range" = mean(within_extra_range),
-                               "reporting_fraction" = res$pmcmc_results$inputs$pars_obs$phi_death,
-                               "range_includes_reported" = mean(ci_deaths$low < reported$deaths & ci_deaths$high > reported$deaths),
-                               "range_includes_extra" = mean(ci_deaths$low < reported$extra_deaths & ci_deaths$high > reported$extra_deaths),
-                               "urban" = urban,
-                               "hosp_beds" = hosp_beds,
-                               "poorer_health_outcomes" = poorer_health_outcomes,
-                               "city_age" = city_age,
-                               "hospital_normal_use" = hospital_normal_use)
+                                "ll_extra" = mean(ll_extra),
+                                "ll_all" = mean(ll_all),
+                                "within_reported_range" = mean(within_reported_range),
+                                "within_extra_range" = mean(within_extra_range),
+                                "reporting_fraction" = res$pmcmc_results$inputs$pars_obs$phi_death,
+                                "range_includes_reported" = mean(ci_deaths$low < reported$deaths & ci_deaths$high > reported$deaths),
+                                "range_includes_extra" = mean(ci_deaths$low < reported$extra_deaths & ci_deaths$high > reported$extra_deaths),
+                                "urban" = urban,
+                                "hosp_beds" = hosp_beds,
+                                "poorer_health_outcomes" = poorer_health_outcomes,
+                                "city_age" = city_age,
+                                "hospital_normal_use" = hospital_normal_use)
+model_fit_summary$model_deaths <- list(model_deaths)
 
 ## -----------------------------------------------------------------------------
 ## Step 5: Quick forward simulation and then save
 ## -----------------------------------------------------------------------------
 res_long <- squire::projections(res, 
-                                        R0_change = c(1), 
-                                        tt_R0 = c(0), 
-                                        time_period = 120)
+                                R0_change = c(1), 
+                                tt_R0 = c(0), 
+                                time_period = 120)
+
+# save space remove args here
 res_long$projection_args$r <- NULL
 
 # round to save memory. 

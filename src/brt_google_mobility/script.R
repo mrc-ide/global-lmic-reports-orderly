@@ -79,7 +79,6 @@ acap_tf <- download_url(url)
 
 # HTPPS ISSUE - TEMPORARY FIX TO MANUALLY PLACE acaps download into directory
 #acap_tf <- "acaps.xlsx"
-
 acap <- readxl::read_excel(acap_tf, progress = FALSE, sheet = "Database")
 
 ## -----------------------------------------------------------------------------
