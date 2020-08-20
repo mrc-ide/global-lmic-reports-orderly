@@ -11,7 +11,7 @@ if(packageVersion("squire") < version_min) {
 }
 
 system(paste0("echo Syria Reporting. Reporting Fraction = ",reporting_fraction, ". Date = ", date, 
-              ". Urban = ", urban, ". Poorer Health Outcomes = ", poorer_health_outcomes ,
+              ". Dam_Pop = ", dam_pop, ". Poorer Health Outcomes = ", poorer_health_outcomes ,
               ". City Age = ", city_age, ". Hospital Use = ", hospital_normal_use  ))
 
 iso3c <- "SYR"
@@ -471,7 +471,7 @@ model_fit_summary <- data.frame("ll_reported" = mean(ll_reported),
                                 "reporting_fraction" = res$pmcmc_results$inputs$pars_obs$phi_death,
                                 "range_includes_reported" = mean(ci_deaths$low < reported$deaths & ci_deaths$high > reported$deaths),
                                 "range_includes_extra" = mean(ci_deaths$low < reported$extra_deaths & ci_deaths$high > reported$extra_deaths),
-                                "urban" = urban,
+                                "dam_pop" = dam_pop,
                                 "hosp_beds" = hosp_beds,
                                 "poorer_health_outcomes" = poorer_health_outcomes,
                                 "city_age" = city_age,
