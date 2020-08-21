@@ -250,6 +250,7 @@ rt_plot <- function(cont) {
     theme_bw() +
     theme(axis.text = element_text(size=12)) +
     xlab("") +
+    ylab("Reff") + 
     facet_wrap(~country, ncol = 6) +
     scale_x_date(breaks = "3 week",
                  date_labels = "%d %b") + 
