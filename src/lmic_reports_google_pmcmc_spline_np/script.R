@@ -22,7 +22,7 @@ full_scenarios <- as.logical(full_scenarios)
 
 ## Get the ECDC data
 # ecdc <- readRDS("ecdc_all.rds")
-ecdc <- readRDS("jhu_al.rds")
+ecdc <- readRDS("jhu_all.rds")
 country <- squire::population$country[match(iso3c, squire::population$iso3c)[1]]
 df <- ecdc[which(ecdc$countryterritoryCode == iso3c),]
 
