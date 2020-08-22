@@ -445,7 +445,8 @@ ll_reported <- squire:::ll_nbinom(model = model_deaths,
 
 ll_extra <- squire:::ll_nbinom(model = model_deaths, 
                                data = rep(reported$extra_deaths, nrow(res$replicate_parameters)), 
-                               phi = 1, k = 1, 
+                               phi = 1, 
+                               k = 1, 
                                exp_noise = res$pmcmc_results$inputs$pars_obs$exp_noise)
 
 ll_all <- squire:::ll_nbinom(model = all_model_deaths, 
@@ -477,6 +478,7 @@ model_fit_summary <- data.frame("ll_reported" = mean(ll_reported),
                                 "city_age" = city_age,
                                 "hospital_normal_use" = hospital_normal_use)
 model_fit_summary$model_deaths <- list(model_deaths)
+model_fit_summary$all_model_deaths <- list(all_model_deaths)
 
 ## -----------------------------------------------------------------------------
 ## Step 5: Quick forward simulation and then save
