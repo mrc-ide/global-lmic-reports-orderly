@@ -127,4 +127,4 @@ jhu_data <- left_join(data, cases, by = c("date", "countryterritoryCode", "Regio
 jhu_data$dateRep <- jhu_data$date
 
 # save 
-saveRDS(d, "jhu_all.rds")
+saveRDS(jhu_data, "jhu_all.rds")
