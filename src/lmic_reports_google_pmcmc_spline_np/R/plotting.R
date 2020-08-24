@@ -37,7 +37,8 @@ continent_match <- function(region) {
 
 cumulative_deaths_plot <- function(country) {
   
-  d <- readRDS("jhu_all.rds")
+  # d <- readRDS("jhu_all.rds")
+  d <- readRDS("ecdc_all.rds")
   d$Region[d$Region=="Congo"] <- "Republic of Congo"
   d$Region[d$Region=="United_Republic_of_Tanzania"] <- "Tanzania"
   d$Region[d$Region=="CuraÃ§ao"] <- "Curacao"

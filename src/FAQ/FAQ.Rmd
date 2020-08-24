@@ -160,7 +160,7 @@ render_toc("FAQ.Rmd")
 
 #### 1. How reliable are the data?
   
-We use two sources of data to calibrate the model. The first is the reported numbers of deaths by date as available in the European Centre for Disease Control database and in more recent version from the Johns Hopkins University database. These data are updated daily and whilst there may be a short delay, they are generally consistent with Ministry reports. However, as noted below, it is not clear what proportion of deaths are reported.
+We use two sources of data to calibrate the model. The first is the reported numbers of deaths by date as available in the European Centre for Disease Control database. These data are updated daily and whilst there may be a short delay, they are generally consistent with Ministry reports. However, as noted below, it is not clear what proportion of deaths are reported.
 
 The second data source is information on the interventions that have been implemented. In Version 1, we captured this in a relatively simplistic way making assumptions about the impact of different goverment interventions on transmission. As more data became available, we adapted our methods to incorporate data on mobility from the [Google Community Mobility Reports](https://www.google.com/covid19/mobility/) to inform the change in transmission over time. 
 
