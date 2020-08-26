@@ -52,13 +52,13 @@ if(length(to_remove) > 0) {
 
 # Maintaining daily sheet for deaths
 sheet <- readxl::read_xlsx("death_sheet.xlsx")
-sheet$Dam[is.na(sheet$Dam)] <- 0
+sheet$Damascus[is.na(sheet$Damascus)] <- 0
 if (sheet$Deaths[1] < sum(data$deaths)) {
   stop("Death Sheet out of sync with JHU data stream")
 }
 
 # use this to remove non damascus deaths
-non_dam <- sheet$Daily - sheet$Dam
+non_dam <- sheet$Daily - sheet$Damascus
 non_dam_match <- non_dam[match(data$date, as.Date(sheet$Date))]
 non_dam_match[is.na(non_dam_match)] <- 0
 data$deaths <- data$deaths - non_dam_match
@@ -66,14 +66,40 @@ data$deaths <- data$deaths - non_dam_match
 # quick check it matches
 shared_days <- as.Date(names(which(table(c(data$date, as.Date(sheet$Date)))==2)))
 if (!identical(data$deaths[match(shared_days, data$date)],
-               sheet$Dam[match(shared_days, as.Date(sheet$Date))])) {
+               sheet$Damascus[match(shared_days, as.Date(sheet$Date))])) {
   stop("Not identical Damascus days for shared dates between data sources")
 }
 
 # and then add any not in worldometers yet
 dates_to_add <- as.Date(sheet$Date[which(as.Date(sheet$Date)>max(data$date))])
-dam_deaths_to_add <- sheet$Dam[which(as.Date(sheet$Date)>max(data$date))]
+dam_deaths_to_add <- sheet$Damascus[which(as.Date(sheet$Date)>max(data$date))]
 data <- rbind(data, data.frame("date" = dates_to_add, "deaths" = dam_deaths_to_add))
+
+# # remove the early deaths as seeding
+# if (TRUE) {
+#   
+#   # Remove any deaths at beginning that were followed by 21 days of no deaths as we have no information in these situations
+#   if(sum(data$deaths>0)>1) {
+#     while(head(diff(which(data$deaths>0)),1) >= 21) {
+#       data$deaths[head(which(data$deaths>0),1)] <- 0
+#     }
+#   }
+#   
+#   data <- filter(data, date >= "2020-06-26")
+#   
+#   # and remove the rows with no data up to the first date that a death was reported
+#   first_report <- which(data$deaths>0)[1]
+#   missing <- which(data$deaths == 0 | is.na(data$deaths))
+#   to_remove <- missing[missing<first_report]
+#   if(length(to_remove) > 0) {
+#     if(length(to_remove) == (nrow(data)-1)) {
+#       data <- data[-head(to_remove,-1),]
+#     } else {
+#       data <- data[-to_remove,]
+#     }
+#   }
+#   
+# }
 
 # dat_0 is just the current date now
 date_0 <- date
@@ -95,6 +121,7 @@ min_death_date <- data$date[which(data$deaths>0)][1]
 
 # calibration arguments
 R0_change <- interventions[[iso3c]]$C
+R0_change <- R0_change/max(R0_change, na.rm = TRUE) 
 date_R0_change <- interventions[[iso3c]]$date
 R0_change <- R0_change[as.Date(date_R0_change) <= date]
 date_R0_change <- date_R0_change[as.Date(date_R0_change) <= date]
@@ -120,7 +147,7 @@ suppressWarnings(future::plan(future::multiprocess()))
 # Defualt edges to seatch within
 R0_min <- 1.6
 R0_max <- 5.6
-Meff_min <- 0.1
+Meff_min <- -10
 Meff_max <- 10
 Meff_pl_min <- 0
 Meff_pl_max <- 1
@@ -228,7 +255,7 @@ proposal_kernel["start_date", "start_date"] <- 1.5
 logprior <- function(pars){
   ret <- dunif(x = pars[["start_date"]], min = -55, max = -10, log = TRUE) +
     dnorm(x = pars[["R0"]], mean = 3, sd = 1, log = TRUE) +
-    dnorm(x = pars[["Meff"]], mean = 3, sd = 3, log = TRUE) +
+    dnorm(x = pars[["Meff"]], mean = 0, sd = 3, log = TRUE) +
     dunif(x = pars[["Meff_pl"]], min = 0, max = 1, log = TRUE) +
     dnorm(x = pars[["Rt_shift"]], mean = 0, sd = 1, log = TRUE) +
     dunif(x = pars[["Rt_shift_scale"]], min = 0.1, max = 10, log = TRUE)
@@ -288,11 +315,11 @@ icu_beds <- 96
 # 5190 in 2016 or 387 people/bed -> 6190?
 # However that is all beds not functional
 # Last CBS abstract had Damascus with 32.7% private sector
-# HeRams has at 3245 functional public beds in 2019. Private -> 4300 beds?
+# HeRams has at 3245 functional public beds in 2019. Private -> 4800 beds?
 
-# HeRams has 18/10000 in public 2019 -> 3742 Private at 40% Gives -> 5300 beds? 
+# HeRams has 18/10000 in public 2019 -> 3742, Private at 32.7% Gives -> 5560 beds? 
 
-# Damascus had 17% of beds in Syria in 2016 from CBS -> 0.17*Damascus Population/10000*15.5 -> 4611. 40% private -> 6455 beds total 
+# Damascus had 17% of beds in Syria in 2016 from CBS -> 0.17*15091 (herams total Q1 2020) -> 2565 40% private -> 3800 beds total 
 # https://reliefweb.int/sites/reliefweb.int/files/resources/wos_herams_q1_2020_v1.3_final.pdf -> 15091 beds total. (public)
 # https://apps.who.int/iris/bitstream/handle/10665/333184/WHOEMSYR039E-eng.pdf?sequence=1&isAllowed=y
 
