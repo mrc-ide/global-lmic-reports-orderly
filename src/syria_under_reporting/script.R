@@ -36,7 +36,8 @@ data$date <- as.Date(data$date, format = "%m/%d/%y")
 
 # and into daily deaths
 data$deaths <- c(0, diff(data$deaths))
-data <- filter(data, date <= as.Date(date))
+date_0 <- date
+data <- filter(data, date <= as.Date(date_0))
 
 # and remove the rows with no data up to the first date that a death was reported
 first_report <- which(data$deaths>0)[1]
