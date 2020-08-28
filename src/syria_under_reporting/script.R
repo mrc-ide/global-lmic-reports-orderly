@@ -77,30 +77,31 @@ dam_deaths_to_add <- sheet$Damascus[which(as.Date(sheet$Date)>max(data$date))]
 data <- rbind(data, data.frame("date" = dates_to_add, "deaths" = dam_deaths_to_add))
 
 # # remove the early deaths as seeding
-# if (TRUE) {
-#   
-#   # Remove any deaths at beginning that were followed by 21 days of no deaths as we have no information in these situations
-#   if(sum(data$deaths>0)>1) {
-#     while(head(diff(which(data$deaths>0)),1) >= 21) {
-#       data$deaths[head(which(data$deaths>0),1)] <- 0
-#     }
-#   }
-#   
-#   data <- filter(data, date >= "2020-06-26")
-#   
-#   # and remove the rows with no data up to the first date that a death was reported
-#   first_report <- which(data$deaths>0)[1]
-#   missing <- which(data$deaths == 0 | is.na(data$deaths))
-#   to_remove <- missing[missing<first_report]
-#   if(length(to_remove) > 0) {
-#     if(length(to_remove) == (nrow(data)-1)) {
-#       data <- data[-head(to_remove,-1),]
-#     } else {
-#       data <- data[-to_remove,]
-#     }
-#   }
-#   
-# }
+late_start <- as.logical(late_start)
+if (late_start) {
+
+  # Remove any deaths at beginning that were followed by 21 days of no deaths as we have no information in these situations
+  if(sum(data$deaths>0)>1) {
+    while(head(diff(which(data$deaths>0)),1) >= 21) {
+      data$deaths[head(which(data$deaths>0),1)] <- 0
+    }
+  }
+
+  data <- filter(data, date >= "2020-06-26")
+
+  # and remove the rows with no data up to the first date that a death was reported
+  first_report <- which(data$deaths>0)[1]
+  missing <- which(data$deaths == 0 | is.na(data$deaths))
+  to_remove <- missing[missing<first_report]
+  if(length(to_remove) > 0) {
+    if(length(to_remove) == (nrow(data)-1)) {
+      data <- data[-head(to_remove,-1),]
+    } else {
+      data <- data[-to_remove,]
+    }
+  }
+
+}
 
 # dat_0 is just the current date now
 date_0 <- date
@@ -138,7 +139,7 @@ Rt_func <- function(R0_change, R0, Meff) {
 # pmcmc arguments 
 n_particles <- 2 # doesn't do anything because using the deterministic version
 replicates <- 100
-n_mcmc <- 10000
+n_mcmc <- 2000
 n_chains <- 3
 start_adaptation <- 1000
 
@@ -209,8 +210,19 @@ if (is.null(pars_former)) {
   }
 }
 
+if (late_start) {
+  
+pars_min_rw <- as.list(rep(-0.001, rw_needed))
+pars_max_rw <- as.list(rep(0.001, rw_needed))
+pars_init_rw <- as.list(rep(0, rw_needed))
+
+} else {
+  
 pars_min_rw <- as.list(rep(-5, rw_needed))
 pars_max_rw <- as.list(rep(5, rw_needed))
+  
+}
+
 pars_discrete_rw <- as.list(rep(FALSE, rw_needed))
 names(pars_init_rw) <- names(pars_min_rw) <- names(pars_max_rw) <- names(pars_discrete_rw) <- paste0("Rt_rw_", seq_len(rw_needed))
 
@@ -282,6 +294,14 @@ pop <- squire::get_population("Syria")
 
 # matrix
 mix_mat <- get_mixing_matrix("Syria")
+
+# are we fitting using only treated deaths 
+if (late_start) {
+treated_deaths_only <- TRUE 
+} else {
+  treated_deaths_only <- FALSE 
+}
+
 
 # ------------------------------
 # POPULATION SIZE
@@ -367,10 +387,6 @@ if (city_age == "younger") {
   population <- round((pop$n/sum(pop$n))*dam_pop)
 }
 
-
-
-
-
 ## -----------------------------------------------------------------------------
 ## Step 3: Run pmcmc
 ## -----------------------------------------------------------------------------
@@ -402,7 +418,8 @@ res <- squire::pmcmc(data = data,
                        Rt_rw_duration = Rt_rw_duration), 
                      prob_non_severe_death_treatment = prob_nsdt,
                      burnin = ceiling(n_mcmc/10),
-                     reporting_fraction = reporting_fraction,
+                     reporting_fraction = reporting_fraction, 
+                     treated_deaths_only = treated_deaths_only,
                      seeding_cases = 5,
                      replicates = replicates,
                      required_acceptance_ratio = 0.20,
@@ -504,7 +521,8 @@ model_fit_summary <- data.frame("ll_reported" = mean(ll_reported),
                                 "hosp_beds" = hosp_beds,
                                 "poorer_health_outcomes" = poorer_health_outcomes,
                                 "city_age" = city_age,
-                                "hospital_normal_use" = hospital_normal_use)
+                                "hospital_normal_use" = hospital_normal_use,
+                                "late_start" = late_start)
 model_fit_summary$model_deaths <- list(model_deaths)
 model_fit_summary$all_model_deaths <- list(all_model_deaths)
 
