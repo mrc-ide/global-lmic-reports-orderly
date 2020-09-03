@@ -158,7 +158,7 @@ Rt_shift_max <- 0.001
 Rt_shift_scale_min <- 0.1
 Rt_shift_scale_max <- 10
 last_start_date <- as.Date(null_na(min_death_date))-10
-first_start_date <- as.Date(null_na(min_death_date))-55
+first_start_date <- as.Date(null_na(min_death_date))-60
 
 ## -----------------------------------------------------------------------------
 ## Step 2b: Sourcing previous fits to start pmcmc nearby
@@ -215,6 +215,10 @@ if (late_start) {
 pars_min_rw <- as.list(rep(-0.001, rw_needed))
 pars_max_rw <- as.list(rep(0.001, rw_needed))
 pars_init_rw <- as.list(rep(0, rw_needed))
+date_start <- round(first_start_date + (last_start_date - first_start_date)/2)
+R0_start <- 2
+Meff_start <- 0
+Meff_pl_start <- 0
 
 } else {
   
@@ -266,7 +270,7 @@ proposal_kernel["start_date", "start_date"] <- 1.5
 
 # MCMC Functions - Prior and Likelihood Calculation
 logprior <- function(pars){
-  ret <- dunif(x = pars[["start_date"]], min = -55, max = -10, log = TRUE) +
+  ret <- dunif(x = pars[["start_date"]], min = -60, max = -10, log = TRUE) +
     dnorm(x = pars[["R0"]], mean = 3, sd = 1, log = TRUE) +
     dnorm(x = pars[["Meff"]], mean = 0, sd = 3, log = TRUE) +
     dunif(x = pars[["Meff_pl"]], min = 0, max = 1, log = TRUE) +
@@ -480,7 +484,11 @@ reported$extra_deaths_high <- reported$deaths_high - 32
 # get the model run deaths for these dates:
 deaths <- squire::format_output(res, "deaths", date_0 = date)
 model_deaths <- deaths$y[deaths$date %in% reported$date]
-all_model_deaths <- deaths$y[deaths$date %in% data$date]
+
+# and all deaths
+all_model_pos <- which(deaths$date %in% data$date)
+all_model_deaths <- deaths$y[all_model_pos]
+data_deaths <- data$deaths[match(deaths$date[all_model_pos], data$date)]
 
 # get likelihoods against the excess deaths
 ll_reported <- squire:::ll_nbinom(model = model_deaths, 
@@ -495,7 +503,7 @@ ll_extra <- squire:::ll_nbinom(model = model_deaths,
                                exp_noise = res$pmcmc_results$inputs$pars_obs$exp_noise)
 
 ll_all <- squire:::ll_nbinom(model = all_model_deaths, 
-                             data = rep(data$deaths, nrow(res$replicate_parameters)), 
+                             data = data_deaths, 
                              phi = res$pmcmc_results$inputs$pars_obs$phi_death, 
                              k = 1, 
                              exp_noise = res$pmcmc_results$inputs$pars_obs$exp_noise)
