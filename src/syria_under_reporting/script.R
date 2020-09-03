@@ -215,7 +215,7 @@ if (late_start) {
 pars_min_rw <- as.list(rep(-0.001, rw_needed))
 pars_max_rw <- as.list(rep(0.001, rw_needed))
 pars_init_rw <- as.list(rep(0, rw_needed))
-date_start <- round(first_start_date + (last_start_date - first_start_date)/2)
+date_start <- as.Date("2020-05-06")
 R0_start <- 2
 Meff_start <- 0
 Meff_pl_start <- 0
