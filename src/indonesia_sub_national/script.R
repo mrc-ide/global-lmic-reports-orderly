@@ -101,15 +101,12 @@ Rt_shift_scale_max <- 10
 
 ## LOAD a previous fit:
 
-# res <- readRDS("old_run.rds")
-# mc_chain <- squire:::create_master_chain(res$pmcmc_results, 1000)
-# best <- mc_chain[which.max(mc_chain$log_posterior), ]
-# R0_start <- best$R0[1]
-# date_start <- best$start_date[1]
-# date_start <- squire:::offset_to_start_date(data$date[1],round(date_start))
+pars_init <- readRDS("pars_init.rds")
+R0_start <- pars_init$R0[pars_init$province == province & pars_init$all_deaths == all_deaths]
+start_date <- pars_init$start_date[pars_init$province == province & pars_init$all_deaths == all_deaths]
 
 # These are the the initial conditions now loaded from our previous run. 
-R0_start <- min(max(3, R0_min), R0_max)
+R0_start <- min(max(R0_start, R0_min), R0_max)
 date_start <- min(max(as.Date(start_date), as.Date(first_start_date)), as.Date(last_start_date))
 
 # again these all do nothing
@@ -131,7 +128,7 @@ remaining_days <- as.Date(date_0) - last_shift_date - 21 # reporting delay in pl
 
 # how many spline pars do we need
 Rt_rw_duration <- rw_duration # i.e. we fit with a 2 week duration for our random walks. 
-rw_needed <- as.numeric(round(remaining_days/Rt_rw_duration))
+rw_needed <- as.numeric(ceiling(remaining_days/Rt_rw_duration))
 
 # set up rw pars
 pars_init_rw <- as.list(rep(0, rw_needed))

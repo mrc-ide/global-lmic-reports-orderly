@@ -126,6 +126,7 @@ resources:
   - reported_deaths_java.rds
   - simulated_all_deaths_java.rds
   - pop_province.rds
+  - pars_init.rds
 
 global_resources:
 
