@@ -66,10 +66,10 @@ date_R0_change <- date_R0_change[as.Date(date_R0_change) <= date_0]
 # pmcmc args
 n_particles <- 2 # we use the deterministic model now so this does nothing (makes your life quicker and easier too)
 replicates <- 100
-n_mcmc <- 100 # how long are we running the mcmc chain for
+n_mcmc <- 10000 # how long are we running the mcmc chain for
 n_chains <- 3 # number of chains
 sleep <- 120
-start_adaptation <- 50 # how long before adapting
+start_adaptation <- 1000 # how long before adapting
 
 # parallel call
 suppressWarnings(future::plan(future::multiprocess()))
