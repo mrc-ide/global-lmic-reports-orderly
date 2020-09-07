@@ -258,6 +258,8 @@ for(i in seq_along(res$pmcmc_results$chains)) {
   res$pmcmc_results$chains[[i]]$covariance_matrix <- tail(res$pmcmc_results$chains$chain1$covariance_matrix,1)
 }
 
+# make it easy to know what was run
 res$parameters$country <- province
+res$parameters$all_deaths <- all_deaths
 
 saveRDS(res, "res.rds")
