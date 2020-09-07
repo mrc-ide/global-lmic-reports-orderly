@@ -9,7 +9,7 @@ ALL_DEATHS=${1:-$DEFAULT_ALL_DEATHS}
 echo "*** Province: $PROVINCE"
 echo "*** All Deaths: $ALL_DEATHS"
 
-parallel -k echo ::: "BANTEN" "CENTRAL JAVA" "EAST JAVA"  "JAVA"  "WEST JAVA" "YOGYAKARTA" > prov-file
+parallel -k echo ::: "BANTEN" "CENTRAL JAVA" "EAST JAVA"  "JAKARTA"  "WEST JAVA" "YOGYAKARTA" > prov-file
 
 # Parallel
 grep -E "*." prov-file | \
