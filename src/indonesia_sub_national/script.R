@@ -7,6 +7,7 @@ RhpcBLASctl::omp_set_num_threads(1L)
 
 all_deaths <- as.logical(all_deaths)
 province <- as.character(province)
+rw_duration <- as.integer(rw_duration)
 
 system(paste0("echo Indonesia Report for  ",province, ". All Deaths = ", all_deaths))
 
@@ -129,7 +130,7 @@ last_shift_date <- as.Date(date_Meff_change) + 1
 remaining_days <- as.Date(date_0) - last_shift_date - 21 # reporting delay in place
 
 # how many spline pars do we need
-Rt_rw_duration <- 14 # i.e. we fit with a 2 week duration for our random walks. 
+Rt_rw_duration <- rw_duration # i.e. we fit with a 2 week duration for our random walks. 
 rw_needed <- as.numeric(round(remaining_days/Rt_rw_duration))
 
 # set up rw pars
