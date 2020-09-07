@@ -124,7 +124,7 @@ date_Meff_change <- date_start - 1
 ## -----------------------------------------------------------------------------
 
 last_shift_date <- as.Date(date_Meff_change) + 1
-remaining_days <- as.Date(date_0) - last_shift_date - 21 # reporting delay in place
+remaining_days <- as.Date(date_0) - last_shift_date - 14 # reporting delay in place
 
 # how many spline pars do we need
 Rt_rw_duration <- rw_duration # i.e. we fit with a 2 week duration for our random walks. 
@@ -263,3 +263,8 @@ res$parameters$country <- province
 res$parameters$all_deaths <- all_deaths
 
 saveRDS(res, "res.rds")
+
+data <- res$pmcmc_results$inputs$data
+plot <- cowplot::plot_grid(rt_plot_immunity(res)$plot + ggtitle(paste(res$parameters$country, res$parameters$all_deaths)), 
+                   plot(res, particle_fit = TRUE) +  geom_smooth(aes(date, deaths), data, span = 0.3))
+saveRDS(plot, "plot.rds")
