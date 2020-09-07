@@ -8,6 +8,8 @@ RhpcBLASctl::omp_set_num_threads(1L)
 all_deaths <- as.logical(all_deaths)
 province <- as.character(province)
 
+system(paste0("echo Indonesia Report for  ",province, ". All Deaths = ", all_deaths))
+
 # read in your data
 if (all_deaths) {
   df <- readRDS("simulated_all_deaths_java.rds")
