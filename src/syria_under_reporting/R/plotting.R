@@ -1394,7 +1394,11 @@ get_immunity_ratios <- function(out) {
 
 rt_plot_immunity <- function(out) {
   
+  if (is.null(out$parameters$country)) {
+   iso3c <- "NA" 
+  } else {
   iso3c <- squire::get_population(out$parameters$country)$iso3c[1]
+  }
   
   if("pmcmc_results" %in% names(out)) {
     wh <- "pmcmc_results"

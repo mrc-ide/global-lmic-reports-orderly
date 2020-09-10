@@ -49,8 +49,9 @@ parameters:
       default: 0.5
     late_start:
       default: FALSE
+    data_to_fit:
+      default: "reported"
       
-
 # You must list at least one artefact that your report will generate.
 # Each artefact consists of one or more files.  The format is to list
 # the "type" of an artefact (staticgraph, interactivegraph, data,
@@ -138,6 +139,7 @@ resources:
   - pars_init.rds
   - google_brt.rds
   - death_sheet.xlsx
+  - certs_deaths_july.rds
 
 global_resources:
 

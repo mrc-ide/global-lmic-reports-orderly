@@ -23,6 +23,8 @@ country <- "Syria"
 set.seed(123)
 date <- as.Date(date)
 
+if (data_to_fit == "reported") {
+
 ## Get the worldometers data from JHU
 data <- as.data.frame(data.table::fread(
   "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv"
@@ -103,6 +105,12 @@ if (late_start) {
 
 }
 
+} else {
+  
+  data <- readRDS(data_to_fit)
+  
+}
+
 # dat_0 is just the current date now
 date_0 <- date
 
@@ -139,9 +147,9 @@ Rt_func <- function(R0_change, R0, Meff) {
 # pmcmc arguments 
 n_particles <- 2 # doesn't do anything because using the deterministic version
 replicates <- 100
-n_mcmc <- 10000
+n_mcmc <- 100
 n_chains <- 3
-start_adaptation <- 1000
+start_adaptation <- 10
 
 # this should be in parallel
 suppressWarnings(future::plan(future::multiprocess()))
@@ -530,7 +538,8 @@ model_fit_summary <- data.frame("ll_reported" = mean(ll_reported),
                                 "poorer_health_outcomes" = poorer_health_outcomes,
                                 "city_age" = city_age,
                                 "hospital_normal_use" = hospital_normal_use,
-                                "late_start" = late_start)
+                                "late_start" = late_start, 
+                                "data_to_fit" = data_to_fit)
 model_fit_summary$model_deaths <- list(model_deaths)
 model_fit_summary$all_model_deaths <- list(all_model_deaths)
 

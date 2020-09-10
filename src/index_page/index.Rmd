@@ -191,7 +191,7 @@ regional_plot_overview(date)
 
 ### FUNDING
 
-This project was funded jointly by the UK Department for International Development and The Wellcome Trust
+This project was funded jointly by the UK Foreign Commonwealth and Development Office and The Wellcome Trust
 
 <br>
 
