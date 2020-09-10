@@ -24,6 +24,9 @@ HNU=${6:-$DEFAULT_HNU}
 DEFAULT_LS="FALSE"
 LS=${7:-$DEFAULT_LS}
 
+DEFAULT_DTF="reported"
+DTF=${8:-$DEFAULT_DTF}
+
 echo "*** Date: $DATE"
 echo "*** Urban: $URBAN"
 echo "*** Poorer Health Outcomes: $PHO"
@@ -31,7 +34,8 @@ echo "*** City Age: $CA"
 echo "*** Hospital Beds: $HOSP"
 echo "*** Hospital Normal Use: $HNU"
 echo "*** Late Start: $LS"
+echo "*** Data To Fit: $DTF"
 
 # Parallel
 grep -E "*." rf.txt | \
-parallel --progress -j 11 ./orderly run syria_under_reporting reporting_fraction={} date=$DATE dam_pop=$DAM_POP poorer_health_outcomes=$PHO city_age=$CA hosp_beds=$HOSP hospital_normal_use=$HNU late_start=$LS 
+parallel --progress -j 11 ./orderly run syria_under_reporting reporting_fraction={} date=$DATE dam_pop=$DAM_POP poorer_health_outcomes=$PHO city_age=$CA hosp_beds=$HOSP hospital_normal_use=$HNU late_start=$LS data_to_fit=$DTF 
