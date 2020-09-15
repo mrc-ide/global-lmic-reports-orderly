@@ -203,6 +203,10 @@ if (!is.null(pars_former)) {
   
 }
 
+if(is.null(date_Meff_change)) {
+  date_Meff_change <- as.Date("2021-01-01")
+}
+
 R0_start <- min(max(R0_start, R0_min), R0_max)
 date_start <- min(max(as.Date(date_start), as.Date(first_start_date)), as.Date(last_start_date))
 Meff_start <- min(max(Meff_start, Meff_min), Meff_max)
@@ -729,8 +733,28 @@ rmarkdown::render("index.Rmd",
                                 "surging" = surging),
                   output_options = list(pandoc_args = c(paste0("--metadata=title:",country," COVID-19 report "))))
 
-# summarise the projections
 
+# get active infections, prevalence
+active_infections <- lapply(r_list_pass, function(x) {
+  afs <- squire::format_output(x, var_select = c("S","R","D"), date_0 = date_0) %>% 
+  pivot_wider(names_from = compartment, values_from = y) %>% 
+  mutate(y = sum(x$parameters$population)-D-R-S,
+         compartment = "prevalence") %>% 
+  select(replicate, compartment, t, y, date)
+})
+  
+# major summaries
+o_list <- lapply(r_list_pass, squire::format_output,
+                 var_select = c("infections","deaths","hospital_demand",
+                                "ICU_demand", "D", "hospital_incidence","ICU_incidence"),
+                 date_0 = date_0)
+
+# group them together
+for(i in seq_along(o_list)) {
+  o_list[[i]] <- rbind(o_list[[i]], active_infections[[i]])
+}
+
+# summarise the projections
 data_sum <- lapply(o_list, function(pd){
   
   # remove any NA rows (due to different start dates)
@@ -760,7 +784,7 @@ data_sum <- lapply(o_list, function(pd){
   
   # Format summary data
   pds <- pd %>%
-    dplyr::filter(.data$date < (date_0+90)) %>% 
+    dplyr::filter(.data$date < (as.Date(date_0)+90)) %>% 
     dplyr::group_by(.data$date, .data$compartment) %>%
     dplyr::summarise(y_025 = stats::quantile(.data$y, 0.025),
                      y_25 = stats::quantile(.data$y, 0.25),
@@ -771,6 +795,7 @@ data_sum <- lapply(o_list, function(pd){
   
   return(as.data.frame(pds, stringsAsFactors = FALSE))
 })
+
 data_sum[[1]]$scenario <- "Maintain Status Quo"
 data_sum[[2]]$scenario <- "Additional 50% Reduction"
 data_sum[[3]]$scenario <- "Relax Interventions 50%"
@@ -797,7 +822,7 @@ data_sum$country <- country
 data_sum$iso3c <- iso3c
 data_sum$report_date <- date
 data_sum <- data_sum[data_sum$compartment != "D",]
-data_sum$version <- "v4"
+data_sum$version <- "v5"
 data_sum <- dplyr::mutate(data_sum, across(dplyr::starts_with("y_"), ~round(.x,digits = 2)))
 data_sum <- data_sum[]
 write.csv(data_sum, "projections.csv", row.names = FALSE, quote = FALSE)
