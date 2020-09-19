@@ -179,6 +179,7 @@ depends:
     use:
       ecdc_all.rds: ecdc_all.rds
       jhu_all.rds: jhu_all.rds
+      worldometers_all.rds: worldometers_all.rds
   oxford_grt:
     id: latest(parameter:date == date)
     use:

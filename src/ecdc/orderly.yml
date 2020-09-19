@@ -41,6 +41,7 @@ artefacts:
         - ecdc.xlsx
         - ecdc_all.rds
         - jhu_all.rds
+        - worldometers_all.rds
 
 # Packages that should be loaded before the script is run.  Use this
 # in preference to explicit library() calls in your script because it
@@ -52,3 +53,5 @@ packages:
   - tidyr
   - countrycode
   - dplyr
+  - xml2
+  - rvest
