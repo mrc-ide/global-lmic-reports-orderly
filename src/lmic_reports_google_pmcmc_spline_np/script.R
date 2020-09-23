@@ -324,7 +324,7 @@ if (iso3c == "BRA") {
 
 # slight hack to force a reintroduction event
 if (iso3c %in% c("MMR", "TTO")) {
-  data$deaths[data$date == "2020-07-01"] <- 1
+  data$deaths[data$date %in% c("2020-05-14","2020-06-14","2020-07-14","2020-08-14")] <- 1
 }
 
 ## -----------------------------------------------------------------------------
@@ -387,7 +387,8 @@ out$pmcmc_results$inputs$prior <- as.function(c(formals(logprior),
 
 # slight hack to force a reintroduction event
 if (iso3c %in% c("MMR", "TTO")) {
-  data$deaths[data$date == "2020-07-01"] <- 0
+  data$deaths[data$date %in% c("2020-05-14","2020-06-14","2020-07-14","2020-08-14")] <- 0
+  out$pmcmc_results$inputs$data$deaths[out$pmcmc_results$inputs$data$date %in% c("2020-05-14","2020-06-14","2020-07-14","2020-08-14")] <- 0
 }
 
 ## -----------------------------------------------------------------------------
