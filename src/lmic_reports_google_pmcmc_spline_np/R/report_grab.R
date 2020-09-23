@@ -235,6 +235,8 @@ generate_draws_pmcmc_fitted <- function(out, pmcmc, burnin, n_chains, squire_mod
   
   index <- squire:::odin_index(out$model)
   
+  if(sign(pred_grad) != sign(des_grad)) {
+  
   # do we need to go up or down
   if(des_grad <= pred_grad) {
     alters <- seq(0, 0.4, 0.05)
@@ -244,7 +246,7 @@ generate_draws_pmcmc_fitted <- function(out, pmcmc, burnin, n_chains, squire_mod
   
   # store our grads
   ans <- alters
-  last_rw <- ncol(pmcmc$chains$chain1$results) - 3
+  last_rw <- ncol(out$pmcmc_results$chains$chain1$results) - 3
   
   
   #--------------------------------------------------------
@@ -281,8 +283,10 @@ generate_draws_pmcmc_fitted <- function(out, pmcmc, burnin, n_chains, squire_mod
   
   # adapt our whole last chain accordingly
   alts <- which.min(ans-des_grad)
-  for(ch in seq_along(pmcmc$chains)) {
+  for(ch in seq_along(out$pmcmc_results$chains)) {
     out$pmcmc_results$chains[[ch]]$results[,last_rw] <- out$pmcmc_results$chains[[ch]]$results[,last_rw] + alters[alts]
+  }
+  
   }
   
   # set up now to do the stochastic draws
@@ -304,14 +308,14 @@ generate_draws_pmcmc_fitted <- function(out, pmcmc, burnin, n_chains, squire_mod
   #--------------------------------------------------------
   
   # create a fake run object and fill in the required elements
-  r <- out$pmcmc_results$inputs$squire_model$run_func(country = country,
+  r <- out$pmcmc_results$inputs$squire_model$run_func(country = out$parameters$country,
                              contact_matrix_set = out$pmcmc_results$inputs$model_params$contact_matrix_set,
                              tt_contact_matrix = out$pmcmc_results$inputs$model_params$tt_matrix,
                              hosp_bed_capacity = out$pmcmc_results$inputs$model_params$hosp_bed_capacity,
                              tt_hosp_beds = out$pmcmc_results$inputs$model_params$tt_hosp_beds,
                              ICU_bed_capacity = out$pmcmc_results$inputs$model_params$ICU_bed_capacity,
                              tt_ICU_beds = out$pmcmc_results$inputs$model_params$tt_ICU_beds,
-                             population = population,
+                             population = out$pmcmc_results$inputs$population,
                              replicates = 1,
                              day_return = TRUE,
                              time_period = nrow(pmcmc_samples$trajectories))
