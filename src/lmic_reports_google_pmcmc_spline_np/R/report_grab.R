@@ -233,12 +233,10 @@ generate_draws_pmcmc_fitted <- function(out, pmcmc, burnin, n_chains, squire_mod
   pred_grad <- get_grad(infections$y)
   des_grad <- get_grad(tail(data$cases, 30))
   
-  if (sign(pred_grad) != sign(des_grad)) {
-  
   index <- squire:::odin_index(out$model)
   
   # do we need to go up or down
-  if(des_grad < pred_grad) {
+  if(des_grad <= pred_grad) {
     alters <- seq(0, 0.4, 0.05)
   } else {
     alters <- seq(0, -0.4, -0.05)
@@ -287,8 +285,6 @@ generate_draws_pmcmc_fitted <- function(out, pmcmc, burnin, n_chains, squire_mod
     out$pmcmc_results$chains[[ch]]$results[,last_rw] <- out$pmcmc_results$chains[[ch]]$results[,last_rw] + alters[alts]
   }
   
-  }
-  
   # set up now to do the stochastic draws
   out$pmcmc_results$inputs$squire_model <- squire:::explicit_model()
   out$pmcmc_results$inputs$model_params$dt <- 0.02
@@ -309,25 +305,22 @@ generate_draws_pmcmc_fitted <- function(out, pmcmc, burnin, n_chains, squire_mod
   
   # create a fake run object and fill in the required elements
   r <- out$pmcmc_results$inputs$squire_model$run_func(country = country,
-                             contact_matrix_set = pmcmc$inputs$model_params$contact_matrix_set,
-                             tt_contact_matrix = pmcmc$inputs$model_params$tt_matrix,
-                             hosp_bed_capacity = pmcmc$inputs$model_params$hosp_bed_capacity,
-                             tt_hosp_beds = pmcmc$inputs$model_params$tt_hosp_beds,
-                             ICU_bed_capacity = pmcmc$inputs$model_params$ICU_bed_capacity,
-                             tt_ICU_beds = pmcmc$inputs$model_params$tt_ICU_beds,
+                             contact_matrix_set = out$pmcmc_results$inputs$model_params$contact_matrix_set,
+                             tt_contact_matrix = out$pmcmc_results$inputs$model_params$tt_matrix,
+                             hosp_bed_capacity = out$pmcmc_results$inputs$model_params$hosp_bed_capacity,
+                             tt_hosp_beds = out$pmcmc_results$inputs$model_params$tt_hosp_beds,
+                             ICU_bed_capacity = out$pmcmc_results$inputs$model_params$ICU_bed_capacity,
+                             tt_ICU_beds = out$pmcmc_results$inputs$model_params$tt_ICU_beds,
                              population = population,
                              replicates = 1,
+                             day_return = TRUE,
                              time_period = nrow(pmcmc_samples$trajectories))
-  
-  # first let's add our pmcmc results for a nice return
-  # we'll save our inputs so it is easy to recreate later
-  r$inputs <- pmcmc_samples$inputs
   
   # and add the parameters that changed between each simulation, i.e. posterior draws
   r$replicate_parameters <- pmcmc_samples$sampled_PMCMC_Results
-  
+
   # as well as adding the pmcmc chains so it's easy to draw from the chains again in the future
-  r$pmcmc_results <- pmcmc
+  r$pmcmc_results <- out$pmcmc_results
   
   # then let's create the output that we are going to use
   names(pmcmc_samples)[names(pmcmc_samples) == "trajectories"] <- "output"
@@ -357,7 +350,7 @@ generate_draws_pmcmc_fitted <- function(out, pmcmc, burnin, n_chains, squire_mod
   # and fix the replicates
   r$parameters$replicates <- replicates
   r$parameters$time_period <- as.numeric(diff(as.Date(range(rownames(r$output)))))
-  r$parameters$dt <- pmcmc$inputs$model_params$dt
+  r$parameters$dt <- out$pmcmc_results$inputs$model_params$dt
   
   return(r)
   
