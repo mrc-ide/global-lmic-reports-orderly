@@ -232,13 +232,16 @@ generate_draws_pmcmc_fitted <- function(out, pmcmc, burnin, n_chains, squire_mod
   
   pred_grad <- get_grad(infections$y)
   des_grad <- get_grad(tail(data$cases, 30))
+  
+  if (sign(pred_grad) != sign(des_grad)) {
+  
   index <- squire:::odin_index(out$model)
   
   # do we need to go up or down
   if(des_grad < pred_grad) {
-    alters <- seq(0, 0.4, 0.05)
+    alters <- seq(0, 0.4, 0.4)
   } else {
-    alters <- seq(0, -0.4, -0.05)
+    alters <- seq(0, -0.4, -0.4)
   }
   
   # store our grads
@@ -277,22 +280,23 @@ generate_draws_pmcmc_fitted <- function(out, pmcmc, burnin, n_chains, squire_mod
     
   }
   
-  # set up now to do the stochastic draws
-  out$pmcmc_results$inputs$squire_model <- squire:::explicit_model()
-  out$pmcmc_results$inputs$model_params$dt <- 0.02
-  pmcmc <- out$pmcmc_results
   
   # adapt our whole last chain accordingly
   alts <- which.min(ans-des_grad)
   for(ch in seq_along(pmcmc$chains)) {
-    pmcmc$chains[[ch]]$results[,last_rw] <- pmcmc$chains[[ch]]$results[,last_rw] + alters[alts]
+    out$pmcmc_results$chains[[ch]]$results[,last_rw] <- out$pmcmc_results$chains[[ch]]$results[,last_rw] + alters[alts]
   }
-
+  
+  }
+  
+  # set up now to do the stochastic draws
+  out$pmcmc_results$inputs$squire_model <- squire:::explicit_model()
+  out$pmcmc_results$inputs$model_params$dt <- 0.02
   
   #--------------------------------------------------------
   # Section 3 of pMCMC Wrapper: Sample PMCMC Results
   #--------------------------------------------------------
-  pmcmc_samples <- squire:::sample_pmcmc(pmcmc_results = pmcmc,
+  pmcmc_samples <- squire:::sample_pmcmc(pmcmc_results = out$pmcmc_results,
                                          burnin = burnin,
                                          n_chains = n_chains,
                                          n_trajectories = replicates,
@@ -304,7 +308,7 @@ generate_draws_pmcmc_fitted <- function(out, pmcmc, burnin, n_chains, squire_mod
   #--------------------------------------------------------
   
   # create a fake run object and fill in the required elements
-  r <- squire_model$run_func(country = country,
+  r <- out$pmcmc_results$inputs$squire_model$run_func(country = country,
                              contact_matrix_set = pmcmc$inputs$model_params$contact_matrix_set,
                              tt_contact_matrix = pmcmc$inputs$model_params$tt_matrix,
                              hosp_bed_capacity = pmcmc$inputs$model_params$hosp_bed_capacity,

@@ -361,10 +361,8 @@ out <- squire::pmcmc(data = data,
 
 
 Sys.setenv("SQUIRE_PARALLEL_DEBUG" = "TRUE")
-
-out$pmcmc_results$inputs$squire_model <- explicit_model()
-out$pmcmc_results$inputs$model_params$dt <- 0.02
-out <- generate_draws_pmcmc(pmcmc = out$pmcmc_results,
+out <- generate_draws_pmcmc_fitted(out = out,
+                                   pmcmc = out$pmcmc_results,
                                    burnin = ceiling(n_mcmc/10),
                                    n_chains = n_chains,
                                    squire_model = out$pmcmc_results$inputs$squire_model,
@@ -375,19 +373,6 @@ out <- generate_draws_pmcmc(pmcmc = out$pmcmc_results,
                                    population = squire::get_population(iso3c = iso3c)$n,
                                    interventions = out$interventions,
                                    data = out$pmcmc_results$inputs$data)
-
-# out <- generate_draws_pmcmc_fitted(out = out, 
-#                                    pmcmc = out$pmcmc_results,
-#                                    burnin = ceiling(n_mcmc/10),
-#                                    n_chains = n_chains,
-#                                    squire_model = out$pmcmc_results$inputs$squire_model,
-#                                    replicates = replicates,
-#                                    n_particles = n_particles,
-#                                    forecast = 0,
-#                                    country = country,
-#                                    population = squire::get_population(iso3c = iso3c)$n,
-#                                    interventions = out$interventions,
-#                                    data = out$pmcmc_results$inputs$data)
 
 
 
