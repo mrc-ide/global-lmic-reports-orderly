@@ -118,7 +118,7 @@ if(short_run) {
 }
 
 if (parallel) {
-  suppressWarnings(future::plan(future::multiprocess()))
+  suppressWarnings(future::plan(future::multiprocess(seed = TRUE)))
 }
 
 # Defualt edges
@@ -358,8 +358,9 @@ out <- squire::pmcmc(data = data,
 
 Sys.setenv("SQUIRE_PARALLEL_DEBUG" = "TRUE")
 
-out <- generate_draws_pmcmc(out = out, 
-                                   pmcmc = out$pmcmc_results,
+out$pmcmc_results$inputs$squire_model <- explicit_model()
+out$pmcmc_results$inputs$model_params$dt <- 0.02
+out <- generate_draws_pmcmc(pmcmc = out$pmcmc_results,
                                    burnin = ceiling(n_mcmc/10),
                                    n_chains = n_chains,
                                    squire_model = out$pmcmc_results$inputs$squire_model,
