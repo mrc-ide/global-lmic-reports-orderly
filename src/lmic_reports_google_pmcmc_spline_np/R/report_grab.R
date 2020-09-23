@@ -277,6 +277,11 @@ generate_draws_pmcmc_fitted <- function(out, pmcmc, burnin, n_chains, squire_mod
     
   }
   
+  # set up now to do the stochastic draws
+  out$pmcmc_results$inputs$squire_model <- explicit_model()
+  out$pmcmc_results$inputs$model_params$dt <- 0.02
+  pmcmc <- out$pmcmc_results
+  
   # adapt our whole last chain accordingly
   alts <- which.min(ans-des_grad)
   for(ch in seq_along(pmcmc$chains)) {
