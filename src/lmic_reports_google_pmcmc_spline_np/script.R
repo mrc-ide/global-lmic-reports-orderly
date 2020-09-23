@@ -118,7 +118,8 @@ if(short_run) {
 }
 
 if (parallel) {
-  suppressWarnings(future::plan(future::multiprocess(seed = TRUE)))
+  future:::set_random_seed(runif(1,0,10000000000))
+  suppressWarnings(future::plan(future::multiprocess()))
 }
 
 # Defualt edges
