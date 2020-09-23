@@ -117,9 +117,10 @@ if(short_run) {
   start_adaptation <- 1000
 }
 
+# can't figure out why it subthreads now...
 if (parallel) {
-  options("future.rng.onMisuse" = "ignore")
-  suppressWarnings(future::plan(future::multisession()))
+  # options("future.rng.onMisuse" = "ignore")
+  # suppressWarnings(future::plan(future::multisession()))
 }
 
 # Defualt edges
