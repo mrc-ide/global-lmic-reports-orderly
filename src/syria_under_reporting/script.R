@@ -24,73 +24,23 @@ set.seed(123)
 date <- as.Date(date)
 
 if (data_to_fit == "reported") {
-
-## Get the worldometers data from JHU
-data <- as.data.frame(data.table::fread(
-  "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv"
-))
-
-# format into the correct style for squire
-data <- data %>% filter(`Country/Region` == "Syria") %>% tidyr::pivot_longer(matches("^\\d"))
-names(data) <- c("", "country","lat","lon","date","deaths")
-data <- data[,c("date","deaths")]
-data$date <- as.Date(data$date, format = "%m/%d/%y")
-
-# and into daily deaths
-data$deaths <- c(0, diff(data$deaths))
-date_0 <- date
-data <- filter(data, date <= as.Date(date_0))
-
-# and remove the rows with no data up to the first date that a death was reported
-first_report <- which(data$deaths>0)[1]
-missing <- which(data$deaths == 0 | is.na(data$deaths))
-to_remove <- missing[missing<first_report]
-if(length(to_remove) > 0) {
-  if(length(to_remove) == (nrow(data)-1)) {
-    data <- data[-head(to_remove,-1),]
-  } else {
-    data <- data[-to_remove,]
-  }
-}
-
-# Maintaining daily sheet for deaths
-sheet <- readxl::read_xlsx("death_sheet.xlsx")
-sheet$Damascus[is.na(sheet$Damascus)] <- 0
-if (sheet$Deaths[1] < sum(data$deaths)) {
-  stop("Death Sheet out of sync with JHU data stream")
-}
-
-# use this to remove non damascus deaths
-non_dam <- sheet$Daily - sheet$Damascus
-non_dam_match <- non_dam[match(data$date, as.Date(sheet$Date))]
-non_dam_match[is.na(non_dam_match)] <- 0
-data$deaths <- data$deaths - non_dam_match
-
-# quick check it matches
-shared_days <- as.Date(names(which(table(c(data$date, as.Date(sheet$Date)))==2)))
-if (!identical(data$deaths[match(shared_days, data$date)],
-               sheet$Damascus[match(shared_days, as.Date(sheet$Date))])) {
-  stop("Not identical Damascus days for shared dates between data sources")
-}
-
-# and then add any not in worldometers yet
-dates_to_add <- as.Date(sheet$Date[which(as.Date(sheet$Date)>max(data$date))])
-dam_deaths_to_add <- sheet$Damascus[which(as.Date(sheet$Date)>max(data$date))]
-data <- rbind(data, data.frame("date" = dates_to_add, "deaths" = dam_deaths_to_add))
-
-# # remove the early deaths as seeding
-late_start <- as.logical(late_start)
-if (late_start) {
-
-  # Remove any deaths at beginning that were followed by 21 days of no deaths as we have no information in these situations
-  if(sum(data$deaths>0)>1) {
-    while(head(diff(which(data$deaths>0)),1) >= 21) {
-      data$deaths[head(which(data$deaths>0),1)] <- 0
-    }
-  }
-
-  data <- filter(data, date >= "2020-06-26")
-
+  
+  ## Get the worldometers data from JHU
+  data <- as.data.frame(data.table::fread(
+    "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv"
+  ))
+  
+  # format into the correct style for squire
+  data <- data %>% filter(`Country/Region` == "Syria") %>% tidyr::pivot_longer(matches("^\\d"))
+  names(data) <- c("", "country","lat","lon","date","deaths")
+  data <- data[,c("date","deaths")]
+  data$date <- as.Date(data$date, format = "%m/%d/%y")
+  
+  # and into daily deaths
+  data$deaths <- c(0, diff(data$deaths))
+  date_0 <- date
+  data <- filter(data, date <= as.Date(date_0))
+  
   # and remove the rows with no data up to the first date that a death was reported
   first_report <- which(data$deaths>0)[1]
   missing <- which(data$deaths == 0 | is.na(data$deaths))
@@ -102,9 +52,59 @@ if (late_start) {
       data <- data[-to_remove,]
     }
   }
-
-}
-
+  
+  # Maintaining daily sheet for deaths
+  sheet <- readxl::read_xlsx("death_sheet.xlsx")
+  sheet$Damascus[is.na(sheet$Damascus)] <- 0
+  if (sheet$Deaths[1] < sum(data$deaths)) {
+    stop("Death Sheet out of sync with JHU data stream")
+  }
+  
+  # use this to remove non damascus deaths
+  non_dam <- sheet$Daily - sheet$Damascus
+  non_dam_match <- non_dam[match(data$date, as.Date(sheet$Date))]
+  non_dam_match[is.na(non_dam_match)] <- 0
+  data$deaths <- data$deaths - non_dam_match
+  
+  # quick check it matches
+  shared_days <- as.Date(names(which(table(c(data$date, as.Date(sheet$Date)))==2)))
+  if (!identical(data$deaths[match(shared_days, data$date)],
+                 sheet$Damascus[match(shared_days, as.Date(sheet$Date))])) {
+    stop("Not identical Damascus days for shared dates between data sources")
+  }
+  
+  # and then add any not in worldometers yet
+  dates_to_add <- as.Date(sheet$Date[which(as.Date(sheet$Date)>max(data$date))])
+  dam_deaths_to_add <- sheet$Damascus[which(as.Date(sheet$Date)>max(data$date))]
+  data <- rbind(data, data.frame("date" = dates_to_add, "deaths" = dam_deaths_to_add))
+  
+  # # remove the early deaths as seeding
+  late_start <- as.logical(late_start)
+  if (late_start) {
+    
+    # Remove any deaths at beginning that were followed by 21 days of no deaths as we have no information in these situations
+    if(sum(data$deaths>0)>1) {
+      while(head(diff(which(data$deaths>0)),1) >= 21) {
+        data$deaths[head(which(data$deaths>0),1)] <- 0
+      }
+    }
+    
+    data <- filter(data, date >= "2020-06-26")
+    
+    # and remove the rows with no data up to the first date that a death was reported
+    first_report <- which(data$deaths>0)[1]
+    missing <- which(data$deaths == 0 | is.na(data$deaths))
+    to_remove <- missing[missing<first_report]
+    if(length(to_remove) > 0) {
+      if(length(to_remove) == (nrow(data)-1)) {
+        data <- data[-head(to_remove,-1),]
+      } else {
+        data <- data[-to_remove,]
+      }
+    }
+    
+  }
+  
 } else {
   
   data <- readRDS(data_to_fit)
@@ -220,18 +220,18 @@ if (is.null(pars_former)) {
 
 if (late_start) {
   
-pars_min_rw <- as.list(rep(-0.001, rw_needed))
-pars_max_rw <- as.list(rep(0.001, rw_needed))
-pars_init_rw <- as.list(rep(0, rw_needed))
-date_start <- as.Date("2020-05-06")
-R0_start <- 2
-Meff_start <- 0
-Meff_pl_start <- 0
-
+  pars_min_rw <- as.list(rep(-0.001, rw_needed))
+  pars_max_rw <- as.list(rep(0.001, rw_needed))
+  pars_init_rw <- as.list(rep(0, rw_needed))
+  date_start <- as.Date("2020-05-06")
+  R0_start <- 2
+  Meff_start <- 0
+  Meff_pl_start <- 0
+  
 } else {
   
-pars_min_rw <- as.list(rep(-5, rw_needed))
-pars_max_rw <- as.list(rep(5, rw_needed))
+  pars_min_rw <- as.list(rep(-5, rw_needed))
+  pars_max_rw <- as.list(rep(5, rw_needed))
   
 }
 
@@ -309,9 +309,9 @@ mix_mat <- get_mixing_matrix("Syria")
 
 # are we fitting using only treated deaths 
 if (late_start) {
-treated_deaths_only <- TRUE 
+  treated_deaths_only <- TRUE 
 } else {
-  treated_deaths_only <- FALSE 
+  treated_deaths_only <- TRUE 
 }
 
 

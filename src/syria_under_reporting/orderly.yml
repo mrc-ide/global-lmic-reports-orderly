@@ -38,15 +38,15 @@ parameters:
       default: 0.1
     date: ~
     dam_pop:
-      default: 2079000
+      default: 2394000
     poorer_health_outcomes:
       default: FALSE
     city_age:
       default: "normal"
     hosp_beds:
-      default: 4800
+      default: 4300
     hospital_normal_use:
-      default: 0.5
+      default: 0.55
     late_start:
       default: FALSE
     data_to_fit:

@@ -59,9 +59,10 @@ if(length(to_fix) > 0) {
   }
   
 }
+ecdc <- d
 
 # save 
-saveRDS(d, "ecdc_all.rds")
+saveRDS(ecdc, "ecdc_all.rds")
 
 
 #### AND let's get the JHU as well/instead as looks liek it is less susceptible to blips
@@ -180,6 +181,7 @@ get_country_data <- function(link, iso3c, name) {
   
   df$countryterritoryCode <- iso3c
   df$Region <- name
+  df <- df[order(df$dateRep, decreasing = TRUE),]
   
   return(df)
   
@@ -193,7 +195,7 @@ wo <- xml2::read_html(wo) %>% rvest::html_nodes(".mt_a")
 countries <- xml2::xml_text(wo) 
 links <- gsub("country/|/","",rvest::html_attr(wo, "href"))
 iso3cs <- countrycode::countrycode(countries, "country.name.en", "iso3c", 
-                                   custom_match = c("CAR" = "CAR"))
+                                   custom_match = c("CAR" = "CAF"))
 
 # df of args to run
 df_args <- data.frame(countries = countries, links = links, iso3cs = iso3cs)
@@ -209,8 +211,57 @@ df <- do.call(rbind, dats)
 # and fill in leading NAs
 df$cases[is.na(df$cases)] <- 0
 df$deaths[is.na(df$deaths)] <- 0
+df$deaths[df_death] <- 0
 
 # worldometers is a day ahead of ECDC - so to keep it all aligned
 df$dateRep <- df$dateRep + 1
+
+# AND handling their peculiar negative deaths based on comparison against ECDC and manually cleaning :)
+
+# FRA
+# -217 deaths day
+df$deaths[df$dateRep == as.Date("2020-05-20") & df$countryterritoryCode == "FRA"] <- 125
+df$deaths[df$dateRep == as.Date("2020-05-19") & df$countryterritoryCode == "FRA"] <- 186
+df$deaths[df$dateRep == as.Date("2020-05-18") & df$countryterritoryCode == "FRA"] <- 68
+df$deaths[df$dateRep == as.Date("2020-05-17") & df$countryterritoryCode == "FRA"] <- 88
+df$deaths[df$dateRep == as.Date("2020-05-16") & df$countryterritoryCode == "FRA"] <- 130
+
+# CYP
+# -2 deaths day
+df$deaths[df$dateRep == as.Date("2020-04-05") & df$countryterritoryCode == "CYP"] <- 0
+df$deaths[df$dateRep == as.Date("2020-04-04") & df$countryterritoryCode == "CYP"] <- 0
+df$deaths[df$dateRep == as.Date("2020-04-03") & df$countryterritoryCode == "CYP"] <- 0
+
+# CZE
+# 2 x -1 deaths day
+df$deaths[df$dateRep == as.Date("2020-06-14") & df$countryterritoryCode == "CZE"] <- 0
+df$deaths[df$dateRep == as.Date("2020-06-15") & df$countryterritoryCode == "CZE"] <- 0
+df$deaths[df$dateRep == as.Date("2020-05-19") & df$countryterritoryCode == "CZE"] <- 0
+df$deaths[df$dateRep == as.Date("2020-05-18") & df$countryterritoryCode == "CZE"] <- 1
+
+# FIN
+# -1 deaths day
+df$deaths[df$dateRep == as.Date("2020-04-07") & df$countryterritoryCode == "FIN"] <- 0
+df$deaths[df$dateRep == as.Date("2020-04-08") & df$countryterritoryCode == "FIN"] <- 2
+
+# IRL
+# 2 x -deaths day
+df$deaths[df$dateRep == as.Date("2020-06-01") & df$countryterritoryCode == "IRL"] <- 0
+df$deaths[df$dateRep == as.Date("2020-05-31") & df$countryterritoryCode == "IRL"] <- 1
+df$deaths[df$dateRep == as.Date("2020-05-26") & df$countryterritoryCode == "IRL"] <- 0
+df$deaths[df$dateRep == as.Date("2020-05-25") & df$countryterritoryCode == "IRL"] <- 2
+
+# LUX
+# -2 deaths day
+df$deaths[df$dateRep == as.Date("2020-04-15") & df$countryterritoryCode == "LUX"] <- 0
+df$deaths[df$dateRep == as.Date("2020-04-14") & df$countryterritoryCode == "LUX"] <- 1
+
+# COG
+# few off days
+df$deaths[df$dateRep == as.Date("2020-09-10") & df$countryterritoryCode == "COG"] <- 0
+df$deaths[df$dateRep == as.Date("2020-09-09") & df$countryterritoryCode == "COG"] <- 0
+df$deaths[df$dateRep == as.Date("2020-09-08") & df$countryterritoryCode == "COG"] <- 1
+df$deaths[df$dateRep == as.Date("2020-09-04") & df$countryterritoryCode == "COG"] <- 0
+df$deaths[df$dateRep == as.Date("2020-09-03") & df$countryterritoryCode == "COG"] <- 4
 
 saveRDS(df, "worldometers_all.rds")

@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-remove_old_reports <- function(date = NULL, keep = 4) {
+remove_old_reports <- function(date = NULL, keep = 7, pdf_keep = 60) {
   
   cwd <- getwd()
   wd <- "/home/oj/net/lmic_new/datadrive/lmic/global-lmic-reports-orderly/"
@@ -17,8 +17,13 @@ remove_old_reports <- function(date = NULL, keep = 4) {
   
   files <- list.files(pages_full[to_clean], full.names = TRUE)
   unlink(files[-grep("json$|pdf$", files)], recursive = TRUE, force = TRUE)
+  
+  to_clean <- which(as.Date(pages) < as.Date(date)-pdf_keep)
+  files <- list.files(pages_full[to_clean], full.names = TRUE)
+  unlink(files[grep("pdf$", files)], recursive = TRUE, force = TRUE)
+  
   }
-  setwd(cwd)
+  # setwd(cwd)
 }
 
 prep_for_staging <- function() {
