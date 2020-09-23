@@ -118,8 +118,8 @@ if(short_run) {
 }
 
 if (parallel) {
-  future:::set_random_seed(runif(1,0,10000000000))
-  suppressWarnings(future::plan(future::multiprocess()))
+  options("future.rng.onMisuse" = "ignore")
+  suppressWarnings(future::plan(future::multisession(seed = TRUE)))
 }
 
 # Defualt edges
@@ -208,10 +208,13 @@ if (!is.null(pars_former)) {
   Rt_shift_duration <- 30
   Rt_rw_duration <- 14
   
+  if (is.null(interventions[[iso3c]])) {
+    date_Meff_change <- NA
+  } else {
   date_Meff_change <- post_lockdown_date_relative(interventions[[iso3c]], 1.05, 
                                      max_date = as.Date("2020-06-02"),
                                      min_date = as.Date("2020-02-01"))
-  
+  }
 }
 
 if(is.null(date_Meff_change) || is.na(date_Meff_change)) {
