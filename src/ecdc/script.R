@@ -211,7 +211,6 @@ df <- do.call(rbind, dats)
 # and fill in leading NAs
 df$cases[is.na(df$cases)] <- 0
 df$deaths[is.na(df$deaths)] <- 0
-df$deaths[df_death] <- 0
 
 # worldometers is a day ahead of ECDC - so to keep it all aligned
 df$dateRep <- df$dateRep + 1

@@ -204,8 +204,8 @@ if (!is.null(pars_former)) {
   
 }
 
-if(is.null(date_Meff_change)) {
-  date_Meff_change <- as.Date("2021-01-01")
+if(is.null(date_Meff_change) || is.na(date_Meff_change)) {
+  date_Meff_change <- as.Date("2020-06-01")
 }
 
 R0_start <- min(max(R0_start, R0_min), R0_max)
