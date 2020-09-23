@@ -20,10 +20,13 @@ short_run <- as.logical(short_run)
 parallel <- as.logical(parallel)
 full_scenarios <- as.logical(full_scenarios)
 
-## Get the ECDC data
-# ecdc <- readRDS("ecdc_all.rds")
+## Get the ECDC data or alternative from worldometers if ECDC is too erratic
+ecdc <- readRDS("ecdc_all.rds")
 # ecdc <- readRDS("jhu_all.rds")
-ecdc <- readRDS("worldometers_all.rds")
+if (iso3c %in% c("BOL", "ITA", "FRA", "ECU", "CHL", "COD", "ESP", "IRN", "JPN", "KGZ", "PER")) {
+  ecdc <- readRDS("worldometers_all.rds")
+}
+
 country <- squire::population$country[match(iso3c, squire::population$iso3c)[1]]
 df <- ecdc[which(ecdc$countryterritoryCode == iso3c),]
 
@@ -63,7 +66,7 @@ interventions <- readRDS("google_brt.rds")
 pop <- squire::get_population(country)
 
 ## -----------------------------------------------------------------------------
-## Step 2: Times for the interace based on the deterministic
+## Step 2: Fit model
 ## -----------------------------------------------------------------------------
 
 ## -----------------------------------------------------------------------------
@@ -78,6 +81,12 @@ min_death_date <- data$date[which(data$deaths>0)][1]
 reporting_fraction = 1
 R0_change <- interventions[[iso3c]]$C
 date_R0_change <- interventions[[iso3c]]$date
+
+if(is.null(R0_change) || is.null(date_R0_change)) {
+  date_R0_change <- seq.Date(as.Date("2020-01-01"), as.Date(date), 1)   
+  R0_change <- rep(1, length(date_R0_change))
+}
+
 R0_change <- R0_change[as.Date(date_R0_change) <= date]
 date_R0_change <- date_R0_change[as.Date(date_R0_change) <= date]
 
@@ -101,7 +110,7 @@ if(short_run) {
 } else {
   n_particles <- 10
   replicates <- 100
-  n_mcmc <- 10000
+  n_mcmc <- 15000
   n_chains <- 3
   grid_spread <- 11
   sleep <- 120
@@ -309,9 +318,13 @@ if (iso3c == "BRA") {
   icu_beds <- icu_beds / 0.7
 } 
 
+## -----------------------------------------------------------------------------
+## Step 2c: PMCMC run
+## -----------------------------------------------------------------------------
+
 # sleep so parallel is chill
 Sys.sleep(time = runif(1, 0, sleep))
-out_det <- squire::pmcmc(data = data, 
+out <- squire::pmcmc(data = data, 
                          n_mcmc = n_mcmc,
                          log_prior = logprior,
                          n_particles = 1,
@@ -342,12 +355,32 @@ out_det <- squire::pmcmc(data = data,
                          baseline_hosp_bed_capacity = hosp_beds, 
                          baseline_ICU_bed_capacity = icu_beds)
 
+
+out <- generate_draws_pmcmc_fitted(out = out, 
+                                   pmcmc = pmcmc,
+                                   burnin = ceiling(n_mcmc/10),
+                                   n_chains = n_chains,
+                                   squire_model = out$pmcmc_results$inputs$squire_model,
+                                   replicates = replicates,
+                                   n_particles = n_particles,
+                                   forecast = 0,
+                                   country = country,
+                                   population = squire::get_population(iso3c = iso3c)$n,
+                                   interventions = out$interventions,
+                                   data = out$pmcmc_results$inputs$data)
+
+
+# Add the prior
+out$pmcmc_results$inputs$prior <- as.function(c(formals(logprior), 
+                                                body(logprior)), 
+                                              envir = new.env(parent = environment(stats::acf)))
+
 ## -----------------------------------------------------------------------------
-## Step 2b: Summarise Fits for Interface
+## Step 2d: Summarise Fits for Interface
 ## -----------------------------------------------------------------------------
 
 ## and save the info for the interface
-all_chains <- do.call(rbind,lapply(out_det$pmcmc_results$chains, "[[", "results"))
+all_chains <- do.call(rbind,lapply(out$pmcmc_results$chains, "[[", "results"))
 best <- all_chains[which.max(all_chains$log_posterior), ]
 
 ## BEST
@@ -373,14 +406,14 @@ if(!is.null(date_R0_change)) {
 if(!is.null(R0_change)) {
   R0 <- squire:::evaluate_Rt_pmcmc(R0_change = tt_beta$change, 
                                    date_R0_change = tt_beta$dates, 
-                                   R0 = R0, 
+                                   R0 = best$R0, 
                                    pars = as.list(best[1,-(1:2)]),
-                                   Rt_args = out_det$pmcmc_results$inputs$Rt_args)
+                                   Rt_args = out$pmcmc_results$inputs$Rt_args)
 } else {
   R0 <- R0
 }
 beta_set <- squire:::beta_est(squire_model = squire_model,
-                              model_params = out_det$pmcmc_results$inputs$model_params,
+                              model_params = out$pmcmc_results$inputs$model_params,
                               R0 = R0)
 
 
@@ -395,7 +428,7 @@ df <- data.frame(tt_beta = tt_beta$tt, beta_set = beta_set,
 ## -----------------------------------------------------------------------------
 
 # add in uncertainty
-rts <- rt_plot_immunity(out_det)
+rts <- rt_plot_immunity(out)
 rt_df <- rts$rts[which(rts$rts$date %in% df$date),]
 
 df$Rt_min <- rt_df$Rt_min
@@ -403,15 +436,15 @@ df$Rt_max <- rt_df$Rt_max
 df$Rt <- rt_df$Rt_median
 
 df$beta_set_min <- squire:::beta_est(squire_model = squire_model,
-                                     model_params = out_det$pmcmc_results$inputs$model_params,
+                                     model_params = out$pmcmc_results$inputs$model_params,
                                      R0 = df$Rt_min)
 
 df$beta_set_max <- squire:::beta_est(squire_model = squire_model,
-                                     model_params = out_det$pmcmc_results$inputs$model_params,
+                                     model_params = out$pmcmc_results$inputs$model_params,
                                      R0 = df$Rt_max)
 
 df$beta_set <- squire:::beta_est(squire_model = squire_model,
-                                 model_params = out_det$pmcmc_results$inputs$model_params,
+                                 model_params = out$pmcmc_results$inputs$model_params,
                                  R0 = df$Rt)
 
 ## -----------------------------------------------------------------------------
@@ -425,38 +458,7 @@ writeLines(jsonlite::toJSON(df,pretty = TRUE), "input_params.json")
 
 
 ## -----------------------------------------------------------------------------
-## Step 3: Particle Filter
-## -----------------------------------------------------------------------------
-
-## -----------------------------------------------------------------------------  
-## Step 3a: Fit Stochastic Model
-## -----------------------------------------------------------------------------
-
-Sys.setenv("SQUIRE_PARALLEL_DEBUG" = "TRUE")
-
-out <- out_det
-out$pmcmc_results$inputs$squire_model <- explicit_model()
-out$pmcmc_results$inputs$model_params$dt <- 0.02
-pmcmc <- out$pmcmc_results
-out <- generate_draws_pmcmc(pmcmc = pmcmc,
-                            burnin = ceiling(n_mcmc/10),
-                            n_chains = n_chains,
-                            squire_model = out$pmcmc_results$inputs$squire_model,
-                            replicates = replicates,
-                            n_particles = n_particles,
-                            forecast = 0,
-                            country = country,
-                            population = squire::get_population(iso3c = iso3c)$n,
-                            interventions = out$interventions,
-                            data = out$pmcmc_results$inputs$data)
-
-# Add the prior
-out$pmcmc_results$inputs$prior <- as.function(c(formals(logprior), 
-                                                body(logprior)), 
-                                              envir = new.env(parent = environment(stats::acf)))
-
-## -----------------------------------------------------------------------------
-## Step 3d: Summarise Fits
+## Step 3: Summarise Fits
 ## -----------------------------------------------------------------------------
 
 ## summarise what we have

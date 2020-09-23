@@ -214,6 +214,146 @@ generate_draws_pmcmc <- function(pmcmc, burnin, n_chains, squire_model, replicat
   
 }
 
+generate_draws_pmcmc_fitted <- function(out, pmcmc, burnin, n_chains, squire_model, replicates, n_particles, forecast,
+                                        country, population, interventions, data) {
+  
+  
+  #--------------------------------------------------------
+  # Section 1 # what is our predicted gradient
+  #--------------------------------------------------------
+  
+  infections <- format_output(out, "infections", date_0 = max(data$date))
+  infections <- infections %>% filter(date > (max(data$date) - 30) & date < (max(data$date))) %>% 
+    group_by(date) %>% summarise(y = median(y))
+  pred_grad <- (tail(infections$y,1) - infections$y[1]) / infections$y[1]
+  des_grad <- (tail(data$cases, 30)[30] - tail(data$cases, 30)[1]) / tail(data$cases, 30)[1]
+  index <- squire:::odin_index(out$model)
+  
+  # do we need to go up or down
+  if(des_grad < pred_grad) {
+    alters <- seq(0, 0.4, 0.05)
+  } else {
+    alters <- seq(0, -0.4, -0.05)
+  }
+  
+  # store our grads
+  ans <- alters
+  last_rw <- ncol(pmcmc$chains$chain1$results) - 3
+  
+  
+  #--------------------------------------------------------
+  # Section 2 # # find best grad correction
+  #--------------------------------------------------------
+  
+  for(alt in seq_along(alters)) {
+    
+    for(ch in seq_along(pmcmc$chains)) {
+      pmcmc$chains[[ch]]$results[,last_rw] <- pmcmc$chains[[ch]]$results[,last_rw] + alters[alt]
+    }
+    
+    pmcmc_samples <- squire:::sample_pmcmc(pmcmc_results = pmcmc,
+                                           burnin = burnin,
+                                           n_chains = n_chains,
+                                           n_trajectories = replicates,
+                                           n_particles = n_particles,
+                                           forecast_days = forecast)
+    
+    
+    this_infs <- as.numeric(rowMeans(tail(matrix(unlist(lapply(seq_len(replicates), function(i) {
+      rowSums(pmcmc_samples$trajectories[,index$n_E2_I,i])
+    })), ncol = 100),30)))
+    
+    ans[alt] <- (this_infs[30] - this_infs[1]) / this_infs[1]
+    
+    
+    for(ch in seq_along(pmcmc$chains)) {
+      pmcmc$chains[[ch]]$results[,last_rw] <- pmcmc$chains[[ch]]$results[,last_rw] - alters[alt]
+    }
+    
+  }
+  
+  # adapt our whole last chain accordingly
+  alts <- which.min(ans-des_grad)
+  for(ch in seq_along(pmcmc$chains)) {
+    pmcmc$chains[[ch]]$results[,last_rw] <- pmcmc$chains[[ch]]$results[,last_rw] + alters[alts]
+  }
+  
+  out$pmcmc_results$inputs$squire_model <- explicit_model()
+  out$pmcmc_results$inputs$model_params$dt <- 0.02
+  pmcmc <- out$pmcmc_results
+  
+  
+  #--------------------------------------------------------
+  # Section 3 of pMCMC Wrapper: Sample PMCMC Results
+  #--------------------------------------------------------
+  pmcmc_samples <- squire:::sample_pmcmc(pmcmc_results = pmcmc,
+                                         burnin = burnin,
+                                         n_chains = n_chains,
+                                         n_trajectories = replicates,
+                                         n_particles = n_particles,
+                                         forecast_days = forecast)
+  
+  #--------------------------------------------------------
+  # Section 4 of pMCMC Wrapper: Tidy Output
+  #--------------------------------------------------------
+  
+  # create a fake run object and fill in the required elements
+  r <- squire_model$run_func(country = country,
+                             contact_matrix_set = pmcmc$inputs$model_params$contact_matrix_set,
+                             tt_contact_matrix = pmcmc$inputs$model_params$tt_matrix,
+                             hosp_bed_capacity = pmcmc$inputs$model_params$hosp_bed_capacity,
+                             tt_hosp_beds = pmcmc$inputs$model_params$tt_hosp_beds,
+                             ICU_bed_capacity = pmcmc$inputs$model_params$ICU_bed_capacity,
+                             tt_ICU_beds = pmcmc$inputs$model_params$tt_ICU_beds,
+                             population = population,
+                             replicates = 1,
+                             time_period = nrow(pmcmc_samples$trajectories))
+  
+  # first let's add our pmcmc results for a nice return
+  # we'll save our inputs so it is easy to recreate later
+  r$inputs <- pmcmc_samples$inputs
+  
+  # and add the parameters that changed between each simulation, i.e. posterior draws
+  r$replicate_parameters <- pmcmc_samples$sampled_PMCMC_Results
+  
+  # as well as adding the pmcmc chains so it's easy to draw from the chains again in the future
+  r$pmcmc_results <- pmcmc
+  
+  # then let's create the output that we are going to use
+  names(pmcmc_samples)[names(pmcmc_samples) == "trajectories"] <- "output"
+  dimnames(pmcmc_samples$output) <- list(dimnames(pmcmc_samples$output)[[1]], dimnames(r$output)[[2]], NULL)
+  r$output <- pmcmc_samples$output
+  
+  # and adjust the time as before
+  full_row <- match(0, apply(r$output[,"time",],2,function(x) { sum(is.na(x)) }))
+  saved_full <- r$output[,"time",full_row]
+  for(i in seq_len(replicates)) {
+    na_pos <- which(is.na(r$output[,"time",i]))
+    full_to_place <- saved_full - which(rownames(r$output) == as.Date(max(data$date))) + 1L
+    if(length(na_pos) > 0) {
+      full_to_place[na_pos] <- NA
+    }
+    r$output[,"time",i] <- full_to_place
+  }
+  
+  # second let's recreate the output
+  r$model <- pmcmc_samples$inputs$squire_model$odin_model(
+    user = pmcmc_samples$inputs$model_params, unused_user_action = "ignore"
+  )
+  
+  # we will add the interventions here so that we know what times are needed for projection
+  r$interventions <- interventions
+  
+  # and fix the replicates
+  r$parameters$replicates <- replicates
+  r$parameters$time_period <- as.numeric(diff(as.Date(range(rownames(r$output)))))
+  r$parameters$dt <- pmcmc$inputs$model_params$dt
+  
+  return(r)
+  
+}
+
+
 named_list <- function(...) {
   get <- as.character(match.call())
   l <- list(...)
