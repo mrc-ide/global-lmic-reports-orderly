@@ -119,7 +119,7 @@ if(short_run) {
 
 # can't figure out why it subthreads now...
 if (parallel) {
-  # options("future.rng.onMisuse" = "ignore")
+  options("future.rng.onMisuse" = "ignore")
   # suppressWarnings(future::plan(future::multisession()))
 }
 
