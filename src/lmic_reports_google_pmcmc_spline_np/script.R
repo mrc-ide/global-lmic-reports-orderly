@@ -322,6 +322,11 @@ if (iso3c == "BRA") {
   icu_beds <- icu_beds / 0.7
 } 
 
+# slight hack to force a reintroduction event
+if (iso3c %in% c("MMR", "TTO")) {
+  data$deaths[data$date == "2020-07-01"] <- 1
+}
+
 ## -----------------------------------------------------------------------------
 ## Step 2c: PMCMC run
 ## -----------------------------------------------------------------------------
@@ -359,7 +364,6 @@ out <- squire::pmcmc(data = data,
                          baseline_hosp_bed_capacity = hosp_beds, 
                          baseline_ICU_bed_capacity = icu_beds)
 
-
 Sys.setenv("SQUIRE_PARALLEL_DEBUG" = "TRUE")
 out <- generate_draws_pmcmc_fitted(out = out,
                                    pmcmc = out$pmcmc_results,
@@ -380,6 +384,11 @@ out <- generate_draws_pmcmc_fitted(out = out,
 out$pmcmc_results$inputs$prior <- as.function(c(formals(logprior), 
                                                 body(logprior)), 
                                               envir = new.env(parent = environment(stats::acf)))
+
+# slight hack to force a reintroduction event
+if (iso3c %in% c("MMR", "TTO")) {
+  data$deaths[data$date == "2020-07-01"] <- 0
+}
 
 ## -----------------------------------------------------------------------------
 ## Step 2d: Summarise Fits for Interface
