@@ -278,7 +278,7 @@ generate_draws_pmcmc_fitted <- function(out, pmcmc, burnin, n_chains, squire_mod
   }
   
   # set up now to do the stochastic draws
-  out$pmcmc_results$inputs$squire_model <- explicit_model()
+  out$pmcmc_results$inputs$squire_model <- squire:::explicit_model()
   out$pmcmc_results$inputs$model_params$dt <- 0.02
   pmcmc <- out$pmcmc_results
   
@@ -287,11 +287,7 @@ generate_draws_pmcmc_fitted <- function(out, pmcmc, burnin, n_chains, squire_mod
   for(ch in seq_along(pmcmc$chains)) {
     pmcmc$chains[[ch]]$results[,last_rw] <- pmcmc$chains[[ch]]$results[,last_rw] + alters[alts]
   }
-  
-  out$pmcmc_results$inputs$squire_model <- explicit_model()
-  out$pmcmc_results$inputs$model_params$dt <- 0.02
-  pmcmc <- out$pmcmc_results
-  
+
   
   #--------------------------------------------------------
   # Section 3 of pMCMC Wrapper: Sample PMCMC Results
