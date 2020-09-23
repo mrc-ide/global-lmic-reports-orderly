@@ -358,7 +358,7 @@ out <- squire::pmcmc(data = data,
 
 Sys.setenv("SQUIRE_PARALLEL_DEBUG" = "TRUE")
 
-out <- generate_draws_pmcmc_fitted(out = out, 
+out <- generate_draws_pmcmc(out = out, 
                                    pmcmc = out$pmcmc_results,
                                    burnin = ceiling(n_mcmc/10),
                                    n_chains = n_chains,
@@ -371,7 +371,6 @@ out <- generate_draws_pmcmc_fitted(out = out,
                                    interventions = out$interventions,
                                    data = out$pmcmc_results$inputs$data)
 
-Sys.setenv("SQUIRE_PARALLEL_DEBUG" = "FALSE")
 
 # Add the prior
 out$pmcmc_results$inputs$prior <- as.function(c(formals(logprior), 
