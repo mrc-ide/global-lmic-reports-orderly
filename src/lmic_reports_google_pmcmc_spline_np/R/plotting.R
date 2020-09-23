@@ -1223,6 +1223,10 @@ intervention_plot <- function(res, date) {
 
 intervention_plot_google <- function(res, date, data, forecast, start_date) {
   
+  if(nrow(res) == 0) {
+    res <- data.frame(date = data$date, C = 1, observed = FALSE)
+  }
+  
   date <- as.Date(date)
   
   ggplot(res[res$date <= date+forecast & res$date >= start_date,], 
