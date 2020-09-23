@@ -225,8 +225,13 @@ generate_draws_pmcmc_fitted <- function(out, pmcmc, burnin, n_chains, squire_mod
   infections <- format_output(out, "infections", date_0 = max(data$date))
   infections <- infections %>% filter(date > (max(data$date) - 30) & date < (max(data$date))) %>% 
     group_by(date) %>% summarise(y = median(y))
-  pred_grad <- (tail(infections$y,1) - infections$y[1]) / infections$y[1]
-  des_grad <- (tail(data$cases, 30)[30] - tail(data$cases, 30)[1]) / tail(data$cases, 30)[1]
+  
+  get_grad <- function(x) {
+    lm(y~x, data = data.frame(y = x, x = seq_along(x)))$coefficients[2]
+  }
+  
+  pred_grad <- get_grad(infections$y)
+  des_grad <- get_grad(tail(data$cases, 30))
   index <- squire:::odin_index(out$model)
   
   # do we need to go up or down
@@ -261,9 +266,9 @@ generate_draws_pmcmc_fitted <- function(out, pmcmc, burnin, n_chains, squire_mod
     
     this_infs <- as.numeric(rowMeans(tail(matrix(unlist(lapply(seq_len(replicates), function(i) {
       rowSums(pmcmc_samples$trajectories[,index$n_E2_I,i])
-    })), ncol = 100),30)))
+    })), ncol = replicates),30)))
     
-    ans[alt] <- (this_infs[30] - this_infs[1]) / this_infs[1]
+    ans[alt] <- get_grad(this_infs)
     
     
     for(ch in seq_along(pmcmc$chains)) {

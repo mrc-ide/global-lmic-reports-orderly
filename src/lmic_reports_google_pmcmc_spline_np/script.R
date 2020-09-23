@@ -357,7 +357,7 @@ out <- squire::pmcmc(data = data,
 
 
 out <- generate_draws_pmcmc_fitted(out = out, 
-                                   pmcmc = pmcmc,
+                                   pmcmc = out$pmcmc_results,
                                    burnin = ceiling(n_mcmc/10),
                                    n_chains = n_chains,
                                    squire_model = out$pmcmc_results$inputs$squire_model,
