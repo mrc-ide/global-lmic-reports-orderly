@@ -119,7 +119,7 @@ if(short_run) {
 
 if (parallel) {
   options("future.rng.onMisuse" = "ignore")
-  suppressWarnings(future::plan(future::multisession(seed = TRUE)))
+  suppressWarnings(future::plan(future::multisession()))
 }
 
 # Defualt edges
