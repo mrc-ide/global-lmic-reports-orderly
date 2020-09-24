@@ -239,15 +239,22 @@ generate_draws_pmcmc_fitted <- function(out, pmcmc, burnin, n_chains, squire_mod
   
   # do we need to go up or down
   if(des_grad <= pred_grad) {
-    alters <- seq(0, 0.4, 0.05)
+    alters <- seq(0, 0.2, 0.05)
   } else {
-    alters <- seq(0, -0.4, -0.05)
+    alters <- seq(0, -0.2, -0.05)
   }
   
   # store our grads
   ans <- alters
   last_rw <- ncol(out$pmcmc_results$chains$chain1$results) - 3
   
+  # for later
+  all_case_compartments <- unlist(
+    index[c("IMild", "ICase1", "ICase2", "IOxGetLive1", "IOxGetLive2",
+            "IOxGetDie1", "IOxGetDie2", "IOxNotGetLive1", "IOxNotGetLive2",
+            "IOxNotGetDie1", "IOxNotGetDie2", "IMVGetLive1", "IMVGetLive2",
+            "IMVGetDie1", "IMVGetDie2", "IMVNotGetLive1", "IMVNotGetLive2",
+            "IMVNotGetDie1", "IMVNotGetDie2", "IRec1", "IRec2", "R", "D")])
   
   #--------------------------------------------------------
   # Section 2 # # find best grad correction
@@ -266,6 +273,18 @@ generate_draws_pmcmc_fitted <- function(out, pmcmc, burnin, n_chains, squire_mod
                                            n_particles = n_particles,
                                            forecast_days = forecast)
     
+    nt <- nrow(pmcmc_samples$trajectories)
+    
+    # assign the infections
+    for(i in seq_along(out$parameters$population)) {
+      collect <- vapply(1:dim(pmcmc_samples$trajectories)[3], function(j) {
+        pos <- seq(i,length(all_case_compartments), by = length(out$parameters$population))
+        pos <- all_case_compartments[pos]
+        diff(rowSums(pmcmc_samples$trajectories[,pos,j]))
+      }, FUN.VALUE = numeric(nt-1))
+      pmcmc_samples$trajectories[1+seq_len(nt-1),index$n_E2_I[i],] <- collect
+    }
+    
     
     this_infs <- as.numeric(rowMeans(tail(matrix(unlist(lapply(seq_len(replicates), function(i) {
       rowSums(pmcmc_samples$trajectories[,index$n_E2_I,i])
@@ -282,7 +301,7 @@ generate_draws_pmcmc_fitted <- function(out, pmcmc, burnin, n_chains, squire_mod
   
   
   # adapt our whole last chain accordingly
-  alts <- which.min(ans-des_grad)
+  alts <- which.min(abs(ans-des_grad))
   for(ch in seq_along(out$pmcmc_results$chains)) {
     out$pmcmc_results$chains[[ch]]$results[,last_rw] <- out$pmcmc_results$chains[[ch]]$results[,last_rw] + alters[alts]
   }
