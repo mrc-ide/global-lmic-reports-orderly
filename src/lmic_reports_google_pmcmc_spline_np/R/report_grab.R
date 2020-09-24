@@ -239,9 +239,9 @@ generate_draws_pmcmc_fitted <- function(out, pmcmc, burnin, n_chains, squire_mod
   
   # do we need to go up or down
   if(des_grad <= pred_grad) {
-    alters <- seq(0, 0.2, 0.05)
+    alters <- seq(0, 0.4, 0.05)
   } else {
-    alters <- seq(0, -0.2, -0.05)
+    alters <- seq(0, -0.2, -0.05) # more conservative on increasing Rt
   }
   
   # store our grads
@@ -262,11 +262,11 @@ generate_draws_pmcmc_fitted <- function(out, pmcmc, burnin, n_chains, squire_mod
   
   for(alt in seq_along(alters)) {
     
-    for(ch in seq_along(pmcmc$chains)) {
-      pmcmc$chains[[ch]]$results[,last_rw] <- pmcmc$chains[[ch]]$results[,last_rw] + alters[alt]
+    for(ch in seq_along(out$pmcmc_results$chains)) {
+      out$pmcmc_results$chains[[ch]]$results[,last_rw] <- out$pmcmc_results$chains[[ch]]$results[,last_rw] + alters[alt]
     }
     
-    pmcmc_samples <- squire:::sample_pmcmc(pmcmc_results = pmcmc,
+    pmcmc_samples <- squire:::sample_pmcmc(pmcmc_results = out$pmcmc_results,
                                            burnin = burnin,
                                            n_chains = n_chains,
                                            n_trajectories = replicates,
@@ -293,8 +293,8 @@ generate_draws_pmcmc_fitted <- function(out, pmcmc, burnin, n_chains, squire_mod
     ans[alt] <- get_grad(this_infs)
     
     
-    for(ch in seq_along(pmcmc$chains)) {
-      pmcmc$chains[[ch]]$results[,last_rw] <- pmcmc$chains[[ch]]$results[,last_rw] - alters[alt]
+    for(ch in seq_along(out$pmcmc_results$chains)) {
+      out$pmcmc_results$chains[[ch]]$results[,last_rw] <- out$pmcmc_results$chains[[ch]]$results[,last_rw] - alters[alt]
     }
     
   }
