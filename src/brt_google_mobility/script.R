@@ -86,27 +86,26 @@ acap <- readxl::read_excel(acap_tf, progress = FALSE, sheet = "Database")
 acap <- readxl::read_excel(acap_tf, progress = FALSE, sheet = "Dataset")
 }
 
+# rename starting _
+names(acap) <- gsub("^_","",names(acap))
+
 ## -----------------------------------------------------------------------------
 ## Missing ACAPs Data to be sourced from Oxford and other sources
 ## -----------------------------------------------------------------------------
 
 # Extra:
 acap_extra <- readxl::read_excel("acaps_missing.xlsx", progress = FALSE)
-acap <- rbind(acap, acap_extra)
+acap <- rbind(acap, acap_extra[,match(names(acap_extra),names(acap))])
 
 # country name fixes. We want to use the ISO3C eventually but there are typos...
 acap$ISO <- countrycode::countrycode(acap$COUNTRY, "country.name", "iso3c",
-                                     custom_match = c("Eswatini"="SWZ", "Micronesia"="FSM"))
+                                     custom_match = c("Eswatini"="SWZ", "Micronesia"="FSM","CAR"="CAR"))
 
 ## -----------------------------------------------------------------------------
 ## Step 1: Data Loading
 ## -----------------------------------------------------------------------------
 
-# rename starting _
-if ("_ISO" %in% names(acap)) {
-  acap <- acap[,-which(names(acap)=="_ISO")]
-}
-names(acap) <- gsub("^_","",names(acap))
+
 
 ACAPs_measure <- acap %>%
   rename(country = COUNTRY, measure = MEASURE, type = LOG_TYPE, date = DATE_IMPLEMENTED) %>%
