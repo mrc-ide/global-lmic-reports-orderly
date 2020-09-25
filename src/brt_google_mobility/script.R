@@ -79,7 +79,12 @@ acap_tf <- download_url(url)
 
 # HTPPS ISSUE - TEMPORARY FIX TO MANUALLY PLACE acaps download into directory
 #acap_tf <- "acaps.xlsx"
+sheets <- readxl::excel_sheets(acap_tf)
+if("Database" %in% sheets) {
 acap <- readxl::read_excel(acap_tf, progress = FALSE, sheet = "Database")
+} else if("Dataset" %in% sheets) {
+acap <- readxl::read_excel(acap_tf, progress = FALSE, sheet = "Dataset")
+}
 
 ## -----------------------------------------------------------------------------
 ## Missing ACAPs Data to be sourced from Oxford and other sources
@@ -96,6 +101,9 @@ acap$ISO <- countrycode::countrycode(acap$COUNTRY, "country.name", "iso3c",
 ## -----------------------------------------------------------------------------
 ## Step 1: Data Loading
 ## -----------------------------------------------------------------------------
+
+# rename starting _
+names(acap) <- gsub("^_","",names(acap))
 
 ACAPs_measure <- acap %>%
   rename(country = COUNTRY, measure = MEASURE, type = LOG_TYPE, date = DATE_IMPLEMENTED) %>%
