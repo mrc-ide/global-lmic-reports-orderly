@@ -103,6 +103,9 @@ acap$ISO <- countrycode::countrycode(acap$COUNTRY, "country.name", "iso3c",
 ## -----------------------------------------------------------------------------
 
 # rename starting _
+if ("_ISO" %in% names(acap)) {
+  acap <- acap[,-which(names(acap)=="_ISO")]
+}
 names(acap) <- gsub("^_","",names(acap))
 
 ACAPs_measure <- acap %>%
