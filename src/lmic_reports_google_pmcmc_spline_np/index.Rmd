@@ -404,6 +404,10 @@ if (iso3c == "BRA") {
   other_sources <- paste("**For sub-national estimates of $R_t$, and further analysis of",
                          "Brazil, please see ",
                          "[Report 21](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-21-brazil/)**")
+} else if (iso3c == "SYR") {
+  other_sources <- paste("**We are aware of under-reporting of deaths in Damascus, Syria. This is not represented in this",
+                         "report, but please see ",
+                         "[Report 31](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-31-syria/)**")
 } else {
   other_sources <- ""
 }
