@@ -23,7 +23,7 @@ full_scenarios <- as.logical(full_scenarios)
 ## Get the ECDC data or alternative from worldometers if ECDC is too erratic
 ecdc <- readRDS("ecdc_all.rds")
 # ecdc <- readRDS("jhu_all.rds")
-if (iso3c %in% c("BOL", "ITA", "FRA", "ECU", "CHL", "COD", "ESP", "IRN", "JPN", "KGZ", "PER")) {
+if (iso3c %in% c("BOL", "ITA", "FRA", "ECU", "CHL", "COD", "ESP", "IRN", "JPN", "KGZ", "PER", "ARG")) {
   ecdc <- readRDS("worldometers_all.rds")
 }
 
@@ -325,7 +325,9 @@ if (iso3c == "BRA") {
 
 # slight hack to force a reintroduction event
 if (iso3c %in% c("MMR", "TTO")) {
-  data$deaths[data$date %in% c("2020-05-14","2020-06-14","2020-07-14","2020-08-14")] <- 1
+  mmr_dates <- c("2020-05-14","2020-06-14","2020-07-14","2020-08-14",
+                 "2020-05-21","2020-06-21","2020-07-21","2020-08-07")
+  data$deaths[data$date %in% mmr_dates] <- 1
 }
 
 ## -----------------------------------------------------------------------------
@@ -388,8 +390,8 @@ out$pmcmc_results$inputs$prior <- as.function(c(formals(logprior),
 
 # slight hack to force a reintroduction event
 if (iso3c %in% c("MMR", "TTO")) {
-  data$deaths[data$date %in% c("2020-05-14","2020-06-14","2020-07-14","2020-08-14")] <- 0
-  out$pmcmc_results$inputs$data$deaths[out$pmcmc_results$inputs$data$date %in% c("2020-05-14","2020-06-14","2020-07-14","2020-08-14")] <- 0
+  data$deaths[data$date %in% mmr_dates] <- 0
+  out$pmcmc_results$inputs$data$deaths[out$pmcmc_results$inputs$data$date %in% mmr_dates] <- 0
 }
 
 ## -----------------------------------------------------------------------------
