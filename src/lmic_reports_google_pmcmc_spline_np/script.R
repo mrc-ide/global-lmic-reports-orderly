@@ -23,7 +23,7 @@ full_scenarios <- as.logical(full_scenarios)
 ## Get the ECDC data or alternative from worldometers if ECDC is too erratic
 ecdc <- readRDS("ecdc_all.rds")
 # ecdc <- readRDS("jhu_all.rds")
-if (iso3c %in% c("BOL", "ITA", "FRA", "ECU", "CHL", "COD", "ESP", "IRN", "JPN", "KGZ", "PER", "ARG")) {
+if (iso3c %in% c("BOL", "ITA", "FRA", "ECU", "CHL", "COD", "ESP", "IRN", "JPN", "KGZ", "PER")) {
   ecdc <- readRDS("worldometers_all.rds")
 }
 
@@ -324,8 +324,8 @@ if (iso3c == "BRA") {
 } 
 
 # slight hack to force a reintroduction event
-if (iso3c %in% c("MMR", "TTO")) {
-  mmr_dates <- seq.Date(as.Date("2020-05-01"), as.Date("2020-07-31"), 5)
+if (iso3c %in% c("MMR", "TTO", "BHS")) {
+  mmr_dates <- seq.Date(as.Date("2020-05-08"), as.Date("2020-07-24"), 7)
   old_deaths <- data$deaths[data$date %in% mmr_dates]
   data$deaths[data$date %in% mmr_dates] <- 1
 }
@@ -389,7 +389,7 @@ out$pmcmc_results$inputs$prior <- as.function(c(formals(logprior),
                                               envir = new.env(parent = environment(stats::acf)))
 
 # slight hack to force a reintroduction event
-if (iso3c %in% c("MMR", "TTO")) {
+if (iso3c %in% c("MMR", "TTO", "BHS")) {
   data$deaths[data$date %in% mmr_dates] <- old_deaths
   out$pmcmc_results$inputs$data$deaths[out$pmcmc_results$inputs$data$date %in% mmr_dates] <- old_deaths
 }
@@ -705,6 +705,15 @@ reverse_3_months_lift_surged <- squire::projections(out_surged,
 
 if (full_scenarios) {
   
+  r_list <-
+    named_list(
+      maintain_3months_lift,
+      mitigation_3months_lift,
+      reverse_3_months_lift,
+      maintain_3months_lift_surged,
+      mitigation_3months_lift_surged,
+      reverse_3_months_lift_surged
+    )
   
 } else {
   
