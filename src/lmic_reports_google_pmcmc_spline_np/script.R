@@ -41,6 +41,8 @@ if(sum(ecdc_df$deaths) > 0) {
     } else {
       deaths_removed <- 0
     }
+  } else {
+    deaths_removed <- 0
   }
 
   # get the raw data correct
