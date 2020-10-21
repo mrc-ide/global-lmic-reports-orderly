@@ -61,12 +61,13 @@ init_state <- function(deaths_removed, iso3c, seeding_cases = 5) {
   ifrs <- data.frame("income" = c("Low income", "Lower middle income", "Upper middle income", "High income"),
                      "ifr" = c(0.17, 0.31, 0.51, 1.02))
   ifr <- ifrs$ifr[ifrs$income == income]
-  R <- rpois(1, deaths_removed*1/ifr/0.01) - deaths_removed
+  R <- rpois(1, deaths_removed*1/ifr/0.01)
   R <- as.numeric(t(rmultinom(1, R, rep(1/length(probs), length(probs)))))
+  R <- R - deaths
   
   # and update the inital to reflect
   init$D <- deaths
-  init$S <- init$S - R
+  init$S <- init$S - R - deaths
   init$R <- R
   
   }
