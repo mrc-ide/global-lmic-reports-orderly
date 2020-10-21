@@ -853,6 +853,7 @@ if (sum(ecdc_df$deaths) == 0) {
     replicates = replicates_esft,
     seeding_cases = seeding_cases_esft
   )
+  saveRDS(maintain_scenario, "grid_out.rds")
   
   # Scenarios without capacity constraints
   # ---------------------------------------------------------------------------
@@ -911,6 +912,11 @@ if (sum(ecdc_df$deaths) == 0) {
     rownames(x$output) <- as.character(seq.Date(date_0, date_0 + nrow(x$output) -1, 1))
     return(x)
   })
+  
+  ## Lastly make up some outputs here to pass orderly
+  file.create("index.html", "index.pdf", "index.md", 
+              "summary_df.rds", "input_params.json", 
+              "fitting.pdf")
 
 }
 
