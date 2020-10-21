@@ -314,8 +314,8 @@ if(sum(ecdc_df$deaths) > 0) {
   pars_discrete <- append(pars_discrete, pars_discrete_rw)
   
   # Covriance Matrix
-  proposal_kernel <- diag(length(names(pars_init))) * 0.3
-  rownames(proposal_kernel) <- colnames(proposal_kernel) <- names(pars_init)
+  proposal_kernel <- diag(length(names(pars_init[[1]]))) * 0.3
+  rownames(proposal_kernel) <- colnames(proposal_kernel) <- names(pars_init[[1]])
   proposal_kernel["start_date", "start_date"] <- 1.5
   
   # MCMC Functions - Prior and Likelihood Calculation
@@ -393,7 +393,8 @@ if(sum(ecdc_df$deaths) > 0) {
                        required_acceptance_ratio = 0.20,
                        start_adaptation = start_adaptation,
                        baseline_hosp_bed_capacity = hosp_beds, 
-                       baseline_ICU_bed_capacity = icu_beds)
+                       baseline_ICU_bed_capacity = icu_beds,
+                       init = init_state(deaths_removed, iso3c))
   
   Sys.setenv("SQUIRE_PARALLEL_DEBUG" = "TRUE")
   out <- generate_draws_pmcmc_fitted(out = out,

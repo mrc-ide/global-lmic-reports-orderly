@@ -39,3 +39,37 @@ income_R0 <- function() {
   return(R0s_income)
 
 }
+
+init_state <- function(deaths_removed, iso3c, seeding_cases = 5) {
+  
+  # get an initial
+  pop <- squire::get_population(iso3c = iso3c, simple_SEIR = FALSE)
+  init <- squire:::init_check_explicit(NULL, pop$n, seeding_cases = seeding_cases)
+  
+  if(deaths_removed > 0) {
+    
+  # work out how many deaths and where
+  probs <- (squire:::probs$prob_hosp * squire:::probs$prob_severe * squire:::probs$prob_severe_death_treatment) +
+    (squire:::probs$prob_hosp * (1-squire:::probs$prob_severe * squire:::probs$prob_non_severe_death_treatment))
+  probs <- probs*pop$n
+  probs <- probs/sum(probs)
+  deaths <- as.numeric(t(rmultinom(1, deaths_removed, probs)))
+  
+  # approximate IFR for income group
+  wb_metadata <- read.csv("World_Bank_Country_Metadata.csv", fileEncoding="UTF-8-BOM", stringsAsFactors = TRUE)
+  income <- wb_metadata$income_group[match(iso3c, wb_metadata$country_code)]
+  ifrs <- data.frame("income" = c("Low income", "Lower middle income", "Upper middle income", "High income"),
+                     "ifr" = c(0.17, 0.31, 0.51, 1.02))
+  ifr <- ifrs$ifr[ifrs$income == income]
+  R <- rpois(1, deaths_removed*1/ifr/0.01) - deaths_removed
+  R <- as.numeric(t(rmultinom(1, R, rep(1/length(probs), length(probs)))))
+  
+  # and update the inital to reflect
+  init$D <- deaths
+  init$S <- init$S - R
+  init$R <- R
+  
+  }
+  
+  return(init)
+}
