@@ -157,7 +157,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
 
   }
   
-  names(pars)[unlist(lapply(lapply(l,is.null), isFALSE))] <- reports$country[[unlist(lapply(lapply(l,is.null), isFALSE))]]
+  names(pars)[unlist(lapply(lapply(pars,is.null), isFALSE))] <- reports$country[[unlist(lapply(lapply(pars,is.null), isFALSE))]]
   #names(pars) <- reports$country
   
   saveRDS(pars, "src/lmic_reports_google_pmcmc_spline_np/pars_init.rds")
