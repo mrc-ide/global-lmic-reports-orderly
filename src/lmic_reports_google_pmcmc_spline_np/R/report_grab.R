@@ -400,7 +400,7 @@ rt_creation <- function(out, date_0, max_date) {
     wh <- "simple"
   }
   
-  if (wh == "simple") {
+  if (wh != "simple") {
   
   date <- max(as.Date(out$pmcmc_results$inputs$data$date))
   date_0 <- date
