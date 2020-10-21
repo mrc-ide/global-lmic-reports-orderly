@@ -913,7 +913,7 @@ if (sum(ecdc_df$deaths) == 0) {
     )
   
   # And adjust their time variable so that we have t = 0 as today
-  r_list <- lapply(r_list, function(x) {
+  r_list_pass <- lapply(r_list, function(x) {
     for(i in seq_len(dim(x$output)[3])) {
       x$output[,"time",i] <- x$output[,"time",i] - 1
     }
