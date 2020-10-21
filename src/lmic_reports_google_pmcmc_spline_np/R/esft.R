@@ -19,7 +19,8 @@ income_Rt <- function(date_0) {
   dat <- dat[dat$compartment == "Rt" & dat$scenario == "Maintain Status Quo",]
   wb_metadata <- read.csv("World_Bank_Country_Metadata.csv", fileEncoding="UTF-8-BOM", stringsAsFactors = TRUE)
   dat$income <- wb_metadata$income_group[match(dat$iso3c, wb_metadata$country_code)]
-  income_rt <- group_by(dat %>% filter(date == date_0), income) %>% summarise(Rt = mean(y_mean))
+  filt_date <- min(date_0, max(dat$date))
+  income_rt <- group_by(dat %>% filter(date == filt_date), income) %>% summarise(Rt = mean(y_mean))
   return(income_rt)
 }
 

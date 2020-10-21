@@ -864,7 +864,7 @@ if (sum(ecdc_df$deaths) == 0) {
   
   # Scenarios without capacity constraints
   # ---------------------------------------------------------------------------
-  reverse_scenario <- squire::run_explicit_SEEIR_model(
+  reverse_scenario_surged <- squire::run_explicit_SEEIR_model(
     country = country, 
     R0 = R0, 
     dt = 0.025, 
@@ -876,7 +876,7 @@ if (sum(ecdc_df$deaths) == 0) {
     ICU_bed_capacity = 1e10
   )
   
-  mitigation_scenario <- squire::run_explicit_SEEIR_model(
+  mitigation_scenario_surged <- squire::run_explicit_SEEIR_model(
     country = country, 
     R0 = Rt, 
     dt = 0.025, 
