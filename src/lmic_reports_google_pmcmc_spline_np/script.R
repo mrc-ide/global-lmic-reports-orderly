@@ -234,8 +234,8 @@ if(sum(ecdc_df$deaths) > 0) {
     date_Meff_change <- as.Date("2020-06-01")
   }
   
-  R0_start <- min(max(R0_start, R0_min), R0_max)
-  date_start <- min(max(as.Date(date_start), as.Date(first_start_date)), as.Date(last_start_date))
+  R0_start <- min(max(R0_start, R0_min*1.02), R0_max*0.98)
+  date_start <- min(max(as.Date(date_start), as.Date(first_start_date)+1), as.Date(last_start_date)-1)
   Meff_start <- min(max(Meff_start, Meff_min), Meff_max)
   Meff_pl_start <- min(max(Meff_pl_start, Meff_pl_min), Meff_pl_max)
   Rt_shift_start <- min(max(Rt_shift_start, Rt_shift_min), Rt_shift_max)
@@ -272,12 +272,25 @@ if(sum(ecdc_df$deaths) > 0) {
   ## -----------------------------------------------------------------------------
   
   # PMCMC Parameters
-  pars_init = list('start_date' = date_start, 
-                   'R0' = R0_start, 
-                   'Meff' = Meff_start, 
-                   'Meff_pl' = Meff_pl_start,
-                   "Rt_shift" = 0,
-                   "Rt_shift_scale" = Rt_shift_scale_start)
+  pars_init <- list(
+    list('start_date' = date_start-1, 
+         'R0' = R0_start*0.99, 
+         'Meff' = Meff_start, 
+         'Meff_pl' = Meff_pl_start,
+         "Rt_shift" = 0,
+         "Rt_shift_scale" = Rt_shift_scale_start),
+    list('start_date' = date_start, 
+         'R0' = R0_start, 
+         'Meff' = Meff_start, 
+         'Meff_pl' = Meff_pl_start,
+         "Rt_shift" = 0,
+         "Rt_shift_scale" = Rt_shift_scale_start),
+    list('start_date' = date_start+1, 
+         'R0' = R0_start*1.02, 
+         'Meff' = Meff_start, 
+         'Meff_pl' = Meff_pl_start,
+         "Rt_shift" = 0,
+         "Rt_shift_scale" = Rt_shift_scale_start))
   pars_min = list('start_date' = first_start_date, 
                   'R0' = R0_min, 
                   'Meff' = Meff_min, 
