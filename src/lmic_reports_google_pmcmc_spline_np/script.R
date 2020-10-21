@@ -797,15 +797,6 @@ if(sum(ecdc_df$deaths) > 0) {
                     output_options = list(pandoc_args = c(paste0("--metadata=title:",country," COVID-19 report "))))
   
   
-  # get active infections, prevalence
-  active_infections <- lapply(r_list_pass, function(x) {
-    afs <- squire::format_output(x, var_select = c("S","R","D"), date_0 = date_0) %>% 
-      pivot_wider(names_from = compartment, values_from = y) %>% 
-      mutate(y = sum(x$parameters$population)-D-R-S,
-             compartment = "prevalence") %>% 
-      select(replicate, compartment, t, y, date)
-  })
-  
 }
 
 ## THIS IS THE ESFT LOOP FOR COUNTRIES WITH NO DEATHS CURRENTLY
@@ -920,7 +911,7 @@ if (sum(ecdc_df$deaths) == 0) {
     rownames(x$output) <- as.character(seq.Date(date_0, date_0 + nrow(x$output) -1, 1))
     return(x)
   })
-  
+
 }
 
 # major summaries
@@ -930,6 +921,14 @@ o_list <- lapply(r_list_pass, squire::format_output,
                  date_0 = date_0)
 
 # group them together
+active_infections <- lapply(r_list_pass, function(x) {
+  afs <- squire::format_output(x, var_select = c("S","R","D"), date_0 = date_0) %>% 
+    pivot_wider(names_from = compartment, values_from = y) %>% 
+    mutate(y = sum(x$parameters$population)-D-R-S,
+           compartment = "prevalence") %>% 
+    select(replicate, compartment, t, y, date)
+})
+
 for(i in seq_along(o_list)) {
   o_list[[i]] <- rbind(o_list[[i]], active_infections[[i]])
 }
