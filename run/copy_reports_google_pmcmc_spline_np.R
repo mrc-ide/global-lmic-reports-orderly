@@ -178,7 +178,6 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   src <- file.path("archive", "lmic_reports_google_pmcmc_spline_np", reports$id)
   dest <- sprintf("gh-pages/%s/%s", reports$country, reports$date)
   copy <- c("index.html",
-            "index_files/figure-html",
             "projections.csv",
             "index.pdf",
             "input_params.json")
