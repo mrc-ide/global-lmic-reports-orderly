@@ -140,6 +140,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   for(x in seq_along(reports$id)) {
     
     out <- readRDS(file.path("archive/lmic_reports_google_pmcmc_spline_np",reports$id[x],"grid_out.rds"))
+    if("pmcmc_results" %in% names(out)) {
     mc <- do.call(rbind, lapply(out$pmcmc_results$chains, "[[", "results"))
     best <- mc[which.max(mc$log_posterior),]  
     best <- best[,seq_len(ncol(best)-3)]
@@ -152,9 +153,12 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
     
     # for now combine here
     pars[[x]] <- best
+    }
 
   }
-  names(pars) <- reports$country
+  
+  names(pars)[unlist(lapply(lapply(l,is.null), isFALSE))] <- reports$country[[unlist(lapply(lapply(l,is.null), isFALSE))]]
+  #names(pars) <- reports$country
   
   saveRDS(pars, "src/lmic_reports_google_pmcmc_spline_np/pars_init.rds")
   
