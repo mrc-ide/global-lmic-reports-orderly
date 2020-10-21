@@ -16,6 +16,7 @@ if(packageVersion("squire") < version_min) {
 system(paste0("echo LMIC Reports Google Mobility for  ",iso3c, ". Short Run = ", short_run, ". Parallel = ", parallel))
 set.seed(123)
 date <- as.Date(date)
+date_0 <- date
 short_run <- as.logical(short_run)
 parallel <- as.logical(parallel)
 full_scenarios <- as.logical(full_scenarios)
