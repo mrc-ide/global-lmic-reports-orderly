@@ -117,7 +117,7 @@ if(sum(ecdc_df$deaths) > 0) {
   if(short_run) {
     n_particles <- 2
     replicates <- 2
-    n_mcmc <- 250
+    n_mcmc <- 100
     n_chains <- 3
     grid_spread <- 2
     sleep <- 2
@@ -472,7 +472,7 @@ if(sum(ecdc_df$deaths) > 0) {
   
   
   df <- data.frame(tt_beta = tt_beta$tt, beta_set = beta_set, 
-                   date = start_date + tt_beta$tt, Rt = R0, 
+                   date = start_date + tt_beta$tt,
                    grey_bar_start = FALSE)
   
   
@@ -480,11 +480,12 @@ if(sum(ecdc_df$deaths) > 0) {
   
   # add in uncertainty
   rts <- rt_plot_immunity(out)
-  rt_df <- rts$rts[which(rts$rts$date %in% df$date),]
   
-  df$Rt_min <- rt_df$Rt_min
-  df$Rt_max <- rt_df$Rt_max
-  df$Rt <- rt_df$Rt_median
+  # bind these in
+  df <- dplyr::left_join(df, rts$rts[, c("date", "Rt", "Rt_min", "Rt_max")], by = "date")
+  df <- fill(df, all_of(c("Rt", "Rt_min", "Rt_max")), .direction = c("down"))
+  df <- fill(df, all_of(c("Rt", "Rt_min", "Rt_max")), .direction = c("up"))
+  
   
   df$beta_set_min <- squire:::beta_est(squire_model = squire_model,
                                        model_params = out$pmcmc_results$inputs$model_params,

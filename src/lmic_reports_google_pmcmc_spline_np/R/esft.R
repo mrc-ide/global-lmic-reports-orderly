@@ -10,7 +10,7 @@ income_Rt <- function(date_0) {
   
   # download and read in data file
   tf <- tempfile()
-  download.file(d_link, tf)  
+  suppressMessages(download.file(d_link, tf, quiet = TRUE))
   tf2 <- tempfile()
   extract <- unzip(tf, exdir = tf2)
   dat <- as.data.frame(data.table::fread(extract))
