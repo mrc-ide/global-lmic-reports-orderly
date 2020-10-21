@@ -153,12 +153,14 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
     
     # for now combine here
     pars[[x]] <- best
+    } else {
+      pars[[x]] <- NULL
     }
 
   }
   
-  names(pars)[unlist(lapply(lapply(pars,is.null), isFALSE))] <- reports$country[[unlist(lapply(lapply(pars,is.null), isFALSE))]]
-  #names(pars) <- reports$country
+  #names(pars)[unlist(lapply(lapply(pars,is.null), isFALSE))] <- reports$country[[unlist(lapply(lapply(pars,is.null), isFALSE))]]
+  names(pars) <- reports$country
   
   saveRDS(pars, "src/lmic_reports_google_pmcmc_spline_np/pars_init.rds")
   
