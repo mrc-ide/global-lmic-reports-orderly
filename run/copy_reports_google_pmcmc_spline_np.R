@@ -153,13 +153,6 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
     # for now combine here
     pars[[x]] <- best
 
-       #  
-   # if(reports$country[x] %in% pars_init$iso3c) {
-   #   pars_init[which(pars_init$iso3c == reports$country[x]),] <- best
-   # } else {
-   #   pars_init <- rbind(pars_init, best)
-   # }
-    
   }
   names(pars) <- reports$country
   
