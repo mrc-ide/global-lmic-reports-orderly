@@ -104,7 +104,6 @@ if(sum(ecdc_df$deaths) > 0) {
 
   R0_change <- R0_change[as.Date(date_R0_change) <= date]
   date_R0_change <- date_R0_change[as.Date(date_R0_change) <= date]
-
   date_contact_matrix_set_change <- NULL
 
   squire_model <- squire::explicit_model()
@@ -135,7 +134,7 @@ if(sum(ecdc_df$deaths) > 0) {
   # can't figure out why it subthreads now...
   if (parallel) {
     options("future.rng.onMisuse" = "ignore")
-    # suppressWarnings(future::plan(future::multisession()))
+    suppressWarnings(future::plan(future::multisession()))
   }
 
   # Defualt edges
@@ -254,17 +253,22 @@ if(sum(ecdc_df$deaths) > 0) {
 
   # how many spline pars do we need
   rw_needed <- as.numeric(round(remaining_days/Rt_rw_duration))
-
+  
   # set up rw pars
   if (is.null(pars_former)) {
     pars_init_rw <- as.list(rep(0, rw_needed))
   } else {
     pars_init_rw <- as.list(pars_former[grep("Rt_rw_\\d",names(pars_former))])
     if(length(pars_init_rw) < rw_needed) {
-      pars_init_rw[[rw_needed]] <- 0
+      lapply(pars_init_rw, function(x) {
+        if(is.null(x)){ 
+          return(0) 
+        } else { 
+          return(x) 
+        }})
     }
   }
-
+  
   pars_min_rw <- as.list(rep(-5, rw_needed))
   pars_max_rw <- as.list(rep(5, rw_needed))
   pars_discrete_rw <- as.list(rep(FALSE, rw_needed))
@@ -816,7 +820,7 @@ if (sum(ecdc_df$deaths) == 0) {
   
   # And the upper and lower Rs for our scenarios
   R0 <- inc_R0s$R0[inc_R0s$income == income]
-  Rt <- inc_Rts$Rt[inc_Rts$income == income]
+  Rt <- max(inc_Rts$Rt[inc_Rts$income == income], 1.2)
   
   # sim_args 
   time_period_esft <- 366
