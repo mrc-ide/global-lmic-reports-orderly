@@ -24,7 +24,7 @@ full_scenarios <- as.logical(full_scenarios)
 ## Get the ECDC data or alternative from worldometers if ECDC is too erratic
 ecdc <- readRDS("ecdc_all.rds")
 # ecdc <- readRDS("jhu_all.rds")
-if (iso3c %in% c("BOL", "ITA", "FRA", "ECU", "CHL", "COD", "ESP", "IRN", "JPN", "KGZ", "PER", "MEX")) {
+if (iso3c %in% c("BOL", "ITA", "FRA", "ECU", "CHL", "COD", "ESP", "IRN", "JPN", "KGZ", "PER", "MEX", "HKG")) {
   ecdc <- readRDS("worldometers_all.rds")
 }
 
@@ -53,7 +53,7 @@ if(sum(ecdc_df$deaths) > 0) {
   data$date <- as.Date(data$date)
 
   # Handle for countries that have eliminated and had reintroduction events
-  if (iso3c %in% c("MMR", "TTO", "BHS")) {
+  if (iso3c %in% c("MMR", "BLZ", "TTO", "BHS")) {
     deaths_removed <- deaths_removed + sum(data$deaths[data$date < as.Date("2020-06-01")])
     data$deaths[data$date < as.Date("2020-06-01")] <- 0
   }
@@ -1003,6 +1003,11 @@ data_sum <- do.call(rbind, data_sum)
 rt_sum <- do.call(rbind, rt_sum)
 data_sum <- rbind(data_sum, rt_sum) %>% arrange(date, scenario)
 rownames(data_sum) <- NULL
+
+# catch for hong kong country name
+if(iso3c == "HKG") {
+  country <- "Hong Kong"
+}
 
 data_sum$country <- country
 data_sum$iso3c <- iso3c
