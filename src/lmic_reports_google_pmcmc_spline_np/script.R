@@ -134,7 +134,7 @@ if(sum(ecdc_df$deaths) > 0) {
   # can't figure out why it subthreads now...
   if (parallel) {
     options("future.rng.onMisuse" = "ignore")
-    suppressWarnings(future::plan(future::multisession()))
+    # suppressWarnings(future::plan(future::multisession()))
   }
 
   # Defualt edges
