@@ -394,21 +394,33 @@ rt_creation <- function(out, date_0, max_date) {
   
   if("pmcmc_results" %in% names(out)) {
     wh <- "pmcmc_results"
-  } else {
+  } else if("scan_results" %in% names(out)) {
     wh <- "scan_results"
+  } else {
+    wh <- "simple"
   }
+  
+  if (wh != "simple") {
   
   date <- max(as.Date(out$pmcmc_results$inputs$data$date))
   date_0 <- date
   
   # impact of immunity ratios
-  ratios <- get_immunity_ratios(out)
+  ratios <- get_immunity_ratios(out, max_date)
   
   # create the Rt data frame
   rts <- lapply(seq_len(length(out$replicate_parameters$R0)), function(y) {
     
-    tt <- squire:::intervention_dates_for_odin(dates = out$interventions$date_R0_change, 
-                                               change = out$interventions$R0_change, 
+    dates <- c(out$interventions$date_R0_change, 
+               seq.Date(as.Date(tail(out$interventions$date_R0_change,1)) + 1,
+                        as.Date(max_date),
+                        1))
+    
+    change <- c(out$interventions$R0_change, 
+                rep(tail(out$interventions$R0_change,1), length(dates)-length(out$interventions$R0_change)))
+    
+    tt <- squire:::intervention_dates_for_odin(dates = dates, 
+                                               change = change, 
                                                start_date = out$replicate_parameters$start_date[y],
                                                steps_per_day = 1/out$parameters$dt)
     
@@ -458,7 +470,6 @@ rt_creation <- function(out, date_0, max_date) {
                      y_mean = mean(Rt),
                      y_75 = quantile(Rt, 0.75),
                      y_975 = quantile(Rt, 0.975)) 
-  sum_rt <- head(sum_rt,-1)
   
   sum_reff <- dplyr::group_by(new_rt_all, date) %>% 
     dplyr::summarise(compartment = "Reff",
@@ -468,9 +479,143 @@ rt_creation <- function(out, date_0, max_date) {
                      y_mean = mean(Reff),
                      y_75 = quantile(Reff, 0.75),
                      y_975 = quantile(Reff, 0.975)) 
-  sum_reff <- head(sum_reff,-1)
+  
+  ret <- rbind(sum_rt, sum_reff)
+  
+  } else {
+    ret <- rt_creation_simple_out(out, date_0, max_date)
+  }
+  
+  return(ret)
+}
+
+rt_creation_simple_out <- function(out, date_0, max_date) {
+  
+  iso3c <- squire::get_population(out$parameters$country)$iso3c[1]
+  
+  get_immunity_ratios_simple <- function(out, max_date) {
+    
+    mixing_matrix <- squire:::process_contact_matrix_scaled_age(
+      out$parameters$contact_matrix_set[[1]],
+      out$parameters$population
+    )
+    
+    dur_ICase <- out$parameters$dur_ICase
+    dur_IMild <- out$parameters$dur_IMild
+    prob_hosp <- out$parameters$prob_hosp
+    
+    # assertions
+    squire:::assert_single_pos(dur_ICase, zero_allowed = FALSE)
+    squire:::assert_single_pos(dur_IMild, zero_allowed = FALSE)
+    squire:::assert_numeric(prob_hosp)
+    squire:::assert_numeric(mixing_matrix)
+    squire:::assert_square_matrix(mixing_matrix)
+    squire:::assert_same_length(mixing_matrix[,1], prob_hosp)
+    
+    if(sum(is.na(prob_hosp)) > 0) {
+      stop("prob_hosp must not contain NAs")
+    }
+    
+    if(sum(is.na(mixing_matrix)) > 0) {
+      stop("mixing_matrix must not contain NAs")
+    }
+    
+    index <- squire:::odin_index(out$model)
+    pop <- out$parameters$population
+    if(is.null(max_date)) {
+      max_date <- max(out$pmcmc_results$inputs$data$date)
+    }
+    t_now <- which(as.Date(rownames(out$output)) == max_date)
+    prop_susc <- lapply(seq_len(dim(out$output)[3]), function(x) {
+      t(t(out$output[seq_len(t_now), index$S, x])/pop)
+    } )
+    
+    relative_R0_by_age <- prob_hosp*dur_ICase + (1-prob_hosp)*dur_IMild
+    
+    adjusted_eigens <- lapply(prop_susc, function(x) {
+      
+      unlist(lapply(seq_len(nrow(x)), function(y) {
+        if(any(is.na(x[y,]))) {
+          return(NA)
+        } else {
+          Re(eigen(mixing_matrix*x[y,]*relative_R0_by_age)$values[1])
+        }
+      }))
+      
+    })
+    
+    
+    mat <- squire:::process_contact_matrix_scaled_age(out$parameters$contact_matrix_set[[1]],
+                                                      out$parameters$population)
+    
+    betas <- lapply(rep(out$parameters$R0, dim(out$output)[3]), function(x) {
+      squire:::beta_est_explicit(dur_IMild = dur_IMild, 
+                                 dur_ICase = dur_ICase, 
+                                 prob_hosp = prob_hosp, 
+                                 mixing_matrix = mat, 
+                                 R0 = x)
+    })
+    
+    ratios <- lapply(seq_along(betas), function(x) {
+      (betas[[x]] * adjusted_eigens[[x]]) / out$parameters$R0
+    })
+    
+    return(ratios)
+  }
+  
+  # impact of immunity ratios
+  ratios <- get_immunity_ratios_simple(out, max_date)
+  
+  # create the Rt data frame
+  rts <- lapply(seq_len(dim(out$output)[3]), function(y) {
+    
+    Rt <- rep(out$parameters$R0, length(ratios[[y]]))
+    
+    df <- data.frame(
+      "Rt" = Rt,
+      "Reff" = Rt*tail(na.omit(ratios[[y]]),length(Rt)),
+      "date" = head(rownames(out$output),length(Rt)),
+      "iso" = iso3c,
+      rep = y,
+      stringsAsFactors = FALSE)
+    df$pos <- seq_len(nrow(df))
+    return(df)
+  } )
+  
+  rt <- do.call(rbind, rts)
+  rt$date <- as.Date(rt$date)
+  
+  rt <- rt[,c(3,4,1,2,5,6)]
+  
+  new_rt_all <- rt %>%
+    group_by(iso, rep) %>% 
+    arrange(date) %>% 
+    complete(date = seq.Date(min(rt$date), date_0, by = "days")) 
+  
+  column_names <- colnames(new_rt_all)[-c(1,2,3)]
+  new_rt_all <- fill(new_rt_all, all_of(column_names), .direction = c("down"))
+  new_rt_all <- fill(new_rt_all, all_of(column_names), .direction = c("up"))
+  
+  sum_rt <- dplyr::group_by(new_rt_all, date) %>% 
+    dplyr::summarise(compartment = "Rt",
+                     y_025 = quantile(Rt, 0.025),
+                     y_25 = quantile(Rt, 0.25),
+                     y_median = median(Rt),
+                     y_mean = mean(Rt),
+                     y_75 = quantile(Rt, 0.75),
+                     y_975 = quantile(Rt, 0.975)) 
+  
+  sum_reff <- dplyr::group_by(new_rt_all, date) %>% 
+    dplyr::summarise(compartment = "Reff",
+                     y_025 = quantile(Reff, 0.025),
+                     y_25 = quantile(Reff, 0.25),
+                     y_median = median(Reff),
+                     y_mean = mean(Reff),
+                     y_75 = quantile(Reff, 0.75),
+                     y_975 = quantile(Reff, 0.975)) 
   
   return(rbind(sum_rt, sum_reff))
+
 }
 
 post_lockdown_date <- function(x, above = 1.1, max_date, min_date) {

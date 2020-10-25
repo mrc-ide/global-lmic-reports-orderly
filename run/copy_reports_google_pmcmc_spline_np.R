@@ -137,9 +137,11 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   # get old conditions
   pars_init <- readRDS("src/lmic_reports_google_pmcmc_spline_np/pars_init.rds")
   pars <- vector("list", length(reports$id))
+  also_to_go <- vector("list", length(reports$id))
   for(x in seq_along(reports$id)) {
     
     out <- readRDS(file.path("archive/lmic_reports_google_pmcmc_spline_np",reports$id[x],"grid_out.rds"))
+    if("pmcmc_results" %in% names(out)) {
     mc <- do.call(rbind, lapply(out$pmcmc_results$chains, "[[", "results"))
     best <- mc[which.max(mc$log_posterior),]  
     best <- best[,seq_len(ncol(best)-3)]
@@ -152,15 +154,15 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
     
     # for now combine here
     pars[[x]] <- best
+    also_to_go[[x]] <- NULL
+    } else {
+      pars[[x]] <- NULL
+      also_to_go[[x]] <- reports$country[[x]]
+    }
 
-       #  
-   # if(reports$country[x] %in% pars_init$iso3c) {
-   #   pars_init[which(pars_init$iso3c == reports$country[x]),] <- best
-   # } else {
-   #   pars_init <- rbind(pars_init, best)
-   # }
-    
   }
+  
+  #names(pars)[unlist(lapply(lapply(pars,is.null), isFALSE))] <- reports$country[[unlist(lapply(lapply(pars,is.null), isFALSE))]]
   names(pars) <- reports$country
   
   saveRDS(pars, "src/lmic_reports_google_pmcmc_spline_np/pars_init.rds")
@@ -168,6 +170,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   ## Remove HICs
   rl <- readLines(file.path(here::here(),"countries"))
   to_remove <- stringr::str_sub(rl[(grep("Other HICs", rl) + 1) : length(rl)], -3)
+  to_remove <- c(to_remove, unlist(also_to_go))
   hic_pos <- which(reports$country %in% to_remove)
   
   ## ---------------------------------------------------------------------------
@@ -179,7 +182,6 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   src <- file.path("archive", "lmic_reports_google_pmcmc_spline_np", reports$id)
   dest <- sprintf("gh-pages/%s/%s", reports$country, reports$date)
   copy <- c("index.html",
-            "index_files/figure-html",
             "projections.csv",
             "index.pdf",
             "input_params.json")

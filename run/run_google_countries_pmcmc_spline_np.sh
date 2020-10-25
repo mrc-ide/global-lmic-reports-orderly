@@ -33,8 +33,8 @@ echo "*** HICs: $HICs"
 
 echo "*** Countries: $COUNTRIES"
 
-echo "*** Updating country list"
-./run/update_run_sh.R $DATE $HICs
+#echo "*** Updating country list"
+#./run/update_run_sh.R $DATE $HICs
 
 echo "*** Running country reports"
 

@@ -162,18 +162,32 @@ Lastly, as we switch from one version to the next, there is likely to be a small
 
 ---
 
+#### Version 5 (additional changes to outputs only so same Version): 2020-10-21
+
+* Outputs now include estimates of active infections (infection prevalence). 
+* For countries without deaths, we provide forward scenario projections that consider if importation of new cases occurred. These scenarios use R0 values comparable to countries from the same income strata. 
+* Updated data schema (viewable at [https://github.com/mrc-ide/global-lmic-reports/blob/master/data/schema.md](https://github.com/mrc-ide/global-lmic-reports/blob/master/data/schema.md)), which includes these changes.
+
+<br>
+
 #### Version 5: 2020-08-08
 
 * 2-week random walk to capture mobility independent human behaviour changes after the post lockdown shift and response to additional waves.
-* We now present the effective reproduction number $R_{eff}$, which incorporates the impact that immunity has on transmission as well as the impact of interventions. Previously we presented the time varying reproductive number, $R_t$, which does not show the impat of immunity and only represents changes in transmission due to interventions. 
+* We now present the effective reproduction number $R_{eff}$, which incorporates the impact that immunity has on transmission as well as the impact of interventions. Previously we presented the time varying reproductive number, $R_t$, which does not show the impact of immunity and only represents changes in transmission due to interventions. 
+
+<br>
 
 #### Version 4: 2020-06-28
 
 * Mobility independent change in transmission is now also modelled (alongside mobility dependent transmission) post lockdown to reflect change in people's behaviour that is not captured by mobility. 
 
+<br>
+
 #### Version 3: 2020-06-14
 
 * Impact of mobility on transmision estimated both pre and post lockdown for each country, allowing mobility and transmission to be able to decouple after lockdowns are relaxed if the data supports this. 
+
+<br>
 
 #### Version 2: 2020-05-31
   

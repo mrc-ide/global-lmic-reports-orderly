@@ -1335,7 +1335,7 @@ rt_plot <- function(out) {
 }
 
 
-get_immunity_ratios <- function(out) {
+get_immunity_ratios <- function(out, max_date = NULL) {
   
   mixing_matrix <- squire:::process_contact_matrix_scaled_age(
     out$pmcmc_results$inputs$model_params$contact_matrix_set[[1]],
@@ -1364,7 +1364,11 @@ get_immunity_ratios <- function(out) {
   
   index <- squire:::odin_index(out$model)
   pop <- out$parameters$population
-  t_now <- which(as.Date(rownames(out$output)) == max(out$pmcmc_results$inputs$data$date))
+  
+  if(is.null(max_date)) {
+    max_date <- max(out$pmcmc_results$inputs$data$date)
+  }
+  t_now <- which(as.Date(rownames(out$output)) == max_date)
   prop_susc <- lapply(seq_len(dim(out$output)[3]), function(x) {
     t(t(out$output[seq_len(t_now), index$S, x])/pop)
   } )
