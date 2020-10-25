@@ -260,14 +260,16 @@ if(sum(ecdc_df$deaths) > 0) {
   } else {
     pars_init_rw <- as.list(pars_former[grep("Rt_rw_\\d",names(pars_former))])
     if(length(pars_init_rw) < rw_needed) {
-      lapply(pars_init_rw, function(x) {
+      pars_init_rw[[rw_needed]] <- 0
+    }
+    pars_init_rw <- lapply(pars_init_rw, function(x) {
         if(is.null(x)){ 
           return(0) 
         } else { 
           return(x) 
         }})
     }
-  }
+
   
   pars_min_rw <- as.list(rep(-5, rw_needed))
   pars_max_rw <- as.list(rep(5, rw_needed))
