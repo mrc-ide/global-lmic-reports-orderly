@@ -53,7 +53,7 @@ if(sum(ecdc_df$deaths) > 0) {
   data$date <- as.Date(data$date)
 
   # Handle for countries that have eliminated and had reintroduction events
-  if (iso3c %in% c("MMR", "BLZ", "TTO", "BHS", "HKG")) {
+  if (iso3c %in% c("MMR", "BLZ", "TTO", "BHS", "HKG", "ABW", "GUM")) {
     deaths_removed <- deaths_removed + sum(data$deaths[data$date < as.Date("2020-06-01")])
     data$deaths[data$date < as.Date("2020-06-01")] <- 0
   }
@@ -232,9 +232,16 @@ if(sum(ecdc_df$deaths) > 0) {
     }
   }
 
+  # either set to end if mobility dictates
   if(is.null(date_Meff_change) || is.na(date_Meff_change)) {
     date_Meff_change <- as.Date("2020-06-01")
   }
+  
+  # however if the mobility coming in is null then let's set it to 2019 and rely on splines
+  if (is.null(interventions[[iso3c]]$C)) {
+    date_Meff_change <- as.Date("2019-12-07")
+  }
+  
 
   R0_start <- min(max(R0_start, R0_min*1.02), R0_max*0.98)
   date_start <- min(max(as.Date(date_start), as.Date(first_start_date)+1), as.Date(last_start_date)-1)
