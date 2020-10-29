@@ -239,9 +239,9 @@ generate_draws_pmcmc_fitted <- function(out, pmcmc, burnin, n_chains, squire_mod
   
   # do we need to go up or down
   if(des_grad <= pred_grad) {
-    alters <- seq(0, 0.4, 0.05)
+    alters <- seq(0.025, 0.425, 0.05)
   } else {
-    alters <- seq(0, -0.2, -0.05) # more conservative on increasing Rt
+    alters <- seq(-0.025, -0.325, -0.05) # more conservative on increasing Rt
   }
   
   # store our grads
