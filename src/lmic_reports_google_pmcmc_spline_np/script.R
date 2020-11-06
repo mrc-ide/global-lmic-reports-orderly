@@ -97,7 +97,8 @@ if(sum(ecdc_df$deaths) > 0) {
   R0_change <- interventions[[iso3c]]$C
   date_R0_change <- interventions[[iso3c]]$date
 
-  if(is.null(R0_change) || is.null(date_R0_change)) {
+  # catch for missing mobilty data or China which happened too early for our BRT to be helpful
+  if(is.null(R0_change) || is.null(date_R0_change) || iso3c %in% c("CHN","MAC")) {
     date_R0_change <- seq.Date(as.Date("2020-01-01"), as.Date(date), 1)
     R0_change <- rep(1, length(date_R0_change))
   }
@@ -518,6 +519,12 @@ if(sum(ecdc_df$deaths) > 0) {
   ox_interventions <- readRDS("oxford_grt.rds")
   ox_interventions_unique <- squire:::interventions_unique(ox_interventions[[iso3c]], "C")
   df$grey_bar_start[which.min(abs(as.numeric(df$date - ox_interventions_unique$dates_change[1])))] <- TRUE
+  
+  # mark as unlikely fit because of death issues:
+  df$recent_deaths <- TRUE
+  if(sum(tail(out$pmcmc_results$inputs$data$deaths, 20)) == 0) {
+    df$recent_deaths <- FALSE
+  }
   
   writeLines(jsonlite::toJSON(df,pretty = TRUE), "input_params.json")
   
@@ -1017,11 +1024,15 @@ rt_sum <- do.call(rbind, rt_sum)
 data_sum <- rbind(data_sum, rt_sum) %>% arrange(date, scenario)
 rownames(data_sum) <- NULL
 
-# catch for hong kong country name
+# catch for hong kong and taiwan country name
 if(iso3c == "HKG") {
   country <- "Hong Kong"
 }
+if(iso3c == "TWN") {
+  country <- "Taiwan"
+}
 
+# bring it all together
 data_sum$country <- country
 data_sum$iso3c <- iso3c
 data_sum$report_date <- date
