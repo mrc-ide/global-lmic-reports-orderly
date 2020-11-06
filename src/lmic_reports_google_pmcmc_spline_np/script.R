@@ -7,7 +7,7 @@ RhpcBLASctl::omp_set_num_threads(1L)
 
 version_min <- "0.5.0"
 if(packageVersion("squire") < version_min) {
-  stop("squire needs to be updated to at least ", version_min)
+  stop("squire needs to be updated to at least v", version_min)
 }
 
 ## -----------------------------------------------------------------------------
