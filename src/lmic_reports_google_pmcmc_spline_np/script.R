@@ -24,7 +24,7 @@ full_scenarios <- as.logical(full_scenarios)
 ## Get the ECDC data or alternative from worldometers if ECDC is too erratic
 ecdc <- readRDS("ecdc_all.rds")
 # ecdc <- readRDS("jhu_all.rds")
-if (iso3c %in% c("BOL", "ITA", "FRA", "ECU", "CHL", "COD", "ESP", "IRN", "JPN", "KGZ", "PER", "MEX", "HKG")) {
+if (iso3c %in% c("BOL", "ITA", "FRA", "ECU", "CHL", "COD", "ESP", "IRN", "JPN", "KGZ", "PER", "MEX", "HKG", "MAC", "TWN")) {
   ecdc <- readRDS("worldometers_all.rds")
 }
 
@@ -98,7 +98,7 @@ if(sum(ecdc_df$deaths) > 0) {
   date_R0_change <- interventions[[iso3c]]$date
 
   # catch for missing mobilty data or China which happened too early for our BRT to be helpful
-  if(is.null(R0_change) || is.null(date_R0_change) || iso3c %in% c("CHN","MAC")) {
+  if(is.null(R0_change) || is.null(date_R0_change) || iso3c %in% c("CHN","MAC","TWN")) {
     date_R0_change <- seq.Date(as.Date("2020-01-01"), as.Date(date), 1)
     R0_change <- rep(1, length(date_R0_change))
   }
@@ -239,7 +239,7 @@ if(sum(ecdc_df$deaths) > 0) {
   }
   
   # however if the mobility coming in is null then let's set it to 2019 and rely on splines
-  if (is.null(interventions[[iso3c]]$C)) {
+  if (is.null(interventions[[iso3c]]$C) || iso3c %in% c("CHN","MAC","TWN")) {
     date_Meff_change <- as.Date("2019-12-07")
   }
   
