@@ -123,9 +123,9 @@ if(sum(ecdc_df$deaths) > 0) {
     sleep <- 2
     start_adaptation <- 50
   } else {
-    n_particles <- 10
+    n_particles <- 25
     replicates <- 100
-    n_mcmc <- 15000
+    n_mcmc <- 20000
     n_chains <- 3
     grid_spread <- 11
     sleep <- 120

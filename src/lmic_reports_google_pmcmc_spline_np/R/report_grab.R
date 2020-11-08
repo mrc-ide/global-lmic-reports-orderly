@@ -235,13 +235,11 @@ generate_draws_pmcmc_fitted <- function(out, pmcmc, burnin, n_chains, squire_mod
   
   index <- squire:::odin_index(out$model)
   
-  if(sign(pred_grad) != sign(des_grad)) {
-  
   # do we need to go up or down
   if(des_grad <= pred_grad) {
-    alters <- seq(0.025, 0.425, 0.05)
+    alters <- seq(0.025, 0.425, 0.025)
   } else {
-    alters <- seq(-0.025, -0.325, -0.05) # more conservative on increasing Rt
+    alters <- seq(-0.025, -0.325, -0.025) # more conservative on increasing Rt
   }
   
   # store our grads
@@ -306,7 +304,6 @@ generate_draws_pmcmc_fitted <- function(out, pmcmc, burnin, n_chains, squire_mod
     out$pmcmc_results$chains[[ch]]$results[,last_rw] <- out$pmcmc_results$chains[[ch]]$results[,last_rw] + alters[alts]
   }
   
-  }
   
   # set up now to do the stochastic draws
   out$pmcmc_results$inputs$squire_model <- squire:::explicit_model()
