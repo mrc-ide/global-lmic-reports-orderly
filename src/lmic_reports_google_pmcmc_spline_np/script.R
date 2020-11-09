@@ -5,9 +5,9 @@ print(sessionInfo())
 RhpcBLASctl::blas_set_num_threads(1L)
 RhpcBLASctl::omp_set_num_threads(1L)
 
-version_min <- "0.4.31"
+version_min <- "0.5.1"
 if(packageVersion("squire") < version_min) {
-  stop("squire needs to be updated to at least ", version_min)
+  stop("squire needs to be updated to at least v", version_min)
 }
 
 ## -----------------------------------------------------------------------------
@@ -24,7 +24,7 @@ full_scenarios <- as.logical(full_scenarios)
 ## Get the ECDC data or alternative from worldometers if ECDC is too erratic
 ecdc <- readRDS("ecdc_all.rds")
 # ecdc <- readRDS("jhu_all.rds")
-if (iso3c %in% c("BOL", "ITA", "FRA", "ECU", "CHL", "COD", "ESP", "IRN", "JPN", "KGZ", "PER", "MEX", "HKG")) {
+if (iso3c %in% c("BOL", "ITA", "FRA", "ECU", "CHL", "COD", "ESP", "IRN", "JPN", "KGZ", "PER", "MEX", "HKG", "MAC", "TWN")) {
   ecdc <- readRDS("worldometers_all.rds")
 }
 
@@ -98,7 +98,7 @@ if(sum(ecdc_df$deaths) > 0) {
   date_R0_change <- interventions[[iso3c]]$date
 
   # catch for missing mobilty data or China which happened too early for our BRT to be helpful
-  if(is.null(R0_change) || is.null(date_R0_change) || iso3c %in% c("CHN","MAC")) {
+  if(is.null(R0_change) || is.null(date_R0_change) || iso3c %in% c("CHN","MAC","TWN")) {
     date_R0_change <- seq.Date(as.Date("2020-01-01"), as.Date(date), 1)
     R0_change <- rep(1, length(date_R0_change))
   }
@@ -123,9 +123,9 @@ if(sum(ecdc_df$deaths) > 0) {
     sleep <- 2
     start_adaptation <- 50
   } else {
-    n_particles <- 10
+    n_particles <- 25
     replicates <- 100
-    n_mcmc <- 15000
+    n_mcmc <- 20000
     n_chains <- 3
     grid_spread <- 11
     sleep <- 120
@@ -239,7 +239,7 @@ if(sum(ecdc_df$deaths) > 0) {
   }
   
   # however if the mobility coming in is null then let's set it to 2019 and rely on splines
-  if (is.null(interventions[[iso3c]]$C)) {
+  if (is.null(interventions[[iso3c]]$C) || iso3c %in% c("CHN","MAC","TWN")) {
     date_Meff_change <- as.Date("2019-12-07")
   }
   
@@ -1031,13 +1031,17 @@ if(iso3c == "HKG") {
 if(iso3c == "TWN") {
   country <- "Taiwan"
 }
+if(iso3c == "MAC") {
+  country <- "Macao"
+}
+
 
 # bring it all together
 data_sum$country <- country
 data_sum$iso3c <- iso3c
 data_sum$report_date <- date
 data_sum <- data_sum[data_sum$compartment != "D",]
-data_sum$version <- "v5"
+data_sum$version <- "v6"
 data_sum <- dplyr::mutate(data_sum, across(dplyr::starts_with("y_"), ~round(.x,digits = 2)))
 
 # specify if this is calibrated to deaths or just hypothetical forecast for ESFT
