@@ -5,7 +5,7 @@ print(sessionInfo())
 RhpcBLASctl::blas_set_num_threads(1L)
 RhpcBLASctl::omp_set_num_threads(1L)
 
-version_min <- "0.5.0"
+version_min <- "0.5.1"
 if(packageVersion("squire") < version_min) {
   stop("squire needs to be updated to at least v", version_min)
 }
@@ -1031,13 +1031,17 @@ if(iso3c == "HKG") {
 if(iso3c == "TWN") {
   country <- "Taiwan"
 }
+if(iso3c == "MAC") {
+  country <- "Macao"
+}
+
 
 # bring it all together
 data_sum$country <- country
 data_sum$iso3c <- iso3c
 data_sum$report_date <- date
 data_sum <- data_sum[data_sum$compartment != "D",]
-data_sum$version <- "v5"
+data_sum$version <- "v6"
 data_sum <- dplyr::mutate(data_sum, across(dplyr::starts_with("y_"), ~round(.x,digits = 2)))
 
 # specify if this is calibrated to deaths or just hypothetical forecast for ESFT
