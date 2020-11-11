@@ -10,9 +10,9 @@ This is an [`orderly`](https://github.com/vimc/orderly) project.  The directorie
 
 ## Instructions on the server
 
-Currently somewhat manual, we'll move to an automated system once the data sources fully settle down.
+This is still a manual process requiring logging into the server and executing the model fits.
 
-Running everything takes a while so you really probably want to run this under screen:
+Running everything takes a while so you really probably want to run this under screen. After logging in, you can start a screen session with:
 
 ```
 screen
@@ -37,6 +37,8 @@ screen -X -S [session # you want to kill] quit
 screen -wipe
 ```
 
+## Docker Images and Pulling New Code Changes
+
 If there are code changes, then the images will take a while to build. These are separated into two components "base", which takes quite a while to build, and another image built on top of this that includes the fast moving packages.
 
 These are built automatically on [buildkite](https://buildkite.com/mrc-ide/global-lmic-report) but will take a number of minutes to complete.  You can do this manually with:
@@ -48,17 +50,54 @@ These are built automatically on [buildkite](https://buildkite.com/mrc-ide/globa
 
 Typically the second will be enough unless new packages have been added to the base dockerfile, and that step runs in a few seconds.
 
-Run all the reports and build index pages
+## Running reports
+
+Run all the reports and build index pages with
 
 ```
-./docker/run
+./docker/run_google_pmcmc_spline_np
+
 ```
 
 If you want/need to run a previous date then pass that as an argument
 
 ```
-./docker/run 2020-04-01
+./docker/run_google_pmcmc_spline_np 2020-11-10
 ```
+
+If a particular country run fails (can happen due to data streams changing) and 
+you need to rerun a specific country :
+
+```
+./docker/run_country_google_pmcmc_spline_np 2020-11-10 UZB
+```
+
+If you need to run all the countries again for a particular date (e.g. squire has
+updated and the drat repo (https://ncov-ic.github.io/drat) was not updated):
+
+
+```
+./docker/run_google_countries_pmcmc_spline_np 2020-11-10
+```
+
+This will run all the model fits, but won't collate the website together. This 
+can be achieved using:
+
+```
+./docker/run_collate_google_pmcmc_spline_np 2020-11-10
+```
+
+If you need to only run some of the countries again for a particular date:
+
+```
+echo -en "UZB\nGBR" > redo
+./docker/run_google_countries_pmcmc_spline_np 2020-11-10 FALSE FALSE TRUE TRUE redo
+```
+
+There are 4 other arguments in the run functions (as shown above) The default 
+arguments are shown above. See specific `run_<>.sh` files for more details.
+
+## Publishing reports
 
 To publish the website, you will need the ssh key (this has been done on the server already)
 
@@ -66,7 +105,7 @@ To publish the website, you will need the ssh key (this has been done on the ser
 ./scripts/get_deploy/key
 ```
 
-Deploy to staging with
+Deploy to staging with (n.b. need to add in the staging navbar code)
 
 ```
 ./scripts/publish_website staging
