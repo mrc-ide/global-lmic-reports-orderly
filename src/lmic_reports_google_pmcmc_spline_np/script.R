@@ -5,7 +5,7 @@ print(sessionInfo())
 RhpcBLASctl::blas_set_num_threads(1L)
 RhpcBLASctl::omp_set_num_threads(1L)
 
-version_min <- "0.5.1"
+version_min <- "0.5.2"
 if(packageVersion("squire") < version_min) {
   stop("squire needs to be updated to at least v", version_min)
 }
@@ -413,7 +413,7 @@ if(sum(ecdc_df$deaths) > 0) {
                        baseline_ICU_bed_capacity = icu_beds,
                        init = init_state(deaths_removed, iso3c))
   
-  Sys.setenv("SQUIRE_PARALLEL_DEBUG" = "TRUE")
+  # Sys.setenv("SQUIRE_PARALLEL_DEBUG" = "TRUE")
   out <- generate_draws_pmcmc_fitted(out = out,
                                      pmcmc = out$pmcmc_results,
                                      burnin = ceiling(n_mcmc/10),

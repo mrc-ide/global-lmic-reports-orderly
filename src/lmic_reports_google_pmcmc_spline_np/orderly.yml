@@ -139,7 +139,7 @@ sources:
 resources:
   - index.Rmd
   - pars_init.rds
-  - World_Bank_Country_Metadata.csv
+  - gdp_income_group.csv
 
 global_resources:
   _navbar.html: _navbar.html

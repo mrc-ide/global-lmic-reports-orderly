@@ -67,6 +67,7 @@ ECU,Latin America & Caribbean,Upper middle income,,Ecuador
 EGY,Middle East & North Africa,Lower middle income,,"Egypt, Arab Rep."
 EMU,,,Euro area aggregate.,Euro area
 ERI,Sub-Saharan Africa,Low income,,Eritrea
+ESH,Sub-Saharan Africa,Low income,,Western Sahara
 ESP,Europe & Central Asia,High income,"A simple multiplier is used to convert the national currencies of EMU members to euros. The following irrevocable euro conversion rate was adopted by the EU Council on January 1, 1999: 1 euro = 166.386 Spanish peseta. Please note that historical data before 1999 are not actual euros and are not comparable or suitable for aggregation across countries.",Spain
 EST,Europe & Central Asia,High income,"The following irrevocable euro conversion rate entered into force on January 1, 2011: 1 euro = 15.6466 Estonian kroon. Please note that historical data are not actual euros and are not comparable or suitable for aggregation across countries.",Estonia
 ETH,Sub-Saharan Africa,Low income,Fiscal year end: July 7; reporting period for national accounts data: FY.,Ethiopia
@@ -83,6 +84,7 @@ GEO,Europe & Central Asia,Upper middle income,"Includes self-governed areas only
 GHA,Sub-Saharan Africa,Lower middle income,,Ghana
 GIB,Europe & Central Asia,High income,,Gibraltar
 GIN,Sub-Saharan Africa,Low income,,Guinea
+GLP,Latin America & Caribbean,High income,,Guadeloupe
 GMB,Sub-Saharan Africa,Low income,,"Gambia, The"
 GNB,Sub-Saharan Africa,Low income,,Guinea-Bissau
 GNQ,Sub-Saharan Africa,Upper middle income,,Equatorial Guinea
@@ -90,6 +92,7 @@ GRC,Europe & Central Asia,High income,"A simple multiplier is used to convert th
 GRD,Latin America & Caribbean,Upper middle income,,Grenada
 GRL,Europe & Central Asia,High income,,Greenland
 GTM,Latin America & Caribbean,Upper middle income,,Guatemala
+GUF,Latin America & Caribbean,High income,,French Guiana
 GUM,East Asia & Pacific,High income,,Guam
 GUY,Latin America & Caribbean,Upper middle income,,Guyana
 HIC,,,"High income group aggregate. High-income economies are those in which 2017 GNI per capita was $12,055 or more.",High income
@@ -163,9 +166,11 @@ MNG,East Asia & Pacific,Lower middle income,,Mongolia
 MNP,East Asia & Pacific,High income,,Northern Mariana Islands
 MOZ,Sub-Saharan Africa,Low income,,Mozambique
 MRT,Sub-Saharan Africa,Lower middle income,National account data were adjusted to reflect the new banknote (1 new ouguiya = 10 old ouguiya),Mauritania
+MTQ,Latin America & Caribbean,High income,,Martinique
 MUS,Sub-Saharan Africa,Upper middle income,,Mauritius
 MWI,Sub-Saharan Africa,Low income,,Malawi
 MYS,East Asia & Pacific,Upper middle income,,Malaysia
+MYT,East Asia & Pacific,High income,,Mayotte
 NAC,,,North America regional aggregate. There are no economies in North America classified as low or middle income.,North America
 NAM,Sub-Saharan Africa,Upper middle income,Fiscal year end: March 31; reporting period for national accounts data: CY.,Namibia
 NCL,East Asia & Pacific,High income,,New Caledonia
@@ -197,6 +202,7 @@ PSS,,,Pacific island small states aggregate.,Pacific island small states
 PST,,,Post-dividend countries are mostly high-income countries where fertility has transitioned below replacement levels.,Post-demographic dividend
 PYF,East Asia & Pacific,High income,,French Polynesia
 QAT,Middle East & North Africa,High income,,Qatar
+REU,East Asia & Pacific,High income,,Reunion
 ROU,Europe & Central Asia,Upper middle income,,Romania
 RUS,Europe & Central Asia,Upper middle income,,Russian Federation
 RWA,Sub-Saharan Africa,Low income,,Rwanda

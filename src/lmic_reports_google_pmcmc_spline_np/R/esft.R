@@ -57,7 +57,7 @@ init_state <- function(deaths_removed, iso3c, seeding_cases = 5) {
   deaths <- as.numeric(t(rmultinom(1, deaths_removed, probs)))
   
   # approximate IFR for income group
-  wb_metadata <- read.csv("World_Bank_Country_Metadata.csv", fileEncoding="UTF-8-BOM", stringsAsFactors = TRUE)
+  wb_metadata <- read.csv("gdp_income_group.csv", fileEncoding="UTF-8-BOM", stringsAsFactors = TRUE)
   income <- wb_metadata$income_group[match(iso3c, wb_metadata$country_code)]
   ifrs <- data.frame("income" = c("Low income", "Lower middle income", "Upper middle income", "High income"),
                      "ifr" = c(0.17, 0.31, 0.51, 1.02))
