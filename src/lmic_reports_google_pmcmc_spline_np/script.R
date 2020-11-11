@@ -24,7 +24,9 @@ full_scenarios <- as.logical(full_scenarios)
 ## Get the ECDC data or alternative from worldometers if ECDC is too erratic
 ecdc <- readRDS("ecdc_all.rds")
 # ecdc <- readRDS("jhu_all.rds")
-if (iso3c %in% c("BOL", "ITA", "FRA", "ECU", "CHL", "COD", "ESP", "IRN", "JPN", "GUF","KGZ", "PER", "MEX", "HKG", "MAC", "TWN")) {
+if (iso3c %in% c("BOL", "ITA", "FRA", "ECU", "CHL", "COD", "ESP", "IRN", 
+                 "JPN", "GUF","KGZ", "PER", "MEX", "HKG", "MAC", "TWN",
+                 "SDN")) {
   ecdc <- readRDS("worldometers_all.rds")
 }
 
