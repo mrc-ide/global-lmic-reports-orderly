@@ -1,4 +1,4 @@
-﻿country_code,region,income_group,SpecialNotes,TableName
+country_code,region,income_group,SpecialNotes,TableName
 ABW,Latin America & Caribbean,High income,,Aruba
 AFG,South Asia,Low income,,Afghanistan
 AGO,Sub-Saharan Africa,Lower middle income,,Angola
@@ -242,6 +242,7 @@ TTO,Latin America & Caribbean,High income,,Trinidad and Tobago
 TUN,Middle East & North Africa,Lower middle income,,Tunisia
 TUR,Europe & Central Asia,Upper middle income,,Turkey
 TUV,East Asia & Pacific,Upper middle income,,Tuvalu
+TWN,East Asia & Pacific,High income,"On 20 December 1999 China resumed its exercise of sovereignty over Macao. Unless otherwise noted, data for China do not include data for Hong Kong SAR, China; Macao SAR, China; or Taiwan, China.","Macao SAR, China"
 TZA,Sub-Saharan Africa,Low income,,Tanzania
 UGA,Sub-Saharan Africa,Low income,Fiscal year end: June 30; reporting period for national accounts data: FY.,Uganda
 UKR,Europe & Central Asia,Lower middle income,,Ukraine
