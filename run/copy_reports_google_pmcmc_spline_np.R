@@ -227,12 +227,12 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   projections <- do.call(rbind,
                          lapply(file.path(src, "projections.csv"), read.csv))
   dir.create("gh-pages/data", FALSE, TRUE)
-  projections$version <- "v5"
-  write.csv(projections, paste0("gh-pages/data/",date,"_v5.csv"), row.names = FALSE, quote = FALSE)
+  projections$version <- "v6"
+  write.csv(projections, paste0("gh-pages/data/",date,"_v6.csv"), row.names = FALSE, quote = FALSE)
   cwd <- getwd()
   setwd("gh-pages/data/")
-  zip(paste0(date,"_v5.csv.zip"),paste0(date,"_v5.csv"))
-  file.remove(paste0(date,"_v5.csv"))
+  zip(paste0(date,"_v6.csv.zip"),paste0(date,"_v6.csv"))
+  file.remove(paste0(date,"_v6.csv"))
   setwd(cwd)
   
   hic_pos_projections <- which(projections$iso3c %in% to_remove)
