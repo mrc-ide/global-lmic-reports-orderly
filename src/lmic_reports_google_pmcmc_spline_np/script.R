@@ -528,6 +528,9 @@ if(sum(ecdc_df$deaths) > 0) {
     df$recent_deaths <- FALSE
   }
   
+  # add in the deaths to the json fits themselves
+  df$deaths <- out$pmcmc_results$inputs$data$deaths[match(df$date, out$pmcmc_results$inputs$data$date)]
+  
   writeLines(jsonlite::toJSON(df,pretty = TRUE), "input_params.json")
   
   
@@ -570,6 +573,15 @@ if(sum(ecdc_df$deaths) > 0) {
       single = TRUE, full = TRUE) + 
       theme(legend.position = "none")))
   
+  suppressMessages(suppressWarnings(
+    cas_plot <- cases_plot_single(
+      df = squire::format_output(out, "infections", date_0 = date_0),
+      data = out$pmcmc_results$inputs$data,
+      date = date,
+      date_0 = date_0) + 
+      theme(legend.position = "none")))
+  
+  
   intervention <- intervention_plot_google(
     interventions[[iso3c]], date, data, 
     forecast, 
@@ -584,9 +596,10 @@ if(sum(ecdc_df$deaths) > 0) {
     bottom <- cowplot::plot_grid(
       intervention + scale_x_date(date_breaks = "1 month", date_labels = "%b" ,limits = date_range), 
       d + scale_x_date(date_breaks = "1 month", date_labels = "%b" ,limits = date_range),
+      cas_plot  + scale_x_date(date_breaks = "1 month", date_labels = "%b" ,limits = date_range),
       rtp + scale_x_date(date_breaks = "1 month", date_labels = "%b" ,limits = date_range),
       ncol=1,
-      rel_heights = c(0.4,0.6,0.4))
+      rel_heights = c(0.4,0.6,0.6, 0.4))
   ))
   
   combined <- cowplot::plot_grid(header, 

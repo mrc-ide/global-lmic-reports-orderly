@@ -166,6 +166,7 @@ Lastly, as we switch from one version to the next, there is likely to be a small
 
 * Update to model parameters - see [Parameters](https://mrc-ide.github.io/global-lmic-reports/parameters.html) section for more details.
 * A scenario for countries that are yet to document any COVID-19 deaths - see [Parameters](https://mrc-ide.github.io/global-lmic-reports/parameters.html)
+* For countries that are not covered by ECDC, we use the [worldometers](https://www.worldometers.info/coronavirus) data set for deaths. 
 
 <br>
 
@@ -174,6 +175,7 @@ Lastly, as we switch from one version to the next, there is likely to be a small
 * Outputs now include estimates of active infections (infection prevalence). 
 * For countries without deaths, we provide forward scenario projections that consider if importation of new cases occurred. These scenarios use R0 values comparable to countries from the same income strata. 
 * Updated data schema (viewable at [https://github.com/mrc-ide/global-lmic-reports/blob/master/data/schema.md](https://github.com/mrc-ide/global-lmic-reports/blob/master/data/schema.md)), which includes these changes.
+* Due to relying on fitting to death data, our estimate of $R_t$ in the final weeks is uninformed due to the delay from infection to death. In response, for the final month, we estimate Rt, by fitting the rate of change in model reported infections by comparison against the rate of change in official reported cases. 
 
 <br>
 
