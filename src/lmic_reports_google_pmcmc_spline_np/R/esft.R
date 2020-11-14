@@ -17,7 +17,7 @@ income_Rt <- function(date_0) {
   
   # subset to Rt values
   dat <- dat[dat$compartment == "Rt" & dat$scenario == "Maintain Status Quo",]
-  wb_metadata <- read.csv("World_Bank_Country_Metadata.csv", fileEncoding="UTF-8-BOM", stringsAsFactors = TRUE)
+  wb_metadata <- read.csv("gdp_income_group.csv", fileEncoding="UTF-8-BOM", stringsAsFactors = TRUE)
   dat$income <- wb_metadata$income_group[match(dat$iso3c, wb_metadata$country_code)]
   filt_date <- min(date_0, max(dat$date))
   income_rt <- group_by(dat %>% filter(date == filt_date), income) %>% summarise(Rt = mean(y_mean))
@@ -28,7 +28,7 @@ income_Rt <- function(date_0) {
 income_R0 <- function() {
   
   pars_init <- readRDS("pars_init.rds")
-  wb_metadata <- read.csv("World_Bank_Country_Metadata.csv", fileEncoding="UTF-8-BOM", stringsAsFactors = TRUE)
+  wb_metadata <- read.csv("gdp_income_group.csv", fileEncoding="UTF-8-BOM", stringsAsFactors = TRUE)
   
   R0s <- unlist(lapply(pars_init, "[[", "R0"))
   isos <- unlist(lapply(pars_init, "[[", "iso3c"))
