@@ -368,7 +368,7 @@ if(sum(ecdc_df$deaths) > 0) {
   } 
   
   # slight hack to enforce transmission through long period with no deaths
-  elong_summer_isos <- c("EST")
+  elong_summer_isos <- c("EST", "ISL")
   if (iso3c %in% elong_summer_isos) {
 
     mmr_dates <- seq.Date(as.Date("2020-06-14"), as.Date("2020-07-14"), 21)
