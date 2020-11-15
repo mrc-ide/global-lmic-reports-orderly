@@ -843,7 +843,7 @@ if (sum(ecdc_df$deaths) == 0) {
   inc_Rts <- income_Rt(date_0 = date)
   
   # what income group is this country
-  wb_metadata <- read.csv("World_Bank_Country_Metadata.csv", 
+  wb_metadata <- read.csv("gdp_income_group.csv", 
                           fileEncoding="UTF-8-BOM", 
                           stringsAsFactors = TRUE)
   
