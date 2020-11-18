@@ -203,12 +203,29 @@ output_data$observed <- !is.na(output_data$overall)
 output_data$overall[which(is.na(output_data$overall))] <- predicted
 output_data$all_overall <- predict.gbm(brt, output_data[, c(4:(ncol(output_data)))], n.trees = brt$gbm.call$best.trees, type = "response")
 
+# adding back in countries that have google mobility data but no ACAPS data (and hence no predictions)
+yes_mob_no_acaps_countries <- unique(mob$iso3c)[!(unique(mob$iso3c) %in% unique(new_ACAPs_cat$ISO))]
+yes_mob_no_acaps_countries <- yes_mob_no_acaps_countries[!is.na(yes_mob_no_acaps_countries)]
+yes_mob_no_acaps <- mob %>%
+  filter(iso3c %in% yes_mob_no_acaps_countries) %>%
+  group_by(iso3c, country_region) %>%
+  complete(date = seq.Date(min(output_data$date), max(output_data$date), by = "days")) %>%
+  mutate(check = overall) %>%
+  fill(overall, .direction = "updown") %>%
+  left_join(wb_metadata, by = c("iso3c" = "ISO")) %>%
+  rename("ISO" = "iso3c") %>%
+  ungroup()
+yes_mob_no_acaps$observed <- !is.na(yes_mob_no_acaps$check)
+yes_mob_no_acaps$all_overall <- yes_mob_no_acaps$overall
+yes_mob_no_acaps <- select(yes_mob_no_acaps, ISO, date, overall, all_overall, observed, income_group)
+
 ## -----------------------------------------------------------------------------
 ## Step 4: Data Formatting
 ## -----------------------------------------------------------------------------
 
 ## Format the data into the correct form the orderly task
 res <- select(output_data, ISO, date, overall, all_overall, observed, income_group) %>% 
+  rbind(yes_mob_no_acaps) %>%
   mutate(overall = (overall+100)/100,
          all_overall = (all_overall+100)/100) %>% 
   rename(C = overall,
