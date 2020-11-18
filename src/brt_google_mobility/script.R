@@ -99,7 +99,7 @@ acap <- rbind(acap, acap_extra[,match(names(acap_extra),names(acap))])
 
 # country name fixes. We want to use the ISO3C eventually but there are typos...
 acap$ISO <- countrycode::countrycode(acap$COUNTRY, "country.name", "iso3c",
-                                     custom_match = c("Eswatini"="SWZ", "Micronesia"="FSM","CAR"="CAR"))
+                                     custom_match = c("Eswatini"="SWZ", "Micronesia"="FSM","CAR"="CAF"))
 
 ## -----------------------------------------------------------------------------
 ## Step 1: Data Loading
