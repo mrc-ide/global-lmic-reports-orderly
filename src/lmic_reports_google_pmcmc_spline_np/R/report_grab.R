@@ -303,6 +303,7 @@ generate_draws_pmcmc_fitted <- function(out, n_particles = 10) {
     
     new_data[, seq_len(dim(pmcmc_samples$trajectories)[2]), ] <- pmcmc_samples$trajectories
     pmcmc_samples$trajectories <- new_data
+    nt <- nrow(pmcmc_samples$trajectories)
     
     # are the steps not 1 apart? if so we need to sum the incident variables (infecions/deaths)
     if(!grepl("simple", out$model$ir[2])) {
@@ -332,7 +333,6 @@ generate_draws_pmcmc_fitted <- function(out, n_particles = 10) {
     }
     
     
-    nt <- nrow(pmcmc_samples$trajectories)
     
     # assign the infections
     for(i in seq_along(out$parameters$population)) {
