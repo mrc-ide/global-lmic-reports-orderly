@@ -214,14 +214,22 @@ generate_draws_pmcmc <- function(pmcmc, burnin, n_chains, squire_model, replicat
   
 }
 
-generate_draws_pmcmc_fitted <- function(out, pmcmc, burnin, n_chains, squire_model, replicates, n_particles, forecast,
-                                        country, population, interventions, data) {
+generate_draws_pmcmc_fitted <- function(out, n_particles = 10) {
   
+  pmcmc <- out$pmcmc_results
+  n_chains <- length(out$pmcmc_results$chains)
+  burnin <- round(out$pmcmc_results$inputs$n_mcmc/10)
+  squire_model <- out$pmcmc_results$inputs$squire_model
+  replicates <- dim(out$output)[3]
+  forecast <- 0
+  country <- out$parameters$country
+  population <- out$parameters$population
+  interventions <- out$interventions
+  data <- out$pmcmc_results$inputs$data
   
   #--------------------------------------------------------
   # Section 1 # what is our predicted gradient
   #--------------------------------------------------------
-  
   infections <- format_output(out, "infections", date_0 = max(data$date))
   infections <- infections %>% filter(date > (max(data$date) - 30) & date < (max(data$date))) %>% 
     group_by(date) %>% summarise(y = median(y))
@@ -234,6 +242,8 @@ generate_draws_pmcmc_fitted <- function(out, pmcmc, burnin, n_chains, squire_mod
   des_grad <- get_grad(tail(data$cases, 30))
   
   index <- squire:::odin_index(out$model)
+  index$n_E2_I <- seq(tail(unlist(index),1)+1, tail(unlist(index),1)+length(index$S),1)
+  index$delta_D <- seq(tail(unlist(index),1)+1, tail(unlist(index),1)+length(index$S),1)
   
   # do we need to go up or down
   if(des_grad <= pred_grad) {
@@ -260,6 +270,8 @@ generate_draws_pmcmc_fitted <- function(out, pmcmc, burnin, n_chains, squire_mod
   
   for(alt in seq_along(alters)) {
     
+    message(alt)  
+    
     for(ch in seq_along(out$pmcmc_results$chains)) {
       out$pmcmc_results$chains[[ch]]$results[,last_rw] <- out$pmcmc_results$chains[[ch]]$results[,last_rw] + alters[alt]
     }
@@ -270,6 +282,55 @@ generate_draws_pmcmc_fitted <- function(out, pmcmc, burnin, n_chains, squire_mod
                                            n_trajectories = replicates,
                                            n_particles = n_particles,
                                            forecast_days = forecast)
+    
+    dimnms <- dimnames(pmcmc_samples$trajectories)
+    
+    # make e2_i space
+    dimnms[[2]] <- c(dimnms[[2]], paste0("n_E2_I[", seq_len(length(index$S)),"]"))
+    new_data <- array(data = 0,
+                      dim = c(dim(pmcmc_samples$trajectories) + c(0, length(index$n_E2_I), 0)),
+                      dimnames = dimnms)
+    
+    new_data[, seq_len(dim(pmcmc_samples$trajectories)[2]), ] <- pmcmc_samples$trajectories
+    pmcmc_samples$trajectories <- new_data
+    
+    # make D space
+    dimnms <- dimnames(pmcmc_samples$trajectories)
+    dimnms[[2]] <- c(dimnms[[2]], paste0("delta_D[", seq_len(length(index$S)),"]"))
+    new_data <- array(data = 0,
+                      dim = c(dim(pmcmc_samples$trajectories) + c(0, length(index$delta_D), 0)),
+                      dimnames = dimnms)
+    
+    new_data[, seq_len(dim(pmcmc_samples$trajectories)[2]), ] <- pmcmc_samples$trajectories
+    pmcmc_samples$trajectories <- new_data
+    
+    # are the steps not 1 apart? if so we need to sum the incident variables (infecions/deaths)
+    if(!grepl("simple", out$model$ir[2])) {
+      if (out$parameters$day_return || !out$model$.__enclos_env__$private$discrete) {
+        
+        # assign the infections
+        for(i in seq_along(out$parameters$population)) {
+          collect <- vapply(1:out$parameters$replicates, function(j) {
+            pos <- seq(i,length(all_case_compartments), by = length(out$parameters$population))
+            pos <- all_case_compartments[pos]
+            diff(rowSums(pmcmc_samples$trajectories[,pos,j]))
+          }, FUN.VALUE = numeric(nt-1))
+          pmcmc_samples$trajectories[1+seq_len(nt-1),index$n_E2_I[i],] <- collect
+        }
+        
+        # assign the deaths
+        for(i in seq_along(out$parameters$population)) {
+          collect <- vapply(1:out$parameters$replicates, function(j) {
+            pos <- seq(i, length(index$D), by = length(out$parameters$population))
+            pos <- index$D[pos]
+            diff(pmcmc_samples$trajectories[,pos,j])
+          }, FUN.VALUE = numeric(nt-1))
+          pmcmc_samples$trajectories[1+seq_len(nt-1),index$delta_D[i],] <- collect
+        }
+        
+      }
+    }
+    
     
     nt <- nrow(pmcmc_samples$trajectories)
     
@@ -325,20 +386,20 @@ generate_draws_pmcmc_fitted <- function(out, pmcmc, burnin, n_chains, squire_mod
   
   # create a fake run object and fill in the required elements
   r <- out$pmcmc_results$inputs$squire_model$run_func(country = out$parameters$country,
-                             contact_matrix_set = out$pmcmc_results$inputs$model_params$contact_matrix_set,
-                             tt_contact_matrix = out$pmcmc_results$inputs$model_params$tt_matrix,
-                             hosp_bed_capacity = out$pmcmc_results$inputs$model_params$hosp_bed_capacity,
-                             tt_hosp_beds = out$pmcmc_results$inputs$model_params$tt_hosp_beds,
-                             ICU_bed_capacity = out$pmcmc_results$inputs$model_params$ICU_bed_capacity,
-                             tt_ICU_beds = out$pmcmc_results$inputs$model_params$tt_ICU_beds,
-                             population = out$pmcmc_results$inputs$population,
-                             replicates = 1,
-                             day_return = TRUE,
-                             time_period = nrow(pmcmc_samples$trajectories))
+                                                      contact_matrix_set = out$pmcmc_results$inputs$model_params$contact_matrix_set,
+                                                      tt_contact_matrix = out$pmcmc_results$inputs$model_params$tt_matrix,
+                                                      hosp_bed_capacity = out$pmcmc_results$inputs$model_params$hosp_bed_capacity,
+                                                      tt_hosp_beds = out$pmcmc_results$inputs$model_params$tt_hosp_beds,
+                                                      ICU_bed_capacity = out$pmcmc_results$inputs$model_params$ICU_bed_capacity,
+                                                      tt_ICU_beds = out$pmcmc_results$inputs$model_params$tt_ICU_beds,
+                                                      population = out$pmcmc_results$inputs$population,
+                                                      replicates = 1,
+                                                      day_return = TRUE,
+                                                      time_period = nrow(pmcmc_samples$trajectories))
   
   # and add the parameters that changed between each simulation, i.e. posterior draws
   r$replicate_parameters <- pmcmc_samples$sampled_PMCMC_Results
-
+  
   # as well as adding the pmcmc chains so it's easy to draw from the chains again in the future
   r$pmcmc_results <- out$pmcmc_results
   
@@ -376,14 +437,12 @@ generate_draws_pmcmc_fitted <- function(out, pmcmc, burnin, n_chains, squire_mod
   
 }
 
-
 named_list <- function(...) {
   get <- as.character(match.call())
   l <- list(...)
   names(l) <- tail(get, -1)
   return(l)
 }
-
 
 rt_creation <- function(out, date_0, max_date) {
   

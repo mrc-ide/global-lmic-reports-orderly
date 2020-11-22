@@ -125,7 +125,7 @@ if(sum(ecdc_df$deaths) > 0) {
     sleep <- 2
     start_adaptation <- 50
   } else {
-    n_particles <- 25
+    n_particles <- 50
     replicates <- 100
     n_mcmc <- 20000
     n_chains <- 3
@@ -262,7 +262,7 @@ if(sum(ecdc_df$deaths) > 0) {
   remaining_days <- as.Date(date_0) - last_shift_date - 21 # reporting delay in place
 
   # how many spline pars do we need
-  rw_needed <- as.numeric(round(remaining_days/Rt_rw_duration))
+  rw_needed <- as.numeric(ceiling(remaining_days/Rt_rw_duration))
   
   # set up rw pars
   if (is.null(pars_former)) {
@@ -416,20 +416,7 @@ if(sum(ecdc_df$deaths) > 0) {
                        init = init_state(deaths_removed, iso3c))
   
   # Sys.setenv("SQUIRE_PARALLEL_DEBUG" = "TRUE")
-  out <- generate_draws_pmcmc_fitted(out = out,
-                                     pmcmc = out$pmcmc_results,
-                                     burnin = ceiling(n_mcmc/10),
-                                     n_chains = n_chains,
-                                     squire_model = out$pmcmc_results$inputs$squire_model,
-                                     replicates = replicates,
-                                     n_particles = n_particles,
-                                     forecast = 0,
-                                     country = country,
-                                     population = squire::get_population(iso3c = iso3c)$n,
-                                     interventions = out$interventions,
-                                     data = out$pmcmc_results$inputs$data)
-  
-  
+  out <- generate_draws_pmcmc_fitted(out = out, n_particles = n_particles)
   
   # Add the prior
   out$pmcmc_results$inputs$prior <- as.function(c(formals(logprior), 
