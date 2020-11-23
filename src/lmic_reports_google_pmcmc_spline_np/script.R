@@ -262,7 +262,7 @@ if(sum(ecdc_df$deaths) > 0) {
   remaining_days <- as.Date(date_0) - last_shift_date - 21 # reporting delay in place
 
   # how many spline pars do we need
-  rw_needed <- as.numeric(ceiling(remaining_days/Rt_rw_duration))
+  rw_needed <- as.numeric(round(remaining_days/Rt_rw_duration)) + 1 # because the first rw starts at t0
   
   # set up rw pars
   if (is.null(pars_former)) {
