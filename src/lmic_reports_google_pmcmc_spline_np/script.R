@@ -278,8 +278,11 @@ if(sum(ecdc_df$deaths) > 0) {
         } else { 
           return(x) 
         }})
-    }
-
+  }
+  
+  # how long is the last spline explaining now
+  last_date_rw_starts <- as.Date(last_shift_date) + Rt_rw_duration*(rw_needed-1)
+  number_of_last_rw_days <- as.integer(as.Date(date_0) - last_date_rw_starts)
   
   pars_min_rw <- as.list(rep(-5, rw_needed))
   pars_max_rw <- as.list(rep(5, rw_needed))
@@ -416,7 +419,9 @@ if(sum(ecdc_df$deaths) > 0) {
                        init = init_state(deaths_removed, iso3c))
   
   # Sys.setenv("SQUIRE_PARALLEL_DEBUG" = "TRUE")
-  out <- generate_draws_pmcmc_fitted(out = out, n_particles = n_particles)
+  out <- generate_draws_pmcmc_fitted(out = out, 
+                                     n_particles = n_particles, 
+                                     grad_dur = number_of_last_rw_days)
   
   # Add the prior
   out$pmcmc_results$inputs$prior <- as.function(c(formals(logprior), 
@@ -573,7 +578,7 @@ if(sum(ecdc_df$deaths) > 0) {
     interventions[[iso3c]], date, data, 
     forecast, 
     start_date = min(as.Date(out$replicate_parameters$start_date))) + 
-    geom_vline(xintercept = as.Date(date_Meff_change) + seq(Rt_rw_duration, Rt_rw_duration*rw_needed, by = Rt_rw_duration),
+    geom_vline(xintercept = as.Date(last_shift_date) + seq(Rt_rw_duration, Rt_rw_duration*rw_needed, by = Rt_rw_duration),
                linetype = "dashed") + xlab("") + theme(axis.text.x = element_text(angle=45, vjust = 0.5))
   
   rtp <- rt_plot(out)$plot

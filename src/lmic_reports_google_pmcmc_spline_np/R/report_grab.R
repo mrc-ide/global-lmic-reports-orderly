@@ -214,7 +214,7 @@ generate_draws_pmcmc <- function(pmcmc, burnin, n_chains, squire_model, replicat
   
 }
 
-generate_draws_pmcmc_fitted <- function(out, n_particles = 10) {
+generate_draws_pmcmc_fitted <- function(out, n_particles = 10, grad_dur = 21) {
   
   pmcmc <- out$pmcmc_results
   n_chains <- length(out$pmcmc_results$chains)
@@ -231,7 +231,7 @@ generate_draws_pmcmc_fitted <- function(out, n_particles = 10) {
   # Section 1 # what is our predicted gradient
   #--------------------------------------------------------
   infections <- format_output(out, "infections", date_0 = max(data$date))
-  infections <- infections %>% filter(date > (max(data$date) - 30) & date < (max(data$date))) %>% 
+  infections <- infections %>% filter(date > (max(data$date) - grad_dur) & date < (max(data$date))) %>% 
     group_by(date) %>% summarise(y = median(y))
   
   get_grad <- function(x) {
@@ -239,7 +239,7 @@ generate_draws_pmcmc_fitted <- function(out, n_particles = 10) {
   }
   
   pred_grad <- get_grad(infections$y)
-  des_grad <- get_grad(tail(data$cases, 30))
+  des_grad <- get_grad(tail(data$cases, grad_dur))
   
   index <- squire:::odin_index(out$model)
   index$n_E2_I <- seq(tail(unlist(index),1)+1, tail(unlist(index),1)+length(index$S),1)
@@ -247,9 +247,9 @@ generate_draws_pmcmc_fitted <- function(out, n_particles = 10) {
   
   # do we need to go up or down
   if(des_grad <= pred_grad) {
-    alters <- seq(0.025, 0.825, 0.025)
+    alters <- seq(0.025, 0.625, 0.025)
   } else {
-    alters <- seq(-0.025, -0.625, -0.025) # more conservative on increasing Rt
+    alters <- seq(-0.025, -0.425, -0.025) # more conservative on increasing Rt
   }
   
   # store our grads
@@ -347,7 +347,7 @@ generate_draws_pmcmc_fitted <- function(out, n_particles = 10) {
     
     this_infs <- as.numeric(rowMeans(tail(matrix(unlist(lapply(seq_len(replicates), function(i) {
       rowSums(pmcmc_samples$trajectories[,index$n_E2_I,i])
-    })), ncol = replicates),30)))
+    })), ncol = replicates),grad_dur)))
     
     ans[alt] <- get_grad(this_infs)
     
