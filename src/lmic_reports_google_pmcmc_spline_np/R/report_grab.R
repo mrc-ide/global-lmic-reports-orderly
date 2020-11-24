@@ -241,15 +241,18 @@ generate_draws_pmcmc_fitted <- function(out, n_particles = 10, grad_dur = 21) {
   pred_grad <- get_grad(infections$y)
   des_grad <- get_grad(tail(data$cases, grad_dur))
   
+  # go back to only doing adjustment if the sign is wrong
+  if(sign(pred_grad) != sign(des_grad)) {
+  
   index <- squire:::odin_index(out$model)
   index$n_E2_I <- seq(tail(unlist(index),1)+1, tail(unlist(index),1)+length(index$S),1)
   index$delta_D <- seq(tail(unlist(index),1)+1, tail(unlist(index),1)+length(index$S),1)
   
   # do we need to go up or down
   if(des_grad <= pred_grad) {
-    alters <- seq(0.025, 0.625, 0.025)
+    alters <- seq(0.025, 0.425, 0.025)
   } else {
-    alters <- seq(-0.025, -0.425, -0.025) # more conservative on increasing Rt
+    alters <- seq(-0.025, -0.225, -0.025) # more conservative on increasing Rt
   }
   
   # store our grads
@@ -365,6 +368,7 @@ generate_draws_pmcmc_fitted <- function(out, n_particles = 10, grad_dur = 21) {
     out$pmcmc_results$chains[[ch]]$results[,last_rw] <- out$pmcmc_results$chains[[ch]]$results[,last_rw] + alters[alts]
   }
   
+  }
   
   # set up now to do the stochastic draws
   out$pmcmc_results$inputs$squire_model <- squire:::explicit_model()
