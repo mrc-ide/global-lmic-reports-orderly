@@ -189,7 +189,10 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   for (i in seq_along(dest)) {
     message(sprintf("Copying %s (%s)", dest[[i]], reports$id[[i]]))
     dir.create(dest[[i]], FALSE, TRUE)
-    file_copy(file.path(src[[i]], copy), dest[[i]])
+    to_copy <- file.path(src[[i]], copy)
+    fz <- file.size(pdfs)
+    to_copy <- to_copy[fz>0]
+    file_copy(to_copy, dest[[i]])
     if (is_latest) {
       dest_latest <- dirname(dest[[i]])
       prev <- dir(dest_latest, full.names = TRUE, pattern = "\\.")

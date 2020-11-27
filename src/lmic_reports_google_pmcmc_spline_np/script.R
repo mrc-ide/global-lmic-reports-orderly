@@ -137,7 +137,7 @@ if(sum(ecdc_df$deaths) > 0) {
   # can't figure out why it subthreads now...
   if (parallel) {
     options("future.rng.onMisuse" = "ignore")
-    suppressWarnings(future::plan(future::multisession(workers = n_chains)))
+    suppressWarnings(future::plan(future::multisession()))
   }
 
   # Defualt edges
@@ -453,16 +453,16 @@ if(sum(ecdc_df$deaths) > 0) {
   Rt_shift <- best$Rt_shift
   Rt_shift_scale <- best$Rt_shift_scale
   
-  if(!is.null(date_R0_change)) {
-    tt_beta <- squire:::intervention_dates_for_odin(dates = date_R0_change,
-                                                    change = R0_change,
+  if(!is.null(out$pmcmc_results$inputs$interventions$date_R0_change)) {
+    tt_beta <- squire:::intervention_dates_for_odin(dates = out$pmcmc_results$inputs$interventions$date_R0_change,
+                                                    change = out$pmcmc_results$inputs$interventions$R0_change,
                                                     start_date = start_date,
                                                     steps_per_day = 1)
   } else {
     tt_beta <- 0
   }
   
-  if(!is.null(R0_change)) {
+  if(!is.null(out$pmcmc_results$inputs$interventions$R0_change)) {
     R0 <- squire:::evaluate_Rt_pmcmc(R0_change = tt_beta$change, 
                                      date_R0_change = tt_beta$dates, 
                                      R0 = best$R0, 
@@ -502,10 +502,6 @@ if(sum(ecdc_df$deaths) > 0) {
   df$beta_set_max <- squire:::beta_est(squire_model = squire_model,
                                        model_params = out$pmcmc_results$inputs$model_params,
                                        R0 = df$Rt_max)
-  
-  df$beta_set <- squire:::beta_est(squire_model = squire_model,
-                                   model_params = out$pmcmc_results$inputs$model_params,
-                                   R0 = df$Rt)
   
   ## -----------------------------------------------------------------------------
   
