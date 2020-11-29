@@ -480,7 +480,7 @@ if(sum(ecdc_df$deaths) > 0) {
   
   
   df <- data.frame(tt_beta = tt_beta$tt, beta_set = beta_set, 
-                   date = start_date + tt_beta$tt,
+                   date = start_date + tt_beta$tt, Rt = R0, 
                    grey_bar_start = FALSE)
   
   
@@ -490,9 +490,9 @@ if(sum(ecdc_df$deaths) > 0) {
   rts <- rt_plot_immunity(out)
   
   # bind these in
-  df <- dplyr::left_join(df, rts$rts[, c("date", "Rt", "Rt_min", "Rt_max")], by = "date")
-  df <- fill(df, all_of(c("Rt", "Rt_min", "Rt_max")), .direction = c("down"))
-  df <- fill(df, all_of(c("Rt", "Rt_min", "Rt_max")), .direction = c("up"))
+  df <- dplyr::left_join(df, rts$rts[, c("date","Rt_min", "Rt_max")], by = "date")
+  df <- fill(df, all_of(c("Rt_min", "Rt_max")), .direction = c("down"))
+  df <- fill(df, all_of(c("Rt_min", "Rt_max")), .direction = c("up"))
   
   
   df$beta_set_min <- squire:::beta_est(squire_model = squire_model,
@@ -518,8 +518,9 @@ if(sum(ecdc_df$deaths) > 0) {
   
   # add in the deaths to the json fits themselves
   df$deaths <- out$pmcmc_results$inputs$data$deaths[match(df$date, out$pmcmc_results$inputs$data$date)]
+  df_new_covidsim <- extend_df_for_covidsim(df = df, out = out, ext = 240)
   
-  writeLines(jsonlite::toJSON(df,pretty = TRUE), "input_params.json")
+  writeLines(jsonlite::toJSON(df_new_covidsim,pretty = TRUE), "input_params.json")
   
   
   ## -----------------------------------------------------------------------------

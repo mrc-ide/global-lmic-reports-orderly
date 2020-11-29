@@ -779,8 +779,6 @@ ede <- function (x, y, index) {
   return(out)
 }
 
-
-
 mobility_decline_date <- function(x, above = 1.1, max_date, min_date) {
   
   message(x$iso3c[1])
@@ -825,3 +823,67 @@ mobility_decline_date <- function(x, above = 1.1, max_date, min_date) {
   
 }
 
+extend_df_for_covidsim <- function(df, out, ext = 240) {
+  
+  betas <- df$beta_set
+  tt_R0 <- df$tt_beta
+  dates <- df$date
+  
+  # get an initial with the same seeds as before
+  population <- squire::get_population(country = out$parameters$country, simple_SEIR = FALSE)
+  init <- squire:::init_check_explicit(NULL, population$n, seeding_cases = 5)
+  init$S <- init$S + init$E1
+  init$E1 <- c(0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0)
+  init$S <- init$S - c(0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0)
+  
+  # run model
+  det_out <- squire::run_deterministic_SEIR_model(
+    country = out$parameters$country,
+    beta_set = betas,
+    walker_params = FALSE,
+    init = init,
+    day_return = TRUE,
+    tt_R0 = tt_R0+1,
+    R0 = tt_R0,
+    time_period = length(dates) + ext)
+  
+  # summarise the changes on the susceptibles
+  index <- squire:::odin_index(det_out$model)
+  
+  # get the ratios
+  mixing_matrix <- squire:::process_contact_matrix_scaled_age(
+    out$pmcmc_results$inputs$model_params$contact_matrix_set[[1]],
+    out$pmcmc_results$inputs$model_params$population
+  )
+  dur_ICase <- out$parameters$dur_ICase
+  dur_IMild <- out$parameters$dur_IMild
+  prob_hosp <- out$parameters$prob_hosp
+  pop <- out$parameters$population
+  
+  prop_susc <- t(t(det_out$output[, index$S, 1])/pop)
+  relative_R0_by_age <- prob_hosp*dur_ICase + (1-prob_hosp)*dur_IMild
+  
+  adjusted_eigens <-  unlist(lapply(seq_len(nrow(prop_susc)), function(y) {
+    if(any(is.na(prop_susc[y,]))) {
+      return(NA)
+    } else {
+      Re(eigen(mixing_matrix*prop_susc[y,]*relative_R0_by_age)$values[1])
+    }
+  }))
+  
+  betas <- squire:::beta_est(squire_model = out$pmcmc_results$inputs$squire_model, 
+                             model_params = out$pmcmc_results$inputs$model_params, 
+                             R0 = df$Rt[1])
+  
+  ratios <- (betas * adjusted_eigens) / df$Rt[1]
+  
+  # extend df
+  df2 <- df %>% 
+    complete(tt_beta = seq(0, max(df$tt_beta) + ext, 1)) %>% 
+    mutate(date = seq.Date(min(df$date), max(df$date)+ext,1)) %>% 
+    fill(c("beta_set",4:10), .direction = "down") %>% 
+    mutate(Reff = ratios*Rt)
+  
+  return(df2)
+  
+}
