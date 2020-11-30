@@ -190,7 +190,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
     message(sprintf("Copying %s (%s)", dest[[i]], reports$id[[i]]))
     dir.create(dest[[i]], FALSE, TRUE)
     to_copy <- file.path(src[[i]], copy)
-    fz <- file.size(pdfs)
+    fz <- file.size(to_copy)
     to_copy <- to_copy[fz>0]
     file_copy(to_copy, dest[[i]])
     if (is_latest) {
