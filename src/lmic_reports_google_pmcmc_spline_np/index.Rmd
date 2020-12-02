@@ -408,6 +408,10 @@ if (iso3c == "BRA") {
   other_sources <- paste("**We are aware of under-reporting of deaths in Damascus, Syria. This is not represented in this",
                          "report, but please see ",
                          "[Report 31](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-31-syria/)**")
+} else if (iso3c == "SDN") {
+  other_sources <- paste("**We are aware of under-reporting of deaths in Khartoum, Sudan. This is not represented in this",
+                         "report, but please see ",
+                         "[Report 39](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-39-sudan/)**")
 } else {
   other_sources <- ""
 }
