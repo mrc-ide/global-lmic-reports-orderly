@@ -127,7 +127,7 @@ if(sum(ecdc_df$deaths) > 0) {
   } else {
     n_particles <- 50
     replicates <- 100
-    n_mcmc <- 20000
+    n_mcmc <- 40000
     n_chains <- 3
     grid_spread <- 11
     sleep <- 120
@@ -387,6 +387,8 @@ if(sum(ecdc_df$deaths) > 0) {
   # sleep so parallel is chill
   Sys.sleep(time = runif(1, 0, sleep))
   out <- squire::pmcmc(data = data, 
+                       gibbs_sampling = TRUE,
+                       gibbs_days = 2,
                        n_mcmc = n_mcmc,
                        log_prior = logprior,
                        n_particles = 1,
