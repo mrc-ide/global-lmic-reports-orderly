@@ -18,6 +18,9 @@ PARALLEL=${4:-$DEFAULT_PARALLEL}
 DEFAULT_HICs="FALSE"
 HICs=${5:-$DEFAULT_HICs}
 
+DEFAULT_GIBBS="FALSE"
+GIBBS=${6:-$DEFAULT_GIBBS}
+
 echo "*** Date: $DATE"
 
 echo "*** Short Run: $SHORT_RUN"
@@ -25,6 +28,8 @@ echo "*** Short Run: $SHORT_RUN"
 echo "*** Full Scenarios: $FULL_SCENARIOS"
 
 echo "*** HICs: $HICs"
+
+echo "*** GIBBS: $GIBBS"
 
 echo "*** ECDC data"
 ./orderly run ecdc date=$DATE
@@ -42,7 +47,9 @@ echo "*** Running country reports"
 
 # Parallel
 grep -E '^[A-Z]{3}\s*' countries | \
-parallel --progress -j 62 ./orderly run lmic_reports_google_pmcmc_spline_np iso3c={} date=$DATE short_run=$SHORT_RUN parallel=$PARALLEL full_scenarios=$FULL_SCENARIOS
+parallel --progress -j 62 ./orderly run lmic_reports_google_pmcmc_spline_np \
+iso3c={} date=$DATE short_run=$SHORT_RUN \
+parallel=$PARALLEL full_scenarios=$FULL_SCENARIOS gibbs_sampling=$GIBBS
 
 # Serial (useful if debugging)
 # for ISO in $(grep -E '^[A-Z]{3}\s*' countries); do

@@ -21,6 +21,9 @@ HICs=${5:-$DEFAULT_HICs}
 DEFAULT_COUNTRIES="countries"
 COUNTRIES=${6:-$DEFAULT_COUNTRIES}
 
+DEFAULT_GIBBS="FALSE"
+GIBBS=${7:-$DEFAULT_GIBBS}
+
 echo "*** Date: $DATE"
 
 echo "*** Short Run: $SHORT_RUN"
@@ -33,6 +36,8 @@ echo "*** HICs: $HICs"
 
 echo "*** Countries: $COUNTRIES"
 
+echo "*** GIBBS: $GIBBS"
+
 #echo "*** Updating country list"
 #./run/update_run_sh.R $DATE $HICs
 
@@ -40,5 +45,8 @@ echo "*** Running country reports"
 
 # Parallel
 grep -E '^[A-Z]{3}\s*' $COUNTRIES | \
-parallel --progress -j 62  ./orderly run lmic_reports_google_pmcmc_spline_np iso3c={} date=$DATE short_run=$SHORT_RUN parallel=$PARALLEL full_scenarios=$FULL_SCENARIOS
+parallel --progress -j 62  ./orderly run lmic_reports_google_pmcmc_spline_np \
+iso3c={} date=$DATE short_run=$SHORT_RUN \
+parallel=$PARALLEL full_scenarios=$FULL_SCENARIOS \
+gibbs_sampling=$GIBBS
 

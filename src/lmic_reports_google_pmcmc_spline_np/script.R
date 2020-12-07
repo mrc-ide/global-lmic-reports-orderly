@@ -335,10 +335,24 @@ if(sum(ecdc_df$deaths) > 0) {
   pars_max <- append(pars_max, pars_max_rw)
   pars_discrete <- append(pars_discrete, pars_discrete_rw)
   
-  # Covriance Matrix
-  proposal_kernel <- diag(length(names(pars_init[[1]]))) * 0.3
-  rownames(proposal_kernel) <- colnames(proposal_kernel) <- names(pars_init[[1]])
-  proposal_kernel["start_date", "start_date"] <- 1.5
+  
+  # Are we doing gibbs sampling
+  gibbs_sampling <- as.logical(gibbs_sampling)
+  if(gibbs_sampling) {
+    gibbs_days = 2
+    gibbs_days = NULL
+    # Covriance Matrix
+    proposal_kernel <- diag(length(names(pars_init[[1]]))-1) * 0.3
+    rownames(proposal_kernel) <- colnames(proposal_kernel) <- names(pars_init[[1]][-1])
+  } else {
+    gibbs_sampling <- FALSE
+    gibbs_days <- NULL
+    # Covriance Matrix
+    proposal_kernel <- diag(length(names(pars_init[[1]]))) * 0.3
+    rownames(proposal_kernel) <- colnames(proposal_kernel) <- names(pars_init[[1]])
+    proposal_kernel["start_date", "start_date"] <- 1.5
+  }
+
   
   # MCMC Functions - Prior and Likelihood Calculation
   logprior <- function(pars){
