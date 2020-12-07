@@ -340,7 +340,6 @@ if(sum(ecdc_df$deaths) > 0) {
   gibbs_sampling <- as.logical(gibbs_sampling)
   if(gibbs_sampling) {
     gibbs_days = 2
-    gibbs_days = NULL
     # Covriance Matrix
     proposal_kernel <- diag(length(names(pars_init[[1]]))-1) * 0.3
     rownames(proposal_kernel) <- colnames(proposal_kernel) <- names(pars_init[[1]][-1])
@@ -401,8 +400,8 @@ if(sum(ecdc_df$deaths) > 0) {
   # sleep so parallel is chill
   Sys.sleep(time = runif(1, 0, sleep))
   out <- squire::pmcmc(data = data, 
-                       gibbs_sampling = TRUE,
-                       gibbs_days = 2,
+                       gibbs_sampling = gibbs_sampling,
+                       gibbs_days = gibbs_days,
                        n_mcmc = n_mcmc,
                        log_prior = logprior,
                        n_particles = 1,

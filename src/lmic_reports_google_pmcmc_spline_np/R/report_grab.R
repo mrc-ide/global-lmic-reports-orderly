@@ -309,8 +309,7 @@ generate_draws_pmcmc_fitted <- function(out, n_particles = 10, grad_dur = 21) {
     nt <- nrow(pmcmc_samples$trajectories)
     
     # are the steps not 1 apart? if so we need to sum the incident variables (infecions/deaths)
-    if(!grepl("simple", out$model$ir[2])) {
-      if (out$parameters$day_return || !out$model$.__enclos_env__$private$discrete) {
+      if (out$parameters$day_return || !squire:::odin_is_discrete(out$model)) {
         
         # assign the infections
         for(i in seq_along(out$parameters$population)) {
@@ -333,7 +332,6 @@ generate_draws_pmcmc_fitted <- function(out, n_particles = 10, grad_dur = 21) {
         }
         
       }
-    }
     
     
     
