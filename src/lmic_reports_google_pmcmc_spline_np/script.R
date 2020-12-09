@@ -127,7 +127,7 @@ if(sum(ecdc_df$deaths) > 0) {
   } else {
     n_particles <- 50
     replicates <- 100
-    n_mcmc <- 40000
+    n_mcmc <- 20000
     n_chains <- 3
     grid_spread <- 11
     sleep <- 120
@@ -339,7 +339,7 @@ if(sum(ecdc_df$deaths) > 0) {
   # Are we doing gibbs sampling
   gibbs_sampling <- as.logical(gibbs_sampling)
   if(gibbs_sampling) {
-    gibbs_days = 2
+    gibbs_days <- 1
     # Covriance Matrix
     proposal_kernel <- diag(length(names(pars_init[[1]]))-1) * 0.3
     rownames(proposal_kernel) <- colnames(proposal_kernel) <- names(pars_init[[1]][-1])
