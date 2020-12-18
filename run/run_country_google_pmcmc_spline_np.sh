@@ -23,4 +23,6 @@ echo "*** Full Scenarios: $FULL_SCENARIOS"
 echo "*** GIBBS: $GIBBS"
 
 # Parallel
-./orderly run lmic_reports_google_pmcmc_spline_np iso3c=$COUNTRY date=$DATE short_run=$SHORT_RUN parallel=$PARALLEL full_scenarios=$FULL_SCENARIOS gibbs_sampling=$GIBBS
+./orderly run lmic_reports_google_pmcmc_spline_np iso3c=$COUNTRY \
+date=$DATE short_run=$SHORT_RUN parallel=$PARALLEL \
+full_scenarios=$FULL_SCENARIOS gibbs_sampling=$GIBBS
