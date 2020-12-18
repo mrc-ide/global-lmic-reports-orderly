@@ -69,6 +69,7 @@ saveRDS(ecdc, "ecdc_all.rds")
 
 } else {
   saveRDS(data.frame(), "ecdc_all.rds")  
+  file.create("ecdc.xlsx")
 }
 
 #### AND let's get the JHU as well/instead as looks liek it is less susceptible to blips
