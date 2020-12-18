@@ -1,6 +1,6 @@
 
 date <- as.Date(date, "%Y-%m-%d")
-if(date > as.Date("2020-12-12")) {
+if(date <= as.Date("2020-12-12")) {
 
 if (is.na(date)) {
   stop("Date must be provided in ISO format (i.e., YYYY-MM-DD)")
@@ -68,7 +68,7 @@ ecdc <- d
 saveRDS(ecdc, "ecdc_all.rds")
 
 } else {
-  saveRDS(data.frame, "ecdc_all.rds")  
+  saveRDS(data.frame(), "ecdc_all.rds")  
 }
 
 #### AND let's get the JHU as well/instead as looks liek it is less susceptible to blips
