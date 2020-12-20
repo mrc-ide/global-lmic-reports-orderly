@@ -30,6 +30,8 @@ if (iso3c %in% c("BOL", "ITA", "FRA", "ECU", "CHL", "COD", "ESP", "IRN",
   ecdc <- readRDS("worldometers_all.rds")
 }
 
+ecdc <- readRDS("worldometers_all.rds")
+
 country <- squire::population$country[match(iso3c, squire::population$iso3c)[1]]
 ecdc_df <- ecdc[which(ecdc$countryterritoryCode == iso3c),]
 
