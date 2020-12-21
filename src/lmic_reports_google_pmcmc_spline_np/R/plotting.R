@@ -37,8 +37,9 @@ continent_match <- function(region) {
 
 cumulative_deaths_plot <- function(country) {
   
-  # d <- readRDS("jhu_all.rds")
   d <- readRDS("ecdc_all.rds")
+  d <- readRDS("jhu_all.rds")
+  # d <- readRDS("worldometers_all.rds")
   d$Region[d$Region=="Congo"] <- "Republic of Congo"
   d$Region[d$Region=="United_Republic_of_Tanzania"] <- "Tanzania"
   d$Region[d$Region=="CuraÃ§ao"] <- "Curacao"
@@ -106,7 +107,8 @@ cumulative_deaths_plot <- function(country) {
 
 plotly_style <- function(country) {
   
-  d <- readRDS("ecdc_all.rds")
+  #ecdc <- readRDS("ecdc_all.rds")
+  ecdc <- readRDS("jhu_all.rds")
   
   d$Continent <- countrycode::countrycode(d$Region, origin = 'country.name', destination = 'continent')
   d$Continent[d$Region=="Eswatini"] <- "Africa"

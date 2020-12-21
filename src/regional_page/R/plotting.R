@@ -122,7 +122,8 @@ full_firework_plot <- function() {
   
   data <- readRDS("all_data.rds")
   
-  ecdc <- readRDS("ecdc_all.rds")
+  #ecdc <- readRDS("ecdc_all.rds")
+  ecdc <- readRDS("jhu_all.rds")
   
   plots <- lapply(c("Asia","Europe","Africa","Americas","Oceania"), 
                   cumulative_deaths_plot_continent_projections, 
@@ -140,7 +141,8 @@ one_firework_plot <- function(cont) {
   
   data <- readRDS("all_data.rds")
   
-  ecdc <- readRDS("ecdc_all.rds")
+  #ecdc <- readRDS("ecdc_all.rds")
+  ecdc <- readRDS("jhu_all.rds")
   
   plot <- cumulative_deaths_plot_continent_projections(
     continent = cont, 

@@ -1,7 +1,8 @@
 
 cumulative_deaths_plot <- function(country) {
   
-  d <- readRDS("ecdc_all.rds")
+  #ecdc <- readRDS("ecdc_all.rds")
+  ecdc <- readRDS("jhu_all.rds")
   start <- 10
   
   d$Continent <- countrycode::countrycode(d$Region, origin = 'country.name', destination = 'continent')
@@ -70,7 +71,8 @@ cumulative_deaths_plot_continent <- function(continent) {
   colors <- c("#003b73","#e4572e","#BB750D","#003844","#925e78")
   col <- colors[match(continent, c("Asia","Europe","Africa","Americas","Oceania"))]
   
-  d <- readRDS("ecdc_all.rds")
+  #ecdc <- readRDS("ecdc_all.rds")
+  ecdc <- readRDS("jhu_all.rds")
   d$Region[d$Region=="Congo"] <- "Republic of Congo"
   d$Region[d$Region=="United_Republic_of_Tanzania"] <- "Tanzania"
   d$Region[d$Region=="CuraÃ§ao"] <- "Curacao"
@@ -256,7 +258,8 @@ full_firework_plot <- function() {
   
   data <- readRDS("all_data.rds")
   
-  ecdc <- readRDS("ecdc_all.rds")
+  #ecdc <- readRDS("ecdc_all.rds")
+  ecdc <- readRDS("jhu_all.rds")
   
   plots <- lapply(c("Asia","Europe","Africa","Americas","Oceania"), 
                   cumulative_deaths_plot_continent_projections, 
@@ -614,7 +617,8 @@ regional_plot_overview <- function(date_0) {
   
   
   wb <- read.csv("wb.csv")
-  ecdc <- readRDS("ecdc_all.rds")
+  #ecdc <- readRDS("ecdc_all.rds")
+  ecdc <- readRDS("jhu_all.rds")
  
   ecdc$income <- wb$income_group[match(ecdc$countryterritoryCode,wb$country_code)]
   ecdc$date <- as.Date(ecdc$dateRep)

@@ -109,7 +109,8 @@ fig_center <- function() {
 ```{r ecdc prep, echo = FALSE, collapse=TRUE, warning=FALSE}
 
 # get the ecdc data
-df <- readRDS("ecdc_all.rds")
+#df <- readRDS("ecdc_all.rds")
+df <- readRDS("jhu_all.rds")
 names(df)[grep("popData20", names(df))] <- "popData"
 data <- df[,c("dateRep", "deaths", "cases","Region")]
 names(data)[1] <- "date"
