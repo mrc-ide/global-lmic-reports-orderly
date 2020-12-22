@@ -15,13 +15,13 @@ echo "*** Index page"
 ./orderly run index_page date=$DATE
 
 echo "*** Africa page"
-./orderly run regional_page date=$DATE continent=Africa
+# ./orderly run regional_page date=$DATE continent=Africa
 echo "*** Asia page"
-./orderly run regional_page date=$DATE continent=Asia
+# ./orderly run regional_page date=$DATE continent=Asia
 echo "*** Americas page"
-./orderly run regional_page date=$DATE continent=Americas
+# ./orderly run regional_page date=$DATE continent=Americas
 echo "*** Europe page"
-./orderly run regional_page date=$DATE continent=Europe
+# ./orderly run regional_page date=$DATE continent=Europe
 
 echo "*** Parameters page"
 ./orderly run parameters date=$DATE
