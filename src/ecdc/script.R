@@ -256,6 +256,8 @@ df$deaths[df$dateRep == as.Date("2020-06-01") & df$countryterritoryCode == "IRL"
 df$deaths[df$dateRep == as.Date("2020-05-31") & df$countryterritoryCode == "IRL"] <- 1
 df$deaths[df$dateRep == as.Date("2020-05-26") & df$countryterritoryCode == "IRL"] <- 0
 df$deaths[df$dateRep == as.Date("2020-05-25") & df$countryterritoryCode == "IRL"] <- 2
+df$deaths[df$dateRep == as.Date("2020-11-24") & df$countryterritoryCode == "IRL"] <- 0
+df$deaths[df$dateRep == as.Date("2020-11-23") & df$countryterritoryCode == "IRL"] <- 0
 
 # LUX
 # -2 deaths day
