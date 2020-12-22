@@ -134,6 +134,10 @@ cases <- group_by(cases, countryterritoryCode, Region) %>%
 jhu_data <- left_join(data, cases, by = c("date", "countryterritoryCode", "Region"))
 jhu_data$dateRep <- jhu_data$date
 
+if(sum(jhu_data$deaths)>0){
+  jhu_data$deaths[jhu_data$deaths < 0] <- 0 
+}
+
 # save 
 saveRDS(jhu_data, "jhu_all.rds")
 
