@@ -120,12 +120,12 @@ data$date <- as.Date(data$date)
 data <- group_by(data, Region) %>% mutate(cum_deaths = rev(cumsum(rev(deaths))),
                                           cum_cases = rev(cumsum(rev(cases))),)
 countries_less_100 <- length(unique(data$Region[!data$Region %in% unique(data$Region[data$cum_deaths > 100])]))
-
-# and with respect to population size
-summed <- group_by(df, Region) %>% summarise(tot = sum(deaths,na.rm=TRUE),
-                                             rel=tot/popData[1],
-                                             early = tot<100 && rel < (10/1e6))
-countries_less_pop <- sum(summed$early, na.rm=TRUE)
+# 
+# # and with respect to population size
+# summed <- group_by(df, Region) %>% summarise(tot = sum(deaths,na.rm=TRUE),
+#                                              rel=tot/popData[1],
+#                                              early = tot<100 && rel < (10/1e6))
+# countries_less_pop <- sum(summed$early, na.rm=TRUE)
 
 
 ## summaries
@@ -137,7 +137,7 @@ summaries <- readRDS("summaries.rds")
 
 <br> 
 
-COVID-19 has caused large-scale outbreaks in many countries, particularly in Europe and Asia where many countries have experienced a level of healthcare demand that have placed health systems under strain. Many countries, particularly Low- or Middle Income countries (LMICs) (shown below), are at an earlier stage of the epidemic. `r countries_less_100` countries have reported fewer than 100 COVID-19 deaths, with `r countries_less_pop` where the total COVID-19 deaths also represents less than 10/million of their population. However, following the implementation of widespread suppression measures around the world, COVID-19 burden is increasingly becoming concentrated in LMICs.
+COVID-19 has caused large-scale outbreaks in many countries, particularly in Europe and Asia where many countries have experienced a level of healthcare demand that have placed health systems under strain. Many countries, particularly Low- or Middle Income countries (LMICs) (shown below), are at an earlier stage of the epidemic. `r countries_less_100` countries have reported fewer than 100 COVID-19 deaths. However, following the implementation of widespread suppression measures around the world, COVID-19 burden is increasingly becoming concentrated in LMICs.
 
 Here we aim to provide each country with an indication of where they are in their epidemic and scenarios of how healthcare demand is likely to vary over the next 28 days. Changes in transmission from today will also shape the next 28 days so these estimates should not be viewed as predictions but scenarios to help countries understand how strategies today are likely to shape the next phase of the epidemic. Specifically, these reports will aim to help countries understand:
 
