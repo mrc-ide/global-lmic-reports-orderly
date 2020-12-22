@@ -145,8 +145,8 @@ pdf_line_break <- function() {
 ```{r ecdc prep, echo = FALSE, collapse=TRUE, warning=FALSE}
 
 # get the ecdc data
-#ecdc <- readRDS("ecdc_all.rds")
-ecdc <- readRDS("jhu_all.rds")
+# df <- readRDS("ecdc_all.rds")
+df <- readRDS("jhu_all.rds")
 data <- df[,c("dateRep", "deaths", "cases","Region", "countryterritoryCode")]
 names(data)[c(1,4,5)] <- c("date","country","iso3c")
 data$date <- as.Date(data$date)
