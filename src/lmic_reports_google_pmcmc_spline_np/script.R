@@ -80,7 +80,7 @@ if(sum(ecdc_df$deaths) > 0) {
   # get country data
   # interventions <- readRDS("oxford_grt.rds")
   interventions <- readRDS("google_brt.rds")
-
+  
   # conduct unmitigated
   pop <- squire::get_population(country)
 
@@ -100,6 +100,10 @@ if(sum(ecdc_df$deaths) > 0) {
   reporting_fraction = 1
   R0_change <- interventions[[iso3c]]$C
   date_R0_change <- interventions[[iso3c]]$date
+  
+  # fix starting interventions to extend back for 55 days to fix rounding date issue
+  date_R0_change <- c(seq.Date(as.Date(date_R0_change[1])-55, as.Date(date_R0_change[1]), 1), date_R0_change)
+  R0_change <- c(rep(R0_change[1], 56), R0_change)
 
   # catch for missing mobilty data or China which happened too early for our BRT to be helpful
   if(is.null(R0_change) || is.null(date_R0_change) || iso3c %in% c("CHN","MAC","TWN","KOR")) {
