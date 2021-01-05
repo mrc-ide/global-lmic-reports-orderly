@@ -94,8 +94,8 @@ cumulative_deaths_plot <- function(country) {
     geom_point(data = df_deaths_latest[which(df_deaths_latest$Continent == continent), ], alpha = 0.5, show.legend = FALSE) + 
     ggrepel::geom_text_repel(data =  df_deaths_latest[which(df_deaths_latest$Continent == continent), ],
                              aes(label = Region), show.legend = FALSE, min.segment.length = 2,nudge_x = 1) + 
-    scale_y_log10(limits=c(start, max(df_deaths$Cum_Deaths[df_deaths$Continent == continent]))) +
-    xlim(limits=c(0, max(df_deaths$day_since[df_deaths$Continent == continent]))) +
+    scale_y_log10(limits=c(start, max(df_deaths$Cum_Deaths[df_deaths$Continent == continent],na.rm=TRUE))) +
+    xlim(limits=c(0, max(df_deaths$day_since[df_deaths$Continent == continent],na.rm=TRUE))) +
     theme_bw() +
     ylab("Cumulative Deaths (Logarithmic Scale)") +
     xlab(paste("Days Since", start, "Deaths"))

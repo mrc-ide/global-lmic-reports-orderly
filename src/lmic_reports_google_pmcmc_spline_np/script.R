@@ -21,16 +21,14 @@ short_run <- as.logical(short_run)
 parallel <- as.logical(parallel)
 full_scenarios <- as.logical(full_scenarios)
 
-## Get the ECDC data or alternative from worldometers if ECDC is too erratic
+## Get the JU data or alternative from worldometers if ECDC is too erratic
 ecdc <- readRDS("jhu_all.rds")
-# ecdc <- readRDS("jhu_all.rds")
+# ecdc <- readRDS("ecdc_all.rds")
 if (iso3c %in% c("BOL", "ITA", "FRA", "ECU", "CHL", "COD", "ESP", "IRN", 
                  "JPN", "GUF","KGZ", "PER", "MEX", "HKG", "MAC", "TWN",
-                 "SDN", "IRL")) {
+                 "SDN", "IRL", "TUR")) {
   ecdc <- readRDS("worldometers_all.rds")
 }
-
-ecdc <- readRDS("jhu_all.rds")
 
 country <- squire::population$country[match(iso3c, squire::population$iso3c)[1]]
 ecdc_df <- ecdc[which(ecdc$countryterritoryCode == iso3c),]
