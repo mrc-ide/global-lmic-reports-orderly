@@ -162,11 +162,14 @@ get_country_data <- function(link, iso3c, name) {
   
   if (length(jans) == 0) {
     dates_d <- as.Date(paste(dates_d, "2020"),  "%b %d %Y")
-  } else if (all(diff(jans)==1)) {
+  } else if (all(diff(jans)==1) && as.Date(date) < as.Date("2021-01-01")) {
     dates_d <- as.Date(paste(dates_d, "2020"),  "%b %d %Y")
   } else {
     jan_diffs <- diff(jans)
     new_years <- jans[which(jan_diffs != 1) + 1]
+    if(length(new_years) == 0) {
+      new_years <- jans[1]
+    }
     dates_d_l <- vector("list", length(new_years)+1)
     years <- seq(2020, 2020 + length(new_years), 1)
     for (i in seq_along(dates_d_l)) {
