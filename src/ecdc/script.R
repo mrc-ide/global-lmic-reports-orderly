@@ -267,9 +267,6 @@ df <- do.call(rbind, dats)
 df$cases[is.na(df$cases)] <- 0
 df$deaths[is.na(df$deaths)] <- 0
 
-# worldometers is a day ahead of ECDC - so to keep it all aligned
-df$dateRep <- df$dateRep + 1
-
 # AND handling their peculiar negative deaths based on comparison against ECDC and manually cleaning :)
 
 # FRA
@@ -319,5 +316,9 @@ df$deaths[df$dateRep == as.Date("2020-09-09") & df$countryterritoryCode == "COG"
 df$deaths[df$dateRep == as.Date("2020-09-08") & df$countryterritoryCode == "COG"] <- 1
 df$deaths[df$dateRep == as.Date("2020-09-04") & df$countryterritoryCode == "COG"] <- 0
 df$deaths[df$dateRep == as.Date("2020-09-03") & df$countryterritoryCode == "COG"] <- 4
+
+# worldometers is a day ahead of ECDC - so to keep it all aligned
+df$dateRep <- as.Date(df$dateRep) - 1
+
 
 saveRDS(df, "worldometers_all.rds")
