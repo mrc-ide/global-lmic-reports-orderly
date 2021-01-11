@@ -226,33 +226,53 @@ generate_draws_pmcmc_fitted <- function(out, n_particles = 10, grad_dur = 21) {
   population <- out$parameters$population
   interventions <- out$interventions
   data <- out$pmcmc_results$inputs$data
+  rw_dur <- out$pmcmc_results$inputs$Rt_args$Rt_rw_duration
   
   #--------------------------------------------------------
   # Section 1 # what is our predicted gradient
   #--------------------------------------------------------
+  
+  # first what is the model predicted infections
   infections <- format_output(out, "infections", date_0 = max(data$date))
-  infections <- infections %>% filter(date > (max(data$date) - grad_dur) & date < (max(data$date))) %>% 
+  infections_end <- infections %>% filter(date > (max(data$date) - grad_dur) & date <= (max(data$date))) %>% 
     group_by(date) %>% summarise(y = median(y))
   
+  infections_pre_end <- infections %>% 
+    filter(date > (max(data$date) - grad_dur - rw_dur) & date <= (max(data$date) - grad_dur) ) %>% 
+    group_by(date) %>% summarise(y = median(y))
+  
+  # and the observed cases
+  cases_end <- tail(data$cases, grad_dur)
+  cases_pre_end <- head(tail(data$cases, grad_dur+rw_dur), rw_dur)
+  
+  # get these gradients
   get_grad <- function(x) {
     lm(y~x, data = data.frame(y = x, x = seq_along(x)))$coefficients[2]
   }
   
-  pred_grad <- get_grad(infections$y)
-  des_grad <- get_grad(tail(data$cases, grad_dur))
+  pred_grad_end <- get_grad(infections_end$y)
+  pred_grad_pre_end <- get_grad(infections_pre_end$y)
+  
+  des_grad_end <- get_grad(cases_end)
+  des_grad_pre_end <- get_grad(cases_pre_end)
+  
+  ca_grad_frac <-  pred_grad_pre_end / des_grad_pre_end
+  
+  # desired model predictd final gradient
+  wanted_grad <- des_grad_end * ca_grad_frac
   
   # go back to only doing adjustment if the sign is wrong
-  if(sign(pred_grad) != sign(des_grad)) {
+  # if(sign(pred_grad) != sign(des_grad)) {
   
   index <- squire:::odin_index(out$model)
   index$n_E2_I <- seq(tail(unlist(index),1)+1, tail(unlist(index),1)+length(index$S),1)
   index$delta_D <- seq(tail(unlist(index),1)+1, tail(unlist(index),1)+length(index$S),1)
   
   # do we need to go up or down
-  if(des_grad <= pred_grad) {
+  if(wanted_grad <= pred_grad_end) {
     alters <- seq(0.025, 0.425, 0.025)
   } else {
-    alters <- seq(-0.025, -0.225, -0.025) # more conservative on increasing Rt
+    alters <- seq(-0.025, -0.425, -0.025) 
   }
   
   # store our grads
@@ -361,11 +381,9 @@ generate_draws_pmcmc_fitted <- function(out, n_particles = 10, grad_dur = 21) {
   
   
   # adapt our whole last chain accordingly
-  alts <- which.min(abs(ans-des_grad))
+  alts <- which.min(abs(ans-wanted_grad))
   for(ch in seq_along(out$pmcmc_results$chains)) {
     out$pmcmc_results$chains[[ch]]$results[,last_rw] <- out$pmcmc_results$chains[[ch]]$results[,last_rw] + alters[alts]
-  }
-  
   }
   
   # set up now to do the stochastic draws
