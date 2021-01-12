@@ -37,4 +37,4 @@ echo "*** data schema"
 
 echo "*** Copying files"
 ./run/copy_index.R $DATE
-./run/copy_regionals.R $DATE
+# ./run/copy_regionals.R $DATE

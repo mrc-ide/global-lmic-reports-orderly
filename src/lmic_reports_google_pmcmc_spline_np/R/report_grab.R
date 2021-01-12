@@ -261,8 +261,8 @@ generate_draws_pmcmc_fitted <- function(out, n_particles = 10, grad_dur = 21) {
   # desired model predictd final gradient
   wanted_grad <- des_grad_end * ca_grad_frac
   
-  # go back to only doing adjustment if the sign is wrong
-  # if(sign(pred_grad) != sign(des_grad)) {
+  # if actual gradient available
+  if(!is.nan(wanted_grad)) {
   
   index <- squire:::odin_index(out$model)
   index$n_E2_I <- seq(tail(unlist(index),1)+1, tail(unlist(index),1)+length(index$S),1)
@@ -384,6 +384,8 @@ generate_draws_pmcmc_fitted <- function(out, n_particles = 10, grad_dur = 21) {
   alts <- which.min(abs(ans-wanted_grad))
   for(ch in seq_along(out$pmcmc_results$chains)) {
     out$pmcmc_results$chains[[ch]]$results[,last_rw] <- out$pmcmc_results$chains[[ch]]$results[,last_rw] + alters[alts]
+  }
+  
   }
   
   # set up now to do the stochastic draws
