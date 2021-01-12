@@ -256,8 +256,31 @@ generate_draws_pmcmc_fitted <- function(out, n_particles = 10, grad_dur = 21) {
   des_grad_end <- get_grad(cases_end)
   des_grad_pre_end <- get_grad(cases_pre_end)
   
-  ca_grad_frac <-  pred_grad_pre_end / des_grad_pre_end
+  if(sign(pred_grad_pre_end) == sign(des_grad_pre_end)) {
   
+    ca_grad_frac <-  pred_grad_pre_end / des_grad_pre_end
+    
+  } else {
+    
+    infections_pre_end <- infections %>% 
+      filter(date <= (max(data$date) - grad_dur) ) %>% 
+      group_by(date) %>% summarise(y = median(y))
+    
+    cases_pre_end <- data$cases[match(infections_pre_end$date, data$date)]
+    
+    pos <- seq_len(floor(length(cases_pre_end)/Rt_rw_duration)*Rt_rw_duration)
+    
+    breaks <- split(pos,
+          sort(unlist(replicate(round(length(cases_pre_end)/Rt_rw_duration),
+                                seq_len(Rt_rw_duration),simplify = FALSE))))
+    
+    na_to_0 <- function(x) {x[is.na(x)] <- 0; return(x)}
+    
+    inf_grads <- lapply(breaks, function(x) {get_grad(na_to_0(infections_pre_end$y[x]))})
+    case_grads <- lapply(breaks, function(x) {get_grad(na_to_0(cases_pre_end[x]))})
+    ca_grad_frac <- median((unlist(inf_grads)/unlist(case_grads)))
+    
+  }
   # desired model predictd final gradient
   wanted_grad <- des_grad_end * ca_grad_frac
   
