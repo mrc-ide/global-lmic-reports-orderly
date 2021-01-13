@@ -100,7 +100,8 @@ if(sum(ecdc_df$deaths) > 0) {
   date_R0_change <- interventions[[iso3c]]$date
   
   # catch for missing mobilty data or China which happened too early for our BRT to be helpful and too late in RWA/PNG case
-  if(is.null(R0_change) || is.null(date_R0_change) || iso3c %in% c("CHN","MAC","TWN","KOR", "RWA", "PNG")) {
+  spline_iso3cs <- c("CHN","MAC","TWN","KOR", "RWA", "PNG", "DZA")
+  if(is.null(R0_change) || is.null(date_R0_change) || iso3c %in% spline_iso3cs) {
     date_R0_change <- seq.Date(as.Date("2020-01-01"), as.Date(date), 1)
     R0_change <- rep(1, length(date_R0_change))
   }
@@ -245,7 +246,7 @@ if(sum(ecdc_df$deaths) > 0) {
   }
   
   # however if the mobility coming in is null then let's set it to 2019 and rely on splines
-  if (is.null(interventions[[iso3c]]$C) || iso3c %in% c("CHN","MAC","TWN","KOR", "RWA", "PNG")) {
+  if (is.null(interventions[[iso3c]]$C) || iso3c %in% spline_iso3cs) {
     date_Meff_change <- as.Date("2019-12-07")
   }
   
