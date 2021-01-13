@@ -268,11 +268,11 @@ generate_draws_pmcmc_fitted <- function(out, n_particles = 10, grad_dur = 21) {
     
     cases_pre_end <- data$cases[match(infections_pre_end$date, data$date)]
     
-    pos <- seq_len(floor(length(cases_pre_end)/Rt_rw_duration)*Rt_rw_duration)
+    pos <- seq_len(floor(length(cases_pre_end)/rw_dur)*rw_dur)
     
     breaks <- split(pos,
-          sort(unlist(replicate(round(length(cases_pre_end)/Rt_rw_duration),
-                                seq_len(Rt_rw_duration),simplify = FALSE))))
+          sort(unlist(replicate(floor(length(cases_pre_end)/rw_dur),
+                                seq_len(rw_dur),simplify = FALSE))))
     
     na_to_0 <- function(x) {x[is.na(x)] <- 0; return(x)}
     
@@ -292,7 +292,7 @@ generate_draws_pmcmc_fitted <- function(out, n_particles = 10, grad_dur = 21) {
   index$delta_D <- seq(tail(unlist(index),1)+1, tail(unlist(index),1)+length(index$S),1)
   
   # do we need to go up or down
-  if(wanted_grad <= pred_grad_end) {
+  if(wanted_gra) {
     alters <- seq(0.025, 0.425, 0.025)
   } else {
     alters <- seq(-0.025, -0.425, -0.025) 
