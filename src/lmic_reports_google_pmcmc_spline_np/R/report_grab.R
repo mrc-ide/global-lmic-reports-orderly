@@ -292,7 +292,7 @@ generate_draws_pmcmc_fitted <- function(out, n_particles = 10, grad_dur = 21) {
   index$delta_D <- seq(tail(unlist(index),1)+1, tail(unlist(index),1)+length(index$S),1)
   
   # do we need to go up or down
-  if(wanted_gra) {
+  if(wanted_grad) {
     alters <- seq(0.025, 0.425, 0.025)
   } else {
     alters <- seq(-0.025, -0.425, -0.025) 
