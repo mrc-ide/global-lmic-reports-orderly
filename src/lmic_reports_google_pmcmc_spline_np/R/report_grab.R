@@ -278,14 +278,18 @@ generate_draws_pmcmc_fitted <- function(out, n_particles = 10, grad_dur = 21) {
     
     inf_grads <- lapply(breaks, function(x) {get_grad(na_to_0(infections_pre_end$y[x]))})
     case_grads <- lapply(breaks, function(x) {get_grad(na_to_0(cases_pre_end[x]))})
-    ca_grad_frac <- median((unlist(inf_grads)/unlist(case_grads)))
+    ca_grad_frac <- median((unlist(inf_grads)/unlist(case_grads)), na.rm = TRUE)
+    
+    if(is.na(ca_grad_frac) | is.infinite(ca_grad_frac)) {
+      ca_grad_frac <- 1
+    }
     
   }
   # desired model predictd final gradient
   wanted_grad <- des_grad_end * ca_grad_frac
   
   # if actual gradient available
-  if(!is.nan(wanted_grad)) {
+  if(!is.nan(wanted_grad) || !is.na(wanted_grad) || !is.infinite(wanted_grad) ) {
   
   index <- squire:::odin_index(out$model)
   index$n_E2_I <- seq(tail(unlist(index),1)+1, tail(unlist(index),1)+length(index$S),1)
