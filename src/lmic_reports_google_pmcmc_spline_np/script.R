@@ -35,7 +35,7 @@ ecdc_df <- ecdc[which(ecdc$countryterritoryCode == iso3c),]
 
 ## MAIN LOOP IS ONLY FOR THOSE WITH DEATHS
 if(sum(ecdc_df$deaths) > 0) {
-
+  
   # Remove any deaths at beginning that were followed by 21 days of no deaths as we have no information in these situations
   if(sum(ecdc_df$deaths>0)>1) {
     if(tail(diff(which(ecdc_df$deaths>0)),1) > 21) {
@@ -47,19 +47,19 @@ if(sum(ecdc_df$deaths) > 0) {
   } else {
     deaths_removed <- 0
   }
-
+  
   # get the raw data correct
   data <- ecdc_df[,c("dateRep", "deaths", "cases")]
   names(data)[1] <- "date"
   data <- data[order(data$date),]
   data$date <- as.Date(data$date)
-
+  
   # Handle for countries that have eliminated and had reintroduction events
   if (iso3c %in% c("MMR", "BLZ", "TTO", "BHS", "HKG", "ABW", "GUM", "ISL")) {
     deaths_removed <- deaths_removed + sum(data$deaths[data$date < as.Date("2020-06-01")])
     data$deaths[data$date < as.Date("2020-06-01")] <- 0
   }
-
+  
   # and remove the rows with no data up to the first date that a death was reported
   first_report <- which(data$deaths>0)[1]
   missing <- which(data$deaths == 0 | is.na(data$deaths))
@@ -71,29 +71,29 @@ if(sum(ecdc_df$deaths) > 0) {
       data <- data[-to_remove,]
     }
   }
-
+  
   # dat_0 is just the current date now
   date_0 <- date
-
+  
   # get country data
   # interventions <- readRDS("oxford_grt.rds")
   interventions <- readRDS("google_brt.rds")
   
   # conduct unmitigated
   pop <- squire::get_population(country)
-
+  
   ## -----------------------------------------------------------------------------
   ## Step 2: Fit model
   ## -----------------------------------------------------------------------------
-
+  
   ## -----------------------------------------------------------------------------
   ## Step 2a: Set up args for pmcmc/grid
   ## -----------------------------------------------------------------------------
-
+  
   # what is the date of first death
   null_na <- function(x) {if(is.null(x)) {NA} else {x}}
   min_death_date <- data$date[which(data$deaths>0)][1]
-
+  
   # calibration arguments
   reporting_fraction = 1
   R0_change <- interventions[[iso3c]]$C
@@ -106,7 +106,7 @@ if(sum(ecdc_df$deaths) > 0) {
     date_R0_change <- seq.Date(as.Date("2020-01-01"), as.Date(date), 1)
     R0_change <- rep(1, length(date_R0_change))
   }
-
+  
   # fix starting interventions to extend back for 55 days to fix rounding date issue
   date_R0_change <- c(seq.Date(as.Date(date_R0_change[1])-55, as.Date(date_R0_change[1]-1), 1), date_R0_change)
   R0_change <- c(rep(R0_change[1], 55), R0_change)
@@ -114,14 +114,14 @@ if(sum(ecdc_df$deaths) > 0) {
   R0_change <- R0_change[as.Date(date_R0_change) <= date]
   date_R0_change <- date_R0_change[as.Date(date_R0_change) <= date]
   date_contact_matrix_set_change <- NULL
-
+  
   squire_model <- squire::explicit_model()
   pars_obs <- NULL
   R0_prior <- list("func" = dnorm, args = list("mean"= 3, "sd"= 1, "log" = TRUE))
   Rt_func <- function(R0_change, R0, Meff) {
     R0 * (2 * plogis(-(R0_change-1) * -Meff))
   }
-
+  
   if(short_run) {
     n_particles <- 2
     replicates <- 2
@@ -139,13 +139,13 @@ if(sum(ecdc_df$deaths) > 0) {
     sleep <- 120
     start_adaptation <- 1000
   }
-
+  
   # can't figure out why it subthreads now...
   if (parallel) {
     options("future.rng.onMisuse" = "ignore")
     suppressWarnings(future::plan(future::multisession()))
   }
-
+  
   # Defualt edges
   R0_min <- 1.6
   R0_max <- 5.6
@@ -157,21 +157,21 @@ if(sum(ecdc_df$deaths) > 0) {
   Rt_shift_max <- 0.001
   Rt_shift_scale_min <- 0.1
   Rt_shift_scale_max <- 10
-
-
+  
+  
   last_start_date <- as.Date(null_na(min_death_date))-10
   first_start_date <- as.Date(null_na(min_death_date))-55
-
+  
   ## -----------------------------------------------------------------------------
   ## Step 2b: Sourcing previous fits to start pmcmc nearby
   ## -----------------------------------------------------------------------------
-
+  
   # 1. Do we have a previous run for this country
   pars_former <- readRDS("pars_init.rds")
   pars_former <- pars_former[[iso3c]]
-
+  
   if (!is.null(pars_former)) {
-
+    
     R0_start <- pars_former$R0
     date_start <- pars_former$start_date
     Meff_start <- pars_former$Meff
@@ -181,16 +181,16 @@ if(sum(ecdc_df$deaths) > 0) {
     Rt_shift_scale_start <- pars_former$Rt_shift_scale
     Rt_rw_duration <- pars_former$Rt_rw_duration
     date_Meff_change <- pars_former$date_Meff_change
-
-
+    
+    
   } else {
-
+    
     # have at least a week span for start date
     span_date_currently <- seq.Date(first_start_date, last_start_date, 1)
     day_step <- as.numeric(round((last_start_date - first_start_date + 1)/12))
-
+    
     Sys.setenv("SQUIRE_PARALLEL_DEBUG" = "TRUE")
-
+    
     # do coarse grid search to get in the right ball park
     out_det <- squire::calibrate(
       data = data,
@@ -216,12 +216,12 @@ if(sum(ecdc_df$deaths) > 0) {
       country = country,
       forecast = 0
     )
-
+    
     Sys.setenv("SQUIRE_PARALLEL_DEBUG" = FALSE)
-
+    
     ## and get the best  position
     pos <- which(out_det$scan_results$mat_log_ll == max(out_det$scan_results$mat_log_ll), arr.ind = TRUE)
-
+    
     # get tthe R0, betas and times into a data frame
     R0_start <- out_det$scan_results$x[pos[1]]
     date_start <- as.Date(out_det$scan_results$y[pos[2]])
@@ -231,7 +231,7 @@ if(sum(ecdc_df$deaths) > 0) {
     Rt_shift_scale_start <- 2
     Rt_shift_duration <- 30
     Rt_rw_duration <- 14
-
+    
     if (is.null(interventions[[iso3c]]$C)) {
       date_Meff_change <- NA
     } else {
@@ -240,10 +240,10 @@ if(sum(ecdc_df$deaths) > 0) {
                                                       min_date = as.Date("2020-02-01"))
     }
   }
-
-
   
-
+  
+  
+  
   R0_start <- min(max(R0_start, R0_min*1.02), R0_max*0.98)
   date_start <- min(max(as.Date(date_start), as.Date(first_start_date)+1), as.Date(last_start_date)-1)
   Meff_start <- min(max(Meff_start, Meff_min), Meff_max)
@@ -263,14 +263,14 @@ if(sum(ecdc_df$deaths) > 0) {
     n_mcmc <- 50000
   }
   
-
+  
   ## -----------------------------------------------------------------------------
   ## Step 2ab: Spline set up
   ## -----------------------------------------------------------------------------
-
+  
   last_shift_date <- as.Date(date_Meff_change) + 7
   remaining_days <- as.Date(date_0) - last_shift_date - 21 # reporting delay in place
-
+  
   # how many spline pars do we need
   rw_needed <- as.numeric(round(remaining_days/Rt_rw_duration)) + 1 # because the first rw starts at t0
   
@@ -279,15 +279,18 @@ if(sum(ecdc_df$deaths) > 0) {
     pars_init_rw <- as.list(rep(0, rw_needed))
   } else {
     pars_init_rw <- as.list(pars_former[grep("Rt_rw_\\d",names(pars_former))])
+    if(length(pars_init_rw) > rw_needed) {
+      pars_init_rw <- head(pars_init_rw, rw_needed)
+    }
     if(length(pars_init_rw) < rw_needed) {
-      pars_init_rw[[rw_needed]] <- 0
+      pars_init_rw <- c(pars_init_rw, vector("list", rw_needed-length(pars_init_rw)))
     }
     pars_init_rw <- lapply(pars_init_rw, function(x) {
-        if(is.null(x)){ 
-          return(0) 
-        } else { 
-          return(x) 
-        }})
+      if(is.null(x)){ 
+        return(0) 
+      } else { 
+        return(x) 
+      }})
   }
   
   # how long is the last spline explaining now
@@ -298,7 +301,7 @@ if(sum(ecdc_df$deaths) > 0) {
   pars_max_rw <- as.list(rep(5, rw_needed))
   pars_discrete_rw <- as.list(rep(FALSE, rw_needed))
   names(pars_init_rw) <- names(pars_min_rw) <- names(pars_max_rw) <- names(pars_discrete_rw) <- paste0("Rt_rw_", seq_len(rw_needed))
-
+  
   ## -----------------------------------------------------------------------------
   ## Step 2b: PMCMC parameter set up
   ## -----------------------------------------------------------------------------
@@ -361,7 +364,7 @@ if(sum(ecdc_df$deaths) > 0) {
     rownames(proposal_kernel) <- colnames(proposal_kernel) <- names(pars_init[[1]])
     proposal_kernel["start_date", "start_date"] <- 1.5
   }
-
+  
   
   # MCMC Functions - Prior and Likelihood Calculation
   logprior <- function(pars){
@@ -396,11 +399,11 @@ if(sum(ecdc_df$deaths) > 0) {
   # slight hack to enforce transmission through long period with no deaths
   elong_summer_isos <- c("EST", "ISL")
   if (iso3c %in% elong_summer_isos) {
-
+    
     mmr_dates <- seq.Date(as.Date("2020-06-14"), as.Date("2020-07-14"), 21)
     old_deaths <- data$deaths[data$date %in% mmr_dates]
     data$deaths[data$date %in% mmr_dates] <- 1
-
+    
   }
   
   ## -----------------------------------------------------------------------------
@@ -678,23 +681,23 @@ if(sum(ecdc_df$deaths) > 0) {
   
   # Maintaining the current set of measures for a further 3 months  
   maintain_scenario <- squire::projections(out, 
-                                               R0_change = c(1), 
-                                               tt_R0 = c(0), 
-                                               time_period = time_period)
+                                           R0_change = c(1), 
+                                           tt_R0 = c(0), 
+                                           time_period = time_period)
   maintain_scenario$projection_args$r <- NULL
   saveRDS(maintain_scenario, "grid_out.rds")
   
   # Enhancing movement restrictions for 3 months (50% further reduction in contacts) (Mitigation) 
   mitigation_scenario <- squire::projections(out, 
-                                                 R0_change = c(0.5), 
-                                                 tt_R0 = c(0), 
-                                                 time_period = time_period)
+                                             R0_change = c(0.5), 
+                                             tt_R0 = c(0), 
+                                             time_period = time_period)
   
   # Relax by 50% for 3 months 
   reverse_scenario <- squire::projections(out, 
-                                               R0_change = 1.5, 
-                                               tt_R0 = c(0), 
-                                               time_period = time_period)
+                                          R0_change = 1.5, 
+                                          tt_R0 = c(0), 
+                                          time_period = time_period)
   
   ## -----------------------------------------------------------------------------
   ## 4.2. Investigating a capacity surge
@@ -766,19 +769,19 @@ if(sum(ecdc_df$deaths) > 0) {
   out_surged$pmcmc_results$chains <- NULL
   
   maintain_scenario_surged <- squire::projections(out_surged, 
-                                                      R0_change = c(1), 
-                                                      tt_R0 = c(0), 
-                                                      time_period = time_period)
+                                                  R0_change = c(1), 
+                                                  tt_R0 = c(0), 
+                                                  time_period = time_period)
   
   mitigation_scenario_surged <- squire::projections(out_surged, 
-                                                        R0_change = c(0.5), 
-                                                        tt_R0 = c(0), 
-                                                        time_period = time_period)
+                                                    R0_change = c(0.5), 
+                                                    tt_R0 = c(0), 
+                                                    time_period = time_period)
   
   reverse_scenario_surged <- squire::projections(out_surged, 
-                                                      R0_change = c(1.5), 
-                                                      tt_R0 = c(0), 
-                                                      time_period = time_period)
+                                                 R0_change = c(1.5), 
+                                                 tt_R0 = c(0), 
+                                                 time_period = time_period)
   
   ## -----------------------------------------------------------------------------
   ## 4.3. Extra Scenarios
@@ -967,7 +970,7 @@ if (sum(ecdc_df$deaths) == 0) {
   file.create("index.html", "index.pdf", "index.md", 
               "summary_df.rds", "input_params.json", 
               "fitting.pdf")
-
+  
 }
 
 # major summaries
