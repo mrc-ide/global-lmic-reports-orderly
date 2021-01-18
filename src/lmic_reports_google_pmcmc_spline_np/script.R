@@ -241,16 +241,7 @@ if(sum(ecdc_df$deaths) > 0) {
     }
   }
 
-  # either set to end if mobility dictates
-  if(is.null(date_Meff_change) || is.na(date_Meff_change)) {
-    date_Meff_change <- as.Date("2020-06-01")
-  }
-  
-  # however if the mobility coming in is null then let's set it to 2019 and rely on splines
-  if (is.null(interventions[[iso3c]]$C) || iso3c %in% spline_iso3cs) {
-    date_Meff_change <- as.Date("2019-12-07")
-    n_mcmc <- 50000
-  }
+
   
 
   R0_start <- min(max(R0_start, R0_min*1.02), R0_max*0.98)
@@ -259,7 +250,19 @@ if(sum(ecdc_df$deaths) > 0) {
   Meff_pl_start <- min(max(Meff_pl_start, Meff_pl_min), Meff_pl_max)
   Rt_shift_start <- min(max(Rt_shift_start, Rt_shift_min), Rt_shift_max)
   Rt_shift_scale_start <- min(max(Rt_shift_scale_start, Rt_shift_scale_min), Rt_shift_scale_max)
-
+  
+  # either set to end if mobility dictates
+  if(is.null(date_Meff_change) || is.na(date_Meff_change)) {
+    date_Meff_change <- as.Date("2020-06-01")
+  }
+  
+  # however if the mobility coming in is null then let's set it to the start date and that should
+  # ensure that the correct number of rws are used
+  if (is.null(interventions[[iso3c]]$C) || iso3c %in% spline_iso3cs) {
+    date_Meff_change <- date_start
+    n_mcmc <- 50000
+  }
+  
 
   ## -----------------------------------------------------------------------------
   ## Step 2ab: Spline set up
