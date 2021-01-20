@@ -5,7 +5,7 @@ print(sessionInfo())
 RhpcBLASctl::blas_set_num_threads(1L)
 RhpcBLASctl::omp_set_num_threads(1L)
 
-version_min <- "0.5.8"
+version_min <- "0.6.0"
 if(packageVersion("squire") < version_min) {
   stop("squire needs to be updated to at least v", version_min)
 }
@@ -55,7 +55,8 @@ if(sum(ecdc_df$deaths) > 0) {
   data$date <- as.Date(data$date)
   
   # Handle for countries that have eliminated and had reintroduction events
-  if (iso3c %in% c("MMR", "BLZ", "TTO", "BHS", "HKG", "ABW", "GUM", "ISL")) {
+  reintroduction_iso3cs <- c("MMR", "BLZ", "TTO", "BHS", "HKG", "ABW", "GUM", "ISL")
+  if (iso3c %in% reintroduction_iso3cs) {
     deaths_removed <- deaths_removed + sum(data$deaths[data$date < as.Date("2020-06-01")])
     data$deaths[data$date < as.Date("2020-06-01")] <- 0
   }
@@ -412,6 +413,11 @@ if(sum(ecdc_df$deaths) > 0) {
   
   # sleep so parallel is chill
   Sys.sleep(time = runif(1, 0, sleep))
+  
+  # fix for now until can get drat updated
+  mod <- squire:::deterministic_model()
+  mod$parameter_func <- squire::explicit_model
+  
   out <- squire::pmcmc(data = data, 
                        gibbs_sampling = gibbs_sampling,
                        gibbs_days = gibbs_days,
@@ -444,7 +450,8 @@ if(sum(ecdc_df$deaths) > 0) {
                        start_adaptation = start_adaptation,
                        baseline_hosp_bed_capacity = hosp_beds, 
                        baseline_ICU_bed_capacity = icu_beds,
-                       init = init_state(deaths_removed, iso3c))
+                       init = init_state(deaths_removed, iso3c),
+                       dur_R = 365)
   
   # Sys.setenv("SQUIRE_PARALLEL_DEBUG" = "TRUE")
   out <- generate_draws_pmcmc_fitted(out = out, 
@@ -460,6 +467,16 @@ if(sum(ecdc_df$deaths) > 0) {
   if (iso3c %in% elong_summer_isos) {
     data$deaths[data$date %in% mmr_dates] <- old_deaths
     out$pmcmc_results$inputs$data$deaths[out$pmcmc_results$inputs$data$date %in% mmr_dates] <- old_deaths
+  }
+  
+  # for ones with first waves removed increase their cumulative infection counter accordingly
+  if (iso3c %in% reintroduction_iso3cs) {
+    index <- squire:::odin_index(out$model)
+    for(r in seq_len(replicates)) {
+      first_non_na <- which(!is.na(out$output[,index$R1[1], r]))[1]
+      new_m <- matrix(out$output[first_non_na,index$R1,r], nrow = nrow(out$output), ncol = length(index$R1), byrow = TRUE) 
+      out$output[,index$cum_infs,r] <- out$output[,index$cum_infs,r] + out$output[first_non_na,index$R1,r]   
+    }
   }
   
   ## -----------------------------------------------------------------------------
@@ -833,8 +850,9 @@ if(sum(ecdc_df$deaths) > 0) {
   names(data)[1] <- "date"
   data$daily_deaths <- data$deaths
   data$daily_cases <- data$cases
-  data$deaths <- rev(cumsum(rev(data$deaths)))
-  data$cases <- rev(cumsum(rev(data$cases)))
+  data <- data[order(data$date),]
+  data$deaths <- cumsum(data$deaths)
+  data$cases <- cumsum(data$cases)
   data$date <- as.Date(data$date)
   
   # prepare reports
@@ -971,13 +989,14 @@ if (sum(ecdc_df$deaths) == 0) {
               "summary_df.rds", "input_params.json", 
               "fitting.pdf")
   
-}
-
-# major summaries
+  # major summaries
 o_list <- lapply(r_list_pass, squire::format_output,
                  var_select = c("infections","deaths","hospital_demand",
                                 "ICU_demand", "D", "hospital_incidence","ICU_incidence"),
                  date_0 = date_0)
+
+}
+
 
 # group them together
 active_infections <- lapply(r_list_pass, function(x) {
@@ -1073,7 +1092,7 @@ data_sum$country <- country
 data_sum$iso3c <- iso3c
 data_sum$report_date <- date
 data_sum <- data_sum[data_sum$compartment != "D",]
-data_sum$version <- "v6"
+data_sum$version <- "v7"
 data_sum <- dplyr::mutate(data_sum, across(dplyr::starts_with("y_"), ~round(.x,digits = 2)))
 
 # specify if this is calibrated to deaths or just hypothetical forecast for ESFT
@@ -1091,10 +1110,12 @@ write.csv(data_sum, "projections.csv", row.names = FALSE, quote = FALSE)
 
 ar_list <- lapply(r_list_pass, function(x) {
   
-  S <- x %>% squire::format_output(var_select = "S", date_0 = date) %>% 
+  S <- x %>% squire::format_output(var_select = "infections", date_0 = date) %>% 
+    group_by(replicate) %>% 
+    mutate(y = cumsum(y)) %>% 
     group_by(t, date) %>% 
     summarise(y = median(y,na.rm = TRUE))
-  S$ar <- 1-S$y/sum(squire::get_population(x$parameters$country)$n)
+  S$ar <- S$y/sum(squire::get_population(x$parameters$country)$n)
   S$iso <- squire::get_population(x$parameters$country)$iso3c[1]
   
   S <- na.omit(S)

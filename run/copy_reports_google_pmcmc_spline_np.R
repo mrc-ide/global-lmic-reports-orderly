@@ -151,6 +151,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
     best$date_Meff_change <- out$pmcmc_results$inputs$Rt_args$date_Meff_change
     best$Rt_shift_duration <- out$pmcmc_results$inputs$Rt_args$Rt_shift_duration
     best$Rt_rw_duration <- out$pmcmc_results$inputs$Rt_args$Rt_rw_duration
+    best$covar_mat <- out$pmcmc_results$chains$chain1$covariance_matrix[1]
     
     # for now combine here
     pars[[x]] <- best
@@ -230,12 +231,12 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   projections <- do.call(rbind,
                          lapply(file.path(src, "projections.csv"), read.csv))
   dir.create("gh-pages/data", FALSE, TRUE)
-  projections$version <- "v6"
-  write.csv(projections, paste0("gh-pages/data/",date,"_v6.csv"), row.names = FALSE, quote = FALSE)
+  projections$version <- "v7"
+  write.csv(projections, paste0("gh-pages/data/",date,"_v7.csv"), row.names = FALSE, quote = FALSE)
   cwd <- getwd()
   setwd("gh-pages/data/")
-  zip(paste0(date,"_v6.csv.zip"),paste0(date,"_v6.csv"))
-  file.remove(paste0(date,"_v6.csv"))
+  zip(paste0(date,"_v7.csv.zip"),paste0(date,"_v7.csv"))
+  file.remove(paste0(date,"_v7.csv"))
   setwd(cwd)
   
   hic_pos_projections <- which(projections$iso3c %in% to_remove)

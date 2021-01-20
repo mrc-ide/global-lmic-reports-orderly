@@ -69,7 +69,7 @@ init_state <- function(deaths_removed, iso3c, seeding_cases = 5) {
   # and update the inital to reflect
   init$D <- deaths
   init$S <- init$S - R - deaths
-  init$R <- R
+  init$R1 <- R
   
   }
   

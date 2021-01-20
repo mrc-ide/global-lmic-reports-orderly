@@ -162,6 +162,14 @@ Lastly, as we switch from one version to the next, there is likely to be a small
 
 ---
 
+#### Version 7: 2021-01-20
+
+* Waning Immunity included. Mean immunity protection now assumed to be equal to 
+1 year and described by an Erlang distribution.
+* ECDC stopped daily reporting. We now use [JHU CSSE COVID-19 Data](https://github.com/CSSEGISandData/COVID-19.). For countries that are not covered by JHU or have delayed reporting patterns, we use the [worldometers](https://www.worldometers.info/coronavirus) data set for deaths. 
+
+<br>
+
 #### Version 6: 2020-11-11
 
 * Update to model parameters - see [Parameters](https://mrc-ide.github.io/global-lmic-reports/parameters.html) section for more details.
