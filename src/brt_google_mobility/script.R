@@ -99,7 +99,7 @@ acap <- rbind(acap, acap_extra[,match(names(acap_extra),names(acap))])
 
 # country name fixes. We want to use the ISO3C eventually but there are typos...
 acap$ISO <- countrycode::countrycode(acap$COUNTRY, "country.name", "iso3c",
-                                     custom_match = c("Eswatini"="SWZ", "Micronesia"="FSM","CAR"="CAR"))
+                                     custom_match = c("Eswatini"="SWZ", "Micronesia"="FSM","CAR"="CAF"))
 
 ## -----------------------------------------------------------------------------
 ## Step 1: Data Loading
@@ -203,6 +203,23 @@ output_data$observed <- !is.na(output_data$overall)
 output_data$overall[which(is.na(output_data$overall))] <- predicted
 output_data$all_overall <- predict.gbm(brt, output_data[, c(4:(ncol(output_data)))], n.trees = brt$gbm.call$best.trees, type = "response")
 
+# adding back in countries that have google mobility data but no ACAPS data (and hence no predictions)
+yes_mob_no_acaps_countries <- unique(mob$iso3c)[!(unique(mob$iso3c) %in% unique(new_ACAPs_cat$ISO))]
+yes_mob_no_acaps_countries <- yes_mob_no_acaps_countries[!is.na(yes_mob_no_acaps_countries)]
+yes_mob_no_acaps <- mob %>%
+  filter(iso3c %in% yes_mob_no_acaps_countries) %>%
+  group_by(iso3c, country_region) %>%
+  complete(date = seq.Date(min(output_data$date), max(output_data$date), by = "days")) %>%
+  mutate(check = overall) %>%
+  fill(overall, .direction = "updown") %>%
+  left_join(wb_metadata, by = c("iso3c" = "ISO")) %>%
+  rename("ISO" = "iso3c") %>%
+  ungroup()
+yes_mob_no_acaps$observed <- !is.na(yes_mob_no_acaps$check)
+yes_mob_no_acaps$all_overall <- yes_mob_no_acaps$overall
+yes_mob_no_acaps <- select(yes_mob_no_acaps, ISO, date, overall, all_overall, observed, income_group)
+
+
 ## -----------------------------------------------------------------------------
 ## Step 4: Data Formatting
 ## -----------------------------------------------------------------------------
@@ -259,9 +276,12 @@ for(r in seq_along(res)) {
     # for the end use the mean of the final 2 weeks
     rw <- tail(res[[r]]$C[which(res[[r]]$observed)], 14)
     rw_end <- tail(which(res[[r]]$observed),1)
+    if(rw_end == length(res[[r]]$C)) {
+      res[[r]]$C[tail(seq_along(res[[r]]$C),7)] <- mean(rw)
+    } else {
     rw_7 <- res[[r]]$C[(rw_end+1):(rw_end+7)] 
     res[[r]]$C[(rw_end+1):nrow(res[[r]])] <- mean(rw)
-    
+    }
   }
   
 }
@@ -272,7 +292,7 @@ saveRDS(res, "google_brt.rds")
 saveRDS(brt, "google_brt_model.rds")
 saveRDS(output_data, "output_data.rds")
 
-## -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 ## Step 5: Data Validation / Plotting
 ## -----------------------------------------------------------------------------
 
