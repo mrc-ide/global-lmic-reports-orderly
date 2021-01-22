@@ -151,7 +151,12 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
     best$date_Meff_change <- out$pmcmc_results$inputs$Rt_args$date_Meff_change
     best$Rt_shift_duration <- out$pmcmc_results$inputs$Rt_args$Rt_shift_duration
     best$Rt_rw_duration <- out$pmcmc_results$inputs$Rt_args$Rt_rw_duration
-    best$covar_mat <- out$pmcmc_results$chains$chain1$covariance_matrix[1]
+    best$covariance_matrix <- out$pmcmc_results$chains$chain1$covariance_matrix[1]
+    best$scaling_factor <- mean(
+      c(tail(na.omit(out$pmcmc_results$chains$chain1$scaling_factor),1),
+        tail(na.omit(out$pmcmc_results$chains$chain2$scaling_factor),1),
+        tail(na.omit(out$pmcmc_results$chains$chain3$scaling_factor),1))
+      )
     
     # for now combine here
     pars[[x]] <- best

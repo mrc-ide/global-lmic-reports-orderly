@@ -247,7 +247,7 @@ generate_draws_pmcmc_fitted <- function(out, n_particles = 10, grad_dur = 21) {
   
   # get these gradients
   get_grad <- function(x) {
-    lm(y~x, data = data.frame(y = x, x = seq_along(x)))$coefficients[2]
+    lm(log(y)~x, data = data.frame(y = x, x = seq_along(x)))$coefficients[2]
   }
   
   pred_grad_end <- get_grad(infections_end$y)
@@ -444,7 +444,8 @@ generate_draws_pmcmc_fitted <- function(out, n_particles = 10, grad_dur = 21) {
                                                       population = out$pmcmc_results$inputs$population,
                                                       replicates = 1,
                                                       day_return = TRUE,
-                                                      time_period = nrow(pmcmc_samples$trajectories))
+                                                      time_period = nrow(pmcmc_samples$trajectories),
+                                                      dur_R = out$pmcmc_results$inputs$model_params$dur_R)
   
   # and add the parameters that changed between each simulation, i.e. posterior draws
   r$replicate_parameters <- pmcmc_samples$sampled_PMCMC_Results

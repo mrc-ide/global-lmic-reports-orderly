@@ -5,7 +5,7 @@ print(sessionInfo())
 RhpcBLASctl::blas_set_num_threads(1L)
 RhpcBLASctl::omp_set_num_threads(1L)
 
-version_min <- "0.6.0"
+version_min <- "0.6.1"
 if(packageVersion("squire") < version_min) {
   stop("squire needs to be updated to at least v", version_min)
 }
@@ -366,6 +366,15 @@ if(sum(ecdc_df$deaths) > 0) {
     proposal_kernel["start_date", "start_date"] <- 1.5
   }
   
+  # use the old covar matrix and scaling factor if aroun
+  if("covariance_matrix" %in% names(pars_former)) {
+    proposal_kernel <- pars_former$covariance_matrix
+  }
+  scaling_factor <- 1
+  if("scaling_factor" %in% names(pars_former)) {
+    scaling_factor <- pars_former$scaling_factor
+  }
+  
   
   # MCMC Functions - Prior and Likelihood Calculation
   logprior <- function(pars){
@@ -435,6 +444,7 @@ if(sum(ecdc_df$deaths) > 0) {
                        pars_max = pars_max,
                        pars_discrete = pars_discrete,
                        proposal_kernel = proposal_kernel,
+                       scaling_factor = scaling_factor,
                        country = country, 
                        R0_change = R0_change,
                        date_R0_change = date_R0_change,
