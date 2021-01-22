@@ -247,6 +247,7 @@ generate_draws_pmcmc_fitted <- function(out, n_particles = 10, grad_dur = 21) {
   
   # get these gradients
   get_grad <- function(x) {
+    x[x==0] <- NA
     lm(log(y)~x, data = data.frame(y = x, x = seq_along(x)))$coefficients[2]
   }
   
@@ -285,11 +286,13 @@ generate_draws_pmcmc_fitted <- function(out, n_particles = 10, grad_dur = 21) {
     }
     
   }
+  
   # desired model predictd final gradient
   wanted_grad <- des_grad_end * ca_grad_frac
   
-  # if actual gradient available
-  if(!is.nan(wanted_grad) || !is.na(wanted_grad) || !is.infinite(wanted_grad) ) {
+  # if actual gradient available and there are at least half non 0s
+  if(!is.nan(wanted_grad) || !is.na(wanted_grad) || !is.infinite(wanted_grad) &&
+     (sum(cases_end == 0)/length(cases_end)) < 0.5) {
   
   index <- squire:::odin_index(out$model)
   index$n_E2_I <- seq(tail(unlist(index),1)+1, tail(unlist(index),1)+length(index$S),1)
@@ -361,9 +364,9 @@ generate_draws_pmcmc_fitted <- function(out, n_particles = 10, grad_dur = 21) {
         # assign the infections
         for(i in seq_along(out$parameters$population)) {
           collect <- vapply(1:out$parameters$replicates, function(j) {
-            pos <- seq(i,length(all_case_compartments), by = length(out$parameters$population))
-            pos <- all_case_compartments[pos]
-            diff(rowSums(pmcmc_samples$trajectories[,pos,j]))
+            pos <- seq(i, length(index$cum_infs), by = length(out$parameters$population))
+            pos <- index$cum_infs[pos]
+            diff(pmcmc_samples$trajectories[,pos,j])
           }, FUN.VALUE = numeric(nt-1))
           pmcmc_samples$trajectories[1+seq_len(nt-1),index$n_E2_I[i],] <- collect
         }
@@ -379,19 +382,6 @@ generate_draws_pmcmc_fitted <- function(out, n_particles = 10, grad_dur = 21) {
         }
         
       }
-    
-    
-    
-    # assign the infections
-    for(i in seq_along(out$parameters$population)) {
-      collect <- vapply(1:dim(pmcmc_samples$trajectories)[3], function(j) {
-        pos <- seq(i,length(all_case_compartments), by = length(out$parameters$population))
-        pos <- all_case_compartments[pos]
-        diff(rowSums(pmcmc_samples$trajectories[,pos,j]))
-      }, FUN.VALUE = numeric(nt-1))
-      pmcmc_samples$trajectories[1+seq_len(nt-1),index$n_E2_I[i],] <- collect
-    }
-    
     
     this_infs <- as.numeric(rowMeans(tail(matrix(unlist(lapply(seq_len(replicates), function(i) {
       rowSums(pmcmc_samples$trajectories[,index$n_E2_I,i])
