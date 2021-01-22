@@ -368,7 +368,7 @@ if(sum(ecdc_df$deaths) > 0) {
   
   # use the old covar matrix and scaling factor if aroun
   if("covariance_matrix" %in% names(pars_former)) {
-    proposal_kernel <- pars_former$covariance_matrix
+    proposal_kernel <- pars_former$covariance_matrix[[1]]
   }
   scaling_factor <- 1
   if("scaling_factor" %in% names(pars_former)) {
