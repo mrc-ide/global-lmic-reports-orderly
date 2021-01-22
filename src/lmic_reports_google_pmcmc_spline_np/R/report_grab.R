@@ -248,7 +248,12 @@ generate_draws_pmcmc_fitted <- function(out, n_particles = 10, grad_dur = 21) {
   # get these gradients
   get_grad <- function(x) {
     x[x==0] <- NA
+    # only get a grad if more than half data is there
+    if(sum(is.na(x)) > 0.5*length(x)) {
+      return(NA)
+    } else {
     lm(log(y)~x, data = data.frame(y = x, x = seq_along(x)))$coefficients[2]
+    }
   }
   
   pred_grad_end <- get_grad(infections_end$y)
@@ -281,8 +286,9 @@ generate_draws_pmcmc_fitted <- function(out, n_particles = 10, grad_dur = 21) {
     case_grads <- lapply(breaks, function(x) {get_grad(na_to_0(cases_pre_end[x]))})
     ca_grad_frac <- median((unlist(inf_grads)/unlist(case_grads)), na.rm = TRUE)
     
+    # if we still can't get a gradient then don't adjust from the fitting (is risky)
     if(is.na(ca_grad_frac) | is.infinite(ca_grad_frac)) {
-      ca_grad_frac <- 1
+      ca_grad_frac <- NA
     }
     
   }
