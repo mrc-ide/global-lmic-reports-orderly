@@ -270,7 +270,7 @@ if(sum(ecdc_df$deaths) > 0) {
   ## -----------------------------------------------------------------------------
   
   last_shift_date <- as.Date(date_Meff_change) + 7
-  remaining_days <- as.Date(date_0) - last_shift_date - 21 # reporting delay in place
+  remaining_days <- as.Date(date_0) - last_shift_date - 14 # reporting delay in place with the rounding means this is closer in practice. 
   
   # how many spline pars do we need
   rw_needed <- as.numeric(round(remaining_days/Rt_rw_duration)) + 1 # because the first rw starts at t0
