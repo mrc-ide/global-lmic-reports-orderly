@@ -366,10 +366,37 @@ if(sum(ecdc_df$deaths) > 0) {
     proposal_kernel["start_date", "start_date"] <- 1.5
   }
   
-  # use the old covar matrix and scaling factor if aroun
+  # use the old covar matrix and scaling factor if available
   if("covariance_matrix" %in% names(pars_former)) {
-    proposal_kernel <- pars_former$covariance_matrix[[1]]
+    
+    # old proposal kernel
+    proposal_kernel_proposed <- pars_former$covariance_matrix[[1]]
+    
+    # check if it needs to be expanded
+    if(length(grep("Rt_rw", colnames(proposal_kernel_proposed))) == rw_needed) {
+      
+      proposal_kernel <- proposal_kernel_proposed
+      
+    } else {
+      
+      add_similar_cr <- function(x) {
+        x <- cbind(rbind(x, 0), 0) 
+        rw_num <- colnames(x)[nrow(x)-1]
+        new_rw <- paste0("Rt_rw_", as.numeric(gsub("(.*_)(\\d*)$", "\\2", rw_num)) + 1)
+        colnames(x)[ncol(x)] <- rownames(x)[nrow(x)] <- new_rw
+        x[nrow(x),] <- x[nrow(x) - 1,]
+        x[,ncol(x)] <- x[,ncol(x) - 1]
+        return(x)
+      }
+      
+      # add as needed
+      for(i in seq_len(rw_needed - length(grep("Rt_rw", colnames(proposal_kernel_proposed))))) {  
+        proposal_kernel_proposed <- add_similar_cr(proposal_kernel_proposed)
+      }
+      proposal_kernel <- proposal_kernel_proposed
+    }
   }
+  
   scaling_factor <- 1
   if("scaling_factor" %in% names(pars_former)) {
     scaling_factor <- pars_former$scaling_factor

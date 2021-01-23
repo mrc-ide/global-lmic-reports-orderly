@@ -308,7 +308,7 @@ generate_draws_pmcmc_fitted <- function(out, n_particles = 10, grad_dur = 21) {
   if(wanted_grad < pred_grad_end) {
     alters <- seq(0.025, 0.325, 0.025)
   } else {
-    alters <- seq(-0.025, -0.325, -0.025) 
+    alters <- seq(-0.025, -0.275, -0.025) # more conservative on the way up
   }
   
   # store our grads
