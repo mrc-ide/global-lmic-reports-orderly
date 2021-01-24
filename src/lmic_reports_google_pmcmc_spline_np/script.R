@@ -490,6 +490,28 @@ if(sum(ecdc_df$deaths) > 0) {
                        init = init_state(deaths_removed, iso3c),
                        dur_R = 365)
   
+  # Save this dummy one here for debugging purposes
+  if (full_scenarios) {
+    
+    full_out <- out
+  # remove states to keep object memory save down
+  for(i in seq_along(full_out$pmcmc_results$chains)) {
+    full_out$pmcmc_results$chains[[i]]$states <- NULL
+    full_out$pmcmc_results$chains[[i]]$covariance_matrix <- tail(full_out$pmcmc_results$chains$chain1$covariance_matrix,1)
+  }
+    
+    # Add the prior
+    full_out$pmcmc_results$inputs$prior <- as.function(c(formals(logprior), 
+                                                    body(logprior)), 
+                                                  envir = new.env(parent = environment(stats::acf)))
+  
+    saveRDS(full_out, "pre_grad_out.rds")
+    
+  } else {
+    file.create("pre_grad_out.rds")
+  }
+    
+    
   # Sys.setenv("SQUIRE_PARALLEL_DEBUG" = "TRUE")
   out <- generate_draws_pmcmc_fitted(out = out, 
                                      n_particles = n_particles, 
@@ -837,13 +859,7 @@ if(sum(ecdc_df$deaths) > 0) {
                                                  tt_R0 = c(0), 
                                                  time_period = time_period)
   
-  ## -----------------------------------------------------------------------------
-  ## 4.3. Extra Scenarios
-  ## N.B. Not implemented but leave here if we want to add more ------------------
-  ## -----------------------------------------------------------------------------
-  
-  if (full_scenarios) {
-    
+ 
     r_list <-
       named_list(
         maintain_scenario,
@@ -853,20 +869,6 @@ if(sum(ecdc_df$deaths) > 0) {
         mitigation_scenario_surged,
         reverse_scenario_surged
       )
-    
-  } else {
-    
-    r_list <-
-      named_list(
-        maintain_scenario,
-        mitigation_scenario,
-        reverse_scenario,
-        maintain_scenario_surged,
-        mitigation_scenario_surged,
-        reverse_scenario_surged
-      )
-    
-  }
   
   r_list_pass <- r_list
   
@@ -1173,42 +1175,3 @@ ars$region <- countrycode::countrycode(ars$iso, "iso3c", "region23")
 names(ars)[3] <- "uninfected"
 saveRDS(ars, "attack_rates.rds")
 
-## -----------------------------------------------------------------------------
-## Step 6: Full saves
-## -----------------------------------------------------------------------------
-
-if (full_scenarios) {
-  
-  o_list <- lapply(r_list, squire::format_output,
-                   var_select = c("infections","deaths","hospital_demand","ICU_demand", "ICase"),
-                   date_0 = date_0)
-  data_sum <- lapply(o_list, function(pd){
-    
-    # remove any NA rows (due to different start dates)
-    if(sum(is.na(pd$t) | is.na(pd$y))>0) {
-      pd <- pd[-which(is.na(pd$t) | is.na(pd$y)),]
-    }
-    
-    # Format summary data
-    pds <- pd %>%
-      dplyr::group_by(.data$date, .data$compartment) %>%
-      dplyr::summarise(y_025 = stats::quantile(.data$y, 0.025),
-                       y_25 = stats::quantile(.data$y, 0.25),
-                       y_median = median(.data$y),
-                       y_mean = mean(.data$y),
-                       y_75 = stats::quantile(.data$y, 0.75),
-                       y_975 = stats::quantile(.data$y, 0.975))
-    
-    return(as.data.frame(pds, stringsAsFactors = FALSE))
-  })
-  
-  for(i in seq_along(r_list)) {
-    data_sum[[i]]$scenario <- names(r_list)[i]
-  }
-  data_sum <- do.call(rbind, data_sum)
-  data_sum$country <- country
-  data_sum$iso3c <- iso3c
-  data_sum$report_date <- date
-  write.csv(data_sum, "full_projections.csv", row.names = FALSE, quote = FALSE)
-  
-}
