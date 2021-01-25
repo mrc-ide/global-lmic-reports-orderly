@@ -262,6 +262,9 @@ generate_draws_pmcmc_fitted <- function(out, n_particles = 10, grad_dur = 21) {
   des_grad_end <- get_grad(cases_end)
   des_grad_pre_end <- get_grad(cases_pre_end)
   
+  # if the cases are just not good enough then don't
+  if(!is.na(des_grad_end) && !is.na(des_grad_pre_end) && country != "Indonesia") {
+  
   if(sign(pred_grad_pre_end) == sign(des_grad_pre_end)) {
   
     ca_grad_frac <-  pred_grad_pre_end / des_grad_pre_end
@@ -407,6 +410,8 @@ generate_draws_pmcmc_fitted <- function(out, n_particles = 10, grad_dur = 21) {
   alts <- which.min(abs(ans-wanted_grad))
   for(ch in seq_along(out$pmcmc_results$chains)) {
     out$pmcmc_results$chains[[ch]]$results[,last_rw] <- out$pmcmc_results$chains[[ch]]$results[,last_rw] + alters[alts]
+  }
+  
   }
   
   }
