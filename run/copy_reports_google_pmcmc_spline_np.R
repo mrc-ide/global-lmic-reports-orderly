@@ -99,7 +99,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   } else if (length(id) > 1) {
     message(sprintf("Multiple 'ecdc' reports for '%s'", as.character(date)))
   }
-  ecdc <- readRDS(file.path("archive/ecdc/", max(id), "ecdc_all.rds"))
+  ecdc <- readRDS(file.path("archive/ecdc/", max(id), "jhu_all.rds"))
   
   
   ## Then find all lmic_reports reports that use files from this ecdc
@@ -183,10 +183,10 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   ## copy reports --------------------------------------------------------------
   ## ---------------------------------------------------------------------------
   
-  target <- "gh-pages"
+  target <- "../global-lmic-reports-orderly/gh-pages"
   
   src <- file.path("archive", "lmic_reports_google_pmcmc_spline_np", reports$id)
-  dest <- sprintf("gh-pages/%s/%s", reports$country, reports$date)
+  dest <- sprintf("../global-lmic-reports-orderly/gh-pages/%s/%s", reports$country, reports$date)
   copy <- c("index.html",
             "projections.csv",
             "index.pdf",
@@ -206,15 +206,9 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
       file_copy(dir(dest[[i]], full.names = TRUE), dest_latest)
       
       # remove report if no deaths in last 20 days
-      if(sum(head(ecdc[which(ecdc$countryterritoryCode == reports$country[i]),]$deaths,20), na.rm = TRUE)==0) {
+      if(sum(tail(ecdc[which(ecdc$countryterritoryCode == reports$country[i]),]$deaths,20), na.rm = TRUE)==0) {
         prev <- dir(dest_latest, full.names = TRUE, pattern = "\\.")
         unlink(grep("index", prev, value = TRUE), recursive = TRUE)
-      }
-      
-      # remove report if HIC
-      if(i %in% hic_pos) {
-        prev <- dir(dest_latest, full.names = TRUE, pattern = "\\.")
-        unlink(grep("index\\.html", prev, value = TRUE), recursive = TRUE)
       }
       
     }
@@ -223,7 +217,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   # from here remove hic
   pdf_input <- file.path(src[-hic_pos], "index.pdf")
   message(sprintf("Building combined pdf from %d files", length(pdf_input)))
-  qpdf::pdf_combine(pdf_input, "gh-pages/combined_reports.pdf")
+  qpdf::pdf_combine(pdf_input, "../global-lmic-reports-orderly/gh-pages/combined_reports.pdf")
   
   ## Aha, this is so naughty, but probably a reasonable shout given
   ## the situation.  The alternative is to depend on _all_ the country
@@ -235,11 +229,11 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   
   projections <- do.call(rbind,
                          lapply(file.path(src, "projections.csv"), read.csv))
-  dir.create("gh-pages/data", FALSE, TRUE)
+  dir.create("../global-lmic-reports-orderly/gh-pages/data", FALSE, TRUE)
   projections$version <- "v7"
-  write.csv(projections, paste0("gh-pages/data/",date,"_v7.csv"), row.names = FALSE, quote = FALSE)
+  write.csv(projections, paste0("../global-lmic-reports-orderly/gh-pages/data/",date,"_v7.csv"), row.names = FALSE, quote = FALSE)
   cwd <- getwd()
-  setwd("gh-pages/data/")
+  setwd("../global-lmic-reports-orderly/gh-pages/data/")
   zip(paste0(date,"_v7.csv.zip"),paste0(date,"_v7.csv"))
   file.remove(paste0(date,"_v7.csv"))
   setwd(cwd)

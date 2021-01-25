@@ -16,7 +16,7 @@ write_data_schema <- function() {
     "* **death_calibrated** - Scenario calibrated to death data. In countries with no deaths to date, we provide scenario projections of what would happen if 5 imported cases occurred today with no future intervention changes. We assume three different R0s. For our upper estimate, we assume that R0 is equal to the mean R0 of countries in the same income classifcation (High, Upper Middle, Lower Middle, Low Income). For our lower estimate, we assume that R0 is equal to either 1.2 or the current Rt of countries in the same income classifcation (whichever is highest). Lastly, our central estimate is half way between the upper and lower estimate. These 3 scenarios are labelled as Relax Interventions 50%, Additional 50% Reduction and Maintain Status Quo in order to maintain consistency with the calibrated scenarios."
   )
   
-  f <- "gh-pages/data/schema.md"
+  f <- "../global-lmic-reports-orderly/gh-pages/data/schema.md"
   if (!file.exists(f)) {
     dir.create(dirname(f))
     file.create(f)
