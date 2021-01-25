@@ -183,10 +183,10 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   ## copy reports --------------------------------------------------------------
   ## ---------------------------------------------------------------------------
   
-  target <- "../global-lmic-reports-orderly/gh-pages"
+  target <- "gh-pages"
   
   src <- file.path("archive", "lmic_reports_google_pmcmc_spline_np", reports$id)
-  dest <- sprintf("../global-lmic-reports-orderly/gh-pages/%s/%s", reports$country, reports$date)
+  dest <- sprintf("gh-pages/%s/%s", reports$country, reports$date)
   copy <- c("index.html",
             "projections.csv",
             "index.pdf",
@@ -217,7 +217,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   # from here remove hic
   pdf_input <- file.path(src[-hic_pos], "index.pdf")
   message(sprintf("Building combined pdf from %d files", length(pdf_input)))
-  qpdf::pdf_combine(pdf_input, "../global-lmic-reports-orderly/gh-pages/combined_reports.pdf")
+  qpdf::pdf_combine(pdf_input, "gh-pages/combined_reports.pdf")
   
   ## Aha, this is so naughty, but probably a reasonable shout given
   ## the situation.  The alternative is to depend on _all_ the country
@@ -229,11 +229,11 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   
   projections <- do.call(rbind,
                          lapply(file.path(src, "projections.csv"), read.csv))
-  dir.create("../global-lmic-reports-orderly/gh-pages/data", FALSE, TRUE)
+  dir.create("gh-pages/data", FALSE, TRUE)
   projections$version <- "v7"
-  write.csv(projections, paste0("../global-lmic-reports-orderly/gh-pages/data/",date,"_v7.csv"), row.names = FALSE, quote = FALSE)
+  write.csv(projections, paste0("gh-pages/data/",date,"_v7.csv"), row.names = FALSE, quote = FALSE)
   cwd <- getwd()
-  setwd("../global-lmic-reports-orderly/gh-pages/data/")
+  setwd("gh-pages/data/")
   zip(paste0(date,"_v7.csv.zip"),paste0(date,"_v7.csv"))
   file.remove(paste0(date,"_v7.csv"))
   setwd(cwd)

@@ -51,7 +51,7 @@ copy_index <- function(date = NULL, is_latest = TRUE) {
   message(sprintf("Copying index (%s), parameters (%s), 404 (%s), FAQ (%s) and News (%s) pages",
                   id_index, id_params, id_404, id_FAQ, id_News))
   
-  target <- "../global-lmic-reports-orderly/gh-pages"
+  target <- "gh-pages"
   src_index <- file.path("archive", "index_page", id_index,"index.html")
   src_params <- file.path("archive", "parameters", id_params, "parameters.html")
   src_404 <- file.path("archive", "404", id_404, "404.html")

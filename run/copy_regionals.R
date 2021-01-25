@@ -65,7 +65,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   target <- "gh-pages"
   
   src <- file.path("archive", "regional_page", reports$id)
-  dest <- sprintf("../global-lmic-reports-orderly/gh-pages/%s/%s", reports$country, reports$date)
+  dest <- sprintf("gh-pages/%s/%s", reports$country, reports$date)
   copy <- c("index.html",
             "index.pdf")
   
