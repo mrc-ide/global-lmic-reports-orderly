@@ -261,7 +261,7 @@ if(sum(ecdc_df$deaths) > 0) {
   # ensure that the correct number of rws are used
   if (is.null(interventions[[iso3c]]$C) || iso3c %in% spline_iso3cs) {
     date_Meff_change <- date_start
-    n_mcmc <- 50000
+    n_mcmc <- 20000
   }
   
   
@@ -513,7 +513,7 @@ if(sum(ecdc_df$deaths) > 0) {
     
     
   # Sys.setenv("SQUIRE_PARALLEL_DEBUG" = "TRUE")
-  out <- generate_draws_pmcmc_fitted(out = out, 
+  out <- generate_draws_pmcmc_case_fitted(out = out, 
                                      n_particles = n_particles, 
                                      grad_dur = number_of_last_rw_days)
   
