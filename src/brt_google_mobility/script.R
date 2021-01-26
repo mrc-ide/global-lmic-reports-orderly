@@ -286,6 +286,15 @@ for(r in seq_along(res)) {
   
 }
 
+# fill in dates up to the current date with last value
+date_0 <- date
+for(i in seq_along(res)) {
+  if(nrow(res[[i]]) > 0) {
+  res[[i]] <- complete(res[[i]], date = seq.Date(min(res[[i]]$date, na.rm = TRUE), as.Date(date_0), 1)) %>% 
+    fill(colnames(res[[i]]), .direction = "down")
+  }
+
+}
 
 
 saveRDS(res, "google_brt.rds")
