@@ -275,7 +275,10 @@ rt_continental_plot <- function(cont) {
   sum_rt <- sum_rt %>% filter(continent == cont)
   sum_rt <- sum_rt %>% filter(date <= today)
   
+  sum_rt$code <- countrycode::countrycode(sum_rt$iso3c, "iso3c", "iso2c")
+  sum_rt$code[sum_rt$code=="NA"] <- "NAM"
   
+    
   ggplot(sum_rt[sum_rt$compartment == "Reff" & sum_rt$scenario == "Maintain Status Quo",] %>% 
            filter(date > "2020-10-01"), 
          aes(x=as.Date(date), y = y_median, ymin=y_025, ymax = y_975, group = iso3c, fill = iso3c)) +
