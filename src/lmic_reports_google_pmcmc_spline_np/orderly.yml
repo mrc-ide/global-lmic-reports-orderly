@@ -82,6 +82,7 @@ artefacts:
         - fitting.pdf
         - projections.csv
         - attack_rates.rds
+        - pre_grad_out.rds
 
 # An optional name to describe the report in more detail than its
 # directory name (which must be short) but less detail than

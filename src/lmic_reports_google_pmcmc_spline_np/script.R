@@ -5,7 +5,7 @@ print(sessionInfo())
 RhpcBLASctl::blas_set_num_threads(1L)
 RhpcBLASctl::omp_set_num_threads(1L)
 
-version_min <- "0.5.8"
+version_min <- "0.6.1"
 if(packageVersion("squire") < version_min) {
   stop("squire needs to be updated to at least v", version_min)
 }
@@ -55,7 +55,8 @@ if(sum(ecdc_df$deaths) > 0) {
   data$date <- as.Date(data$date)
   
   # Handle for countries that have eliminated and had reintroduction events
-  if (iso3c %in% c("MMR", "BLZ", "TTO", "BHS", "HKG", "ABW", "GUM", "ISL")) {
+  reintroduction_iso3cs <- c("MMR", "BLZ", "TTO", "BHS", "HKG", "ABW", "GUM", "ISL")
+  if (iso3c %in% reintroduction_iso3cs) {
     deaths_removed <- deaths_removed + sum(data$deaths[data$date < as.Date("2020-06-01")])
     data$deaths[data$date < as.Date("2020-06-01")] <- 0
   }
@@ -133,7 +134,7 @@ if(sum(ecdc_df$deaths) > 0) {
   } else {
     n_particles <- 50
     replicates <- 100
-    n_mcmc <- 50000
+    n_mcmc <- 20000
     n_chains <- 3
     grid_spread <- 11
     sleep <- 120
@@ -260,7 +261,7 @@ if(sum(ecdc_df$deaths) > 0) {
   # ensure that the correct number of rws are used
   if (is.null(interventions[[iso3c]]$C) || iso3c %in% spline_iso3cs) {
     date_Meff_change <- date_start
-    n_mcmc <- 50000
+    n_mcmc <- 20000
   }
   
   
@@ -269,7 +270,7 @@ if(sum(ecdc_df$deaths) > 0) {
   ## -----------------------------------------------------------------------------
   
   last_shift_date <- as.Date(date_Meff_change) + 7
-  remaining_days <- as.Date(date_0) - last_shift_date - 21 # reporting delay in place
+  remaining_days <- as.Date(date_0) - last_shift_date - 14 # reporting delay in place with the rounding means this is closer in practice. 
   
   # how many spline pars do we need
   rw_needed <- as.numeric(round(remaining_days/Rt_rw_duration)) + 1 # because the first rw starts at t0
@@ -365,6 +366,42 @@ if(sum(ecdc_df$deaths) > 0) {
     proposal_kernel["start_date", "start_date"] <- 1.5
   }
   
+  # use the old covar matrix and scaling factor if available
+  if("covariance_matrix" %in% names(pars_former)) {
+    
+    # old proposal kernel
+    proposal_kernel_proposed <- pars_former$covariance_matrix[[1]]
+    
+    # check if it needs to be expanded
+    if(length(grep("Rt_rw", colnames(proposal_kernel_proposed))) == rw_needed) {
+      
+      proposal_kernel <- proposal_kernel_proposed
+      
+    } else {
+      
+      add_similar_cr <- function(x) {
+        x <- cbind(rbind(x, 0), 0) 
+        rw_num <- colnames(x)[nrow(x)-1]
+        new_rw <- paste0("Rt_rw_", as.numeric(gsub("(.*_)(\\d*)$", "\\2", rw_num)) + 1)
+        colnames(x)[ncol(x)] <- rownames(x)[nrow(x)] <- new_rw
+        x[nrow(x),] <- x[nrow(x) - 1,]
+        x[,ncol(x)] <- x[,ncol(x) - 1]
+        return(x)
+      }
+      
+      # add as needed
+      for(i in seq_len(rw_needed - length(grep("Rt_rw", colnames(proposal_kernel_proposed))))) {  
+        proposal_kernel_proposed <- add_similar_cr(proposal_kernel_proposed)
+      }
+      proposal_kernel <- proposal_kernel_proposed
+    }
+  }
+  
+  scaling_factor <- 1
+  if("scaling_factor" %in% names(pars_former)) {
+    scaling_factor <- pars_former$scaling_factor
+  }
+  
   
   # MCMC Functions - Prior and Likelihood Calculation
   logprior <- function(pars){
@@ -412,6 +449,11 @@ if(sum(ecdc_df$deaths) > 0) {
   
   # sleep so parallel is chill
   Sys.sleep(time = runif(1, 0, sleep))
+  
+  # fix for now until can get drat updated
+  mod <- squire:::deterministic_model()
+  mod$parameter_func <- squire::explicit_model
+  
   out <- squire::pmcmc(data = data, 
                        gibbs_sampling = gibbs_sampling,
                        gibbs_days = gibbs_days,
@@ -429,6 +471,7 @@ if(sum(ecdc_df$deaths) > 0) {
                        pars_max = pars_max,
                        pars_discrete = pars_discrete,
                        proposal_kernel = proposal_kernel,
+                       scaling_factor = scaling_factor,
                        country = country, 
                        R0_change = R0_change,
                        date_R0_change = date_R0_change,
@@ -444,10 +487,33 @@ if(sum(ecdc_df$deaths) > 0) {
                        start_adaptation = start_adaptation,
                        baseline_hosp_bed_capacity = hosp_beds, 
                        baseline_ICU_bed_capacity = icu_beds,
-                       init = init_state(deaths_removed, iso3c))
+                       init = init_state(deaths_removed, iso3c),
+                       dur_R = 365)
   
+  # Save this dummy one here for debugging purposes
+  if (full_scenarios) {
+    
+    full_out <- out
+  # remove states to keep object memory save down
+  for(i in seq_along(full_out$pmcmc_results$chains)) {
+    full_out$pmcmc_results$chains[[i]]$states <- NULL
+    full_out$pmcmc_results$chains[[i]]$covariance_matrix <- tail(full_out$pmcmc_results$chains$chain1$covariance_matrix,1)
+  }
+    
+    # Add the prior
+    full_out$pmcmc_results$inputs$prior <- as.function(c(formals(logprior), 
+                                                    body(logprior)), 
+                                                  envir = new.env(parent = environment(stats::acf)))
+  
+    saveRDS(full_out, "pre_grad_out.rds")
+    
+  } else {
+    file.create("pre_grad_out.rds")
+  }
+    
+    
   # Sys.setenv("SQUIRE_PARALLEL_DEBUG" = "TRUE")
-  out <- generate_draws_pmcmc_fitted(out = out, 
+  out <- generate_draws_pmcmc_case_fitted(out = out, 
                                      n_particles = n_particles, 
                                      grad_dur = number_of_last_rw_days)
   
@@ -460,6 +526,16 @@ if(sum(ecdc_df$deaths) > 0) {
   if (iso3c %in% elong_summer_isos) {
     data$deaths[data$date %in% mmr_dates] <- old_deaths
     out$pmcmc_results$inputs$data$deaths[out$pmcmc_results$inputs$data$date %in% mmr_dates] <- old_deaths
+  }
+  
+  # for ones with first waves removed increase their cumulative infection counter accordingly
+  if (iso3c %in% reintroduction_iso3cs) {
+    index <- squire:::odin_index(out$model)
+    for(r in seq_len(replicates)) {
+      first_non_na <- which(!is.na(out$output[,index$R1[1], r]))[1]
+      new_m <- matrix(out$output[first_non_na,index$R1,r], nrow = nrow(out$output), ncol = length(index$R1), byrow = TRUE) 
+      out$output[,index$cum_infs,r] <- out$output[,index$cum_infs,r] + out$output[first_non_na,index$R1,r]   
+    }
   }
   
   ## -----------------------------------------------------------------------------
@@ -783,13 +859,7 @@ if(sum(ecdc_df$deaths) > 0) {
                                                  tt_R0 = c(0), 
                                                  time_period = time_period)
   
-  ## -----------------------------------------------------------------------------
-  ## 4.3. Extra Scenarios
-  ## N.B. Not implemented but leave here if we want to add more ------------------
-  ## -----------------------------------------------------------------------------
-  
-  if (full_scenarios) {
-    
+ 
     r_list <-
       named_list(
         maintain_scenario,
@@ -799,20 +869,6 @@ if(sum(ecdc_df$deaths) > 0) {
         mitigation_scenario_surged,
         reverse_scenario_surged
       )
-    
-  } else {
-    
-    r_list <-
-      named_list(
-        maintain_scenario,
-        mitigation_scenario,
-        reverse_scenario,
-        maintain_scenario_surged,
-        mitigation_scenario_surged,
-        reverse_scenario_surged
-      )
-    
-  }
   
   r_list_pass <- r_list
   
@@ -833,8 +889,9 @@ if(sum(ecdc_df$deaths) > 0) {
   names(data)[1] <- "date"
   data$daily_deaths <- data$deaths
   data$daily_cases <- data$cases
-  data$deaths <- rev(cumsum(rev(data$deaths)))
-  data$cases <- rev(cumsum(rev(data$cases)))
+  data <- data[order(data$date, decreasing = TRUE),]
+  data$deaths <- cumsum(data$deaths)
+  data$cases <- cumsum(data$cases)
   data$date <- as.Date(data$date)
   
   # prepare reports
@@ -971,13 +1028,14 @@ if (sum(ecdc_df$deaths) == 0) {
               "summary_df.rds", "input_params.json", 
               "fitting.pdf")
   
-}
-
-# major summaries
+  # major summaries
 o_list <- lapply(r_list_pass, squire::format_output,
                  var_select = c("infections","deaths","hospital_demand",
                                 "ICU_demand", "D", "hospital_incidence","ICU_incidence"),
                  date_0 = date_0)
+
+}
+
 
 # group them together
 active_infections <- lapply(r_list_pass, function(x) {
@@ -1073,7 +1131,7 @@ data_sum$country <- country
 data_sum$iso3c <- iso3c
 data_sum$report_date <- date
 data_sum <- data_sum[data_sum$compartment != "D",]
-data_sum$version <- "v6"
+data_sum$version <- "v7"
 data_sum <- dplyr::mutate(data_sum, across(dplyr::starts_with("y_"), ~round(.x,digits = 2)))
 
 # specify if this is calibrated to deaths or just hypothetical forecast for ESFT
@@ -1091,10 +1149,12 @@ write.csv(data_sum, "projections.csv", row.names = FALSE, quote = FALSE)
 
 ar_list <- lapply(r_list_pass, function(x) {
   
-  S <- x %>% squire::format_output(var_select = "S", date_0 = date) %>% 
+  S <- x %>% squire::format_output(var_select = "infections", date_0 = date) %>% 
+    group_by(replicate) %>% 
+    mutate(y = cumsum(y)) %>% 
     group_by(t, date) %>% 
     summarise(y = median(y,na.rm = TRUE))
-  S$ar <- 1-S$y/sum(squire::get_population(x$parameters$country)$n)
+  S$ar <- S$y/sum(squire::get_population(x$parameters$country)$n)
   S$iso <- squire::get_population(x$parameters$country)$iso3c[1]
   
   S <- na.omit(S)
@@ -1115,42 +1175,3 @@ ars$region <- countrycode::countrycode(ars$iso, "iso3c", "region23")
 names(ars)[3] <- "uninfected"
 saveRDS(ars, "attack_rates.rds")
 
-## -----------------------------------------------------------------------------
-## Step 6: Full saves
-## -----------------------------------------------------------------------------
-
-if (full_scenarios) {
-  
-  o_list <- lapply(r_list, squire::format_output,
-                   var_select = c("infections","deaths","hospital_demand","ICU_demand", "ICase"),
-                   date_0 = date_0)
-  data_sum <- lapply(o_list, function(pd){
-    
-    # remove any NA rows (due to different start dates)
-    if(sum(is.na(pd$t) | is.na(pd$y))>0) {
-      pd <- pd[-which(is.na(pd$t) | is.na(pd$y)),]
-    }
-    
-    # Format summary data
-    pds <- pd %>%
-      dplyr::group_by(.data$date, .data$compartment) %>%
-      dplyr::summarise(y_025 = stats::quantile(.data$y, 0.025),
-                       y_25 = stats::quantile(.data$y, 0.25),
-                       y_median = median(.data$y),
-                       y_mean = mean(.data$y),
-                       y_75 = stats::quantile(.data$y, 0.75),
-                       y_975 = stats::quantile(.data$y, 0.975))
-    
-    return(as.data.frame(pds, stringsAsFactors = FALSE))
-  })
-  
-  for(i in seq_along(r_list)) {
-    data_sum[[i]]$scenario <- names(r_list)[i]
-  }
-  data_sum <- do.call(rbind, data_sum)
-  data_sum$country <- country
-  data_sum$iso3c <- iso3c
-  data_sum$report_date <- date
-  write.csv(data_sum, "full_projections.csv", row.names = FALSE, quote = FALSE)
-  
-}

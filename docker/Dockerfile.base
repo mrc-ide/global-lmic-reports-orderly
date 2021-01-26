@@ -80,7 +80,6 @@ RUN install_packages --repo=https://ncov-ic.github.io/drat \
         lme4 \
         Matrix \
         scales \
-        Rdpack \
-        rstanarm 
+        Rdpack 
 
 ENTRYPOINT ["bash"]

@@ -99,7 +99,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   } else if (length(id) > 1) {
     message(sprintf("Multiple 'ecdc' reports for '%s'", as.character(date)))
   }
-  ecdc <- readRDS(file.path("archive/ecdc/", max(id), "ecdc_all.rds"))
+  ecdc <- readRDS(file.path("archive/ecdc/", max(id), "jhu_all.rds"))
   
   
   ## Then find all lmic_reports reports that use files from this ecdc
@@ -151,6 +151,12 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
     best$date_Meff_change <- out$pmcmc_results$inputs$Rt_args$date_Meff_change
     best$Rt_shift_duration <- out$pmcmc_results$inputs$Rt_args$Rt_shift_duration
     best$Rt_rw_duration <- out$pmcmc_results$inputs$Rt_args$Rt_rw_duration
+    best$covariance_matrix <- out$pmcmc_results$chains$chain1$covariance_matrix[1]
+    best$scaling_factor <- mean(
+      c(tail(na.omit(out$pmcmc_results$chains$chain1$scaling_factor),1),
+        tail(na.omit(out$pmcmc_results$chains$chain2$scaling_factor),1),
+        tail(na.omit(out$pmcmc_results$chains$chain3$scaling_factor),1))
+      )
     
     # for now combine here
     pars[[x]] <- best
@@ -200,15 +206,9 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
       file_copy(dir(dest[[i]], full.names = TRUE), dest_latest)
       
       # remove report if no deaths in last 20 days
-      if(sum(head(ecdc[which(ecdc$countryterritoryCode == reports$country[i]),]$deaths,20), na.rm = TRUE)==0) {
+      if(sum(tail(ecdc[which(ecdc$countryterritoryCode == reports$country[i]),]$deaths,20), na.rm = TRUE)==0) {
         prev <- dir(dest_latest, full.names = TRUE, pattern = "\\.")
         unlink(grep("index", prev, value = TRUE), recursive = TRUE)
-      }
-      
-      # remove report if HIC
-      if(i %in% hic_pos) {
-        prev <- dir(dest_latest, full.names = TRUE, pattern = "\\.")
-        unlink(grep("index\\.html", prev, value = TRUE), recursive = TRUE)
       }
       
     }
@@ -230,12 +230,12 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   projections <- do.call(rbind,
                          lapply(file.path(src, "projections.csv"), read.csv))
   dir.create("gh-pages/data", FALSE, TRUE)
-  projections$version <- "v6"
-  write.csv(projections, paste0("gh-pages/data/",date,"_v6.csv"), row.names = FALSE, quote = FALSE)
+  projections$version <- "v7"
+  write.csv(projections, paste0("gh-pages/data/",date,"_v7.csv"), row.names = FALSE, quote = FALSE)
   cwd <- getwd()
   setwd("gh-pages/data/")
-  zip(paste0(date,"_v6.csv.zip"),paste0(date,"_v6.csv"))
-  file.remove(paste0(date,"_v6.csv"))
+  zip(paste0(date,"_v7.csv.zip"),paste0(date,"_v7.csv"))
+  file.remove(paste0(date,"_v7.csv"))
   setwd(cwd)
   
   hic_pos_projections <- which(projections$iso3c %in% to_remove)

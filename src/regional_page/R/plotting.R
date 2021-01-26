@@ -31,7 +31,8 @@ cumulative_deaths_plot_continent_projections <- function(continent, today, data,
   slim <- slim[,c("date", "y", "country", "iso3c", "observed", "compartment", "y_025", "y_975")]
   
   # handle ecdc
-  names(ecdc)[names(ecdc) %in% c("dateRep","Region", "countryterritoryCode")] <- c("date", "country", "iso3c")
+  ecdc <- ecdc %>% select(-date) 
+  names(ecdc)[names(ecdc) %in% c("dateRep","Region", "countryterritoryCode")] <- c("iso3c","country", "date")
   ecdc <- ecdc %>% 
     mutate(date = as.Date(date),
            observed = TRUE,
@@ -274,9 +275,13 @@ rt_continental_plot <- function(cont) {
   sum_rt <- sum_rt %>% filter(continent == cont)
   sum_rt <- sum_rt %>% filter(date <= today)
   
+  sum_rt$code <- countrycode::countrycode(sum_rt$iso3c, "iso3c", "iso2c")
+  sum_rt$code[sum_rt$code=="NA"] <- "NAM"
   
-  ggplot(sum_rt[sum_rt$compartment == "Reff" & sum_rt$scenario == "Maintain Status Quo",], 
-         aes(x=as.Date(date), ymin=y_025, ymax = y_975, group = iso3c, fill = iso3c)) +
+    
+  ggplot(sum_rt[sum_rt$compartment == "Reff" & sum_rt$scenario == "Maintain Status Quo",] %>% 
+           filter(date > "2020-10-01"), 
+         aes(x=as.Date(date), y = y_median, ymin=y_025, ymax = y_975, group = iso3c, fill = iso3c)) +
     geom_ribbon(fill = "#96c4aa") +
     geom_line(color = "#48996b") +
     geom_ribbon(mapping = aes(ymin = y_25, ymax = y_75), fill = "#48996b") +
@@ -284,7 +289,7 @@ rt_continental_plot <- function(cont) {
     theme_bw() +
     theme(axis.text = element_text(size=12)) +
     xlab("") +
-    facet_wrap(~country, ncol = 6) +
+    facet_wrap(~country, ncol = 6, scales = "free_y") +
     scale_x_date(breaks = "3 week",
                  date_labels = "%d %b") + 
     theme(legend.position = "none") +
@@ -293,7 +298,7 @@ rt_continental_plot <- function(cont) {
           panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
           strip.background = element_blank(), 
           panel.background = element_blank(), axis.line = element_line(colour = "black")
-    ) + geofacet::facet_geo(~code, grid = "africa_countries_grid1",label = "name")
+    ) + geofacet::facet_geo(~code, grid = "africa_countries_grid1",label = "name", scales = "free_y")
   
   
 }
