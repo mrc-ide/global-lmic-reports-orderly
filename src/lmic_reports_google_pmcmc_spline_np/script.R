@@ -1026,7 +1026,7 @@ if (sum(ecdc_df$deaths) == 0) {
   ## Lastly make up some outputs here to pass orderly
   file.create("index.html", "index.pdf", "index.md", 
               "summary_df.rds", "input_params.json", 
-              "fitting.pdf")
+              "fitting.pdf", "pre_grad_out.rds")
   
   # major summaries
 o_list <- lapply(r_list_pass, squire::format_output,
