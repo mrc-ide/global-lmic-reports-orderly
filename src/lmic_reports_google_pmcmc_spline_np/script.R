@@ -55,7 +55,7 @@ if(sum(ecdc_df$deaths) > 0) {
   data$date <- as.Date(data$date)
   
   # Handle for countries that have eliminated and had reintroduction events
-  reintroduction_iso3cs <- c("MMR", "BLZ", "TTO", "BHS", "HKG", "ABW", "GUM", "ISL")
+  reintroduction_iso3cs <- c("MMR", "BLZ", "TTO", "BHS", "HKG", "ABW", "GUM", "ISL", "BRB")
   if (iso3c %in% reintroduction_iso3cs) {
     deaths_removed <- deaths_removed + sum(data$deaths[data$date < as.Date("2020-06-01")])
     data$deaths[data$date < as.Date("2020-06-01")] <- 0
@@ -102,7 +102,7 @@ if(sum(ecdc_df$deaths) > 0) {
   
   # catch for missing mobilty data or China which happened too early for our BRT to be helpful and too late in RWA/PNG case
   # as well as others that are just not at all informed by mobility :/
-  spline_iso3cs <- c("CHN","MAC","TWN","KOR", "RWA", "PNG", "DZA", "COD", "SYR", "TUN", "UGA","UZB")
+  spline_iso3cs <- c("CHN","MAC","TWN","KOR", "RWA", "PNG", "DZA", "COD", "SYR", "TUN", "UGA","UZB", "BEL")
   if(is.null(R0_change) || is.null(date_R0_change) || iso3c %in% spline_iso3cs) {
     date_R0_change <- seq.Date(as.Date("2020-01-01"), as.Date(date), 1)
     R0_change <- rep(1, length(date_R0_change))
@@ -434,7 +434,7 @@ if(sum(ecdc_df$deaths) > 0) {
   } 
   
   # slight hack to enforce transmission through long period with no deaths
-  elong_summer_isos <- c("EST", "ISL")
+  elong_summer_isos <- c("EST", "ISL", "ATG")
   if (iso3c %in% elong_summer_isos) {
     
     mmr_dates <- seq.Date(as.Date("2020-06-14"), as.Date("2020-07-14"), 21)
