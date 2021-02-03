@@ -26,7 +26,11 @@ if [ -z $(git -C ${DOCS_DIR} config --get user.email) ]; then
     git -C ${DOCS_DIR} config user.email "oj.watson@hotmail.co.uk"
     git -C ${DOCS_DIR} config user.name "OJWatson"
 fi
+
+git -C ${DOCS_DIR} remote add origin ${REMOTE_URL}
+git -C ${DOCS_DIR} add data
+git -C ${DOCS_DIR} commit --no-verify -m "Add data for version ${VERSION}"
+git -C ${DOCS_DIR} push --force -u origin master
 git -C ${DOCS_DIR} add .
 git -C ${DOCS_DIR} commit --no-verify -m "Update pages for version ${VERSION}"
-git -C ${DOCS_DIR} remote add origin ${REMOTE_URL}
 git -C ${DOCS_DIR} push --force -u origin master
