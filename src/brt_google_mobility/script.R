@@ -105,8 +105,6 @@ acap$ISO <- countrycode::countrycode(acap$COUNTRY, "country.name", "iso3c",
 ## Step 1: Data Loading
 ## -----------------------------------------------------------------------------
 
-
-
 ACAPs_measure <- acap %>%
   rename(country = COUNTRY, measure = MEASURE, type = LOG_TYPE, date = DATE_IMPLEMENTED) %>%
   select(ISO, measure, type, date) %>%
@@ -131,11 +129,12 @@ for (i in 1:length(measures)) {
 
 # Tracking Cumulative Number of Each Type of Measure Implemented and Creating New Rows for Dates 
 # Not Present in Each Country
+date_0 <- date
 new_ACAPs_measure <- ACAPs_measure %>%
   group_by(ISO) %>%
   arrange(date) %>%
   mutate_at(vars(-ISO, -date), funs(cumsum(.))) %>%    
-  complete(date = seq.Date(min(ACAPs_measure$date), max(ACAPs_measure$date), by = "days")) %>%
+  complete(date = seq.Date(min(ACAPs_measure$date), date_0, by = "days")) %>%
   mutate_at(vars( -ISO, -date), funs(replace(., row_number() == 1, 0))) 
 
 # Filling Those Newly Created Rows With the Value In the Row Above (As We're Tracking Cumulative)

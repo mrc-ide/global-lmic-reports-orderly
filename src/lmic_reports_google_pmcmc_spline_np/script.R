@@ -102,7 +102,7 @@ if(sum(ecdc_df$deaths) > 0) {
   
   # catch for missing mobilty data or China which happened too early for our BRT to be helpful and too late in RWA/PNG case
   # as well as others that are just not at all informed by mobility :/
-  spline_iso3cs <- c("CHN","MAC","TWN","KOR", "RWA", "PNG", "DZA", "COD", "SYR", "TUN", "UGA","UZB", "BEL")
+  spline_iso3cs <- c("CHN","MAC","TWN","KOR", "RWA", "PNG", "DZA", "COD", "SYR", "TUN", "UGA","UZB")
   if(is.null(R0_change) || is.null(date_R0_change) || iso3c %in% spline_iso3cs) {
     date_R0_change <- seq.Date(as.Date("2020-01-01"), as.Date(date), 1)
     R0_change <- rep(1, length(date_R0_change))
@@ -377,7 +377,7 @@ if(sum(ecdc_df$deaths) > 0) {
       
       proposal_kernel <- proposal_kernel_proposed
       
-    } else {
+    } else if(length(grep("Rt_rw", colnames(proposal_kernel_proposed))) < rw_needed) {
       
       add_similar_cr <- function(x) {
         x <- cbind(rbind(x, 0), 0) 
@@ -394,6 +394,14 @@ if(sum(ecdc_df$deaths) > 0) {
         proposal_kernel_proposed <- add_similar_cr(proposal_kernel_proposed)
       }
       proposal_kernel <- proposal_kernel_proposed
+    } else {
+      
+      # remove as needed
+      for(i in seq_len(length(grep("Rt_rw", colnames(proposal_kernel_proposed))) - rw_needed)) {  
+        proposal_kernel_proposed <- proposal_kernel_proposed[-nrow(proposal_kernel_proposed),-ncol(proposal_kernel_proposed)]
+      }
+      
+      
     }
   }
   
