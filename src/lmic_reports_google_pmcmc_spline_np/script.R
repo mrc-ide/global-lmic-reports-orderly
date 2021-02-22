@@ -897,10 +897,12 @@ if(sum(ecdc_df$deaths) > 0) {
   names(data)[1] <- "date"
   data$daily_deaths <- data$deaths
   data$daily_cases <- data$cases
+  data$date <- as.Date(data$date)
+  data <- data[order(data$date, decreasing = FALSE),]
   data$deaths <- cumsum(data$deaths)
   data$cases <- cumsum(data$cases)
-  data$date <- as.Date(data$date)
   data <- data[order(data$date, decreasing = TRUE),]
+  data <- data[data$date <= as.Date(date_0), ]
   
   # prepare reports
   rmarkdown::render("index.Rmd", 
