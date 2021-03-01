@@ -21,12 +21,12 @@ short_run <- as.logical(short_run)
 parallel <- as.logical(parallel)
 full_scenarios <- as.logical(full_scenarios)
 
-## Get the JU data or alternative from worldometers if ECDC is too erratic
+## Get the worldometers if JHU is too erratic
 ecdc <- readRDS("jhu_all.rds")
 # ecdc <- readRDS("ecdc_all.rds")
 if (iso3c %in% c("BOL", "ITA", "FRA", "ECU", "CHL", "COD", "ESP", "IRN", 
                  "JPN", "GUF","KGZ", "PER", "MEX", "HKG", "MAC", "TWN",
-                 "SDN", "IRL", "TUR")) {
+                 "SDN", "IRL", "TUR", "NPL")) {
   ecdc <- readRDS("worldometers_all.rds")
 }
 
