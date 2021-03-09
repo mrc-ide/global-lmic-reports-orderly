@@ -3,7 +3,7 @@ income_Rt <- function(date_0) {
   # parse for latest date
   url <- "https://github.com/mrc-ide/global-lmic-reports/tree/master/data"
   html <- xml2::read_html(url)
-  links <- rvest::html_nodes(html, ".js-navigation-open.link-gray-dark")
+  links <- rvest::html_nodes(html, ".js-navigation-open.Link--primary")
   text <- rvest::html_text(links, "title")
   latest <- which.max(as.Date(head(substr(text, 1, 10), -1)))
   d_link <- paste0("https://github.com/mrc-ide/global-lmic-reports/raw/master/data/",text[latest])
