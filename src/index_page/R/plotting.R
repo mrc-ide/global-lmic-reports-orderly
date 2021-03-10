@@ -634,7 +634,7 @@ regional_plot_overview <- function(date_0) {
     geom_bar(stat = "identity") + 
     theme_bw() + 
     scale_fill_brewer(name = "", type="qual", palette = 3) + 
-    scale_x_date(date_breaks = "1 month") + 
+    scale_x_date(date_breaks = "1 month", date_labels = "%b %Y") + 
     ylab("Deaths") + 
     xlab("") + 
     theme(legend.position = "top",
