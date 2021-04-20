@@ -9,9 +9,10 @@ conflict_prefer("filter", "dplyr")
 conflict_prefer("area", "patchwork")
 
 download_url <- function(url) {
+  options(timeout = max(300, getOption("timeout")))
   tryCatch({
     tf <- tempfile()
-    code <- download.file(url, tf, mode = "wb")
+    code <- download.file(url, tf, mode = "wb", )
     if (code != 0) {
       stop("Error downloading file")
     }

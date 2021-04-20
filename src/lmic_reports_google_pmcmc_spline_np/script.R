@@ -264,6 +264,10 @@ if(sum(ecdc_df$deaths) > 0) {
     n_mcmc <- 20000
   }
   
+  # also if start_date is after date_meff_change then adapt to ensure correct number of rws used
+  if (date_start > date_Meff_change) {
+    date_Meff_change <- date_start
+  }
   
   ## -----------------------------------------------------------------------------
   ## Step 2ab: Spline set up
@@ -631,8 +635,9 @@ if(sum(ecdc_df$deaths) > 0) {
   # add in the deaths to the json fits themselves
   df$deaths <- out$pmcmc_results$inputs$data$deaths[match(df$date, out$pmcmc_results$inputs$data$date)]
   df_new_covidsim <- extend_df_for_covidsim(df = df, out = out, ext = 240)
+  df$iso3c <- iso3c
   
-  writeLines(jsonlite::toJSON(df_new_covidsim,pretty = TRUE), "input_params.json")
+  writeLines(jsonlite::toJSON(df_new_covidsim, pretty = TRUE), "input_params.json")
   
   
   ## -----------------------------------------------------------------------------

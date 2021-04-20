@@ -22,7 +22,9 @@ error = function(e) {
                url, e$message, url_page))
 })
 
-
+## -----------------------------------------------------------------------------
+## ECDC
+## -----------------------------------------------------------------------------
 
 d <- readxl::read_excel("ecdc.xlsx", progress = FALSE)
 names(d)[1] <- "dateRep"
@@ -71,6 +73,10 @@ saveRDS(ecdc, "ecdc_all.rds")
   saveRDS(data.frame(), "ecdc_all.rds")  
   file.create("ecdc.xlsx")
 }
+
+## -----------------------------------------------------------------------------
+## JHU
+## -----------------------------------------------------------------------------
 
 #### AND let's get the JHU as well/instead as looks liek it is less susceptible to blips
 
@@ -141,9 +147,9 @@ if(sum(jhu_data$deaths)>0){
 # save 
 saveRDS(jhu_data, "jhu_all.rds")
 
-
-# AND Worldometers
-
+## -----------------------------------------------------------------------------
+## Worldometers
+## -----------------------------------------------------------------------------
 
 # function to get data from worldometers
 get_country_data <- function(link, iso3c, name) {
@@ -319,6 +325,38 @@ df$deaths[df$dateRep == as.Date("2020-09-03") & df$countryterritoryCode == "COG"
 
 # worldometers is a day ahead of ECDC - so to keep it all aligned
 df$dateRep <- as.Date(df$dateRep) - 1
-
-
 saveRDS(df, "worldometers_all.rds")
+
+## -----------------------------------------------------------------------------
+## OWID
+## -----------------------------------------------------------------------------
+
+# And let's add owid here
+owid_url <- "https://covid.ourworldindata.org/data/owid-covid-data.csv"
+owid_tf <- download_url(owid_url)
+data <- read.csv(owid_tf) 
+
+# just to align
+names(data)[which(names(data) == "iso_code")] <- "countryterritoryCode"
+
+# save data out
+saveRDS(data, "owid.rds")
+
+## -----------------------------------------------------------------------------
+## OWID Vaccines by manufacturer and agreed sale
+## -----------------------------------------------------------------------------
+
+vacc_loc_url <- "https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/vaccinations/locations.csv"
+vacc_loc <- download_url(vacc_loc_url)
+vacc_loc <- read.csv(vacc_loc) 
+vacc_loc$vaccine_types <- strsplit(vacc_loc$vaccines, ", ")
+names(data)[which(names(data) == "iso_code")] <- "countryterritoryCode"
+saveRDS(vacc_loc, "vaccine_agreements.rds")
+
+vacc_by_type_url <- "https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/vaccinations/vaccinations-by-manufacturer.csv"
+vacc_by_type <- download_url(vacc_by_type_url)
+vacc_by_type <- read.csv(vacc_by_type) 
+vacc_by_type$countryterritoryCode <- countrycode::countrycode(
+  vacc_by_type$location, "country.name.en", "iso3c"
+)
+saveRDS(vacc_by_type, "vaccine_doses_by_manufacturer.rds")
