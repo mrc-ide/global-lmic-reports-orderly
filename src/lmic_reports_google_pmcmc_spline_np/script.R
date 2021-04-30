@@ -55,7 +55,7 @@ if(sum(ecdc_df$deaths) > 0) {
   data$date <- as.Date(data$date)
   
   # Handle for countries that have eliminated and had reintroduction events
-  reintroduction_iso3cs <- c("MMR", "BLZ", "TTO", "BHS", "HKG", "ABW", "GUM", "ISL", "BRB")
+  reintroduction_iso3cs <- c("MMR", "BLZ", "TTO", "BHS", "HKG", "ABW", "GUM", "ISL", "BRB", "MUS")
   if (iso3c %in% reintroduction_iso3cs) {
     deaths_removed <- deaths_removed + sum(data$deaths[data$date < as.Date("2020-06-01")])
     data$deaths[data$date < as.Date("2020-06-01")] <- 0
@@ -446,7 +446,7 @@ if(sum(ecdc_df$deaths) > 0) {
   } 
   
   # slight hack to enforce transmission through long period with no deaths
-  elong_summer_isos <- c("EST", "ISL", "ATG")
+  elong_summer_isos <- c("EST", "ISL", "ATG", "TWN")
   if (iso3c %in% elong_summer_isos) {
     
     mmr_dates <- seq.Date(as.Date("2020-06-14"), as.Date("2020-07-14"), 21)
@@ -461,10 +461,6 @@ if(sum(ecdc_df$deaths) > 0) {
   
   # sleep so parallel is chill
   Sys.sleep(time = runif(1, 0, sleep))
-  
-  # fix for now until can get drat updated
-  mod <- squire:::deterministic_model()
-  mod$parameter_func <- squire::explicit_model
   
   out <- squire::pmcmc(data = data, 
                        gibbs_sampling = gibbs_sampling,

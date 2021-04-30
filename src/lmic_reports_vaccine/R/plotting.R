@@ -1595,12 +1595,20 @@ rt_plot_immunity <- function(out) {
 }
 
 
-
 simple_pmcmc_plot <- function(out) {
   
+  n_chains <- max(length(out$pmcmc_results$chains), 1)
+  if(n_chains > 1) {
+    
   master <- squire:::create_master_chain(out$pmcmc_results, 0)
   master$chain <-  unlist(lapply(strsplit(rownames(master),".", fixed=TRUE), "[[", 1))
   master$iteration <-  as.numeric(unlist(lapply(strsplit(rownames(master),".", fixed=TRUE), "[[", 2)))
+  
+  } else {
+    master <- out$pmcmc_results$results
+    master$chain <- "1"
+    master$iteration <- seq_len(nrow(master))
+  }
   
   par_pos <- seq_len(which(names(master) == "log_prior")-1)
   pars <- names(master)[par_pos]
@@ -1619,17 +1627,19 @@ simple_pmcmc_plot <- function(out) {
     
   })
   
+  chain_thins <- min(round(nrow(master)/10), 100)
+  
   chains <- lapply(par_pos, function(i) {
     
-    ggplot(master[seq(1,nrow(master),100),], mapping = aes_string(y = pars[i], x = "iteration", color = "chain")) + 
+    ggplot(master[seq(1,nrow(master),chain_thins),], mapping = aes_string(y = pars[i], x = "iteration", color = "chain")) + 
       geom_line() + theme_bw() +
       theme(panel.border = element_blank(), axis.line = element_line()) +
       theme(legend.position = "none") + scale_color_brewer(type = "qual")
     
   }) 
   
-  p1 <- cowplot::plot_grid(plotlist = hists)
-  p2 <- cowplot::plot_grid(plotlist = chains)
+  suppressWarnings(p1 <- cowplot::plot_grid(plotlist = hists))
+  suppressWarnings(p2 <- cowplot::plot_grid(plotlist = chains))
   line <- ggplot() + cowplot::draw_line(x = 1, y=0:10) + 
     theme(panel.background = element_blank(),
           axis.title = element_blank(), 

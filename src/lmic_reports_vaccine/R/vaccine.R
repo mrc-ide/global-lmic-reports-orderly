@@ -63,6 +63,65 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0) {
   
 }
 
+extend_vaccine_inputs <- function(vaccine_inputs, time_period, out) {
+  
+  # weekly mean vaccine distributions
+  max_vaccine <- mean(tail(vacc_inputs$max_vaccine,7))
+  tt_vaccine <- 0
+  
+  # efficacies best to just extend at the same rate
+  vei <- vapply(seq_along(vacc_inputs$vaccine_efficacy_infection), 
+                function(x) {
+                  vacc_inputs$vaccine_efficacy_infection[[x]][1]
+                }, numeric(1))
+  vei_new <- predict(
+    lm(y~x, data.frame("x" = seq_along(vei), "y" = vei)), 
+    newdata = data.frame("x" = length(vei)+seq_len(time_period))
+  )
+  vei_new <- vapply(vei_new, min, numeric(1), 0.8)
+  
+  vaccine_efficacy_infection <- lapply(vei_new, rep, 17)
+  tt_vaccine_efficacy_infection <- seq_along(vaccine_efficacy_infection)-1
+  
+  vaccine_efficacy_infection_odin_array <- nimue:::format_ve_i_for_odin(
+    vaccine_efficacy_infection = vaccine_efficacy_infection,
+    tt_vaccine_efficacy_infection = tt_vaccine_efficacy_infection
+  )
+  
+  # efficacies best to just extend at the same rate
+  ved <- vapply(seq_along(vacc_inputs$vaccine_efficacy_disease), 
+                function(x) {
+                  vacc_inputs$vaccine_efficacy_disease[[x]][1]
+                }, numeric(1))
+  ved_new <- predict(
+    lm(y~x, data.frame("x" = seq_along(ved), "y" = ved)), 
+    newdata = data.frame("x" = length(ved)+seq_len(time_period))
+  )
+  ved_new <- vapply(ved_new, min, numeric(1), 0.98)
+  vaccine_efficacy_disease <- lapply(ved_new, rep, 17)
+  tt_vaccine_efficacy_disease <- seq_along(vaccine_efficacy_disease)-1
+  
+  vaccine_efficacy_disease_odin_array <- nimue:::format_ve_d_for_odin(
+    vaccine_efficacy_disease = vaccine_efficacy_disease,
+    tt_vaccine_efficacy_disease = tt_vaccine_efficacy_disease,
+    prob_hosp = out$parameters$prob_hosp
+  )
+  
+  # combine into model_user_args for projections
+  mua <- list(
+    "max_vaccine" = max_vaccine, 
+    "tt_vaccine" = 0,
+    "vaccine_efficacy_infection" = vaccine_efficacy_infection_odin_array,
+    "tt_vaccine_efficacy_infection" = tt_vaccine_efficacy_infection,
+    "prob_hosp" = vaccine_efficacy_disease_odin_array,
+    "tt_vaccine_efficacy_disease" = tt_vaccine_efficacy_disease
+  )
+  
+  mua <- rep(list(mua), dim(out$output)[3])
+  return(mua)  
+  
+}
+
 get_coverage_mat <- function(iso3c, 
                              available_doses_proportion = 0.98, 
                              strategy = "HCW, Elderly and High-Risk",
@@ -243,7 +302,7 @@ init_state_nimue <- function(deaths_removed, iso3c, seeding_cases = 5) {
 generate_draws_pmcmc_nimue_case_fitted <- function(out, n_particles = 10, grad_dur = 21) {
   
   pmcmc <- out$pmcmc_results
-  n_chains <- length(out$pmcmc_results$chains)
+  n_chains <- max(length(out$pmcmc_results$chains), 1)
   burnin <- round(out$pmcmc_results$inputs$n_mcmc/10)
   squire_model <- out$pmcmc_results$inputs$squire_model
   replicates <- dim(out$output)[3]
@@ -519,4 +578,215 @@ get_reff <- function(out, beta) {
   
   # multiply beta by the adjusted eigen at each time point to get Reff
   beta * adjusted_eigens
+}
+
+get_immunity_ratios_vaccine <- function(out, max_date = NULL) {
+  
+  mixing_matrix <- squire:::process_contact_matrix_scaled_age(
+    out$pmcmc_results$inputs$model_params$contact_matrix_set[[1]],
+    out$pmcmc_results$inputs$model_params$population
+  )
+  
+  dur_ICase <- out$parameters$dur_ICase
+  dur_IMild <- out$parameters$dur_IMild
+  prob_hosp <- out$parameters$prob_hosp
+  
+  # assertions
+  squire:::assert_single_pos(dur_ICase, zero_allowed = FALSE)
+  squire:::assert_single_pos(dur_IMild, zero_allowed = FALSE)
+  squire:::assert_numeric(prob_hosp)
+  squire:::assert_numeric(mixing_matrix)
+  squire:::assert_square_matrix(mixing_matrix)
+  squire:::assert_same_length(mixing_matrix[,1], prob_hosp)
+  
+  if(sum(is.na(prob_hosp)) > 0) {
+    stop("prob_hosp must not contain NAs")
+  }
+  
+  if(sum(is.na(mixing_matrix)) > 0) {
+    stop("mixing_matrix must not contain NAs")
+  }
+  
+  index <- squire:::odin_index(out$model)
+  pop <- out$parameters$population
+  
+  if(is.null(max_date)) {
+    max_date <- max(out$pmcmc_results$inputs$data$date)
+  }
+  t_now <- which(as.Date(rownames(out$output)) == max_date)
+  
+  # make the vaccine time changing args
+  nrs <- t_now
+  vei <- lapply(seq_len(nrow(out$odin_parameters$vaccine_efficacy_infection)),
+                function(x) {out$odin_parameters$vaccine_efficacy_infection[x,,]}
+  )
+  vei_full <- c(rep(list(vei[[1]]),nrs - length(vei)), vei)
+  
+  
+  # prop susceptible 
+  prop_susc <- lapply(seq_len(dim(out$output)[3]), function(x) {
+    
+    susceptible <- array(
+      out$output[,index$S,x],
+      dim=c(t_now, dim(index$S))
+    )
+    
+    # We divide by the total population
+    prop_susc <- sweep(susceptible, 2, pop, FUN='/')
+    
+    # We multiply by the effect of vaccines on onward infectiousness
+    prop_susc <- vapply(
+      seq_len(nrow(prop_susc)),
+                        FUN = function(x){prop_susc[x,,]*vei_full[[x]]},
+      FUN.VALUE = prop_susc[x,,]
+    )
+    
+    return(prop_susc)
+  } )
+  
+  relative_R0_by_age <- prob_hosp*dur_ICase + (1-prob_hosp)*dur_IMild
+  
+  adjusted_eigens <- lapply(prop_susc, function(x) {
+    
+    unlist(lapply(seq_len(nrow(x)), function(y) {
+      if(any(is.na(x[y,]))) {
+        return(NA)
+      } else {
+        Re(eigen(mixing_matrix*x[y,]*relative_R0_by_age)$values[1])
+      }
+    }))
+    
+  })
+  
+  betas <- lapply(out$replicate_parameters$R0, function(x) {
+    squire:::beta_est(squire_model = out$pmcmc_results$inputs$squire_model, 
+                      model_params = out$pmcmc_results$inputs$model_params, 
+                      R0 = x)
+  })
+  
+  ratios <- lapply(seq_along(betas), function(x) {
+    (betas[[x]] * adjusted_eigens[[x]]) / out$replicate_parameters$R0[[x]]
+  })
+  
+  return(ratios)
+}
+
+
+
+rt_plot_immunity_vaccine <- function(out) {
+  
+  iso3c <- squire::get_population(out$parameters$country)$iso3c[1]
+  
+  if("pmcmc_results" %in% names(out)) {
+    wh <- "pmcmc_results"
+  } else {
+    wh <- "scan_results"
+  }
+  
+  date <- max(as.Date(out$pmcmc_results$inputs$data$date))
+  date_0 <- date
+  
+  # impact of immunity ratios
+  ratios <- get_immunity_ratios_vaccine(out)
+  
+  # create the Rt data frame
+  rts <- lapply(seq_len(length(out$replicate_parameters$R0)), function(y) {
+    
+    tt <- squire:::intervention_dates_for_odin(dates = out$interventions$date_R0_change, 
+                                               change = out$interventions$R0_change, 
+                                               start_date = out$replicate_parameters$start_date[y],
+                                               steps_per_day = 1/out$parameters$dt)
+    
+    if(wh == "scan_results") {
+      Rt <- c(out$replicate_parameters$R0[y], 
+              vapply(tt$change, out[[wh]]$inputs$Rt_func, numeric(1), 
+                     R0 = out$replicate_parameters$R0[y], Meff = out$replicate_parameters$Meff[y])) 
+    } else {
+      Rt <- squire:::evaluate_Rt_pmcmc(
+        R0_change = tt$change, 
+        date_R0_change = tt$dates, 
+        R0 = out$replicate_parameters$R0[y], 
+        pars = as.list(out$replicate_parameters[y,]),
+        Rt_args = out$pmcmc_results$inputs$Rt_args) 
+    }
+    
+    df <- data.frame(
+      "Rt" = Rt,
+      "Reff" = Rt*tail(na.omit(ratios[[y]]),length(Rt)),
+      "R0" = na.omit(Rt)[1]*tail(na.omit(ratios[[y]]),length(Rt)),
+      "date" = tt$dates,
+      "iso" = iso3c,
+      rep = y,
+      stringsAsFactors = FALSE)
+    df$pos <- seq_len(nrow(df))
+    return(df)
+  } )
+  
+  rt <- do.call(rbind, rts)
+  rt$date <- as.Date(rt$date)
+  
+  rt <- rt[,c(5,4,1,2,3,6,7)]
+  
+  new_rt_all <- rt %>%
+    group_by(iso, rep) %>% 
+    arrange(date) %>% 
+    complete(date = seq.Date(min(rt$date), date_0, by = "days")) 
+  
+  column_names <- colnames(new_rt_all)[-c(1,2,3)]
+  new_rt_all <- fill(new_rt_all, all_of(column_names), .direction = c("down"))
+  new_rt_all <- fill(new_rt_all, all_of(column_names), .direction = c("up"))
+  
+  suppressMessages(sum_rt <- group_by(new_rt_all, iso, date) %>% 
+                     summarise(Rt_min = quantile(Rt, 0.025),
+                               Rt_q25 = quantile(Rt, 0.25),
+                               Rt_q75 = quantile(Rt, 0.75),
+                               Rt_max = quantile(Rt, 0.975),
+                               Rt_median = median(Rt),
+                               Rt = mean(Rt),
+                               R0_min = quantile(R0, 0.025),
+                               R0_q25 = quantile(R0, 0.25),
+                               R0_q75 = quantile(R0, 0.75),
+                               R0_max = quantile(R0, 0.975),
+                               R0_median = median(R0),
+                               R0 = mean(R0),
+                               Reff_min = quantile(Reff, 0.025),
+                               Reff_q25 = quantile(Reff, 0.25),
+                               Reff_q75 = quantile(Reff, 0.75),
+                               Reff_max = quantile(Reff, 0.975),
+                               Reff_median = median(Reff),
+                               Reff = mean(Reff)))
+  
+  min_date <- min(as.Date(out$replicate_parameters$start_date))
+  
+  country_plot <- function(vjust = -1.2) {
+    ggplot(sum_rt %>% filter(
+      date > min_date & date <= as.Date(as.character(date_0+as.numeric(lubridate::wday(date_0)))))) +
+      geom_ribbon(mapping = aes(x=date, ymin=R0_min, ymax = R0_max, group = iso), fill = "#8cbbca") +
+      geom_ribbon(mapping = aes(x = date, ymin = R0_q25, ymax = R0_q75, group = iso), fill = "#3f8da7") +
+      geom_ribbon(mapping = aes(x=date, ymin=Reff_min, ymax = Reff_max, group = iso), fill = "#96c4aa") +
+      geom_ribbon(mapping = aes(x = date, ymin = Reff_q25, ymax = Reff_q75, group = iso), fill = "#48996b") +
+      geom_line(mapping = aes(x = date, y = Reff_median), color = "#48996b") +
+      geom_hline(yintercept = 1, linetype = "dashed") +
+      geom_hline(yintercept = sum_rt$R0_median[1], linetype = "dashed") +
+      theme_bw() +
+      theme(axis.text = element_text(size=12)) +
+      xlab("") +
+      ylab("Reff") +
+      scale_x_date(breaks = "2 weeks",
+                   limits = as.Date(c(as.character(min_date),
+                                      as.character(date_0+as.numeric(lubridate::wday(date_0))))), 
+                   date_labels = "%d %b",
+                   expand = c(0,0)) + 
+      theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, colour = "black"),
+            panel.grid.major = element_blank(), 
+            panel.grid.minor = element_blank(),
+            panel.border = element_blank(),
+            panel.background = element_blank(), 
+            axis.line = element_line(colour = "black")
+      )
+  }
+  
+  
+  res <- list("plot" = suppressWarnings(country_plot()), "rts" = sum_rt)
+  return(res)  
 }

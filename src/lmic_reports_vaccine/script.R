@@ -133,11 +133,11 @@ if(sum(ecdc_df$deaths) > 0) {
   if(short_run) {
     n_particles <- 2
     replicates <- 2
-    n_mcmc <- 100
-    n_chains <- 3
+    n_mcmc <- 20
+    n_chains <- 1
     grid_spread <- 2
     sleep <- 2
-    start_adaptation <- 50
+    start_adaptation <- 10
   } else {
     n_particles <- 50
     replicates <- 100
@@ -463,25 +463,14 @@ if(sum(ecdc_df$deaths) > 0) {
   ## -----------------------------------------------------------------------------
   ## Step 2f: Vacccine Inputs
   ## -----------------------------------------------------------------------------
-  
-  # first check to see if enough vaccines have been given out that necessitate
-  # them being modelled using the vaccine model. 
+
+  # lets read in the vaccine inputs  
+  vdm <- readRDS("vaccine_doses_by_manufacturer.rds")
+  vacc_types <- readRDS("vaccine_agreements.rds")
   owid <- readRDS("owid.rds")
   owid <- owid %>% filter(countryterritoryCode == iso3c) %>% 
     select(date, contains("vacc"))
-  if(max(owid$total_vaccinations_per_hundred, na.rm=TRUE) > 1) {
-    vaccine_fitting_flag <- TRUE
-    squire_model <- nimue:::nimue_deterministic_model()
-    init <- init_state_nimue(deaths_removed, iso3c)
-  } else {
-    vaccine_fitting_flag <- FALSE
-    squire_model <- squire:::deterministic_model()
-    init <- init_state(deaths_removed, iso3c)
-  }
   
-  
-  vdm <- readRDS("vaccine_doses_by_manufacturer.rds")
-  vacc_types <- readRDS("vaccine_agreements.rds")
   vacc_inputs <- get_vaccine_inputs(iso3c, vdm, vacc_types, owid, date_0)
   
   # Defaults for now. 
@@ -495,6 +484,17 @@ if(sum(ecdc_df$deaths) > 0) {
     vaccine_uptake = vaccine_uptake
   )
   
+  # for now let's just put it in place just using nimue all the time for ease
+  # if(max(owid$total_vaccinations_per_hundred, na.rm=TRUE) > 1) {
+  vaccine_fitting_flag <- TRUE
+  squire_model <- nimue:::nimue_deterministic_model()
+  init <- init_state_nimue(deaths_removed, iso3c)
+  # } else {
+  #   vaccine_fitting_flag <- FALSE
+  #   squire_model <- squire:::deterministic_model()
+  #   init <- init_state(deaths_removed, iso3c)
+  # }
+ 
   ## -----------------------------------------------------------------------------
   ## Step 2g: PMCMC run
   ## -----------------------------------------------------------------------------
@@ -547,6 +547,10 @@ if(sum(ecdc_df$deaths) > 0) {
                        baseline_vaccine_efficacy_disease = vacc_inputs$vaccine_efficacy_disease[[1]],
                        vaccine_coverage_mat = vaccine_coverage_mat,
                        dur_R = 365)
+  
+  ## TODO: If we go down route for fitting squire for low vaccine countries then
+  # we need to fit with squire, then run the pmmcmc with vaccine model and no iterations
+  # and then move the pmcmc results over. 
   
   # Save this dummy one here for debugging purposes
   if (full_scenarios) {
@@ -621,6 +625,9 @@ if(sum(ecdc_df$deaths) > 0) {
   
   ## and save the info for the interface
   all_chains <- do.call(rbind,lapply(out$pmcmc_results$chains, "[[", "results"))
+  if(is.null(all_chains)) {
+    all_chains <- out$pmcmc_results$results
+  }
   best <- all_chains[which.max(all_chains$log_posterior), ]
   
   ## BEST
@@ -700,7 +707,7 @@ if(sum(ecdc_df$deaths) > 0) {
   # add in the deaths to the json fits themselves
   df$deaths <- out$pmcmc_results$inputs$data$deaths[match(df$date, out$pmcmc_results$inputs$data$date)]
   df_new_covidsim <- extend_df_for_covidsim(df = df, out = out, ext = 240)
-  df$iso3c <- iso3c
+  df_new_covidsim$iso3c <- iso3c
   
   # and add in the vaccine args
   df_new_covidsim <- ammend_df_covidsim_for_vaccs(df_new_covidsim, out, strategy = strategy)
@@ -804,11 +811,15 @@ if(sum(ecdc_df$deaths) > 0) {
   ## Functions for working out the relative changes in R0 for given scenarios
   time_period <- 365
   
+  ## We need to know work out vaccine doses and efficacy going forwards
+  model_user_args <- extend_vaccine_inputs(vaccine_inputs, time_period, out)
+  
   # Maintaining the current set of measures for a further 3 months  
   maintain_scenario <- squire::projections(out, 
                                            R0_change = c(1), 
                                            tt_R0 = c(0), 
-                                           time_period = time_period)
+                                           time_period = time_period,
+                                           model_user_args = model_user_args)
   maintain_scenario$projection_args$r <- NULL
   saveRDS(maintain_scenario, "grid_out.rds")
   
@@ -816,13 +827,15 @@ if(sum(ecdc_df$deaths) > 0) {
   mitigation_scenario <- squire::projections(out, 
                                              R0_change = c(0.5), 
                                              tt_R0 = c(0), 
-                                             time_period = time_period)
+                                             time_period = time_period,
+                                             model_user_args = model_user_args)
   
   # Relax by 50% for 3 months 
   reverse_scenario <- squire::projections(out, 
                                           R0_change = 1.5, 
                                           tt_R0 = c(0), 
-                                          time_period = time_period)
+                                          time_period = time_period,
+                                          model_user_args = model_user_args)
   
   ## -----------------------------------------------------------------------------
   ## 4.2. Investigating a capacity surge
@@ -896,17 +909,20 @@ if(sum(ecdc_df$deaths) > 0) {
   maintain_scenario_surged <- squire::projections(out_surged, 
                                                   R0_change = c(1), 
                                                   tt_R0 = c(0), 
-                                                  time_period = time_period)
+                                                  time_period = time_period,
+                                                  model_user_args = model_user_args)
   
   mitigation_scenario_surged <- squire::projections(out_surged, 
                                                     R0_change = c(0.5), 
                                                     tt_R0 = c(0), 
-                                                    time_period = time_period)
+                                                    time_period = time_period,
+                                                    model_user_args = model_user_args)
   
   reverse_scenario_surged <- squire::projections(out_surged, 
                                                  R0_change = c(1.5), 
                                                  tt_R0 = c(0), 
-                                                 time_period = time_period)
+                                                 time_period = time_period,
+                                                 model_user_args = model_user_args)
   
  
     r_list <-
@@ -1182,7 +1198,7 @@ data_sum$country <- country
 data_sum$iso3c <- iso3c
 data_sum$report_date <- date
 data_sum <- data_sum[data_sum$compartment != "D",]
-data_sum$version <- "v7"
+data_sum$version <- "v8"
 data_sum <- dplyr::mutate(data_sum, across(dplyr::starts_with("y_"), ~round(.x,digits = 2)))
 
 # specify if this is calibrated to deaths or just hypothetical forecast for ESFT
