@@ -31,6 +31,22 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0) {
   }
   
   # get the dates of vaccines being documented
+  if(all(is.na(owid$total_vaccinations))) {
+    
+    
+    vaccine_efficacy_infection <- rep(0.6, length(owid$date))
+    vaccine_efficacy_disease <- rep(0.8, length(owid$date))
+    vaccine_efficacy_infection <- lapply(vaccine_efficacy_infection, rep, 17)
+    vaccine_efficacy_disease <- lapply(vaccine_efficacy_disease, rep, 17)
+    
+    return(list(
+      date_vaccine_change = owid$date,
+      max_vaccine = rep(0, length(owid$date)),
+      vaccine_efficacy_infection = vaccine_efficacy_infection,
+      vaccine_efficacy_disease = vaccine_efficacy_disease
+    ))
+  } else {
+    
   tots <- interp_diffs(date_vacc = owid$date, tot = owid$total_vaccinations)
   
   # total vaccinations given out per day
@@ -60,7 +76,7 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0) {
       vaccine_efficacy_disease = vaccine_efficacy_disease
     )
   )
-  
+  }
 }
 
 extend_vaccine_inputs <- function(vaccine_inputs, time_period, out) {
