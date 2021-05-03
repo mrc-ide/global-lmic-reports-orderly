@@ -94,9 +94,9 @@ date_0 <- params$date_0
 surging <- params$surging
 url <- paste0("https://github.com/mrc-ide/global-lmic-reports/raw/master/",iso3c,"/index.pdf")
 
-format <- knitr::opts_knit$get("rmarkdown.pandoc.to")
+format_type <- knitr::opts_knit$get("rmarkdown.pandoc.to")
 figRef <- function(caption) {
-  if(format == "latex") {
+  if(format_type == "latex") {
     gsub("Figure \\d: ","",caption)
   } else {
     caption
@@ -104,7 +104,7 @@ figRef <- function(caption) {
 }
 
 fig_height <- function(pdf = 4, html = 6) {
-  if(format == "latex") {
+  if(format_type == "latex") {
     pdf
   } else {
     html
@@ -112,7 +112,7 @@ fig_height <- function(pdf = 4, html = 6) {
 }
 
 fig_center <- function() {
-  if(format == "latex") {
+  if(format_type == "latex") {
     "default"
   } else {
     "center"
@@ -172,15 +172,15 @@ suppressMessages(suppressWarnings(rt <- rt_plot_immunity(params$r_list[[1]])))
 
 ## Summaries
 form <- function(x) {
-  paste0(format(round(x[[1]]), big.mark=","),
-         " (95% CI: ", format(round(x[[2]]), big.mark=","),
-         "-", format(round(x[[3]]), big.mark=","),")")
+  paste0(base::format(round(x[[1]]), big.mark=","),
+         " (95% CI: ", base::format(round(x[[2]]), big.mark=","),
+         "-", base::format(round(x[[3]]), big.mark=","),")")
 }
 
 form_round_dig <- function(x, dig = 2) {
-  paste0(format(round(x[[1]], dig), big.mark=","),
-         " (95% CI: ", format(round(x[[2]], dig), big.mark=","),
-         "-", format(round(x[[3]], dig), big.mark=","),")")
+  paste0(base::format(round(x[[1]], dig), big.mark=","),
+         " (95% CI: ", base::format(round(x[[2]], dig), big.mark=","),
+         "-", base::format(round(x[[3]], dig), big.mark=","),")")
 }
 
 t_test_safe <- function(x, ...) {
@@ -418,11 +418,11 @@ if (iso3c == "BRA") {
 
 ```
 
-## Situation Report for COVID-19: `r country`, `r format(date, "%Y-%m-%d")`
+## Situation Report for COVID-19: `r country`, `r base::format(date, "%Y-%m-%d")`
 
 `r latex_omit("---")`
 
-#### **[Download the report for `r country`, `r format(date, "%Y-%m-%d")` here](`r url`).**
+#### **[Download the report for `r country`, `r base::format(date, "%Y-%m-%d")` here](`r url`).**
 
 This report uses data from COVID-19 Data Repository by the Center for Systems Science and Engineering (CSSE) at Johns Hopkins University. These data are updated daily and whilst there may be a short delay, they are generally consistent with Ministry reports. These data are then used to back-calculate an ‘inferred number of COVID-19 infections’ using mathematical modelling techniques (see [Report 12](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-12-global-impact-covid-19/) for further details) to estimate the number of people that have been infected and to make short-term projections for future healthcare needs.
 
@@ -432,7 +432,7 @@ This report uses data from COVID-19 Data Repository by the Center for Systems Sc
 
 | **Total Reported Cases** | **New Reported Cases** | **Total Reported Deaths** | **New Reported Deaths** | **Estimated $R_{eff}$** |
 | ---- | ---- | ---- | ---- | ------ |
-| `r format(data$cases[1], big.mark=",")` | `r format(data$daily_cases[1], big.mark=",")` | `r format(data$deaths[1], big.mark=",")`|`r format(data$daily_deaths[1], big.mark=",")`| `r form_round_dig(rt$rts[nrow(rt$rts),c("Reff", "Reff_min", "Reff_max")])` |
+| `r base::format(data$cases[1], big.mark=",")` | `r base::format(data$daily_cases[1], big.mark=",")` | `r base::format(data$deaths[1], big.mark=",")`|`r base::format(data$daily_deaths[1], big.mark=",")`| `r form_round_dig(rt$rts[nrow(rt$rts),c("Reff", "Reff_min", "Reff_max")])` |
 
 `r pdf_line_break()`
 
@@ -517,7 +517,7 @@ We make the following short-term projections of healthcare demand and new infect
 
 **N.B. These scenarios currently assume that the impact of mobility on transmission will remain the same in the future as it has in the past. We are working to extend methods to estimate the impact of increases in mobility on transmission as lockdown and interventions are reversed. Consequently, projection are likely to represent an upper estimate of the healthcare demand and case load for each scenario**
 
-We estimate that over the next 4 weeks demand for hospital beds will change from `r form(hosp_today)` patients requiring treatment with high-pressure oxygen at the current date to `r form(hosp_28)` hospital beds being required on `r format(date + 28, "%Y-%m-%d")` if no further interventions are introduced (Scenario 1). Similarly, we estimate that over the next 4 weeks demand for critical care (ICU) beds will change from `r form(icu_today)` patients requiring treatment with mechanical ventilation at the current date to `r form(icu_28)` by `r format(date + 28, "%Y-%m-%d")`. These projections assume that approximately 5% of all infections will require treatment with high-pressure oxygen and that approximately 30% of hospitalised cases will require treatment with mechanical ventilation (based on analysis of ongoing epidemics in Europe). **N.B. These scenarios are unlikely to show significant differences for the first week since there is a delay of approximately 10 days between infection and hospital admission. Consequently, the effectiveness of a change in policy is likely to be better captured by hospital admission data approximately 2 weeks after the policy change is implemented.**
+We estimate that over the next 4 weeks demand for hospital beds will change from `r form(hosp_today)` patients requiring treatment with high-pressure oxygen at the current date to `r form(hosp_28)` hospital beds being required on `r base::format(date + 28, "%Y-%m-%d")` if no further interventions are introduced (Scenario 1). Similarly, we estimate that over the next 4 weeks demand for critical care (ICU) beds will change from `r form(icu_today)` patients requiring treatment with mechanical ventilation at the current date to `r form(icu_28)` by `r base::format(date + 28, "%Y-%m-%d")`. These projections assume that approximately 5% of all infections will require treatment with high-pressure oxygen and that approximately 30% of hospitalised cases will require treatment with mechanical ventilation (based on analysis of ongoing epidemics in Europe). **N.B. These scenarios are unlikely to show significant differences for the first week since there is a delay of approximately 10 days between infection and hospital admission. Consequently, the effectiveness of a change in policy is likely to be better captured by hospital admission data approximately 2 weeks after the policy change is implemented.**
 
 <br>
 
@@ -557,7 +557,7 @@ suppressWarnings(suppressMessages(print(grid)))
 <br>
 `r pagebreak()`
 
-The impact of each scenario has a more immediate effect on the daily number of infections. The figure below shows the impact of each scenario on the estimated daily incidence of new infections. If interventions are scaled up (Scenario 2), the daily number of infections will change from `r form(infs_today)` at the current date to `r form(infs_28_mit)` by `r format(date + 28, "%Y-%m-%d")`. If current interventions were relaxed by 50%, we estimate the daily number of infections will change from `r form(infs_today)` at the current date to `r form(infs_28_rev)` by `r format(date + 28, "%Y-%m-%d")`.
+The impact of each scenario has a more immediate effect on the daily number of infections. The figure below shows the impact of each scenario on the estimated daily incidence of new infections. If interventions are scaled up (Scenario 2), the daily number of infections will change from `r form(infs_today)` at the current date to `r form(infs_28_mit)` by `r base::format(date + 28, "%Y-%m-%d")`. If current interventions were relaxed by 50%, we estimate the daily number of infections will change from `r form(infs_today)` at the current date to `r form(infs_28_rev)` by `r base::format(date + 28, "%Y-%m-%d")`.
 
 <br>
 

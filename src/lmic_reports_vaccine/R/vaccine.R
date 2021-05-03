@@ -54,8 +54,13 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0) {
   max_vaccines <- tots$max
   
   # now for doses
-  seconds <- interp_diffs(date_vacc = owid$date, tot = owid$people_fully_vaccinated)
   firsts <- max_vaccines
+  if (all(is.na(owid$people_fully_vaccinated))) {
+    seconds <- list("date" = date_vaccine_change, "max" = rep(0, length(firsts)))
+  } else {
+  seconds <- interp_diffs(date_vacc = owid$date, tot = owid$people_fully_vaccinated)
+  }
+  
   firsts[which(date_vaccine_change %in% seconds$date)] <- firsts[which(date_vaccine_change %in% seconds$date)] - seconds$max
   seconds <- max_vaccines - firsts
   firsts <- cumsum(firsts)
