@@ -71,7 +71,7 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
     if(length(dates[dates < date_vaccine_change[1]]) > 0) {
       
       early_vaccs <- predict(
-        lm(y~x, data = data.frame(y = c(head(na.omit(tot), 7)), x = c(1:7))), 
+        lm(y~x, data = data.frame(y = head(tot, min(7, length(tot))), x = seq_len(min(7, length(tot))))), 
         newdata = data.frame(x = as.integer(-((as.Date(date_vaccine_change[1]) - as.Date(dates[dates < date_vaccine_change[1]]))-1))), 
         type = "response")
       early_vaccs[early_vaccs < 0] <- 0
@@ -268,6 +268,7 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
     firsts <- cumsum(firsts)
     seconds <- cumsum(seconds)
     dose_ratio <- vapply(seconds/firsts, min, numeric(1), 1.0)
+    dose_ratio <- dose_ratio[which(tots$date %in% peeps$date)]
     
     # now to work out the efficacy
     vaccine_efficacy_infection <- (1-dose_ratio)*0.6 + dose_ratio*0.8
