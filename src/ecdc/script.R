@@ -360,3 +360,16 @@ vacc_by_type$countryterritoryCode <- countrycode::countrycode(
   vacc_by_type$location, "country.name.en", "iso3c"
 )
 saveRDS(vacc_by_type, "vaccine_doses_by_manufacturer.rds")
+
+who_vacc_url <- "https://covid19.who.int/who-data/vaccination-data.csv"
+who_vacc <- download_url(who_vacc_url)
+who_vacc <- read.csv(who_vacc) 
+who_vacc$countryterritoryCode <- who_vacc$ISO3
+saveRDS(who_vacc, "who_vacc.rds")
+
+
+who_vacc_meta_url <- "https://covid19.who.int/who-data/vaccination-metadata.csv"
+who_vacc_meta <- download_url(who_vacc_meta_url)
+who_vacc_meta <- read.csv(who_vacc_meta) 
+who_vacc_meta$countryterritoryCode <- who_vacc_meta$ISO3
+saveRDS(who_vacc_meta, "who_vacc_meta.rds")

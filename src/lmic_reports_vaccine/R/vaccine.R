@@ -1,7 +1,15 @@
-get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0) {
+get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, who_vacc_meta) {
   
   # filter to just relevant dates
   owid <- owid %>% filter(date <= as.Date(date_0))
+  who_vacc_meta <- who_vacc_meta %>% filter(countryterritoryCode == iso3c)
+  who_vacc <- who_vacc %>% filter(countryterritoryCode == iso3c)
+  
+  # defaults
+  ve_i_low <- 0.6
+  ve_i_high <- 0.8
+  ve_d_low <- 0.8
+  ve_d_high <- 0.98
   
   # function to interpolate missing vaccine dates
   interp_diffs <- function(date_vacc, tot) {
@@ -14,24 +22,24 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0) {
     
     # we should also linearly extend back to 0 vaccinations
     early_vaccs <- predict(
-      lm(y~x, data = data.frame(y = c(0,head(na.omit(tot), 7)), x = c(-30,1:7))), 
+      lm(y~x, data = data.frame(y = c(head(na.omit(tot), 7)), x = c(1:7))), 
       newdata = data.frame(x = -30:0), 
       type = "response")
     early_vaccs <- round(early_vaccs[early_vaccs > 0])
     
     if(length(early_vaccs) > 0) {
       
-    # corresponding dates
-    back <- as.numeric(names(early_vaccs)) - max(as.numeric(names(early_vaccs)))
-    extra_dates <- as.Date(date_vaccine_change[1]) - 1 + back
-    
-    # add the early vaccinations
-    max_vaccines <- c(early_vaccs, tot)
-    date_vaccine_change <- c(extra_dates, date_vaccine_change)
-    
+      # corresponding dates
+      back <- as.numeric(names(early_vaccs)) - max(as.numeric(names(early_vaccs)))
+      extra_dates <- as.Date(date_vaccine_change[1]) - 1 + back
+      
+      # add the early vaccinations
+      max_vaccines <- c(early_vaccs, na.omit(tot))
+      date_vaccine_change <- c(extra_dates, date_vaccine_change)
+      
     } else {
       
-      max_vaccines <- tot
+      max_vaccines <- na.omit(tot)
       
     }
     
@@ -49,14 +57,21 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0) {
     
     # filter to just dates now with vaccines given
     date_vaccine_change <- date_vacc[!is.na(tot)]
+    tot <- tot[!is.na(tot)]
     
     # we should also linearly extend back to 0 vaccinations
-    early_vaccs <- predict(
-      lm(y~x, data = data.frame(y = c(head(na.omit(tot), 7)), x = c(1:7))), 
-      newdata = data.frame(x = as.integer(-((as.Date(date_vaccine_change[1]) - dates[dates < date_vaccine_change[1]])-1))), 
-      type = "response")
-    early_vaccs[early_vaccs < 0] <- 0
-    early_vaccs <- round(early_vaccs[early_vaccs >= 0])
+    if(length(dates[dates < date_vaccine_change[1]]) > 0) {
+      
+      early_vaccs <- predict(
+        lm(y~x, data = data.frame(y = c(head(na.omit(tot), 7)), x = c(1:7))), 
+        newdata = data.frame(x = as.integer(-((as.Date(date_vaccine_change[1]) - as.Date(dates[dates < date_vaccine_change[1]]))-1))), 
+        type = "response")
+      early_vaccs[early_vaccs < 0] <- 0
+      early_vaccs <- round(early_vaccs[early_vaccs >= 0])
+      
+    } else {
+      early_vaccs <- numeric(0)
+    }
     
     if(length(early_vaccs) > 0) {
       
@@ -81,60 +96,107 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0) {
     
   }
   
-  # get the dates of vaccines being documented
+  # does owid have no data
   if(all(is.na(owid$total_vaccinations))) {
     
+    # next then check for who data
     
-    vaccine_efficacy_infection <- rep(0.6, length(owid$date))
-    vaccine_efficacy_disease <- rep(0.8, length(owid$date))
+    # if this has no data then return 0 for simplicity
+    if(is.na(who_vacc$TOTAL_VACCINATIONS)) {
+      
+      vaccine_efficacy_infection <- rep(ve_i_low, 1)
+      vaccine_efficacy_disease <- rep(ve_d_low, 1)
+      vaccine_efficacy_infection <- lapply(vaccine_efficacy_infection, rep, 17)
+      vaccine_efficacy_disease <- lapply(vaccine_efficacy_disease, rep, 17)
+      
+      return(list(
+        date_vaccine_change = date_0,
+        max_vaccine = rep(0, 1),
+        vaccine_efficacy_infection = vaccine_efficacy_infection,
+        vaccine_efficacy_disease = vaccine_efficacy_disease
+      ))
+    } else {
+      
+      # if there is no start date just distribute the vaccines equally over the last 2 months for now
+      if(nrow(who_vacc_meta) == 0 || is.na(who_vacc_meta$START_DATE)) {
+        
+        date_vaccine_change <- seq.Date(as.Date(who_vacc$DATE_UPDATED) -60, as.Date(who_vacc$DATE_UPDATED), 1)
+        max_vaccines <- round(who_vacc$PERSONS_VACCINATED_1PLUS_DOSE/length(date_vaccine_change))
+        max_vaccines <- rep(max_vaccines, length(date_vaccine_change))
+        
+      } else {
+        
+        date_vaccine_change <- seq.Date(who_vacc_meta$START_DATE, as.Date(who_vacc$DATE_UPDATED), 1)
+        max_vaccines <- round(who_vacc$PERSONS_VACCINATED_1PLUS_DOSE/length(date_vaccine_change))
+        max_vaccines <- rep(max_vaccines, length(date_vaccine_change))
+        
+      }
+      
+      # ratio of 1st to 2nd doses given
+      if(is.na(who_vacc$PERSONS_VACCINATED_1PLUS_DOSE)) {
+        ratio <- 0.5
+      } else {
+        second <- who_vacc$TOTAL_VACCINATIONS - who_vacc$PERSONS_VACCINATED_1PLUS_DOSE
+        ratio <- second/who_vacc$PERSONS_VACCINATED_1PLUS_DOSE
+      }
+      
+      # format for odin
+      vaccine_efficacy_infection <- (1-ratio)*ve_i_low + ratio*ve_i_high
+      vaccine_efficacy_disease <- (1-ratio)*ve_d_low + ratio*ve_d_high
+      vaccine_efficacy_infection <- seq(ve_i_low, vaccine_efficacy_infection, length.out = length(max_vaccine))
+      vaccine_efficacy_disease <- seq(ve_d_low, vaccine_efficacy_disease, length.out = length(max_vaccine))
+      vaccine_efficacy_infection <- lapply(vaccine_efficacy_infection, rep, 17)
+      vaccine_efficacy_disease <- lapply(vaccine_efficacy_disease, rep, 17)
+      
+      return(
+        list(
+          date_vaccine_change = date_vaccine_change,
+          max_vaccine = max_vaccines,
+          vaccine_efficacy_infection = vaccine_efficacy_infection, 
+          vaccine_efficacy_disease = vaccine_efficacy_disease
+        )
+      )
+    }
+    
+  } else {
+    
+    peeps <- interp_diffs(date_vacc = owid$date, tot = owid$people_vaccinated)
+    tots <- interp_for_dates(date_vacc = owid$date, tot = owid$total_vaccinations, dates = peeps$date)
+    
+    # peeps vaccinations given out per day
+    date_vaccine_change <- peeps$date
+    max_vaccines <- peeps$max
+    
+    # now for doses
+    firsts <- tots$max
+    if (all(is.na(owid$people_fully_vaccinated))) {
+      seconds <- list("date" = date_vaccine_change, "max" = rep(0, length(firsts)))
+    } else {
+      seconds <- interp_for_dates(date_vacc = owid$date, tot = owid$people_fully_vaccinated, dates = peeps$date)
+    }
+    
+    firsts[which(tots$date %in% seconds$date)] <- 
+      firsts[which(tots$date %in% seconds$date)] - 
+      seconds$max[which(seconds$date %in% tots$date)]
+    seconds <- tots$max - firsts
+    firsts <- cumsum(firsts)
+    seconds <- cumsum(seconds)
+    dose_ratio <- vapply(seconds/firsts, min, numeric(1), 1.0)
+    
+    # now to work out the efficacy
+    vaccine_efficacy_infection <- (1-dose_ratio)*0.6 + dose_ratio*0.8
+    vaccine_efficacy_disease <- (1-dose_ratio)*0.8 + dose_ratio*0.98
     vaccine_efficacy_infection <- lapply(vaccine_efficacy_infection, rep, 17)
     vaccine_efficacy_disease <- lapply(vaccine_efficacy_disease, rep, 17)
     
-    return(list(
-      date_vaccine_change = owid$date,
-      max_vaccine = rep(0, length(owid$date)),
-      vaccine_efficacy_infection = vaccine_efficacy_infection,
-      vaccine_efficacy_disease = vaccine_efficacy_disease
-    ))
-  } else {
-    
-  peeps <- interp_diffs(date_vacc = owid$date, tot = owid$people_vaccinated)
-  tots <- interp_for_dates(date_vacc = owid$date, tot = owid$total_vaccinations, dates = peeps$date)
-  
-  # peeps vaccinations given out per day
-  date_vaccine_change <- peeps$date
-  max_vaccines <- peeps$max
-  
-  # now for doses
-  firsts <- tots$max
-  if (all(is.na(owid$people_fully_vaccinated))) {
-    seconds <- list("date" = date_vaccine_change, "max" = rep(0, length(firsts)))
-  } else {
-  seconds <- interp_for_dates(date_vacc = owid$date, tot = owid$people_fully_vaccinated, dates = peeps$date)
-  }
-  
-  firsts[which(tots$date %in% seconds$date)] <- 
-    firsts[which(tots$date %in% seconds$date)] - 
-    seconds$max[which(seconds$date %in% tots$date)]
-  seconds <- tots$max - firsts
-  firsts <- cumsum(firsts)
-  seconds <- cumsum(seconds)
-  dose_ratio <- vapply(seconds/firsts, min, numeric(1), 1.0)
-  
-  # now to work out the efficacy
-  vaccine_efficacy_infection <- (1-dose_ratio)*0.6 + dose_ratio*0.8
-  vaccine_efficacy_disease <- (1-dose_ratio)*0.8 + dose_ratio*0.98
-  vaccine_efficacy_infection <- lapply(vaccine_efficacy_infection, rep, 17)
-  vaccine_efficacy_disease <- lapply(vaccine_efficacy_disease, rep, 17)
-  
-  return(
-    list(
-      date_vaccine_change = date_vaccine_change,
-      max_vaccine = max_vaccines,
-      vaccine_efficacy_infection = vaccine_efficacy_infection, 
-      vaccine_efficacy_disease = vaccine_efficacy_disease
+    return(
+      list(
+        date_vaccine_change = date_vaccine_change,
+        max_vaccine = max_vaccines,
+        vaccine_efficacy_infection = vaccine_efficacy_infection, 
+        vaccine_efficacy_disease = vaccine_efficacy_disease
+      )
     )
-  )
   }
 }
 
@@ -308,7 +370,7 @@ nimue_format <- function(out,
   } else {
     inf_fix <- FALSE
   }
-
+  
   pd <- do.call(rbind, lapply(seq_len(dim(out$output)[3]), function(i) {
     nimue::format(out, compartments = comps, summaries = summs, replicate = i)
   })) %>%
@@ -378,7 +440,7 @@ init_state_nimue <- function(deaths_removed, iso3c, seeding_cases = 5,
   }
   
   if(vaccinated_already > 0) {
-  
+    
     S_0 <- init$S_0
     prop <- vaccinated_already / sum(tail(S_0[,1],-3))
     S_0[-(1:3),3] <- round(S_0[-(1:3),1] * prop)
@@ -442,7 +504,7 @@ generate_draws_pmcmc_nimue_case_fitted <- function(out, n_particles = 10, grad_d
     
     # if actual infs available
     if(!is.nan(wanted_infs) || !is.na(wanted_infs) || !is.infinite(wanted_infs)) {
-
+      
       # do we need to go up or down
       if(wanted_infs < pred_infs_end) {
         alters <- seq(0.025, 0.175, 0.025)
@@ -554,7 +616,7 @@ generate_draws_pmcmc_nimue_case_fitted <- function(out, n_particles = 10, grad_d
 
 
 ammend_df_covidsim_for_vaccs <- function(df, out, strategy) {
-
+  
   # add in vaccine pars
   df$max_vaccine <- 0
   df$vaccine_efficacy_infection <- out$interventions$vaccine_efficacy_infection[[1]][1]

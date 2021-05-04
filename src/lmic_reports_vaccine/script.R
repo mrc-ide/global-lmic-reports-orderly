@@ -268,7 +268,6 @@ if(sum(ecdc_df$deaths) > 0) {
   # ensure that the correct number of rws are used
   if (is.null(interventions[[iso3c]]$C) || iso3c %in% spline_iso3cs) {
     date_Meff_change <- date_start
-    n_mcmc <- 20000
   }
   
   
@@ -475,11 +474,13 @@ if(sum(ecdc_df$deaths) > 0) {
   # lets read in the vaccine inputs  
   vdm <- readRDS("vaccine_doses_by_manufacturer.rds")
   vacc_types <- readRDS("vaccine_agreements.rds")
+  who_vacc <- readRDS("who_vacc.rds")
+  who_vacc_meta <- readRDS("who_vacc_meta.rds")
   owid <- readRDS("owid.rds")
   owid <- owid %>% filter(countryterritoryCode == iso3c) %>% 
     select(date, contains("vacc"))
   
-  vacc_inputs <- get_vaccine_inputs(iso3c, vdm, vacc_types, owid, date_0)
+  vacc_inputs <- get_vaccine_inputs(iso3c, vdm, vacc_types, owid, date_0, who_vacc, who_vacc_meta)
   
   # Defaults for now. 
   strategy <- "HCW, Elderly and High-Risk"

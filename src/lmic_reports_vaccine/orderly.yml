@@ -191,6 +191,8 @@ depends:
       owid.rds: owid.rds
       vaccine_agreements.rds: vaccine_agreements.rds
       vaccine_doses_by_manufacturer.rds: vaccine_doses_by_manufacturer.rds
+      who_vacc_meta.rds: who_vacc_meta.rds
+      who_vacc.rds: who_vacc.rds
   oxford_grt:
     id: latest(parameter:date == date)
     use:

@@ -45,6 +45,8 @@ artefacts:
         - owid.rds
         - vaccine_agreements.rds
         - vaccine_doses_by_manufacturer.rds
+        - who_vacc.rds
+        - who_vacc_meta.rds
 
 # Packages that should be loaded before the script is run.  Use this
 # in preference to explicit library() calls in your script because it
