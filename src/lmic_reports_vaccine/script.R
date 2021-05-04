@@ -406,9 +406,17 @@ if(sum(ecdc_df$deaths) > 0) {
       for(i in seq_len(length(grep("Rt_rw", colnames(proposal_kernel_proposed))) - rw_needed)) {  
         proposal_kernel_proposed <- proposal_kernel_proposed[-nrow(proposal_kernel_proposed),-ncol(proposal_kernel_proposed)]
       }
-      
+      proposal_kernel <- proposal_kernel_proposed
       
     }
+
+    if(gibbs_sampling) {
+      
+      st_pos <- which(colnames(proposal_kernel) == "start_date")
+      proposal_kernel <- proposal_kernel[-st_pos, -st_pos]
+    
+    }
+    
   }
   
   scaling_factor <- 1
@@ -475,7 +483,11 @@ if(sum(ecdc_df$deaths) > 0) {
   
   # Defaults for now. 
   strategy <- "HCW, Elderly and High-Risk"
-  available_doses_proportion <- 0.98
+  if(iso3c %in% get_covax_iso3c()) {
+    available_doses_proportion <- 0.2
+  } else {
+    available_doses_proportion <- 0.98  
+  }
   vaccine_uptake <- 0.8 
   vaccine_coverage_mat <- get_coverage_mat(
     iso3c, 
@@ -675,7 +687,7 @@ if(sum(ecdc_df$deaths) > 0) {
   ## -----------------------------------------------------------------------------
   
   # add in uncertainty
-  rts <- rt_plot_immunity(out)
+  rts <- rt_plot_immunity_vaccine(out)
   
   # bind these in
   df <- dplyr::left_join(df, rts$rts[, c("date","Rt_min", "Rt_max")], by = "date")
@@ -996,76 +1008,107 @@ if (sum(ecdc_df$deaths) == 0) {
   
   # sim_args 
   time_period_esft <- 366
-  replicates_esft <- 100
+  replicates_esft <- 1
   seeding_cases_esft <- 5
+  
+  # lets read in the vaccine inputs  
+  vdm <- readRDS("vaccine_doses_by_manufacturer.rds")
+  vacc_types <- readRDS("vaccine_agreements.rds")
+  owid <- readRDS("owid.rds")
+  owid <- owid %>% filter(countryterritoryCode == iso3c) %>% 
+    select(date, contains("vacc"))
+  
+  vacc_inputs <- get_vaccine_inputs(iso3c, vdm, vacc_types, owid, date_0)
+  
+  # Defaults for now. 
+  strategy <- "HCW, Elderly and High-Risk"
+  if(iso3c %in% get_covax_iso3c()) {
+    available_doses_proportion <- 0.2
+  } else {
+    available_doses_proportion <- 0.98  
+  }
+  vaccine_uptake <- 0.8 
+  vaccine_coverage_mat <- get_coverage_mat(
+    iso3c, 
+    available_doses_proportion = available_doses_proportion, 
+    strategy = strategy,
+    vaccine_uptake = vaccine_uptake
+  )
+  
+  # set up vaccine inits
+  vaccine_fitting_flag <- TRUE
+  squire_model <- nimue:::nimue_deterministic_model()
+  init <- init_state_nimue(deaths_removed = 0, iso3c, 
+                           seeding_cases = seeding_cases_esft,
+                           vaccinated_already = sum(vacc_inputs$max_vaccine))
   
   # Scenarios with capacity constraints
   # ---------------------------------------------------------------------------
-  reverse_scenario <- squire::run_explicit_SEEIR_model(
+  reverse_scenario <- nimue::run(
     country = country, 
-    R0 = R0, 
-    dt = 0.025, 
-    day_return = TRUE, 
+    R0 = R0,  
     time_period = time_period_esft,
-    replicates = replicates_esft,
-    seeding_cases = seeding_cases_esft
+    seeding_cases = seeding_cases_esft,
+    init = init, 
+    max_vaccine = as.integer(mean(tail(vacc_inputs$max_vaccine,7))),
+    vaccine_coverage_mat = vaccine_coverage_mat
   )
   
-  mitigation_scenario <- squire::run_explicit_SEEIR_model(
+  mitigation_scenario <- nimue::run(
     country = country, 
-    R0 = Rt, 
-    dt = 0.025, 
-    day_return = TRUE, 
+    R0 = Rt,  
     time_period = time_period_esft,
-    replicates = replicates_esft,
-    seeding_cases = seeding_cases_esft
+    seeding_cases = seeding_cases_esft,
+    init = init,
+    max_vaccine = as.integer(mean(tail(vacc_inputs$max_vaccine,7))),
+    vaccine_coverage_mat = vaccine_coverage_mat
   )
   
-  maintain_scenario <- squire::run_explicit_SEEIR_model(
+  maintain_scenario <- nimue::run(
     country = country, 
-    R0 = Rt + ((R0 - Rt)/2), 
-    dt = 0.025, 
-    day_return = TRUE, 
+    R0 = Rt + ((R0 - Rt)/2),   
     time_period = time_period_esft,
-    replicates = replicates_esft,
-    seeding_cases = seeding_cases_esft
+    seeding_cases = seeding_cases_esft,
+    init = init,
+    max_vaccine = as.integer(mean(tail(vacc_inputs$max_vaccine,7))),
+    vaccine_coverage_mat = vaccine_coverage_mat
   )
   saveRDS(maintain_scenario, "grid_out.rds")
   
   # Scenarios without capacity constraints
   # ---------------------------------------------------------------------------
-  reverse_scenario_surged <- squire::run_explicit_SEEIR_model(
+  reverse_scenario_surged <- nimue::run(
     country = country, 
-    R0 = R0, 
-    dt = 0.025, 
-    day_return = TRUE, 
+    R0 = R0,  
     time_period = time_period_esft,
-    replicates = replicates_esft,
-    seeding_cases = seeding_cases_esft, 
+    seeding_cases = seeding_cases_esft,
+    init = init,
+    max_vaccine = as.integer(mean(tail(vacc_inputs$max_vaccine,7))),
+    vaccine_coverage_mat = vaccine_coverage_mat,
     hosp_bed_capacity = 1e10, 
     ICU_bed_capacity = 1e10
   )
   
-  mitigation_scenario_surged <- squire::run_explicit_SEEIR_model(
+  mitigation_scenario_surged <- nimue::run(
     country = country, 
-    R0 = Rt, 
-    dt = 0.025, 
-    day_return = TRUE, 
+    R0 = R0,  
     time_period = time_period_esft,
-    replicates = replicates_esft,
-    seeding_cases = seeding_cases_esft, 
+    seeding_cases = seeding_cases_esft,
+    init = init,
+    max_vaccine = as.integer(mean(tail(vacc_inputs$max_vaccine,7))),
+    vaccine_coverage_mat = vaccine_coverage_mat,
     hosp_bed_capacity = 1e10, 
     ICU_bed_capacity = 1e10
   )
   
-  maintain_scenario_surged <- squire::run_explicit_SEEIR_model(
+  maintain_scenario_surged <- nimue::run(
     country = country, 
-    R0 = Rt + ((R0 - Rt)/2), 
-    dt = 0.025, 
-    day_return = TRUE, 
+    R0 = R0,  
     time_period = time_period_esft,
-    replicates = replicates_esft,
-    seeding_cases = seeding_cases_esft, 
+    seeding_cases = seeding_cases_esft,
+    init = init,
+    max_vaccine = as.integer(mean(tail(vacc_inputs$max_vaccine,7))),
+    vaccine_coverage_mat = vaccine_coverage_mat,
     hosp_bed_capacity = 1e10, 
     ICU_bed_capacity = 1e10
   )
@@ -1107,6 +1150,7 @@ o_list <- lapply(r_list_pass, nim_sq_format,
 # group them together
 active_infections <- lapply(r_list_pass, function(x) {
   afs <- nim_sq_format(x, var_select = c("S","R","D"), date_0 = date_0) %>% 
+    na.omit %>% 
     pivot_wider(names_from = compartment, values_from = y) %>% 
     mutate(y = sum(x$parameters$population)-D-R-S,
            compartment = "prevalence") %>% 
@@ -1167,7 +1211,7 @@ data_sum[[5]]$scenario <- "Surged Additional 50% Reduction"
 data_sum[[6]]$scenario <- "Surged Relax Interventions 50%"
 
 # summarise the Rt
-rt_sum <- lapply(r_list_pass, rt_creation, date_0, date_0+89)
+rt_sum <- lapply(r_list_pass, rt_creation_vaccine, date_0, date_0+89)
 rt_sum[[1]]$scenario <- "Maintain Status Quo"
 rt_sum[[2]]$scenario <- "Additional 50% Reduction"
 rt_sum[[3]]$scenario <- "Relax Interventions 50%"

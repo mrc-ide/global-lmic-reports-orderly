@@ -164,7 +164,7 @@ if(any(data$daily_cases < 0)) {
   show_cases_sentence <- ""
 }
 
-suppressMessages(suppressWarnings(rt <- rt_plot_immunity(params$r_list[[1]])))
+suppressMessages(suppressWarnings(rt <- rt_plot_immunity_vaccine(params$r_list[[1]])))
 
 ```
 

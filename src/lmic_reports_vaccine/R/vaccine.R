@@ -9,22 +9,73 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0) {
     # if there are breaks then we need to interpolate what has happened for ease
     tot <- approx(as.Date(date_vacc), tot, xout = as.Date(date_vacc))$y
     
+    # filter to just dates now with vaccines given
+    date_vaccine_change <- date_vacc[!is.na(tot)]
+    
     # we should also linearly extend back to 0 vaccinations
     early_vaccs <- predict(
-      lm(y~x, data = data.frame(y = head(na.omit(tot), 7), x = 1:7)), 
+      lm(y~x, data = data.frame(y = c(0,head(na.omit(tot), 7)), x = c(-30,1:7))), 
       newdata = data.frame(x = -30:0), 
       type = "response")
-    
     early_vaccs <- round(early_vaccs[early_vaccs > 0])
-    tot[tail(which(is.na(tot)), length(early_vaccs))] <- early_vaccs
+    
+    if(length(early_vaccs) > 0) {
+      
+    # corresponding dates
+    back <- as.numeric(names(early_vaccs)) - max(as.numeric(names(early_vaccs)))
+    extra_dates <- as.Date(date_vaccine_change[1]) - 1 + back
+    
+    # add the early vaccinations
+    max_vaccines <- c(early_vaccs, tot)
+    date_vaccine_change <- c(extra_dates, date_vaccine_change)
+    
+    } else {
+      
+      max_vaccines <- tot
+      
+    }
     
     # create our vacc inputs
-    date_vaccine_change <- date_vacc[!is.na(tot)]
-    max_vaccines <- tot[!is.na(tot)]
     max_vaccines <- as.integer(c(max_vaccines[1], diff(max_vaccines)))
     
-    date_vaccine_change <- date_vaccine_change[max_vaccines > 0]
-    max_vaccines <- max_vaccines[max_vaccines > 0]
+    return(list(date = date_vaccine_change, max = max_vaccines))
+    
+  }
+  
+  interp_for_dates <- function(date_vacc, tot, dates) {
+    
+    # if there are breaks then we need to interpolate what has happened for ease
+    tot <- approx(as.Date(date_vacc), tot, xout = as.Date(date_vacc))$y
+    
+    # filter to just dates now with vaccines given
+    date_vaccine_change <- date_vacc[!is.na(tot)]
+    
+    # we should also linearly extend back to 0 vaccinations
+    early_vaccs <- predict(
+      lm(y~x, data = data.frame(y = c(head(na.omit(tot), 7)), x = c(1:7))), 
+      newdata = data.frame(x = as.integer(-((as.Date(date_vaccine_change[1]) - dates[dates < date_vaccine_change[1]])-1))), 
+      type = "response")
+    early_vaccs[early_vaccs < 0] <- 0
+    early_vaccs <- round(early_vaccs[early_vaccs >= 0])
+    
+    if(length(early_vaccs) > 0) {
+      
+      # corresponding dates
+      back <- as.numeric(names(early_vaccs)) - max(as.numeric(names(early_vaccs)))
+      extra_dates <- as.Date(date_vaccine_change[1]) - 1 + back
+      
+      # add the early vaccinations
+      max_vaccines <- c(early_vaccs, tot)
+      date_vaccine_change <- c(extra_dates, date_vaccine_change)
+      
+    } else {
+      
+      max_vaccines <- tot
+      
+    }
+    
+    # create our vacc inputs
+    max_vaccines <- as.integer(c(max_vaccines[1], diff(max_vaccines)))
     
     return(list(date = date_vaccine_change, max = max_vaccines))
     
@@ -47,25 +98,28 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0) {
     ))
   } else {
     
-  tots <- interp_diffs(date_vacc = owid$date, tot = owid$total_vaccinations)
+  peeps <- interp_diffs(date_vacc = owid$date, tot = owid$people_vaccinated)
+  tots <- interp_for_dates(date_vacc = owid$date, tot = owid$total_vaccinations, dates = peeps$date)
   
-  # total vaccinations given out per day
-  date_vaccine_change <- tots$date
-  max_vaccines <- tots$max
+  # peeps vaccinations given out per day
+  date_vaccine_change <- peeps$date
+  max_vaccines <- peeps$max
   
   # now for doses
-  firsts <- max_vaccines
+  firsts <- tots$max
   if (all(is.na(owid$people_fully_vaccinated))) {
     seconds <- list("date" = date_vaccine_change, "max" = rep(0, length(firsts)))
   } else {
-  seconds <- interp_diffs(date_vacc = owid$date, tot = owid$people_fully_vaccinated)
+  seconds <- interp_for_dates(date_vacc = owid$date, tot = owid$people_fully_vaccinated, dates = peeps$date)
   }
   
-  firsts[which(date_vaccine_change %in% seconds$date)] <- firsts[which(date_vaccine_change %in% seconds$date)] - seconds$max
-  seconds <- max_vaccines - firsts
+  firsts[which(tots$date %in% seconds$date)] <- 
+    firsts[which(tots$date %in% seconds$date)] - 
+    seconds$max[which(seconds$date %in% tots$date)]
+  seconds <- tots$max - firsts
   firsts <- cumsum(firsts)
   seconds <- cumsum(seconds)
-  dose_ratio <- seconds/firsts
+  dose_ratio <- vapply(seconds/firsts, min, numeric(1), 1.0)
   
   # now to work out the efficacy
   vaccine_efficacy_infection <- (1-dose_ratio)*0.6 + dose_ratio*0.8
@@ -88,6 +142,11 @@ extend_vaccine_inputs <- function(vaccine_inputs, time_period, out) {
   
   # weekly mean vaccine distributions
   max_vaccine <- mean(tail(vacc_inputs$max_vaccine,7))
+  
+  # assume at least 20% vaccinated by end of the year for meeting covax deadlines
+  if(max_vaccine == 0) {
+    max_vaccine <- round((sum(out$parameters$population)*0.2)/as.integer((as.Date("2021-12-31")-date_0)))
+  }
   tt_vaccine <- 0
   
   # efficacies best to just extend at the same rate
@@ -289,7 +348,8 @@ nim_sq_format <- function(out,
   
 }
 
-init_state_nimue <- function(deaths_removed, iso3c, seeding_cases = 5) {
+init_state_nimue <- function(deaths_removed, iso3c, seeding_cases = 5, 
+                             vaccinated_already = 0) {
   
   # get an initial
   pop <- squire::get_population(iso3c = iso3c, simple_SEIR = FALSE)
@@ -312,10 +372,20 @@ init_state_nimue <- function(deaths_removed, iso3c, seeding_cases = 5) {
     R <- as.numeric(t(rmultinom(1, R, rep(1/length(probs), length(probs)))))
     R <- R - deaths
     # and update the inital to reflect
-    init$D[,1] <- deaths
-    init$S[,1] <- init$S[,1] - R - deaths
+    init$D_0[,1] <- deaths
+    init$S_0[,1] <- init$S_0[,1] - R - deaths
     init$R1_0[,1] <- R
   }
+  
+  if(vaccinated_already > 0) {
+  
+    S_0 <- init$S_0
+    prop <- vaccinated_already / sum(tail(S_0[,1],-3))
+    S_0[-(1:3),3] <- round(S_0[-(1:3),1] * prop)
+    S_0[-(1:3),1] <- S_0[-(1:3),1] - S_0[-(1:3),3]
+    init$S_0 <- S_0
+  }
+  
   return(init)
 }
 
@@ -548,59 +618,6 @@ nim_sq_simulation_plot_prep <- function(x,
   
 }  
 
-
-get_reff <- function(out, beta) {
-  
-  # mixing_matrix is already the mixing matrix that we pass to you in the country json files
-  mixing_matrix <- squire:::process_contact_matrix_scaled_age(
-    out$parameters$contact_matrix_set[[1]],
-    out$parameters$population
-  )
-  
-  # these parameters are found in pars_0.json that is imported in index.js
-  dur_ICase <- out$parameters$dur_ICase
-  dur_IMild <- out$parameters$dur_IMild
-  prob_hosp <- out$odin_parameters$prob_hosp
-  
-  #
-  index <- nimue:::odin_index(out$model)
-  
-  # pop is a 17 length with population sizes in each age category
-  pop <- out$parameters$population
-  
-  # in here we work out each time point the number of individuals in each age category in
-  # the S compartment at each time point.
-  susceptible <- array(
-    out$output[,index$S,],
-    dim=c(nrow(out$output), dim(index$S))
-  )
-  # We divide by the total population
-  prop_susc <- sweep(susceptible, 2, pop, FUN='/')
-  # We multiply by the effect of vaccines on onward infectiousness
-  prop_susc <- sweep(
-    prop_susc,
-    c(2, 3),
-    out$odin_parameters$vaccine_efficacy_infection,
-    FUN='*'
-  )
-  
-  # Length 17 with relative R0 in each age category
-  relative_R0_by_age <- prob_hosp*dur_ICase + (1-prob_hosp)*dur_IMild
-  
-  # here we are looping over each time point to calculate the adjusted eigen
-  # incorporating the proportion of the susceptible population in each age group
-  adjusted_eigens <- vapply(
-    seq(nrow(out$output)),
-    function(t) {
-      Re(eigen(mixing_matrix * rowSums(prop_susc[t,,] * relative_R0_by_age))$values[1])
-    },
-    numeric(1)
-  )
-  
-  # multiply beta by the adjusted eigen at each time point to get Reff
-  beta * adjusted_eigens
-}
-
 get_immunity_ratios_vaccine <- function(out, max_date = NULL) {
   
   mixing_matrix <- squire:::process_contact_matrix_scaled_age(
@@ -648,7 +665,7 @@ get_immunity_ratios_vaccine <- function(out, max_date = NULL) {
   prop_susc <- lapply(seq_len(dim(out$output)[3]), function(x) {
     
     susceptible <- array(
-      out$output[,index$S,x],
+      out$output[seq_len(t_now),index$S,x],
       dim=c(t_now, dim(index$S))
     )
     
@@ -658,9 +675,11 @@ get_immunity_ratios_vaccine <- function(out, max_date = NULL) {
     # We multiply by the effect of vaccines on onward infectiousness
     prop_susc <- vapply(
       seq_len(nrow(prop_susc)),
-                        FUN = function(x){prop_susc[x,,]*vei_full[[x]]},
-      FUN.VALUE = prop_susc[x,,]
+      FUN = function(i){prop_susc[i,,]*vei_full[[i]]},
+      FUN.VALUE = prop_susc[1,,]
     )
+    
+    prop_susc <- aperm(prop_susc, c(3,1,2))
     
     return(prop_susc)
   } )
@@ -670,10 +689,10 @@ get_immunity_ratios_vaccine <- function(out, max_date = NULL) {
   adjusted_eigens <- lapply(prop_susc, function(x) {
     
     unlist(lapply(seq_len(nrow(x)), function(y) {
-      if(any(is.na(x[y,]))) {
+      if(any(is.na(x[y,,]))) {
         return(NA)
       } else {
-        Re(eigen(mixing_matrix*x[y,]*relative_R0_by_age)$values[1])
+        Re(eigen(mixing_matrix*rowSums(x[y,,]*relative_R0_by_age))$values[1])
       }
     }))
     
@@ -810,4 +829,276 @@ rt_plot_immunity_vaccine <- function(out) {
   
   res <- list("plot" = suppressWarnings(country_plot()), "rts" = sum_rt)
   return(res)  
+}
+
+
+rt_creation_vaccine <- function(out, date_0, max_date) {
+  
+  iso3c <- squire::get_population(out$parameters$country)$iso3c[1]
+  
+  if("pmcmc_results" %in% names(out)) {
+    wh <- "pmcmc_results"
+  } else if("scan_results" %in% names(out)) {
+    wh <- "scan_results"
+  } else {
+    wh <- "simple"
+  }
+  
+  if (wh != "simple") {
+    
+    date <- max(as.Date(out$pmcmc_results$inputs$data$date))
+    date_0 <- date
+    
+    # impact of immunity ratios
+    ratios <- get_immunity_ratios_vaccine(out, max_date)
+    
+    # create the Rt data frame
+    rts <- lapply(seq_len(length(out$replicate_parameters$R0)), function(y) {
+      
+      dates <- c(out$interventions$date_R0_change, 
+                 seq.Date(as.Date(tail(out$interventions$date_R0_change,1)) + 1,
+                          as.Date(max_date),
+                          1))
+      
+      change <- c(out$interventions$R0_change, 
+                  rep(tail(out$interventions$R0_change,1), length(dates)-length(out$interventions$R0_change)))
+      
+      tt <- squire:::intervention_dates_for_odin(dates = dates, 
+                                                 change = change, 
+                                                 start_date = out$replicate_parameters$start_date[y],
+                                                 steps_per_day = 1/out$parameters$dt)
+      
+      if(wh == "scan_results") {
+        Rt <- c(out$replicate_parameters$R0[y], 
+                vapply(tt$change, out[[wh]]$inputs$Rt_func, numeric(1), 
+                       R0 = out$replicate_parameters$R0[y], Meff = out$replicate_parameters$Meff[y])) 
+      } else {
+        Rt <- squire:::evaluate_Rt_pmcmc(
+          R0_change = tt$change, 
+          date_R0_change = tt$dates, 
+          R0 = out$replicate_parameters$R0[y], 
+          pars = as.list(out$replicate_parameters[y,]),
+          Rt_args = out$pmcmc_results$inputs$Rt_args) 
+      }
+      
+      df <- data.frame(
+        "Rt" = Rt,
+        "Reff" = Rt*tail(na.omit(ratios[[y]]),length(Rt)),
+        "date" = tt$dates,
+        "iso" = iso3c,
+        rep = y,
+        stringsAsFactors = FALSE)
+      df$pos <- seq_len(nrow(df))
+      return(df)
+    } )
+    
+    rt <- do.call(rbind, rts)
+    rt$date <- as.Date(rt$date)
+    
+    rt <- rt[,c(3,4,1,2,5,6)]
+    
+    new_rt_all <- rt %>%
+      group_by(iso, rep) %>% 
+      arrange(date) %>% 
+      complete(date = seq.Date(min(rt$date), date_0, by = "days")) 
+    
+    column_names <- colnames(new_rt_all)[-c(1,2,3)]
+    new_rt_all <- fill(new_rt_all, all_of(column_names), .direction = c("down"))
+    new_rt_all <- fill(new_rt_all, all_of(column_names), .direction = c("up"))
+    
+    sum_rt <- dplyr::group_by(new_rt_all, date) %>% 
+      dplyr::summarise(compartment = "Rt",
+                       y_025 = quantile(Rt, 0.025),
+                       y_25 = quantile(Rt, 0.25),
+                       y_median = median(Rt),
+                       y_mean = mean(Rt),
+                       y_75 = quantile(Rt, 0.75),
+                       y_975 = quantile(Rt, 0.975)) 
+    
+    sum_reff <- dplyr::group_by(new_rt_all, date) %>% 
+      dplyr::summarise(compartment = "Reff",
+                       y_025 = quantile(Reff, 0.025),
+                       y_25 = quantile(Reff, 0.25),
+                       y_median = median(Reff),
+                       y_mean = mean(Reff),
+                       y_75 = quantile(Reff, 0.75),
+                       y_975 = quantile(Reff, 0.975)) 
+    
+    ret <- rbind(sum_rt, sum_reff)
+    
+  } else {
+    ret <- rt_creation_simple_out_vaccine(out, date_0, max_date)
+  }
+  
+  return(ret)
+}
+
+rt_creation_simple_out_vaccine <- function(out, date_0, max_date) {
+  
+  iso3c <- squire::get_population(out$parameters$country)$iso3c[1]
+  
+  get_immunity_ratios_simple_vaccine <- function(out, max_date) {
+    
+    mixing_matrix <- squire:::process_contact_matrix_scaled_age(
+      out$parameters$contact_matrix_set[[1]],
+      out$parameters$population
+    )
+    
+    dur_ICase <- out$parameters$dur_ICase
+    dur_IMild <- out$parameters$dur_IMild
+    prob_hosp <- out$parameters$prob_hosp
+    
+    # assertions
+    squire:::assert_single_pos(dur_ICase, zero_allowed = FALSE)
+    squire:::assert_single_pos(dur_IMild, zero_allowed = FALSE)
+    squire:::assert_numeric(prob_hosp)
+    squire:::assert_numeric(mixing_matrix)
+    squire:::assert_square_matrix(mixing_matrix)
+    squire:::assert_same_length(mixing_matrix[,1], prob_hosp)
+    
+    if(sum(is.na(prob_hosp)) > 0) {
+      stop("prob_hosp must not contain NAs")
+    }
+    
+    if(sum(is.na(mixing_matrix)) > 0) {
+      stop("mixing_matrix must not contain NAs")
+    }
+    
+    index <- squire:::odin_index(out$model)
+    pop <- out$parameters$population
+    if(is.null(max_date)) {
+      max_date <- max(rownames(out$output))
+    }
+    t_now <- which(as.Date(rownames(out$output)) == max_date)
+    
+    
+    # prop susceptible 
+    prop_susc <- lapply(seq_len(dim(out$output)[3]), function(x) {
+      
+      susceptible <- array(
+        out$output[seq_len(t_now),index$S,x],
+        dim=c(t_now, dim(index$S))
+      )
+      
+      # We divide by the total population
+      prop_susc <- sweep(susceptible, 2, pop, FUN='/')
+      
+      # We multiply by the effect of vaccines on onward infectiousness
+      prop_susc <- vapply(
+        seq_len(nrow(prop_susc)),
+        FUN = function(i){prop_susc[i,,]*out$odin_parameters$vaccine_efficacy_infection[1,,]},
+        FUN.VALUE = prop_susc[1,,]
+      )
+      
+      prop_susc <- aperm(prop_susc, c(3,1,2))
+      
+      return(prop_susc)
+    } )
+    
+    relative_R0_by_age <- prob_hosp*dur_ICase + (1-prob_hosp)*dur_IMild
+    
+    adjusted_eigens <- lapply(prop_susc, function(x) {
+      
+      unlist(lapply(seq_len(nrow(x)), function(y) {
+        if(any(is.na(x[y,,]))) {
+          return(NA)
+        } else {
+          Re(eigen(mixing_matrix*rowSums(x[y,,]*relative_R0_by_age))$values[1])
+        }
+      }))
+      
+    })
+    
+    mat <- squire:::process_contact_matrix_scaled_age(out$parameters$contact_matrix_set[[1]],
+                                                      out$parameters$population)
+    
+    betas <- lapply(rep(out$parameters$R0, dim(out$output)[3]), function(x) {
+      squire:::beta_est_explicit(dur_IMild = dur_IMild, 
+                                 dur_ICase = dur_ICase, 
+                                 prob_hosp = prob_hosp, 
+                                 mixing_matrix = mat, 
+                                 R0 = x)
+    })
+    
+    
+    ratios <- lapply(seq_along(betas), function(x) {
+      (betas[[x]] * adjusted_eigens[[x]]) / out$parameters$R0
+    })
+    
+    return(ratios)
+  }
+  
+  # impact of immunity ratios
+  ratios <- get_immunity_ratios_simple_vaccine(out, max_date)
+  
+  # create the Rt data frame
+  rts <- lapply(seq_len(dim(out$output)[3]), function(y) {
+    
+    Rt <- rep(out$parameters$R0, length(ratios[[y]]))
+    
+    df <- data.frame(
+      "Rt" = Rt,
+      "Reff" = Rt*tail(na.omit(ratios[[y]]),length(Rt)),
+      "date" = head(rownames(out$output),length(Rt)),
+      "iso" = iso3c,
+      rep = y,
+      stringsAsFactors = FALSE)
+    df$pos <- seq_len(nrow(df))
+    return(df)
+  } )
+  
+  rt <- do.call(rbind, rts)
+  rt$date <- as.Date(rt$date)
+  
+  rt <- rt[,c(3,4,1,2,5,6)]
+  
+  new_rt_all <- rt %>%
+    group_by(iso, rep) %>% 
+    arrange(date) %>% 
+    complete(date = seq.Date(min(rt$date), date_0, by = "days")) 
+  
+  column_names <- colnames(new_rt_all)[-c(1,2,3)]
+  new_rt_all <- fill(new_rt_all, all_of(column_names), .direction = c("down"))
+  new_rt_all <- fill(new_rt_all, all_of(column_names), .direction = c("up"))
+  
+  sum_rt <- dplyr::group_by(new_rt_all, date) %>% 
+    dplyr::summarise(compartment = "Rt",
+                     y_025 = quantile(Rt, 0.025),
+                     y_25 = quantile(Rt, 0.25),
+                     y_median = median(Rt),
+                     y_mean = mean(Rt),
+                     y_75 = quantile(Rt, 0.75),
+                     y_975 = quantile(Rt, 0.975)) 
+  
+  sum_reff <- dplyr::group_by(new_rt_all, date) %>% 
+    dplyr::summarise(compartment = "Reff",
+                     y_025 = quantile(Reff, 0.025),
+                     y_25 = quantile(Reff, 0.25),
+                     y_median = median(Reff),
+                     y_mean = mean(Reff),
+                     y_75 = quantile(Reff, 0.75),
+                     y_975 = quantile(Reff, 0.975)) 
+  
+  return(rbind(sum_rt, sum_reff))
+  
+}
+
+get_covax_iso3c <- function() {
+  
+  covax_iso3c <- c(
+    "AFG",  "AGO",  "BDI",  "BEN",  "BFA",  "BGD",  "BOL",  "BTN",
+    "CAF",  "CIV",  "CMR",  "COD",  "COG",  "COM",  "CPV",
+    "DJI",  "DMA",  "DZA",  "EGY",  "ERI",  "ETH",  "FJI",
+    "FSM",  "GHA",  "GIN",  "GMB",  "GNB",  "GRD",  "GUY",
+    "HND",  "HTI",  "IDN",  "IND",  "KEN",  "KGZ",  "KHM",  "KIR",
+    "LAO",  "LBR",  "LCA",  "LKA",  "LSO",  "MAR",  "MDA",  "MDG",  
+    "MDV",  "MHL",  "MLI",  "MMR",  "MNG",  "MOZ",  "MRT",  "MWI",  
+    "NER",  "NGA",  "NIC",  "NPL",  "PAK",  "PHL",  "PNG",  "PRK",  
+    "PSE",  "RWA",  "SDN",  "SEN",  "SLB",  "SLE",  "SLV",
+    "SOM",  "SSD",  "STP",  "SWZ",  "SYR",  "TCD",  "TGO",  "TJK",  
+    "TLS",  "TON",  "TUN",  "TUV",  "TZA",  "UGA",  "UKR",  "UZB",  
+    "VCT",  "VNM",  "VUT",  "WSM",  "XKX",  "YEM",  "ZMB",  "ZWE"
+  )
+  
+  return(covax_iso3c)
 }
