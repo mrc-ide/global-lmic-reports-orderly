@@ -565,6 +565,16 @@ if(sum(ecdc_df$deaths) > 0) {
   # we need to fit with squire, then run the pmmcmc with vaccine model and no iterations
   # and then move the pmcmc results over. 
   
+   if (vaccine_fitting_flag) {
+    out <- generate_draws_pmcmc_nimue_case_fitted(out = out, 
+                                                  n_particles = n_particles, 
+                                                  grad_dur = number_of_last_rw_days)  
+  }  else { 
+    out <- generate_draws_pmcmc_case_fitted(out = out, 
+                                            n_particles = n_particles, 
+                                            grad_dur = number_of_last_rw_days)
+  } 
+  
   # Save this dummy one here for debugging purposes
   if (full_scenarios) {
     
@@ -587,15 +597,7 @@ if(sum(ecdc_df$deaths) > 0) {
   }
   
   
-  if (vaccine_fitting_flag) {
-    out <- generate_draws_pmcmc_nimue_case_fitted(out = out, 
-                                                  n_particles = n_particles, 
-                                                  grad_dur = number_of_last_rw_days)  
-  }  else { 
-    out <- generate_draws_pmcmc_case_fitted(out = out, 
-                                            n_particles = n_particles, 
-                                            grad_dur = number_of_last_rw_days)
-  }
+
   
   # Add the prior
   out$pmcmc_results$inputs$prior <- as.function(c(formals(logprior), 
