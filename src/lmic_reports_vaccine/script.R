@@ -1018,8 +1018,10 @@ if (sum(ecdc_df$deaths) == 0) {
   owid <- readRDS("owid.rds")
   owid <- owid %>% filter(countryterritoryCode == iso3c) %>% 
     select(date, contains("vacc"))
+  who_vacc <- readRDS("who_vacc.rds")
+  who_vacc_meta <- readRDS("who_vacc_meta.rds")
   
-  vacc_inputs <- get_vaccine_inputs(iso3c, vdm, vacc_types, owid, date_0)
+  vacc_inputs <- get_vaccine_inputs(iso3c, vdm, vacc_types, owid, date_0, who_vacc, who_vacc_meta)
   
   # Defaults for now. 
   strategy <- "HCW, Elderly and High-Risk"
