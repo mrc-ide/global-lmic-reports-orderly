@@ -280,7 +280,7 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
         dose_ratio <- rep(0, length(date_vaccine_change))
       } else {
         
-        if (sum(is.na(owid$people_fully_vaccinated)) == 1) {
+        if (sum(!is.na(owid$people_fully_vaccinated)) == 1) {
           
           if(nrow(who_vacc) == 0) {
             seconds <- list("date" = date_vaccine_change, "max" = rep(0, length(firsts)))
@@ -897,6 +897,13 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
     ratios <- lapply(seq_along(betas), function(x) {
       (betas[[x]] * adjusted_eigens[[x]]) / out$replicate_parameters$R0[[x]]
     })
+    
+    # and patch NA gaps
+    for (x in seq_along(ratios)) {
+      if(any(is.na(ratios[[x]]))) {
+        ratios[[x]][which(is.na(ratios[[x]]))] <- ratios[[x]][which(!is.na(ratios[[x]]))[1]] 
+      }
+    }
     
     return(ratios)
   }
