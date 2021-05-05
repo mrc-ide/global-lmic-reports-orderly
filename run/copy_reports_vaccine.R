@@ -7,67 +7,6 @@ file_copy <- function(from, to) {
   }
 }
 
-get_immunity_ratios <- function(out) {
-  
-  mixing_matrix <- squire:::process_contact_matrix_scaled_age(
-    out$pmcmc_results$inputs$model_params$contact_matrix_set[[1]],
-    out$pmcmc_results$inputs$model_params$population
-  )
-  
-  dur_ICase <- out$parameters$dur_ICase
-  dur_IMild <- out$parameters$dur_IMild
-  prob_hosp <- out$parameters$prob_hosp
-  
-  # assertions
-  squire:::assert_single_pos(dur_ICase, zero_allowed = FALSE)
-  squire:::assert_single_pos(dur_IMild, zero_allowed = FALSE)
-  squire:::assert_numeric(prob_hosp)
-  squire:::assert_numeric(mixing_matrix)
-  squire:::assert_square_matrix(mixing_matrix)
-  squire:::assert_same_length(mixing_matrix[,1], prob_hosp)
-  
-  if(sum(is.na(prob_hosp)) > 0) {
-    stop("prob_hosp must not contain NAs")
-  }
-  
-  if(sum(is.na(mixing_matrix)) > 0) {
-    stop("mixing_matrix must not contain NAs")
-  }
-  
-  index <- squire:::odin_index(out$model)
-  pop <- out$parameters$population
-  t_now <- which(as.Date(rownames(out$output)) == max(out$pmcmc_results$inputs$data$date))
-  prop_susc <- lapply(seq_len(dim(out$output)[3]), function(x) {
-    t(t(out$output[seq_len(t_now), index$S, x])/pop)
-  } )
-  
-  relative_R0_by_age <- prob_hosp*dur_ICase + (1-prob_hosp)*dur_IMild
-  
-  adjusted_eigens <- lapply(prop_susc, function(x) {
-    
-    unlist(lapply(seq_len(nrow(x)), function(y) {
-      if(any(is.na(x[y,]))) {
-        return(NA)
-      } else {
-        Re(eigen(mixing_matrix*x[y,]*relative_R0_by_age)$values[1])
-      }
-    }))
-    
-  })
-  
-  betas <- lapply(out$replicate_parameters$R0, function(x) {
-    squire:::beta_est(squire_model = out$pmcmc_results$inputs$squire_model, 
-                      model_params = out$pmcmc_results$inputs$model_params, 
-                      R0 = x)
-  })
-  
-  ratios <- lapply(seq_along(betas), function(x) {
-    (betas[[x]] * adjusted_eigens[[x]]) / out$replicate_parameters$R0[[x]]
-  })
-  
-  return(ratios)
-}
-
 
 ## Possibly useful:
 ## dir("gh-pages", pattern = "index\\.html$", recursive = TRUE)
@@ -142,7 +81,11 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
     
     out <- readRDS(file.path("archive/lmic_reports_vaccine",reports$id[x],"grid_out.rds"))
     if("pmcmc_results" %in% names(out)) {
+    if("chains" %in% names(out$pmcmc_results)) {  
     mc <- do.call(rbind, lapply(out$pmcmc_results$chains, "[[", "results"))
+    } else {
+      mc <- out$pmcmc_results$results
+    }
     best <- mc[which.max(mc$log_posterior),]  
     best <- best[,seq_len(ncol(best)-3)]
     rownames(best) <- NULL
@@ -151,12 +94,18 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
     best$date_Meff_change <- out$pmcmc_results$inputs$Rt_args$date_Meff_change
     best$Rt_shift_duration <- out$pmcmc_results$inputs$Rt_args$Rt_shift_duration
     best$Rt_rw_duration <- out$pmcmc_results$inputs$Rt_args$Rt_rw_duration
+    
+    if("chains" %in% names(out$pmcmc_results)) {
     best$covariance_matrix <- out$pmcmc_results$chains$chain1$covariance_matrix[1]
     best$scaling_factor <- mean(
       c(tail(na.omit(out$pmcmc_results$chains$chain1$scaling_factor),1),
         tail(na.omit(out$pmcmc_results$chains$chain2$scaling_factor),1),
         tail(na.omit(out$pmcmc_results$chains$chain3$scaling_factor),1))
       )
+    } else {
+      best$covariance_matrix <- out$pmcmc_results$covariance_matrix[1]
+      best$scaling_factor <- tail(out$pmcmc_results$scaling_factor,1)
+    }
     
     # for now combine here
     pars[[x]] <- best
