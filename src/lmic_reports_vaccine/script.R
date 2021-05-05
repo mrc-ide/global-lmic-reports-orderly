@@ -40,6 +40,7 @@ if (iso3c %in% c("BOL", "ITA", "FRA", "ECU", "CHL", "COD", "ESP", "IRN",
 country <- squire::population$country[match(iso3c, squire::population$iso3c)[1]]
 ecdc_df <- ecdc[which(ecdc$countryterritoryCode == iso3c),]
 
+
 ## MAIN LOOP IS ONLY FOR THOSE WITH DEATHS
 if(sum(ecdc_df$deaths) > 0) {
   
@@ -60,6 +61,7 @@ if(sum(ecdc_df$deaths) > 0) {
   names(data)[1] <- "date"
   data <- data[order(data$date),]
   data$date <- as.Date(data$date)
+  data <- data[data$date <= as.Date(date_0), ]
   
   # Handle for countries that have eliminated and had reintroduction events
   reintroduction_iso3cs <- c("MMR", "BLZ", "TTO", "BHS", "HKG", "ABW", "GUM", "ISL", "BRB")
