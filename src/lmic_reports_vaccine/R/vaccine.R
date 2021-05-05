@@ -117,12 +117,12 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
       vaccine_efficacy_infection <- lapply(vaccine_efficacy_infection, rep, 17)
       vaccine_efficacy_disease <- lapply(vaccine_efficacy_disease, rep, 17)
       
-      return(list(
+      ret_res <- list(
         date_vaccine_change = date_0,
         max_vaccine = rep(0, 1),
         vaccine_efficacy_infection = vaccine_efficacy_infection,
         vaccine_efficacy_disease = vaccine_efficacy_disease
-      ))
+      )
       
     } else if (is.na(who_vacc$TOTAL_VACCINATIONS)) {
       
@@ -131,12 +131,12 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
       vaccine_efficacy_infection <- lapply(vaccine_efficacy_infection, rep, 17)
       vaccine_efficacy_disease <- lapply(vaccine_efficacy_disease, rep, 17)
       
-      return(list(
+      ret_res <- list(
         date_vaccine_change = date_0,
         max_vaccine = rep(0, 1),
         vaccine_efficacy_infection = vaccine_efficacy_infection,
         vaccine_efficacy_disease = vaccine_efficacy_disease
-      ))
+      )
       
     } else {
       
@@ -177,14 +177,12 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
       vaccine_efficacy_infection <- lapply(vaccine_efficacy_infection, rep, 17)
       vaccine_efficacy_disease <- lapply(vaccine_efficacy_disease, rep, 17)
       
-      return(
-        list(
+      ret_res <- list(
           date_vaccine_change = date_vaccine_change,
           max_vaccine = max_vaccine,
           vaccine_efficacy_infection = vaccine_efficacy_infection, 
           vaccine_efficacy_disease = vaccine_efficacy_disease
         )
-      )
     }
     
   } else if (sum(!is.na(owid$people_vaccinated)) == 1) {
@@ -238,14 +236,12 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
       vaccine_efficacy_infection <- lapply(vaccine_efficacy_infection, rep, 17)
       vaccine_efficacy_disease <- lapply(vaccine_efficacy_disease, rep, 17)
       
-      return(
-        list(
+      ret_res <- list(
           date_vaccine_change = date_vaccine_change,
           max_vaccine = max_vaccine,
           vaccine_efficacy_infection = vaccine_efficacy_infection, 
           vaccine_efficacy_disease = vaccine_efficacy_disease
         )
-      )
       
     }
     
@@ -353,17 +349,26 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
       vaccine_efficacy_infection <- lapply(vaccine_efficacy_infection, rep, 17)
       vaccine_efficacy_disease <- lapply(vaccine_efficacy_disease, rep, 17)
       
-      return(
-        list(
+      ret_res <- list(
           date_vaccine_change = date_vaccine_change,
           max_vaccine = max_vaccine,
           vaccine_efficacy_infection = vaccine_efficacy_infection, 
           vaccine_efficacy_disease = vaccine_efficacy_disease
         )
-      )
   }
   
+  # trim to date
+  pos_keep <- which(ret_res$date_vaccine_change <= date_0) 
+  if(length(pos_keep) > 0) {
+    ret_res$date_vaccine_change <- ret_res$date_vaccine_change[pos_keep] 
+    ret_res$max_vaccine <- ret_res$max_vaccine[pos_keep] 
+    ret_res$vaccine_efficacy_infection <- ret_res$vaccine_efficacy_infection[pos_keep] 
+    ret_res$vaccine_efficacy_disease <- ret_res$vaccine_efficacy_disease[pos_keep] 
   }
+  
+  return(ret_res)
+  
+}
 
 
 extend_vaccine_inputs <- function(vaccine_inputs, time_period, out) {
