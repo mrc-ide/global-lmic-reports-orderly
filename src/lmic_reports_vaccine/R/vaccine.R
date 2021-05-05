@@ -763,6 +763,7 @@ generate_draws_pmcmc_nimue_case_fitted <- function(out, n_particles = 10, grad_d
   names(pmcmc_samples)[names(pmcmc_samples) == "trajectories"] <- "output"
   dimnames(pmcmc_samples$output) <- list(dimnames(pmcmc_samples$output)[[1]], dimnames(out$output)[[2]], NULL)
   out$output <- pmcmc_samples$output
+  out$replicate_parameters <- pmcmc_samples$sampled_PMCMC_Results
   
   # and adjust the time as before
   full_row <- match(0, apply(out$output[,"time",],2,function(x) { sum(is.na(x)) }))
