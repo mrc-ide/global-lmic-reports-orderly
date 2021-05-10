@@ -10,7 +10,7 @@ if(packageVersion("squire") < version_min) {
   stop("squire needs to be updated to at least v", version_min)
 }
 
-version_min <- "0.1.7"
+version_min <- "0.1.8"
 if(packageVersion("nimue") < version_min) {
   stop("nimue needs to be updated to at least v", version_min)
 }
@@ -499,17 +499,10 @@ if(sum(ecdc_df$deaths) > 0) {
     vaccine_uptake = vaccine_uptake
   )
   
-  # for now let's just put it in place just using nimue all the time for ease
-  # if(max(owid$total_vaccinations_per_hundred, na.rm=TRUE) > 1) {
   vaccine_fitting_flag <- TRUE
   squire_model <- nimue:::nimue_deterministic_model()
   init <- init_state_nimue(deaths_removed, iso3c)
-  # } else {
-  #   vaccine_fitting_flag <- FALSE
-  #   squire_model <- squire:::deterministic_model()
-  #   init <- init_state(deaths_removed, iso3c)
-  # }
- 
+
   ## -----------------------------------------------------------------------------
   ## Step 2g: PMCMC run
   ## -----------------------------------------------------------------------------
@@ -560,13 +553,9 @@ if(sum(ecdc_df$deaths) > 0) {
                        date_vaccine_efficacy_disease_change = vacc_inputs$date_vaccine_change,
                        vaccine_efficacy_disease = vacc_inputs$vaccine_efficacy_disease,
                        baseline_vaccine_efficacy_disease = vacc_inputs$vaccine_efficacy_disease[[1]],
+                       rel_infectiousness_vaccinated = vacc_inputs$rel_infectiousness_vaccinated, 
                        vaccine_coverage_mat = vaccine_coverage_mat,
                        dur_R = 365)
-  
-  ## TODO: If we go down route for fitting squire for low vaccine countries then
-  # we need to fit with squire, then run the pmmcmc with vaccine model and no iterations
-  # and then move the pmcmc results over. 
-
   
   # Save this dummy one here for debugging purposes
   if (full_scenarios) {
@@ -786,7 +775,7 @@ if(sum(ecdc_df$deaths) > 0) {
     geom_vline(xintercept = as.Date(last_shift_date) + seq(Rt_rw_duration, Rt_rw_duration*rw_needed, by = Rt_rw_duration),
                linetype = "dashed") + xlab("") + theme(axis.text.x = element_text(angle=45, vjust = 0.5))
   
-  rtp <- rt_plot(out)$plot
+  rtp <- rt_plot_immunity_vaccine(out)
   
   date_range <- as.Date(c(min(as.Date(out$replicate_parameters$start_date)),date_0))
   suppressMessages(suppressWarnings(
@@ -794,7 +783,7 @@ if(sum(ecdc_df$deaths) > 0) {
       intervention + scale_x_date(date_breaks = "1 month", date_labels = "%b" ,limits = date_range), 
       d + scale_x_date(date_breaks = "1 month", date_labels = "%b" ,limits = date_range),
       cas_plot  + scale_x_date(date_breaks = "1 month", date_labels = "%b" ,limits = date_range),
-      rtp + scale_x_date(date_breaks = "1 month", date_labels = "%b" ,limits = date_range),
+      rtp$plot + scale_x_date(date_breaks = "1 month", date_labels = "%b" ,limits = date_range),
       ncol=1,
       rel_heights = c(0.4,0.6,0.6, 0.4))
   ))
@@ -837,26 +826,10 @@ if(sum(ecdc_df$deaths) > 0) {
                                            tt_R0 = c(0), 
                                            time_period = time_period,
                                            model_user_args = model_user_args)
-  maintain_scenario$projection_args$r <- NULL
-  saveRDS(maintain_scenario, "grid_out.rds")
+  r_maintain_scenario <- r_list_format(maintain_scenario, date_0)
+  rt_maintain_scenario <- rt_creation_vaccine(maintain_scenario, date_0, date_0+89)
   
-  # Enhancing movement restrictions for 3 months (50% further reduction in contacts) (Mitigation) 
-  mitigation_scenario <- squire::projections(out, 
-                                             R0_change = c(0.5), 
-                                             tt_R0 = c(0), 
-                                             time_period = time_period,
-                                             model_user_args = model_user_args)
-  
-  # Relax by 50% for 3 months 
-  reverse_scenario <- squire::projections(out, 
-                                          R0_change = 1.5, 
-                                          tt_R0 = c(0), 
-                                          time_period = time_period,
-                                          model_user_args = model_user_args)
-  
-  ## -----------------------------------------------------------------------------
-  ## 4.2. Investigating a capacity surge
-  ## -----------------------------------------------------------------------------
+  ## check for capacity being passed here
   
   ## Is capacity passed prior to today
   icu_cap <- squire:::get_ICU_bed_capacity(country)
@@ -870,29 +843,6 @@ if(sum(ecdc_df$deaths) > 0) {
     }
     return(out)
   }
-  
-  # update for surged healthcare
-  pmcmc <- out$pmcmc_results
-  pmcmc$inputs$model_params$hosp_beds <- 1e10
-  pmcmc$inputs$model_params$ICU_beds <- 1e10
-  
-  out_surged <- generate_draws_pmcmc(pmcmc = pmcmc,
-                                     burnin = ceiling(n_mcmc/10),
-                                     n_chains = n_chains,
-                                     squire_model = out$pmcmc_results$inputs$squire_model, 
-                                     replicates = replicates, 
-                                     n_particles = n_particles, 
-                                     forecast = 0, 
-                                     country = country, 
-                                     population = squire::get_population(iso3c = iso3c)$n, 
-                                     interventions = out$interventions, 
-                                     data = out$pmcmc_results$inputs$data)
-  
-  out_surged$model$set_user(ICU_beds = 1e10)
-  out_surged$model$set_user(hosp_beds = 1e10)
-  
-  out_surged$parameters$hosp_bed_capacity <- 1e10
-  out_surged$parameters$ICU_bed_capacity <- 1e10
   
   # has surging been required 
   icu <- nim_sq_format(maintain_scenario, "ICU_demand", date_0 = date_0)
@@ -919,6 +869,61 @@ if(sum(ecdc_df$deaths) > 0) {
     
   }
   
+  rm(maintain_scenario)
+  
+  # Enhancing movement restrictions for 3 months (50% further reduction in contacts) (Mitigation) 
+  mitigation_scenario <- squire::projections(out, 
+                                             R0_change = c(0.5), 
+                                             tt_R0 = c(0), 
+                                             time_period = time_period,
+                                             model_user_args = model_user_args)
+  r_mitigation_scenario <- r_list_format(mitigation_scenario, date_0)
+  rt_mitigation_scenario <- rt_creation_vaccine(mitigation_scenario, date_0, date_0+89)
+  rm(mitigation_scenario)
+  
+  # Relax by 50% for 3 months 
+  reverse_scenario <- squire::projections(out, 
+                                          R0_change = 1.5, 
+                                          tt_R0 = c(0), 
+                                          time_period = time_period,
+                                          model_user_args = model_user_args)
+  r_reverse_scenario <- r_list_format(reverse_scenario, date_0)
+  rt_reverse_scenario <- rt_creation_vaccine(reverse_scenario, date_0, date_0+89)
+  rm(reverse_scenario)
+  
+  ## now let's trim the out for saving really small
+  pmcmc <- out$pmcmc_results
+  out_interventions <- out$interventions
+  out$output <- NULL
+  saveRDS(out, "grid_out.rds")
+  rm(out)
+  
+  ## -----------------------------------------------------------------------------
+  ## 4.2. Investigating a capacity surge
+  ## -----------------------------------------------------------------------------
+  
+  # update for surged healthcare
+  pmcmc$inputs$model_params$hosp_beds <- 1e10
+  pmcmc$inputs$model_params$ICU_beds <- 1e10
+  
+  out_surged <- generate_draws_pmcmc(pmcmc = pmcmc,
+                                     burnin = ceiling(n_mcmc/10),
+                                     n_chains = n_chains,
+                                     squire_model = pmcmc$inputs$squire_model, 
+                                     replicates = replicates, 
+                                     n_particles = n_particles, 
+                                     forecast = 0, 
+                                     country = country, 
+                                     population = squire::get_population(iso3c = iso3c)$n, 
+                                     interventions = out_interventions, 
+                                     data = pmcmc$inputs$data)
+  
+  out_surged$model$set_user(ICU_beds = 1e10)
+  out_surged$model$set_user(hosp_beds = 1e10)
+  
+  out_surged$parameters$hosp_bed_capacity <- 1e10
+  out_surged$parameters$ICU_bed_capacity <- 1e10
+  
   
   ## Now simulate the surged scenarios
   out_surged$pmcmc_results$chains <- NULL
@@ -929,35 +934,47 @@ if(sum(ecdc_df$deaths) > 0) {
                                                   time_period = time_period,
                                                   model_user_args = model_user_args)
   
+  r_maintain_scenario_surged <- r_list_format(maintain_scenario_surged, date_0)
+  rt_maintain_scenario_surged <- rt_creation_vaccine(maintain_scenario_surged, date_0, date_0+89)
+  rm(maintain_scenario_surged)
+  
   mitigation_scenario_surged <- squire::projections(out_surged, 
                                                     R0_change = c(0.5), 
                                                     tt_R0 = c(0), 
                                                     time_period = time_period,
                                                     model_user_args = model_user_args)
+  r_mitigation_scenario_surged <- r_list_format(mitigation_scenario_surged, date_0)
+  rt_mitigation_scenario_surged <- rt_creation_vaccine(mitigation_scenario_surged, date_0, date_0+89)
+  rm(mitigation_scenario_surged)
   
   reverse_scenario_surged <- squire::projections(out_surged, 
                                                  R0_change = c(1.5), 
                                                  tt_R0 = c(0), 
                                                  time_period = time_period,
                                                  model_user_args = model_user_args)
-  
+  r_reverse_scenario_surged <- r_list_format(reverse_scenario_surged, date_0)
+  rt_reverse_scenario_surged <- rt_creation_vaccine(reverse_scenario_surged, date_0, date_0+89)
+  rm(reverse_scenario_surged)
+  rm(out_surged)
  
-    r_list <-
-      named_list(
-        maintain_scenario,
-        mitigation_scenario,
-        reverse_scenario,
-        maintain_scenario_surged,
-        mitigation_scenario_surged,
-        reverse_scenario_surged
+  o_list <- named_list(
+        r_maintain_scenario,
+        r_mitigation_scenario,
+        r_reverse_scenario,
+        r_maintain_scenario_surged,
+        r_mitigation_scenario_surged,
+        r_reverse_scenario_surged
       )
   
-  r_list_pass <- r_list
+  rt_list <- named_list(
+    rt_maintain_scenario,
+    rt_mitigation_scenario,
+    rt_reverse_scenario,
+    rt_maintain_scenario_surged,
+    rt_mitigation_scenario_surged,
+    rt_reverse_scenario_surged
+  )
   
-  o_list <- lapply(r_list_pass, nim_sq_format,
-                   var_select = c("infections","deaths","hospital_demand",
-                                  "ICU_demand", "D", "hospital_incidence","ICU_incidence"),
-                   date_0 = date_0)
   
   ## -----------------------------------------------------------------------------
   ## Step 5: Report
@@ -981,13 +998,13 @@ if(sum(ecdc_df$deaths) > 0) {
   # prepare reports
   rmarkdown::render("index.Rmd", 
                     output_format = c("html_document","pdf_document"), 
-                    params = list("r_list" = r_list_pass,
-                                  "o_list" = o_list,
+                    params = list("o_list" = o_list,
                                   "replicates" = replicates, 
                                   "data" = data,
                                   "date_0" = date_0,
                                   "country" = country,
-                                  "surging" = surging),
+                                  "surging" = surging, 
+                                  "rt" = rtp),
                     output_options = list(pandoc_args = c(paste0("--metadata=title:",country," COVID-19 report "))))
   
   
@@ -1146,26 +1163,10 @@ if (sum(ecdc_df$deaths) == 0) {
               "fitting.pdf", "pre_grad_out.rds")
   
   # major summaries
-o_list <- lapply(r_list_pass, nim_sq_format,
-                 var_select = c("infections","deaths","hospital_demand",
-                                "ICU_demand", "D", "hospital_incidence","ICU_incidence"),
-                 date_0 = date_0)
+o_list <- lapply(r_list_pass, r_list_format, date_0)
 
-}
+rt_list <- lapply(r_list_pass, rt_creation_vaccine, date_0, date_0+89)
 
-
-# group them together
-active_infections <- lapply(r_list_pass, function(x) {
-  afs <- nim_sq_format(x, var_select = c("S","R","D"), date_0 = date_0) %>% 
-    na.omit %>% 
-    pivot_wider(names_from = compartment, values_from = y) %>% 
-    mutate(y = sum(x$parameters$population)-D-R-S,
-           compartment = "prevalence") %>% 
-    select(replicate, compartment, t, y, date)
-})
-
-for(i in seq_along(o_list)) {
-  o_list[[i]] <- rbind(o_list[[i]], active_infections[[i]])
 }
 
 # summarise the projections
@@ -1217,19 +1218,16 @@ data_sum[[4]]$scenario <- "Surged Maintain Status Quo"
 data_sum[[5]]$scenario <- "Surged Additional 50% Reduction"
 data_sum[[6]]$scenario <- "Surged Relax Interventions 50%"
 
-# summarise the Rt
-rt_sum <- lapply(r_list_pass, rt_creation_vaccine, date_0, date_0+89)
-rt_sum[[1]]$scenario <- "Maintain Status Quo"
-rt_sum[[2]]$scenario <- "Additional 50% Reduction"
-rt_sum[[3]]$scenario <- "Relax Interventions 50%"
-rt_sum[[4]]$scenario <- "Surged Maintain Status Quo"
-rt_sum[[5]]$scenario <- "Surged Additional 50% Reduction"
-rt_sum[[6]]$scenario <- "Surged Relax Interventions 50%"
+rt_list[[1]]$scenario <- "Maintain Status Quo"
+rt_list[[2]]$scenario <- "Additional 50% Reduction"
+rt_list[[3]]$scenario <- "Relax Interventions 50%"
+rt_list[[4]]$scenario <- "Surged Maintain Status Quo"
+rt_list[[5]]$scenario <- "Surged Additional 50% Reduction"
+rt_list[[6]]$scenario <- "Surged Relax Interventions 50%"
 
 # combine and annotate
-data_sum <- do.call(rbind, data_sum)
-rt_sum <- do.call(rbind, rt_sum)
-data_sum <- rbind(data_sum, rt_sum) %>% arrange(date, scenario)
+data_sum <- do.call(rbind, data_sum) 
+data_sum <- rbind(data_sum, do.call(rbind, rt_list)) %>% arrange(date, scenario)
 rownames(data_sum) <- NULL
 
 # catch for hong kong and taiwan country name
@@ -1242,7 +1240,6 @@ if(iso3c == "TWN") {
 if(iso3c == "MAC") {
   country <- "Macao"
 }
-
 
 # bring it all together
 data_sum$country <- country
@@ -1265,31 +1262,31 @@ write.csv(data_sum, "projections.csv", row.names = FALSE, quote = FALSE)
 ## Attack Rates
 ## -----------------------------------------------------------------------------
 
-ar_list <- lapply(r_list_pass, function(x) {
-  
-  S <- x %>% nim_sq_format(var_select = "infections", date_0 = date) %>% 
-    group_by(replicate) %>% 
-    mutate(y = cumsum(y)) %>% 
-    group_by(t, date) %>% 
-    summarise(y = median(y,na.rm = TRUE))
-  S$ar <- S$y/sum(squire::get_population(x$parameters$country)$n)
-  S$iso <- squire::get_population(x$parameters$country)$iso3c[1]
-  
-  S <- na.omit(S)
-  return(S)
-  
-})
-
-ar_list[[1]]$scenario <- "Maintain Status Quo"
-ar_list[[2]]$scenario <- "Additional 50% Reduction"
-ar_list[[3]]$scenario <- "Relax Interventions 50%"
-ar_list[[4]]$scenario <- "Surged Maintain Status Quo"
-ar_list[[5]]$scenario <- "Surged Additional 50% Reduction"
-ar_list[[6]]$scenario <- "Surged Relax Interventions 50%"
-
-ars <- do.call(rbind, ar_list)
-ars$continent <- countrycode::countrycode(ars$iso, "iso3c", "continent")
-ars$region <- countrycode::countrycode(ars$iso, "iso3c", "region23")
-names(ars)[3] <- "uninfected"
-saveRDS(ars, "attack_rates.rds")
-
+# ar_list <- lapply(r_list_pass, function(x) {
+#   
+#   S <- x %>% nim_sq_format(var_select = "infections", date_0 = date) %>% 
+#     group_by(replicate) %>% 
+#     mutate(y = cumsum(y)) %>% 
+#     group_by(t, date) %>% 
+#     summarise(y = median(y,na.rm = TRUE))
+#   S$ar <- S$y/sum(squire::get_population(x$parameters$country)$n)
+#   S$iso <- squire::get_population(x$parameters$country)$iso3c[1]
+#   
+#   S <- na.omit(S)
+#   return(S)
+#   
+# })
+# 
+# ar_list[[1]]$scenario <- "Maintain Status Quo"
+# ar_list[[2]]$scenario <- "Additional 50% Reduction"
+# ar_list[[3]]$scenario <- "Relax Interventions 50%"
+# ar_list[[4]]$scenario <- "Surged Maintain Status Quo"
+# ar_list[[5]]$scenario <- "Surged Additional 50% Reduction"
+# ar_list[[6]]$scenario <- "Surged Relax Interventions 50%"
+# 
+# ars <- do.call(rbind, ar_list)
+# ars$continent <- countrycode::countrycode(ars$iso, "iso3c", "continent")
+# ars$region <- countrycode::countrycode(ars$iso, "iso3c", "region23")
+# names(ars)[3] <- "uninfected"
+# saveRDS(ars, "attack_rates.rds")
+# 

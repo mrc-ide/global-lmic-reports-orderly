@@ -746,6 +746,158 @@ deaths_plot_single_surge <- function(out, out2, data, date_0, date = Sys.Date(),
   
 }
 
+deaths_plot_single_vaccine <- function(out, data, date_0, date = Sys.Date(), 
+                               forecast = 14, single = FALSE, full = TRUE) {
+  
+  
+
+  start_date <- min(data$date[which(data$deaths>0)])
+  date <- date_0 <- as.Date(date_0)
+  
+  df <- out[out$compartment == "deaths" & out$date >= start_date, ]
+  df_summ <- group_by(df, date) %>% 
+    summarise(deaths = median(y, na.rm = TRUE), 
+              ymin = quantile(y, 0.025, na.rm = TRUE),
+              ymax = median(y, 0.975, na.rm = TRUE))
+  
+  gg <- ggplot(df_summ, aes(date, deaths, ymin = ymin, ymax = ymax)) +
+    geom_line() + geom_ribbon()
+  ymax <- max(data$daily_deaths, df_summ$ymax[df_summ$date<=(as.Date(date)+forecast)])
+  
+  gg <- gg + 
+    geom_point(data = data, mapping = aes(x=date, y=daily_deaths,shape="Reported"), inherit.aes = FALSE) +
+    ggplot2::geom_vline(xintercept = date, linetype = "dashed") +
+    ggplot2::theme_bw()  +
+    ggplot2::scale_y_continuous(limits = c(0, ymax+1)) +
+    ggplot2::scale_x_date(date_breaks = "1 month", date_labels = "%b %Y",
+                          limits = c(start_date, date_0 + forecast),
+                          expand = c(0, 0)) +
+    ggplot2::scale_fill_manual(name = "", labels = rev(c("Estimated")),
+                               values = (c("#c59e96"))) +
+    ggplot2::scale_color_manual(name = "", labels = rev(c("Estimated")),
+                                values = (c("#c59e96"))) +
+    ggplot2::ylab("") +
+    ggplot2::scale_shape_manual(name = "", values = 20) +
+    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, colour = "black"),
+                   axis.title.x = ggplot2::element_blank(),
+                   panel.grid.major.x = ggplot2::element_blank(),
+                   panel.grid.minor.x = ggplot2::element_blank(),
+                   panel.border = ggplot2::element_blank(),
+                   panel.background = ggplot2::element_blank(),
+                   axis.line = ggplot2::element_line(colour = "black")) 
+  
+  rg <- gg + ylab("Daily Deaths") +
+    theme(legend.position = "none") +
+    ggplot2::scale_x_date(date_breaks = "1 month", date_labels = "%b %Y",
+                          limits = c(start_date, date_0),
+                          expand = c(0, 0)) +
+    ggtitle("Model Fit up to Current Day")
+  
+  if(single) {
+    return(rg)
+  } else {
+    
+    gg <- gg + theme(legend.position = "none") + ylab("") + ggtitle("Model Fit & 28 Day Projection")
+    
+    leg <- cowplot::get_legend(gg)
+    return(cowplot::plot_grid(leg, 
+                              cowplot::plot_grid(rg, gg+theme(legend.position = "none"),rel_widths=c(0.66,1)),
+                              ncol = 1, rel_heights = c(0.1,1)))
+  }
+  
+  
+}
+
+deaths_plot_single_surge_vaccine <- function(out, out2, data, date_0, date = Sys.Date(), 
+                                     forecast = 14) {
+  
+  
+  # build it from scratch
+  r_list <- list(out, out2)
+  
+  start_date <- min(data$date[which(data$deaths>0)])
+  date <- date_0 <- as.Date(date_0)
+  
+  pd_list <- lapply(r_list, function(x) {
+    
+  df <- x[x$compartment == "deaths" & x$date >= start_date, ]
+  df_summ <- group_by(df, date) %>% 
+    summarise(deaths = median(y, na.rm = TRUE), 
+              ymin = quantile(y, 0.025, na.rm = TRUE),
+              ymax = median(y, 0.975, na.rm = TRUE))
+  
+  return(df_summ)
+  
+  })
+  
+  # append scenarios
+  scenarios <- c("Current healthcare", "Surge in healthcare")
+  for(i in seq_along(scenarios)) {
+    pd_list[[i]]$Scenario <- scenarios[i]
+    pd_list[[i]]$Scenario <- scenarios[i]
+  }
+  
+  pds <- do.call(rbind, pd_list) %>% ungroup
+  
+  # Plot
+  pds <- pds %>% filter(date <= date_0 + forecast)
+  p <- ggplot(pds, aes(date, deaths, ymin = ymin, ymax = ymax, col = Scenario)) +
+    geom_line() + geom_ribbon(alpha = 0.25, col = NA)
+  ymax <- max(data$daily_deaths, pds$ymax[pds$date<=(as.Date(date)+forecast)])
+  
+  # Add remaining formatting
+  gg <- p +
+    ggplot2::scale_color_discrete(name = "") +
+    ggplot2::scale_fill_discrete(guide = FALSE) +
+    ggplot2::theme_bw() + 
+    theme(legend.position = "top") + 
+    guides(linetype = FALSE) 
+  
+  
+  gg2 <- gg + 
+    geom_point(data = data, mapping = aes(x=date, y=daily_deaths,shape="Reported Deaths"), inherit.aes = FALSE) +
+    ggplot2::geom_vline(xintercept = date, linetype = "dashed") +
+    ggplot2::theme_bw()  +
+    ggplot2::scale_x_date(date_breaks = "1 month", date_labels = "%b %Y",
+                          limits = c(min(data$date[which(data$daily_deaths>0)]), date + forecast),
+                          expand = c(0, 0)) +
+    ggplot2::scale_fill_manual(name = "", labels = (c("Estimated with Current Healthcare Capacity", 
+                                                      "Estimated with Surge in Healthcare Capacity")),
+                               values = (c("#c59e96","#3f8ea7"))) +
+    ggplot2::scale_color_manual(name = "", labels = (c("Estimated with Current Healthcare Capacity", 
+                                                       "Estimated with Surge in Healthcare Capacity")),
+                                values = (c("#c59e96","#3f8ea7"))) +
+    ggplot2::ylab("Daily Deaths") +
+    ggplot2::scale_shape_manual(name = "", values = 20) +
+    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, colour = "black"),
+                   axis.title.x = ggplot2::element_blank(),
+                   panel.grid.major.x = ggplot2::element_blank(),
+                   panel.grid.minor.x = ggplot2::element_blank(),
+                   panel.border = ggplot2::element_blank(),
+                   panel.background = ggplot2::element_blank(),
+                   axis.line = ggplot2::element_line(colour = "black")) 
+  
+  gg2 <- gg2 + ggplot2::theme(legend.position = "top", 
+                              legend.justification = c(0.5,1),
+                              legend.direction = "horizontal") +
+    geom_vline(xintercept = date, linetype = "dashed")
+  
+  rg <- gg2 + ylab("Daily Deaths") +
+    xlim(c(min(data$date[which(data$daily_deaths>0)]), date)) +
+    theme(legend.position = "none") +
+    ggtitle("Model Fit up to Current Day")
+  
+  gg2 <- gg2 + theme(legend.position = "none") + ylab("") + ggtitle("Model Fit & 28 Day Projection")
+  
+  leg <- cowplot::get_legend(gg2)
+  cowplot::plot_grid(leg, 
+                     cowplot::plot_grid(rg, gg2+theme(legend.position = "none"),rel_widths=c(0.66,1)),
+                     ncol = 1, rel_heights = c(0.1,1))
+  
+  
+}
+
+
 
 deaths_plot_contrast_triple <- function(o1, o2, o3, data, date_0, date = Sys.Date(), 
                                         forecast = 14, cumulative = TRUE) {

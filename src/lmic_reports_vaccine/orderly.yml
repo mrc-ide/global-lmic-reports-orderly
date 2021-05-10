@@ -81,7 +81,6 @@ artefacts:
         - grid_out.rds
         - fitting.pdf
         - projections.csv
-        - attack_rates.rds
         - pre_grad_out.rds
 
 # An optional name to describe the report in more detail than its

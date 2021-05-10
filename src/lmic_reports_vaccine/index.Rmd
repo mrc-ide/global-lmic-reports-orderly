@@ -26,13 +26,13 @@ output:
     highlight: tango
     reference_docx: template.docx
 params:
-   r_list: NA
    o_list: NA
    replicates: 10
    data: NA
    date_0: NA
    country: NA
    surging: FALSE
+   rt: NA
 ---
 
 ```{r rm_title_page, echo=FALSE}
@@ -92,6 +92,7 @@ data <- params$data
 country <- params$country
 date_0 <- params$date_0
 surging <- params$surging
+rt <- params$rt
 url <- paste0("https://github.com/mrc-ide/global-lmic-reports/raw/master/",iso3c,"/index.pdf")
 
 format_type <- knitr::opts_knit$get("rmarkdown.pandoc.to")
@@ -164,7 +165,6 @@ if(any(data$daily_cases < 0)) {
   show_cases_sentence <- ""
 }
 
-suppressMessages(suppressWarnings(rt <- rt_plot_immunity_vaccine(params$r_list[[1]])))
 
 ```
 
@@ -490,12 +490,12 @@ Using the model fit, we can forecast the expected trajectory for cumulative deat
 
 if (surging) {
   suppressWarnings(suppressMessages(
-    deaths_plot_single_surge(params$r_list[[1]], params$r_list[[4]],
+    deaths_plot_single_surge_vaccine(params$o_list[[1]], params$o_list[[4]],
                              forecast = 28, 
                        data = data, date_0 = date_0, date = date)))  
 } else {
   suppressWarnings(suppressMessages(print(
-    deaths_plot_single(params$r_list[[1]], forecast = 28, 
+    deaths_plot_single_vaccine(params$o_list[[1]], forecast = 28, 
                        data = data, date_0 = date_0, date = date))))
   
 }
