@@ -1,6 +1,32 @@
 #!/usr/bin/env Rscript
 
-remove_old_reports <- function(date = NULL, keep = 7, pdf_keep = 60) {
+remove_old_reports <- function(date = NULL, keep = 5, pdf_keep = 5) {
+  
+  dirs <- list.files("/home/oj/net/lmic_new/datadrive/lmic/global-lmic-reports-orderly/gh-pages")
+  dirs <- file.path("/home/oj/net/lmic_new/datadrive/lmic/global-lmic-reports-orderly/gh-pages", dirs[-grep(".", dirs, fixed = TRUE)])
+  for(i in seq_along(dirs)) {
+    message(i)
+    l <- list.files(dirs[i])
+    l <- file.path(dirs[i], l[-grep("\\.|figure", l)])
+    l_copy <- list.files(tail(l, 1)  , full.names = TRUE)
+    file.copy(l_copy, file.path(dirs[i], basename(l_copy)), overwrite = TRUE)
+    fls <- list.files(dirs[i], full.names = TRUE)
+    if(length(grep("png", fls))>0) {
+      file.remove(fls[grep("png", fls)])
+    }
+    l <- list.files(dirs[i])
+    if("figure-html" %in% l) {
+      l <- file.path(dirs[i], l[grep("figure", l)])
+      l <- list.files(l, full.names = TRUE)
+      if(length(l) > 0) {
+      file.remove(l)
+      } 
+      l <- list.files(dirs[i])
+      l <- file.path(dirs[i], l[grep("figure", l)])
+      unlink(l)
+    }
+  }
+    
   
   cwd <- getwd()
   wd <- "/home/oj/net/lmic_new/datadrive/lmic/global-lmic-reports-orderly/"
@@ -23,6 +49,8 @@ remove_old_reports <- function(date = NULL, keep = 7, pdf_keep = 60) {
   unlink(files[grep("pdf$", files)], recursive = TRUE, force = TRUE)
   
   }
+  
+  
   # setwd(cwd)
 }
 
