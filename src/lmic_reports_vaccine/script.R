@@ -64,7 +64,7 @@ if(sum(ecdc_df$deaths) > 0) {
   data <- data[data$date <= as.Date(date_0), ]
   
   # Handle for countries that have eliminated and had reintroduction events
-  reintroduction_iso3cs <- c("MMR", "BLZ", "TTO", "BHS", "HKG", "ABW", "GUM", "ISL", "BRB")
+  reintroduction_iso3cs <- c("MMR", "BLZ", "TTO", "BHS", "HKG", "ABW", "GUM", "ISL", "BRB", "MUS", )
   if (iso3c %in% reintroduction_iso3cs) {
     deaths_removed <- deaths_removed + sum(data$deaths[data$date < as.Date("2020-06-01")])
     data$deaths[data$date < as.Date("2020-06-01")] <- 0
@@ -469,6 +469,15 @@ if(sum(ecdc_df$deaths) > 0) {
     
   }
   
+  elong_deaths_cont_trans <- c("VNM", "TZA")
+  if (iso3c %in% elong_deaths_cont_trans) {
+    
+    mmr_dates <- seq.Date(as.Date("2020-10-01"), as.Date("2020-05-01"), 30)
+    old_deaths <- data$deaths[data$date %in% mmr_dates]
+    data$deaths[data$date %in% mmr_dates] <- 1
+    
+  }
+  
   ## -----------------------------------------------------------------------------
   ## Step 2f: Vacccine Inputs
   ## -----------------------------------------------------------------------------
@@ -596,7 +605,7 @@ if(sum(ecdc_df$deaths) > 0) {
                                                 envir = new.env(parent = environment(stats::acf)))
   
   # slight hack to enforce transmission through long period with no deaths
-  if (iso3c %in% elong_summer_isos) {
+  if (iso3c %in% c(elong_summer_isos, elong_deaths_cont_trans)) {
     data$deaths[data$date %in% mmr_dates] <- old_deaths
     out$pmcmc_results$inputs$data$deaths[out$pmcmc_results$inputs$data$date %in% mmr_dates] <- old_deaths
   }

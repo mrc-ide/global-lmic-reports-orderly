@@ -97,6 +97,26 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
       
     }
     
+    # now we need to check for linear interpolation forward in time as well
+    if(any(!dates %in% date_vaccine_change)) {
+      
+      y_in <- tail(tot, min(7, length(max_vaccine)))
+      x_in <- seq_len(min(7, length(max_vaccine)))
+      x_in <- x_in - max(x_in)
+
+      
+      late_vaccs <- predict(
+        lm(y~x, data = data.frame(y = y_in, x = x_in)), 
+        newdata = data.frame(x = seq_along(dates[!dates %in% date_vaccine_change])), 
+        type = "response")
+      late_vaccs[late_vaccs < 0] <- 0
+      late_vaccs <- round(late_vaccs[late_vaccs >= 0])
+      
+      max_vaccine <- c(max_vaccine, late_vaccs)
+      date_vaccine_change <- dates
+      
+    }
+    
     # create our vacc inputs
     max_vaccine <- as.integer(c(max_vaccine[1], diff(max_vaccine)))
     
@@ -319,10 +339,16 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
           } else if(is.na(who_vacc$PERSONS_VACCINATED_1PLUS_DOSE)) {
             seconds <- list("date" = date_vaccine_change, "max" = rep(0, length(firsts)))
           } else {
-            pfv <- c(na.omit(owid$people_fully_vaccinated), who_vacc$PERSONS_VACCINATED_1PLUS_DOSE)
+            pfv <- c(na.omit(owid$people_fully_vaccinated), who_vacc$TOTAL_VACCINATIONS-who_vacc$PERSONS_VACCINATED_1PLUS_DOSE)
             date_pfv <- c(as.Date(owid$date[which(!is.na(owid$people_fully_vaccinated))]), as.Date(who_vacc$DATE_UPDATED))
             pfv <- pfv[order(pfv)]
             date_pfv <- date_pfv[order(date_pfv)]
+            
+            # if same info then say that 2nd doses started 28 days after first dose
+            if(length(unique(date_pfv)) == 1) {
+              date_pfv <- c(min(peeps$date[1] + 28,unique(date_pfv)-28), unique(date_pfv))
+              pfv <- c(0, unique(pfv))
+            }
             seconds <- interp_for_dates(date_vacc = date_pfv, tot = pfv, dates = peeps$date)
           }
           
@@ -340,9 +366,16 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
         dose_ratio[is.na(dose_ratio)] <- 0
         dose_ratio <- dose_ratio[which(tots$date %in% peeps$date)]
         
+        # and now let sort it out to be more realistic
+        # ratio should start at 0 for the first 28 days de facto
+        dose_ratio[seq_len(min(length(dose_ratio), 28))] <- 0
+        
       }
       
     }
+    
+    # possibly best to interpolate
+    
       # now to work out the efficacy
       vaccine_efficacy_infection <- (1-dose_ratio)*0.6 + dose_ratio*0.8
       vaccine_efficacy_disease <- (1-dose_ratio)*0.8 + dose_ratio*0.98
