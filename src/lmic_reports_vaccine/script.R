@@ -64,7 +64,7 @@ if(sum(ecdc_df$deaths) > 0) {
   data <- data[data$date <= as.Date(date_0), ]
   
   # Handle for countries that have eliminated and had reintroduction events
-  reintroduction_iso3cs <- c("MMR", "BLZ", "TTO", "BHS", "HKG", "ABW", "GUM", "ISL", "BRB", "MUS", )
+  reintroduction_iso3cs <- c("MMR", "BLZ", "TTO", "BHS", "HKG", "ABW", "GUM", "ISL", "BRB", "MUS")
   if (iso3c %in% reintroduction_iso3cs) {
     deaths_removed <- deaths_removed + sum(data$deaths[data$date < as.Date("2020-06-01")])
     data$deaths[data$date < as.Date("2020-06-01")] <- 0
