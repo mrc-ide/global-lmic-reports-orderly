@@ -472,7 +472,7 @@ if(sum(ecdc_df$deaths) > 0) {
   elong_deaths_cont_trans <- c("VNM", "TZA", "FJI")
   if (iso3c %in% elong_deaths_cont_trans) {
     
-    mmr_dates <- seq.Date(as.Date("2020-10-01"), as.Date("2020-05-01"), 30)
+    mmr_dates <- seq.Date(as.Date("2020-10-01"), as.Date("2021-05-01"), 30)
     old_deaths <- data$deaths[data$date %in% mmr_dates]
     data$deaths[data$date %in% mmr_dates] <- 1
     
