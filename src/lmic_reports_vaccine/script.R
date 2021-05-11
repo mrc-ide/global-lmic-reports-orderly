@@ -32,7 +32,7 @@ full_scenarios <- as.logical(full_scenarios)
 ecdc <- readRDS("jhu_all.rds")
 # ecdc <- readRDS("ecdc_all.rds")
 if (iso3c %in% c("BOL", "ITA", "FRA", "ECU", "CHL", "COD", "ESP", "IRN", 
-                 "JPN", "GUF","KGZ", "PER", "MEX", "HKG", "MAC", "TWN",
+                 "JPN", "GUF","KGZ", "PER", "HKG", "MAC", "TWN",
                  "SDN", "IRL", "TUR", "NPL")) {
   ecdc <- readRDS("worldometers_all.rds")
 }
@@ -469,7 +469,7 @@ if(sum(ecdc_df$deaths) > 0) {
     
   }
   
-  elong_deaths_cont_trans <- c("VNM", "TZA")
+  elong_deaths_cont_trans <- c("VNM", "TZA", "FJI")
   if (iso3c %in% elong_deaths_cont_trans) {
     
     mmr_dates <- seq.Date(as.Date("2020-10-01"), as.Date("2020-05-01"), 30)

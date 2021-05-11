@@ -103,7 +103,7 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
       y_in <- tail(tot, min(7, length(max_vaccine)))
       x_in <- seq_len(min(7, length(max_vaccine)))
       x_in <- x_in - max(x_in)
-
+      
       
       late_vaccs <- predict(
         lm(y~x, data = data.frame(y = y_in, x = x_in)), 
@@ -198,11 +198,11 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
       vaccine_efficacy_disease <- lapply(vaccine_efficacy_disease, rep, 17)
       
       ret_res <- list(
-          date_vaccine_change = date_vaccine_change,
-          max_vaccine = max_vaccine,
-          vaccine_efficacy_infection = vaccine_efficacy_infection, 
-          vaccine_efficacy_disease = vaccine_efficacy_disease
-        )
+        date_vaccine_change = date_vaccine_change,
+        max_vaccine = max_vaccine,
+        vaccine_efficacy_infection = vaccine_efficacy_infection, 
+        vaccine_efficacy_disease = vaccine_efficacy_disease
+      )
     }
     
   } else if (sum(!is.na(owid$people_vaccinated)) == 1) {
@@ -219,8 +219,8 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
         # and is there a start date
         if(nrow(who_vacc_meta) >= 1) {
           if(any(!is.na(who_vacc_meta$START_DATE))) {
-              date_vaccine_change <- c(min(as.Date(who_vacc_meta$START_DATE), na.rm = TRUE), date_vaccine_change)
-              max_vaccine <- c(0, max_vaccine)
+            date_vaccine_change <- c(min(as.Date(who_vacc_meta$START_DATE), na.rm = TRUE), date_vaccine_change)
+            max_vaccine <- c(0, max_vaccine)
           }
         }
         
@@ -257,11 +257,11 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
       vaccine_efficacy_disease <- lapply(vaccine_efficacy_disease, rep, 17)
       
       ret_res <- list(
-          date_vaccine_change = date_vaccine_change,
-          max_vaccine = max_vaccine,
-          vaccine_efficacy_infection = vaccine_efficacy_infection, 
-          vaccine_efficacy_disease = vaccine_efficacy_disease
-        )
+        date_vaccine_change = date_vaccine_change,
+        max_vaccine = max_vaccine,
+        vaccine_efficacy_infection = vaccine_efficacy_infection, 
+        vaccine_efficacy_disease = vaccine_efficacy_disease
+      )
       
     }
     
@@ -304,13 +304,13 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
           }
           
         }
-      
+        
         peeps <- interp_diffs(date_vacc = date_vaccine_change, tot = max_vaccine)
-          
+        
       } else {
-      
-      peeps <- interp_diffs(date_vacc = owid$date, tot = owid$total_vaccinations)
-      
+        
+        peeps <- interp_diffs(date_vacc = owid$date, tot = owid$total_vaccinations)
+        
       }
       # peeps vaccinations given out per day
       date_vaccine_change <- peeps$date
@@ -376,18 +376,18 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
     
     # possibly best to interpolate
     
-      # now to work out the efficacy
-      vaccine_efficacy_infection <- (1-dose_ratio)*0.6 + dose_ratio*0.8
-      vaccine_efficacy_disease <- (1-dose_ratio)*0.8 + dose_ratio*0.98
-      vaccine_efficacy_infection <- lapply(vaccine_efficacy_infection, rep, 17)
-      vaccine_efficacy_disease <- lapply(vaccine_efficacy_disease, rep, 17)
-      
-      ret_res <- list(
-          date_vaccine_change = date_vaccine_change,
-          max_vaccine = max_vaccine,
-          vaccine_efficacy_infection = vaccine_efficacy_infection, 
-          vaccine_efficacy_disease = vaccine_efficacy_disease
-        )
+    # now to work out the efficacy
+    vaccine_efficacy_infection <- (1-dose_ratio)*0.6 + dose_ratio*0.8
+    vaccine_efficacy_disease <- (1-dose_ratio)*0.8 + dose_ratio*0.98
+    vaccine_efficacy_infection <- lapply(vaccine_efficacy_infection, rep, 17)
+    vaccine_efficacy_disease <- lapply(vaccine_efficacy_disease, rep, 17)
+    
+    ret_res <- list(
+      date_vaccine_change = date_vaccine_change,
+      max_vaccine = max_vaccine,
+      vaccine_efficacy_infection = vaccine_efficacy_infection, 
+      vaccine_efficacy_disease = vaccine_efficacy_disease
+    )
   }
   
   # trim to date
@@ -713,14 +713,18 @@ generate_draws_pmcmc_nimue_case_fitted <- function(out, n_particles = 10, grad_d
       
       # do we need to go up or down
       if(wanted_infs < pred_infs_end) {
-        alters <- seq(0.025, 0.175, 0.025)
+        alters <- seq(0.025, 0.225, 0.025)
       } else {
         alters <- seq(-0.025, -0.125, -0.025) # more conservative on the way up
       }
       
       # store our grads
       ans <- alters
-      last_rw <- ncol(out$pmcmc_results$chains$chain1$results) - 3
+      if ("chains" %in% names(out$pmcmc_results)) {
+        last_rw <- ncol(out$pmcmc_results$chains$chain1$results) - 3
+      } else {
+        last_rw <- ncol(out$pmcmc_results$results) - 3
+      }
       
       #--------------------------------------------------------
       # Section 2 # # find best grad correction
@@ -730,8 +734,12 @@ generate_draws_pmcmc_nimue_case_fitted <- function(out, n_particles = 10, grad_d
         
         message(alt)  
         
-        for(ch in seq_along(out$pmcmc_results$chains)) {
-          out$pmcmc_results$chains[[ch]]$results[,last_rw] <- out$pmcmc_results$chains[[ch]]$results[,last_rw] + alters[alt]
+        if ("chains" %in% names(out$pmcmc_results)) {
+          for(ch in seq_along(out$pmcmc_results$chains)) {
+            out$pmcmc_results$chains[[ch]]$results[,last_rw] <- out$pmcmc_results$chains[[ch]]$results[,last_rw] + alters[alt]
+          }
+        } else {
+          out$pmcmc_results$results[,last_rw] <- out$pmcmc_results$results[,last_rw] + alters[alt]
         }
         
         pmcmc_samples <- squire:::sample_pmcmc(pmcmc_results = out$pmcmc_results,
@@ -766,9 +774,13 @@ generate_draws_pmcmc_nimue_case_fitted <- function(out, n_particles = 10, grad_d
         
         ans[alt] <- get_infs(this_infs$y)
         
-        
-        for(ch in seq_along(out$pmcmc_results$chains)) {
-          out$pmcmc_results$chains[[ch]]$results[,last_rw] <- out$pmcmc_results$chains[[ch]]$results[,last_rw] - alters[alt]
+        # put our chains back to normal
+        if ("chains" %in% names(out$pmcmc_results)) {
+          for(ch in seq_along(out$pmcmc_results$chains)) {
+            out$pmcmc_results$chains[[ch]]$results[,last_rw] <- out$pmcmc_results$chains[[ch]]$results[,last_rw] - alters[alt]
+          }
+        } else {
+          out$pmcmc_results$results[,last_rw] <- out$pmcmc_results$results[,last_rw] - alters[alt]
         }
         
       }
@@ -776,8 +788,12 @@ generate_draws_pmcmc_nimue_case_fitted <- function(out, n_particles = 10, grad_d
       
       # adapt our whole last chain accordingly
       alts <- which.min(abs(ans-wanted_infs))
-      for(ch in seq_along(out$pmcmc_results$chains)) {
-        out$pmcmc_results$chains[[ch]]$results[,last_rw] <- out$pmcmc_results$chains[[ch]]$results[,last_rw] + alters[alts]
+      if ("chains" %in% names(out$pmcmc_results)) {
+        for(ch in seq_along(out$pmcmc_results$chains)) {
+          out$pmcmc_results$chains[[ch]]$results[,last_rw] <- out$pmcmc_results$chains[[ch]]$results[,last_rw] + alters[alts]
+        }
+      } else {
+        out$pmcmc_results$results[,last_rw] <- out$pmcmc_results$results[,last_rw] + alters[alt]
       }
       
     }
@@ -1383,9 +1399,9 @@ get_covax_iso3c <- function() {
 r_list_format <- function(out, date_0) {
   
   df <- nim_sq_format(out,
-                var_select = c("infections","deaths","hospital_demand",
-                               "ICU_demand", "D", "hospital_incidence","ICU_incidence"),
-                date_0 = date_0)
+                      var_select = c("infections","deaths","hospital_demand",
+                                     "ICU_demand", "D", "hospital_incidence","ICU_incidence"),
+                      date_0 = date_0)
   
   pr <- nim_sq_format(out, var_select = c("S","R","D"), date_0 = date_0) %>% 
     na.omit %>% 
