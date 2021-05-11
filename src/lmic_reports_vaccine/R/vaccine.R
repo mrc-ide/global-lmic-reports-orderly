@@ -169,7 +169,7 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
         
       } else if (nrow(who_vacc_meta) >= 1 && all(is.na(who_vacc_meta$START_DATE))) {
         
-        date_vaccine_change <- seq.Date(as.Date(who_vacc$DATE_UPDATED) -60, as.Date(who_vacc$DATE_UPDATED), 1)
+        date_vaccine_change <- seq.Date(as.Date(who_vacc$DATE_UPDATED) -30, as.Date(who_vacc$DATE_UPDATED), 1)
         max_vaccine <- round(who_vacc$PERSONS_VACCINATED_1PLUS_DOSE/length(date_vaccine_change))
         max_vaccine <- rep(max_vaccine, length(date_vaccine_change))
         
@@ -713,7 +713,7 @@ generate_draws_pmcmc_nimue_case_fitted <- function(out, n_particles = 10, grad_d
       
       # do we need to go up or down
       if(wanted_infs < pred_infs_end) {
-        alters <- seq(0.025, 0.225, 0.025)
+        alters <- seq(0.025, 0.3, 0.025)
       } else {
         alters <- seq(-0.025, -0.125, -0.025) # more conservative on the way up
       }
