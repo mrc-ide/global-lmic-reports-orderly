@@ -971,13 +971,15 @@ get_immunity_ratios_vaccine <- function(out, max_date = NULL) {
   
   relative_R0_by_age <- prob_hosp*dur_ICase + (1-prob_hosp)*dur_IMild
   
+  
+  
   adjusted_eigens <- lapply(prop_susc, function(x) {
     
     unlist(lapply(seq_len(nrow(x)), function(y) {
       if(any(is.na(x[y,,]))) {
         return(NA)
       } else {
-        Re(eigen(mixing_matrix*rowSums(x[y,,]*relative_R0_by_age))$values[1])
+        Re(eigen(mixing_matrix*rowSums(x[y,,]*out$pmcmc_results$inputs$model_params$rel_infectiousness_vaccinated*relative_R0_by_age))$values[1])
       }
     }))
     

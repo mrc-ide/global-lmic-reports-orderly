@@ -104,7 +104,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
       )
     } else {
       best$covariance_matrix <- out$pmcmc_results$covariance_matrix[1]
-      best$scaling_factor <- tail(out$pmcmc_results$scaling_factor,1)
+      best$scaling_factor <- tail(na.omit(out$pmcmc_results$scaling_factor),1)
     }
     
     # for now combine here
@@ -120,7 +120,13 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   #names(pars)[unlist(lapply(lapply(pars,is.null), isFALSE))] <- reports$country[[unlist(lapply(lapply(pars,is.null), isFALSE))]]
   names(pars) <- reports$country
   
-  saveRDS(pars, "src/lmic_reports_vaccine/pars_init.rds")
+  # and now replace in pars_init with new ones where they exist
+  for(i in seq_along(pars)) {
+    if(!is.null(pars[[names(pars)[i]]])) {
+    pars_init[[names(pars)[i]]] <- pars[[names(pars)[i]]]
+    }
+  }
+  saveRDS(pars_init, "src/lmic_reports_vaccine/pars_init.rds")
   
   ## Remove HICs
   rl <- readLines(file.path(here::here(),"countries"))
@@ -165,8 +171,12 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   
   # zip all inputs together for Rich
   all_jsons <- file.path(src, "input_params.json")
+  json_tos <- file.path(paste0(reports$country, "_", "input_params.json"))
+  file.copy(all_jsons, json_tos)
   message(sprintf("Building combined input params from %d files", length(all_jsons)))
-  zip("gh-pages/combined_input_params_jsons.zip", files = all_jsons)
+  dir.create("gh-pages/input_jsons", showWarnings = FALSE)
+  zip(zipfile = paste0("gh-pages/input_jsons/",date, "_combined_input_params_jsons.zip"), files = json_tos)
+  file.remove(json_tos)
   
   # from here remove hic
   pdf_input <- file.path(src[-hic_pos], "index.pdf")

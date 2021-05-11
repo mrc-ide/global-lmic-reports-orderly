@@ -39,7 +39,7 @@ if (iso3c %in% c("BOL", "ITA", "FRA", "ECU", "CHL", "COD", "ESP", "IRN",
 
 country <- squire::population$country[match(iso3c, squire::population$iso3c)[1]]
 ecdc_df <- ecdc[which(ecdc$countryterritoryCode == iso3c),]
-
+ecdc_df <- ecdc_df[ecdc_df$date <= as.Date(date_0),]
 
 ## MAIN LOOP IS ONLY FOR THOSE WITH DEATHS
 if(sum(ecdc_df$deaths) > 0) {
@@ -810,9 +810,14 @@ if(sum(ecdc_df$deaths) > 0) {
   ## Save the grid out object
   
   # remove states to keep object memory save down
+  if("chains" %in% names(out$pmcmc_results)) {
   for(i in seq_along(out$pmcmc_results$chains)) {
     out$pmcmc_results$chains[[i]]$states <- NULL
     out$pmcmc_results$chains[[i]]$covariance_matrix <- tail(out$pmcmc_results$chains$chain1$covariance_matrix,1)
+  }
+  } else {
+    out$pmcmc_results$states <- NULL
+    out$pmcmc_results$covariance_matrix <- tail(out$pmcmc_results$covariance_matrix, 1)
   }
   
   ## -----------------------------------------------------------------------------
