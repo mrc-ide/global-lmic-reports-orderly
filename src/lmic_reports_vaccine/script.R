@@ -111,7 +111,7 @@ if(sum(ecdc_df$deaths) > 0) {
   
   # catch for missing mobilty data or China which happened too early for our BRT to be helpful and too late in RWA/PNG case
   # as well as others that are just not at all informed by mobility :/
-  spline_iso3cs <- c("CHN","MAC","TWN","KOR", "RWA", "PNG", "DZA", "COD", "SYR", "TUN", "UGA","UZB", "BEL")
+  spline_iso3cs <- c("CHN","MAC","TWN","KOR", "RWA", "PNG", "DZA", "COD", "SYR", "TUN", "UGA","UZB", "BEL","IRN")
   if(is.null(R0_change) || is.null(date_R0_change) || iso3c %in% spline_iso3cs) {
     date_R0_change <- seq.Date(as.Date("2020-01-01"), as.Date(date), 1)
     R0_change <- rep(1, length(date_R0_change))
