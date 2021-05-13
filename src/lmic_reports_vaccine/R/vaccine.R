@@ -11,8 +11,25 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
   ve_d_low <- 0.8
   ve_d_high <- 0.98
   
+    # function to remove over estimates of vaccine, i.e. where total vaccinations have gone down
+  remove_overestimates <- function(tot) {
+    
+    tots <- tot[!is.na(tot)]
+    if(any(diff(tots) < 0)) {
+      
+      off <- which(diff(tots) < 0)
+      tot[which(!is.na(tot))[off]] <- NA
+      return(tot)
+    } else {
+      return(tot)
+    }
+    
+  }
+  
   # function to interpolate missing vaccine dates
   interp_diffs <- function(date_vacc, tot) {
+    
+    tot <- remove_overestimates(tot)
     
     # if there are breaks then we need to interpolate what has happened for ease
     tot <- approx(
@@ -49,12 +66,15 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
     
     # create our vacc inputs
     max_vaccine <- as.integer(c(max_vaccine[1], diff(max_vaccine)))
+    max_vaccine[max_vaccine < 0] <- 0
     
     return(list(date = date_vaccine_change, max = max_vaccine))
     
   }
   
   interp_for_dates <- function(date_vacc, tot, dates) {
+    
+    tot <- remove_overestimates(tot)
     
     # if there are breaks then we need to interpolate what has happened for ease
     tot <- approx(
@@ -119,6 +139,7 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
     
     # create our vacc inputs
     max_vaccine <- as.integer(c(max_vaccine[1], diff(max_vaccine)))
+    max_vaccine[max_vaccine < 0] <- 0
     
     return(list(date = date_vaccine_change, max = max_vaccine))
     
@@ -246,6 +267,7 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
       } else {
         second <- who_vacc$TOTAL_VACCINATIONS - who_vacc$PERSONS_VACCINATED_1PLUS_DOSE
         ratio <- second/who_vacc$PERSONS_VACCINATED_1PLUS_DOSE
+        dose_ratio[seq_len(min(length(dose_ratio), 28))] <- 0
       }
       
       # format for odin
@@ -319,8 +341,16 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
       
     } else {
       
-      peeps <- interp_diffs(date_vacc = owid$date, tot = owid$people_vaccinated)
-      tots <- interp_for_dates(date_vacc = owid$date, tot = owid$total_vaccinations, dates = peeps$date)
+      # interpolate the total vaccinations. Some though have most recnt data only for 
+      # people vaccinated in which case do that first and use the dates from that for the 
+      # total vaccination interpolation
+      if(max(owid$date[!is.na(owid$total_vaccinations)]) >= max(owid$date[!is.na(owid$people_vaccinated)])) {
+        tots <- interp_diffs(date_vacc = owid$date, tot = owid$total_vaccinations)
+        peeps <- interp_for_dates(date_vacc = owid$date, tot = owid$people_vaccinated, dates = tots$date)
+      } else {
+        peeps <- interp_diffs(date_vacc = owid$date, tot = owid$people_vaccinated)  
+        tots <- interp_for_dates(date_vacc = owid$date, tot = owid$total_vaccinations, dates = peeps$date)
+      }
       
       # peeps vaccinations given out per day
       date_vaccine_change <- peeps$date
@@ -332,34 +362,8 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
         dose_ratio <- rep(0, length(date_vaccine_change))
       } else {
         
-        if (sum(!is.na(owid$people_fully_vaccinated)) == 1) {
-          
-          if(nrow(who_vacc) == 0) {
-            seconds <- list("date" = date_vaccine_change, "max" = rep(0, length(firsts)))
-          } else if(is.na(who_vacc$PERSONS_VACCINATED_1PLUS_DOSE)) {
-            seconds <- list("date" = date_vaccine_change, "max" = rep(0, length(firsts)))
-          } else {
-            pfv <- c(na.omit(owid$people_fully_vaccinated), who_vacc$TOTAL_VACCINATIONS-who_vacc$PERSONS_VACCINATED_1PLUS_DOSE)
-            date_pfv <- c(as.Date(owid$date[which(!is.na(owid$people_fully_vaccinated))]), as.Date(who_vacc$DATE_UPDATED))
-            pfv <- pfv[order(pfv)]
-            date_pfv <- date_pfv[order(date_pfv)]
-            
-            # if same info then say that 2nd doses started 28 days after first dose
-            if(length(unique(date_pfv)) == 1) {
-              date_pfv <- c(min(peeps$date[1] + 28,unique(date_pfv)-28), unique(date_pfv))
-              pfv <- c(0, unique(pfv))
-            }
-            seconds <- interp_for_dates(date_vacc = date_pfv, tot = pfv, dates = peeps$date)
-          }
-          
-        } else {
-          seconds <- interp_for_dates(date_vacc = owid$date, tot = owid$people_fully_vaccinated, dates = peeps$date)
-        }
-        
-        firsts[which(tots$date %in% seconds$date)] <- 
-          firsts[which(tots$date %in% seconds$date)] - 
-          seconds$max[which(seconds$date %in% tots$date)]
-        seconds <- tots$max - firsts
+        seconds <- tots$max - peeps$max
+        seconds[seconds < 0] <- 0
         firsts <- cumsum(firsts)
         seconds <- cumsum(seconds)
         dose_ratio <- vapply(seconds/firsts, min, numeric(1), 1.0)
@@ -400,6 +404,20 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
   }
   
   ret_res$rel_infectiousness_vaccinated <- rep(0.5, 17)
+  
+  # Checks here
+  if(any(ret_res$max_vaccine<0)) {
+    stop("Neg Vaccines")
+  }
+  if(any(unlist(ret_res$vaccine_efficacy_infection)<0.6)) {
+    stop("Too low VE_I")
+  }
+  if(any(unlist(ret_res$vaccine_efficacy_infection)>0.8)) {
+    stop("Too high VE_I")
+  }
+  if(length(unique(unlist(lapply(ret_res, length))[1:4])) != 1) {
+    stop("Incorrect lengths")
+  }
   
   return(ret_res)
   
