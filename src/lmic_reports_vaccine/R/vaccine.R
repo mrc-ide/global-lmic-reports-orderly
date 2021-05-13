@@ -204,15 +204,15 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
       
       # ratio of 1st to 2nd doses given
       if(is.na(who_vacc$PERSONS_VACCINATED_1PLUS_DOSE)) {
-        ratio <- 0.5
+        dose_ratio <- 0.5
       } else {
         second <- who_vacc$TOTAL_VACCINATIONS - who_vacc$PERSONS_VACCINATED_1PLUS_DOSE
-        ratio <- second/who_vacc$PERSONS_VACCINATED_1PLUS_DOSE
+        dose_ratio <- second/who_vacc$PERSONS_VACCINATED_1PLUS_DOSE
       }
       
       # format for odin
-      vaccine_efficacy_infection <- (1-ratio)*ve_i_low + ratio*ve_i_high
-      vaccine_efficacy_disease <- (1-ratio)*ve_d_low + ratio*ve_d_high
+      vaccine_efficacy_infection <- (1-dose_ratio)*ve_i_low + dose_ratio*ve_i_high
+      vaccine_efficacy_disease <- (1-dose_ratio)*ve_d_low + dose_ratio*ve_d_high
       vaccine_efficacy_infection <- seq(ve_i_low, vaccine_efficacy_infection, length.out = length(max_vaccine))
       vaccine_efficacy_disease <- seq(ve_d_low, vaccine_efficacy_disease, length.out = length(max_vaccine))
       vaccine_efficacy_infection <- lapply(vaccine_efficacy_infection, rep, 17)
@@ -263,16 +263,16 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
       
       # ratio of 1st to 2nd doses given
       if(is.na(who_vacc$PERSONS_VACCINATED_1PLUS_DOSE)) {
-        ratio <- 0.5
+        dose_ratio <- 0.5
       } else {
         second <- who_vacc$TOTAL_VACCINATIONS - who_vacc$PERSONS_VACCINATED_1PLUS_DOSE
-        ratio <- second/who_vacc$PERSONS_VACCINATED_1PLUS_DOSE
+        dose_ratio <- second/who_vacc$PERSONS_VACCINATED_1PLUS_DOSE
         dose_ratio[seq_len(min(length(dose_ratio), 28))] <- 0
       }
       
       # format for odin
-      vaccine_efficacy_infection <- (1-ratio)*ve_i_low + ratio*ve_i_high
-      vaccine_efficacy_disease <- (1-ratio)*ve_d_low + ratio*ve_d_high
+      vaccine_efficacy_infection <- (1-dose_ratio)*ve_i_low + dose_ratio*ve_i_high
+      vaccine_efficacy_disease <- (1-dose_ratio)*ve_d_low + dose_ratio*ve_d_high
       vaccine_efficacy_infection <- seq(ve_i_low, vaccine_efficacy_infection, length.out = length(max_vaccine))
       vaccine_efficacy_disease <- seq(ve_d_low, vaccine_efficacy_disease, length.out = length(max_vaccine))
       vaccine_efficacy_infection <- lapply(vaccine_efficacy_infection, rep, 17)
