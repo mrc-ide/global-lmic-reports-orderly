@@ -758,10 +758,10 @@ deaths_plot_single_vaccine <- function(out, data, date_0, date = Sys.Date(),
   df_summ <- group_by(df, date) %>% 
     summarise(deaths = median(y, na.rm = TRUE), 
               ymin = quantile(y, 0.025, na.rm = TRUE),
-              ymax = median(y, 0.975, na.rm = TRUE))
+              ymax = quantile(y, 0.975, na.rm = TRUE))
   
   gg <- ggplot(df_summ, aes(date, deaths, ymin = ymin, ymax = ymax)) +
-    geom_line() + geom_ribbon()
+    geom_line(color = "#c59e96") + geom_ribbon(fill = "#c59e96", alpha = 0.25)
   ymax <- max(data$daily_deaths, df_summ$ymax[df_summ$date<=(as.Date(date)+forecast)])
   
   gg <- gg + 
@@ -824,7 +824,7 @@ deaths_plot_single_surge_vaccine <- function(out, out2, data, date_0, date = Sys
   df_summ <- group_by(df, date) %>% 
     summarise(deaths = median(y, na.rm = TRUE), 
               ymin = quantile(y, 0.025, na.rm = TRUE),
-              ymax = median(y, 0.975, na.rm = TRUE))
+              ymax = quantile(y, 0.975, na.rm = TRUE))
   
   return(df_summ)
   
@@ -841,7 +841,7 @@ deaths_plot_single_surge_vaccine <- function(out, out2, data, date_0, date = Sys
   
   # Plot
   pds <- pds %>% filter(date <= date_0 + forecast)
-  p <- ggplot(pds, aes(date, deaths, ymin = ymin, ymax = ymax, col = Scenario)) +
+  p <- ggplot(pds, aes(date, deaths, ymin = ymin, ymax = ymax, col = Scenario, fill = Scenario)) +
     geom_line() + geom_ribbon(alpha = 0.25, col = NA)
   ymax <- max(data$daily_deaths, pds$ymax[pds$date<=(as.Date(date)+forecast)])
   

@@ -731,7 +731,7 @@ generate_draws_pmcmc_nimue_case_fitted <- function(out, n_particles = 10, grad_d
       
       # do we need to go up or down
       if(wanted_infs < pred_infs_end) {
-        alters <- seq(0.025, 0.3, 0.025)
+        alters <- seq(0.025, 0.2, 0.025)
       } else {
         alters <- seq(-0.025, -0.125, -0.025) # more conservative on the way up
       }
