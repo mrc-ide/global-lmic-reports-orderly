@@ -961,8 +961,12 @@ get_immunity_ratios_vaccine <- function(out, max_date = NULL) {
   vei <- lapply(seq_len(nrow(out$odin_parameters$vaccine_efficacy_infection)),
                 function(x) {out$odin_parameters$vaccine_efficacy_infection[x,,]}
   )
-  vei_full <- c(rep(list(vei[[1]]),nrs - length(vei)), vei)
   
+  if(nrs > length(vei)) {
+  vei_full <- c(rep(list(vei[[1]]),nrs - length(vei)), vei)
+  } else {
+    vei_full <- tail(vei, nrs)
+  }
   
   # prop susceptible 
   prop_susc <- lapply(seq_len(dim(out$output)[3]), function(x) {
