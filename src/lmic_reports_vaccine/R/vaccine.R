@@ -958,14 +958,19 @@ get_immunity_ratios_vaccine <- function(out, max_date = NULL) {
   
   # make the vaccine time changing args
   nrs <- t_now
-  vei <- lapply(seq_len(nrow(out$odin_parameters$vaccine_efficacy_infection)),
-                function(x) {out$odin_parameters$vaccine_efficacy_infection[x,,]}
+  vei <- lapply(seq_len(nrow(out$pmcmc_results$inputs$model_params$vaccine_efficacy_infection)),
+                function(x) {out$pmcmc_results$inputs$model_params$vaccine_efficacy_infection[x,,]}
+  )
+  phl <- lapply(seq_len(nrow(out$pmcmc_results$inputs$model_params$prob_hosp)),
+                function(x) {out$pmcmc_results$inputs$model_params$prob_hosp[x,,]}
   )
   
   if(nrs > length(vei)) {
   vei_full <- c(rep(list(vei[[1]]),nrs - length(vei)), vei)
+  phl_full <- c(rep(list(phl[[1]]),nrs - length(phl)), phl)
   } else {
     vei_full <- tail(vei, nrs)
+    phl_full <- tail(phl, nrs)
   }
   
   # prop susceptible 
@@ -991,17 +996,18 @@ get_immunity_ratios_vaccine <- function(out, max_date = NULL) {
     return(prop_susc)
   } )
   
-  relative_R0_by_age <- prob_hosp*dur_ICase + (1-prob_hosp)*dur_IMild
+  relative_R0_by_age <- lapply(phl_full, function(x) {
+    x*dur_ICase + (1-x)*dur_IMild
+  })
   
-  
-  
+  rel_vacc <- out$pmcmc_results$inputs$model_params$rel_infectiousness_vaccinated
   adjusted_eigens <- lapply(prop_susc, function(x) {
     
     unlist(lapply(seq_len(nrow(x)), function(y) {
       if(any(is.na(x[y,,]))) {
         return(NA)
       } else {
-        Re(eigen(mixing_matrix*rowSums(x[y,,]*out$pmcmc_results$inputs$model_params$rel_infectiousness_vaccinated*relative_R0_by_age))$values[1])
+        Re(eigen(mixing_matrix*rowSums(x[y,,]*rel_vacc*relative_R0_by_age[[y]]))$values[1])
       }
     }))
     
