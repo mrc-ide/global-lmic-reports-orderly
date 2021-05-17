@@ -11,7 +11,7 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
   ve_d_low <- 0.8
   ve_d_high <- 0.98
   
-    # function to remove over estimates of vaccine, i.e. where total vaccinations have gone down
+  # function to remove over estimates of vaccine, i.e. where total vaccinations have gone down
   remove_overestimates <- function(tot) {
     
     tots <- tot[!is.na(tot)]
@@ -249,43 +249,57 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
         max_vaccine <- max_vaccine[order(date_vaccine_change)]
         date_vaccine_change <- date_vaccine_change[order(date_vaccine_change)]
         
-        # assume took 1 month. 
-        if(length(unique(date_vaccine_change)) == 1) {
-          max_vaccine <- c(0, max(max_vaccine))
-          date_vaccine_change <- c(as.Date(date_vaccine_change[1])-30, as.Date(date_vaccine_change[1]))
-        }
-        
       }
       
-      peeps <- interp_diffs(date_vacc = date_vaccine_change, tot = max_vaccine)
-      date_vaccine_change <- peeps$date
-      max_vaccine <- peeps$max
+    } else {
       
-      # ratio of 1st to 2nd doses given
-      if(is.na(who_vacc$PERSONS_VACCINATED_1PLUS_DOSE)) {
-        dose_ratio <- 0.5
-      } else {
-        second <- who_vacc$TOTAL_VACCINATIONS - who_vacc$PERSONS_VACCINATED_1PLUS_DOSE
-        dose_ratio <- second/who_vacc$PERSONS_VACCINATED_1PLUS_DOSE
-        dose_ratio[seq_len(min(length(dose_ratio), 28))] <- 0
-      }
-      
-      # format for odin
-      vaccine_efficacy_infection <- (1-dose_ratio)*ve_i_low + dose_ratio*ve_i_high
-      vaccine_efficacy_disease <- (1-dose_ratio)*ve_d_low + dose_ratio*ve_d_high
-      vaccine_efficacy_infection <- seq(ve_i_low, vaccine_efficacy_infection, length.out = length(max_vaccine))
-      vaccine_efficacy_disease <- seq(ve_d_low, vaccine_efficacy_disease, length.out = length(max_vaccine))
-      vaccine_efficacy_infection <- lapply(vaccine_efficacy_infection, rep, 17)
-      vaccine_efficacy_disease <- lapply(vaccine_efficacy_disease, rep, 17)
-      
-      ret_res <- list(
-        date_vaccine_change = date_vaccine_change,
-        max_vaccine = max_vaccine,
-        vaccine_efficacy_infection = vaccine_efficacy_infection, 
-        vaccine_efficacy_disease = vaccine_efficacy_disease
-      )
+      date_vaccine_change <- owid$date[!is.na(owid$people_vaccinated)]
+      max_vaccine <- owid$people_vaccinated[!is.na(owid$people_vaccinated)]
       
     }
+    
+    # assume took 1 month if still only one data point 
+    if(length(unique(date_vaccine_change)) == 1) {
+      max_vaccine <- c(0, max(max_vaccine))
+      date_vaccine_change <- c(as.Date(date_vaccine_change[1])-30, as.Date(date_vaccine_change[1]))
+    }
+    
+    peeps <- interp_diffs(date_vacc = date_vaccine_change, tot = max_vaccine)
+    date_vaccine_change <- peeps$date
+    max_vaccine <- peeps$max
+    
+    # ratio of 1st to 2nd doses given
+    if (all(is.na(owid$people_vaccinated))) {
+      if(nrow(who_vacc) == 1) {
+        if(is.na(who_vacc$PERSONS_VACCINATED_1PLUS_DOSE)) {
+          dose_ratio <- 0.5
+        } else {
+          second <- who_vacc$TOTAL_VACCINATIONS - who_vacc$PERSONS_VACCINATED_1PLUS_DOSE
+          dose_ratio <- second/who_vacc$PERSONS_VACCINATED_1PLUS_DOSE
+          dose_ratio[seq_len(min(length(dose_ratio), 28))] <- 0
+        }
+      } else {
+        dose_ratio <- 0.5
+      }
+    } else {
+      dose_ratio <- 1 - (owid$people_vaccinated[!is.na(owid$people_vaccinated)]/owid$total_vaccinations[!is.na(owid$total_vaccinations)])
+    }
+    
+    # format for odin
+    vaccine_efficacy_infection <- (1-dose_ratio)*ve_i_low + dose_ratio*ve_i_high
+    vaccine_efficacy_disease <- (1-dose_ratio)*ve_d_low + dose_ratio*ve_d_high
+    vaccine_efficacy_infection <- seq(ve_i_low, vaccine_efficacy_infection, length.out = length(max_vaccine))
+    vaccine_efficacy_disease <- seq(ve_d_low, vaccine_efficacy_disease, length.out = length(max_vaccine))
+    vaccine_efficacy_infection <- lapply(vaccine_efficacy_infection, rep, 17)
+    vaccine_efficacy_disease <- lapply(vaccine_efficacy_disease, rep, 17)
+    
+    ret_res <- list(
+      date_vaccine_change = date_vaccine_change,
+      max_vaccine = max_vaccine,
+      vaccine_efficacy_infection = vaccine_efficacy_infection, 
+      vaccine_efficacy_disease = vaccine_efficacy_disease
+    )
+    
     
     
   } else {
@@ -966,8 +980,8 @@ get_immunity_ratios_vaccine <- function(out, max_date = NULL) {
   )
   
   if(nrs > length(vei)) {
-  vei_full <- c(rep(list(vei[[1]]),nrs - length(vei)), vei)
-  phl_full <- c(rep(list(phl[[1]]),nrs - length(phl)), phl)
+    vei_full <- c(rep(list(vei[[1]]),nrs - length(vei)), vei)
+    phl_full <- c(rep(list(phl[[1]]),nrs - length(phl)), phl)
   } else {
     vei_full <- tail(vei, nrs)
     phl_full <- tail(phl, nrs)
