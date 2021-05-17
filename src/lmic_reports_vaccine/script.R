@@ -498,7 +498,7 @@ if(sum(ecdc_df$deaths) > 0) {
   if(iso3c %in% get_covax_iso3c()) {
     available_doses_proportion <- 0.2
   } else {
-    available_doses_proportion <- 0.98  
+    available_doses_proportion <- 0.95  
   }
   vaccine_uptake <- 0.8 
   vaccine_coverage_mat <- get_coverage_mat(

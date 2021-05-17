@@ -419,6 +419,15 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
   
   ret_res$rel_infectiousness_vaccinated <- rep(0.5, 17)
   
+  # and now conver vaccine efficacy against disease to be the additional efficacy
+  # after accounting for the present infection efficacy
+  ret_res$vaccine_efficacy_disease <- lapply(
+    seq_along(ret_res$vaccine_efficacy_disease), function(x) {
+    VEh <- ret_res$vaccine_efficacy_disease[[x]]
+    VEi <- ret_res$vaccine_efficacy_infection[[x]]
+    return((VEh-VEi)/(1-VEi))
+  })
+  
   # Checks here
   if(any(ret_res$max_vaccine<0)) {
     stop("Neg Vaccines")
@@ -892,6 +901,9 @@ ammend_df_covidsim_for_vaccs <- function(df, out, strategy) {
     function(x){ out$interventions$vaccine_efficacy_disease[[x]][1] }, 
     numeric(1)
   )[-1]
+  
+  # and adjsut to be the reported efficacy rather than the breakthrough impact on disease after infection blocking
+  df$vaccine_efficacy_disease <- (df$vaccine_efficacy_disease * (1 - df$vaccine_efficacy_infection)) + df$vaccine_efficacy_infection
   
   df$vaccine_strategy <- strategy
   df$vaccine_coverage <- max(out$pmcmc_results$inputs$model_params$vaccine_coverage_mat)
