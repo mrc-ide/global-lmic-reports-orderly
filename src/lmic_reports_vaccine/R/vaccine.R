@@ -421,12 +421,12 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
   
   # and now conver vaccine efficacy against disease to be the additional efficacy
   # after accounting for the present infection efficacy
-  ret_res$vaccine_efficacy_disease <- lapply(
-    seq_along(ret_res$vaccine_efficacy_disease), function(x) {
-    VEh <- ret_res$vaccine_efficacy_disease[[x]]
-    VEi <- ret_res$vaccine_efficacy_infection[[x]]
-    return((VEh-VEi)/(1-VEi))
-  })
+  # ret_res$vaccine_efficacy_disease <- lapply(
+  #   seq_along(ret_res$vaccine_efficacy_disease), function(x) {
+  #   VEh <- ret_res$vaccine_efficacy_disease[[x]]
+  #   VEi <- ret_res$vaccine_efficacy_infection[[x]]
+  #   return((VEh-VEi)/(1-VEi))
+  # })
   
   # Checks here
   if(any(ret_res$max_vaccine<0)) {
@@ -604,6 +604,7 @@ nimue_format <- function(out,
                 "hospital_demand","hospital_occupancy",
                 "ICU_demand", "ICU_occupancy",
                 "vaccines", "unvaccinated", "vaccinated", "priorvaccinated",
+                "hospital_incidence", "ICU_incidence",
                 "infections", "deaths")
   
   comps <- var_select[var_select %in% compartments]
@@ -618,6 +619,24 @@ nimue_format <- function(out,
     inf_fix <- FALSE
   }
   
+  # to match with squire uses
+  if("hospital_incidence" %in% summs) {
+    summs <- summs[-which(summs == "hospital_incidence")]
+    hosp_inc_fix <- TRUE
+  } else {
+    hosp_inc_fix <- FALSE
+  }
+  
+  # to match with squire uses
+  if("ICU_incidence" %in% summs) {
+    summs <- summs[-which(summs == "ICU_incidence")]
+    ICU_inc_fix <- TRUE
+  } else {
+    ICU_inc_fix <- FALSE
+  }
+  
+  if((length(comps) + length(summs)) != 0) {
+    
   pd <- do.call(rbind, lapply(seq_len(dim(out$output)[3]), function(i) {
     nimue::format(out, compartments = comps, summaries = summs, replicate = i)
   })) %>%
@@ -625,11 +644,10 @@ nimue_format <- function(out,
   
   pd <- pd[,c("replicate", "compartment", "t", "y")]
   
-  # replacing time with date if date_0 is provided
-  if(!is.null(date_0)){
-    pd$date <- as.Date(pd$t + as.Date(date_0),
-                       format = "%Y-%m-%d")
+  } else {
+    pd <- data.frame()
   }
+  
   
   # fix the infection 
   if (inf_fix) {
@@ -638,6 +656,43 @@ nimue_format <- function(out,
     pd$compartment[pd$compartment == "E2"] <- "infections"
     pd$compartment <- as.factor(pd$compartment)
   }
+  
+  if (hosp_inc_fix) {
+    
+    pd_hosp_inc <- do.call(rbind, lapply(seq_len(dim(out$output)[3]), function(i) {
+      nimue::format(out, compartments = "ICase2", summaries = character(0), replicate = i, reduce_age = FALSE)
+    })) %>%
+      dplyr::rename(y = .data$value) %>% ungroup
+    
+    prob_severe_age <- out$odin_parameters$prob_severe[as.numeric(pd_hosp_inc$age_group)]
+    pd_hosp_inc$y <- out$odin_parameters$gamma_ICase * pd_hosp_inc$y * (1 - prob_severe_age)
+    pd_hosp_inc$compartment <- "hospital_incidence"
+    pd_hosp_inc <- group_by(pd_hosp_inc, replicate, compartment, t) %>% summarise(y = sum(y))
+    
+    pd <- rbind(pd, pd_hosp_inc)
+  }
+  
+  if (ICU_inc_fix) {
+    
+    pd_ICU_inc <- do.call(rbind, lapply(seq_len(dim(out$output)[3]), function(i) {
+      nimue::format(out, compartments = "ICase2", summaries = character(0), replicate = i, reduce_age = FALSE)
+    })) %>%
+      dplyr::rename(y = .data$value) %>% ungroup
+    
+    prob_severe_age <- out$odin_parameters$prob_severe[as.numeric(pd_ICU_inc$age_group)]
+    pd_ICU_inc$y <- out$odin_parameters$gamma_ICase * pd_ICU_inc$y * (prob_severe_age)
+    pd_ICU_inc$compartment <- "hospital_incidence"
+    pd_ICU_inc <- group_by(pd_ICU_inc, replicate, compartment, t) %>% summarise(y = sum(y))
+    
+    pd <- rbind(pd, pd_ICU_inc)
+  }
+  
+  # replacing time with date if date_0 is provided
+  if(!is.null(date_0)){
+    pd$date <- as.Date(pd$t + as.Date(date_0),
+                       format = "%Y-%m-%d")
+  }
+  
   
   return(pd)
   
