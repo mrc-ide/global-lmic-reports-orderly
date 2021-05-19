@@ -111,7 +111,7 @@ if(sum(ecdc_df$deaths) > 0) {
   
   # catch for missing mobilty data or China which happened too early for our BRT to be helpful and too late in RWA/PNG case
   # as well as others that are just not at all informed by mobility :/
-  spline_iso3cs <- c("CHN","MAC","TWN","KOR", "RWA", "PNG", "DZA", "COD", "SYR", "TUN", "UGA","UZB", "BEL","IRN")
+  spline_iso3cs <- c("CHN","MAC","TWN","KOR", "RWA", "PNG", "DZA", "COD", "SYR", "TUN", "UGA","UZB", "BEL","IRN", "ITA")
   if(is.null(R0_change) || is.null(date_R0_change) || iso3c %in% spline_iso3cs) {
     date_R0_change <- seq.Date(as.Date("2020-01-01"), as.Date(date), 1)
     R0_change <- rep(1, length(date_R0_change))
@@ -142,9 +142,9 @@ if(sum(ecdc_df$deaths) > 0) {
     start_adaptation <- 10
   } else {
     n_particles <- 50
-    replicates <- 40
-    n_mcmc <- 3000
-    n_chains <- 1
+    replicates <- 50
+    n_mcmc <- 15000
+    n_chains <- 2
     grid_spread <- 11
     sleep <- 120
     start_adaptation <- 1000
