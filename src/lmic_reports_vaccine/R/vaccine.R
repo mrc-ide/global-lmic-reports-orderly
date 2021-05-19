@@ -637,13 +637,13 @@ nimue_format <- function(out,
   
   if((length(comps) + length(summs)) != 0) {
     
-  pd <- do.call(rbind, lapply(seq_len(dim(out$output)[3]), function(i) {
-    nimue::format(out, compartments = comps, summaries = summs, replicate = i)
-  })) %>%
-    dplyr::rename(y = .data$value)
-  
-  pd <- pd[,c("replicate", "compartment", "t", "y")]
-  
+    pd <- do.call(rbind, lapply(seq_len(dim(out$output)[3]), function(i) {
+      nimue::format(out, compartments = comps, summaries = summs, replicate = i)
+    })) %>%
+      dplyr::rename(y = .data$value)
+    
+    pd <- pd[,c("replicate", "compartment", "t", "y")]
+    
   } else {
     pd <- data.frame()
   }
@@ -681,7 +681,7 @@ nimue_format <- function(out,
     
     prob_severe_age <- out$odin_parameters$prob_severe[as.numeric(pd_ICU_inc$age_group)]
     pd_ICU_inc$y <- out$odin_parameters$gamma_ICase * pd_ICU_inc$y * (prob_severe_age)
-    pd_ICU_inc$compartment <- "hospital_incidence"
+    pd_ICU_inc$compartment <- "ICU_incidence"
     pd_ICU_inc <- group_by(pd_ICU_inc, replicate, compartment, t) %>% summarise(y = sum(y))
     
     pd <- rbind(pd, pd_ICU_inc)
@@ -1328,6 +1328,12 @@ rt_creation_vaccine <- function(out, date_0, max_date) {
                        y_975 = quantile(Reff, 0.975)) 
     
     ret <- rbind(sum_rt, sum_reff)
+    
+    # simple here change
+    if ("projection_args" %in% names(out)) {
+      ret[which(ret$date>date_0),-(1:2)] <- ret[which(ret$date>date_0),-(1:2)]*out$projection_args$R0_change
+    }
+    
     
   } else {
     ret <- rt_creation_simple_out_vaccine(out, date_0, max_date)
