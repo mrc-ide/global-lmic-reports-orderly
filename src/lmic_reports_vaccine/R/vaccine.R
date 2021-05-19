@@ -421,12 +421,12 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
   
   # and now conver vaccine efficacy against disease to be the additional efficacy
   # after accounting for the present infection efficacy
-  # ret_res$vaccine_efficacy_disease <- lapply(
-  #   seq_along(ret_res$vaccine_efficacy_disease), function(x) {
-  #   VEh <- ret_res$vaccine_efficacy_disease[[x]]
-  #   VEi <- ret_res$vaccine_efficacy_infection[[x]]
-  #   return((VEh-VEi)/(1-VEi))
-  # })
+  ret_res$vaccine_efficacy_disease <- lapply(
+    seq_along(ret_res$vaccine_efficacy_disease), function(x) {
+    VEh <- ret_res$vaccine_efficacy_disease[[x]]
+    VEi <- ret_res$vaccine_efficacy_infection[[x]]
+    return((VEh-VEi)/(1-VEi))
+  })
   
   # Checks here
   if(any(ret_res$max_vaccine<0)) {
