@@ -1,5 +1,8 @@
 RhpcBLASctl::blas_set_num_threads(1L)
 RhpcBLASctl::omp_set_num_threads(1L)
+
+system(paste0("echo India Subnational for  ",state))
+
 ## -----------------------------------------------------------------------------
 ## 0. Checks and Function Definitions
 ## -----------------------------------------------------------------------------
