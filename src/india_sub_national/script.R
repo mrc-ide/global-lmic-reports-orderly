@@ -319,7 +319,9 @@ df <- subnat_df[subnat_df$state == state, ] %>%
   select(date, deaths, cases) %>% 
   arrange(date)
 df$deaths <- c(df$deaths[1], diff(df$deaths))
+df$deaths[df$deaths < 0] <- 0
 df$cases <- c(df$cases[1], diff(df$cases))
+df$cases[df$cases < 0] <- 0
 
 # get vaccination data
 subnat_vacc <- read.csv("https://raw.githubusercontent.com/sociepy/covid19-vaccination-subnational/main/data/countries/India.csv")
