@@ -70,7 +70,7 @@ fit_spline_rt <- function(data,
   # pmcmc args
   n_particles <- 2 # we use the deterministic model now so this does nothing (makes your life quicker and easier too)
   n_chains <- 3 # number of chains
-  start_adaptation <- 1000 # how long before adapting
+  start_adaptation <- max(2, round(n_mcmc/10)) # how long before adapting
   
   # parallel call
   suppressWarnings(future::plan(future::multiprocess()))
@@ -210,6 +210,8 @@ fit_spline_rt <- function(data,
   
   # run the pmcmc
   res <- squire::pmcmc(data = data, 
+                       gibbs_days = NULL,
+                       gibbs_sampling = FALSE,
                        n_mcmc = n_mcmc,
                        log_prior = logprior,
                        n_particles = 1,
