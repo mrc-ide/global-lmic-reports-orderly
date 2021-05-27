@@ -213,6 +213,7 @@ fit_spline_rt <- function(data,
   
   pi <- readRDS("pars_init.rds")
   pf <- pi[[state]]
+  pi$start_date <- as.Date(pi$start_date)
   pars_init <- lapply(pars_init,function(x) {
     pos_mat <- match(names(x), names(pf))
     x[which(!is.na(pos_mat))] <- as.list(pf[na.omit(pos_mat)])
