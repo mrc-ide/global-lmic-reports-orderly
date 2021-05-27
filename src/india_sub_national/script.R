@@ -214,10 +214,9 @@ fit_spline_rt <- function(data,
   pi <- readRDS("pars_init.rds")
   pf <- pi[[state]]
   pf$start_date <- as.Date(pf$start_date)
-  pars_init <- lapply(pars_init,function(x) {
-    pos_mat <- match(names(x), names(pf))
-    x[which(!is.na(pos_mat))] <- as.list(pf[na.omit(pos_mat)])
-  })
+  pos_mat <- match(names(pars_init), names(pf))
+  pars_init[which(!is.na(pos_mat))] <- as.list(pf[na.omit(pos_mat)])
+  
   
   # run the pmcmc
   res <- squire::pmcmc(data = data, 
