@@ -135,6 +135,7 @@ resources:
   - demog.rds
   - hosp_beds.rds
   - icu_beds.rds
+  - pars_init.rds
 
 global_resources:
 
