@@ -25,7 +25,7 @@ parallel -k echo ::: "Andaman and Nicobar Islands" "Andhra Pradesh" "Arunachal P
 
 # Parallel
 grep -E "*." prov-file | \
-parallel --progress -j 18 ./orderly run india_sub_national state={} rf=$RF replicates=$REPLICATES n_mcmc=$N_MCMC
+parallel --progress -j 18 ./orderly run india_sub_national state={} rf=$RF replicates=$REPLICATES n_mcmc=$N_MCMC date=$DATE
 
 rm prov-file
 
