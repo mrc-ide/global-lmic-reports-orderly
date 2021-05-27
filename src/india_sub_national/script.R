@@ -339,7 +339,7 @@ res <- fit_spline_rt(data = df,
                      icu_beds = as.numeric(icu_beds)) 
 
 # make a quick plot so we can check fits easily
-rtp <- rt_plot_immunity_vaccine(res)
+rtp <- rt_plot_immunity(res)
 dp <- plot(res, particle_fit = TRUE)
 ggsave("fitting.pdf",width=12, height=6, 
        cowplot::plot_grid(rtp$plot + ggtitle(state), dp, ncol = 1))
