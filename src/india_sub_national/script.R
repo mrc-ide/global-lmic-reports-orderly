@@ -338,15 +338,20 @@ res <- fit_spline_rt(data = df,
                      hosp_beds = as.numeric(hosp_beds),
                      icu_beds = as.numeric(icu_beds)) 
 
+
+# add state for ease and remove the output for memory
+res$parameters$state <- state
+output <- res$output
+res$output <- NULL
+
+# save output without output for memory
+saveRDS(res, "res.rds")
+res$output <- output
+
 # make a quick plot so we can check fits easily
 rtp <- rt_plot_immunity(res)
 dp <- plot(res, particle_fit = TRUE)
 ggsave("fitting.pdf",width=12, height=6, 
        cowplot::plot_grid(rtp$plot + ggtitle(state), dp, ncol = 1))
 
-# add state for ease and remove the output for memory
-res$parameters$state <- state
-res$output <- NULL
 
-# save output
-saveRDS(res, "res.rds")

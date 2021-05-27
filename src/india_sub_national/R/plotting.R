@@ -125,24 +125,24 @@ rt_plot_immunity <- function(out) {
   new_rt_all <- fill(new_rt_all, all_of(column_names), .direction = c("up"))
   
   suppressMessages(sum_rt <- group_by(new_rt_all, date) %>% 
-                     summarise(Rt_min = quantile(Rt, 0.025),
-                               Rt_q25 = quantile(Rt, 0.25),
-                               Rt_q75 = quantile(Rt, 0.75),
-                               Rt_max = quantile(Rt, 0.975),
-                               Rt_median = median(Rt),
-                               Rt = mean(Rt),
-                               R0_min = quantile(R0, 0.025),
-                               R0_q25 = quantile(R0, 0.25),
-                               R0_q75 = quantile(R0, 0.75),
-                               R0_max = quantile(R0, 0.975),
+                     summarise(Rt_min = quantile(Rt, 0.025,na.rm=TRUE),
+                               Rt_q25 = quantile(Rt, 0.25,na.rm=TRUE),
+                               Rt_q75 = quantile(Rt, 0.75,na.rm=TRUE),
+                               Rt_max = quantile(Rt, 0.975,na.rm=TRUE),
+                               Rt_median = median(Rt,na.rm=TRUE),
+                               Rt = mean(Rt,na.rm=TRUE),
+                               R0_min = quantile(R0, 0.025,na.rm=TRUE),
+                               R0_q25 = quantile(R0, 0.25,na.rm=TRUE),
+                               R0_q75 = quantile(R0, 0.75,na.rm=TRUE),
+                               R0_max = quantile(R0, 0.975,na.rm=TRUE),
                                R0_median = median(R0),
                                R0 = mean(R0),
-                               Reff_min = quantile(Reff, 0.025),
-                               Reff_q25 = quantile(Reff, 0.25),
-                               Reff_q75 = quantile(Reff, 0.75),
-                               Reff_max = quantile(Reff, 0.975),
-                               Reff_median = median(Reff),
-                               Reff = mean(Reff)))
+                               Reff_min = quantile(Reff, 0.025,na.rm=TRUE),
+                               Reff_q25 = quantile(Reff, 0.25,na.rm=TRUE),
+                               Reff_q75 = quantile(Reff, 0.75,na.rm=TRUE),
+                               Reff_max = quantile(Reff, 0.975,na.rm=TRUE),
+                               Reff_median = median(Reff,na.rm=TRUE),
+                               Reff = mean(Reff,na.rm=TRUE)))
   
   min_date <- min(as.Date(out$replicate_parameters$start_date))
   
