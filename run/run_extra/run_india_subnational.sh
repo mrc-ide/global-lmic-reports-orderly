@@ -12,6 +12,10 @@ REPLICATES=${2:-$DEFAULT_REPLICATES}
 DEFAULT_N_MCMC="100000"
 N_MCMC=${3:-$DEFAULT_N_MCMC}
 
+TODAY=$(date "+%Y-%m-%d")
+DATE=${1:-$TODAY}
+
+
 echo "*** RF: $RF"
 echo "*** Replicates: $REPLICATES"
 echo "*** MCMC Iterations: $N_MCMC"
@@ -30,6 +34,6 @@ parallel -k echo ::: "Lakshadweep" "Madhya Pradesh" "Maharashtra" "Manipur" "Meg
 
 # Parallel
 grep -E "*." prov-file | \
-parallel --progress -j 18 ./orderly run india_sub_national state={} rf=$RF replicates=$REPLICATES n_mcmc=$N_MCMC
+parallel --progress -j 18 ./orderly run india_sub_national state={} rf=$RF replicates=$REPLICATES n_mcmc=$N_MCMC date=$DATE
 
 rm prov-file

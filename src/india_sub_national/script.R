@@ -314,6 +314,9 @@ df$deaths[df$deaths < 0] <- 0
 df$cases <- c(df$cases[1], diff(df$cases))
 df$cases[df$cases < 0] <- 0
 
+# filter to the current date
+df <- df[df$date <- date,]
+
 # get vaccination data
 subnat_vacc <- read.csv("https://raw.githubusercontent.com/sociepy/covid19-vaccination-subnational/main/data/countries/India.csv")
 subnat_vacc <- subnat_vacc %>% 
