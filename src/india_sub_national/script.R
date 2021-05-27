@@ -186,7 +186,7 @@ fit_spline_rt <- function(data,
     if(any(grepl("Rt_rw", names(pars)))) {
       Rt_rws <- pars[grepl("Rt_rw", names(pars))]
       for (i in seq_along(Rt_rws)) {
-        ret <- ret + dnorm(x = Rt_rws[[i]], mean = 0, sd = 0.2, log = TRUE) 
+        ret <- ret + dnorm(x = Rt_rws[[i]], mean = 0, sd = 0.05, log = TRUE) 
       }
     }
     return(ret)
@@ -204,12 +204,19 @@ fit_spline_rt <- function(data,
     vaccine_uptake = vaccine_uptake
   )
   
+  # mixing matrix - assume is same as country as whole
+  mix_mat <- squire::get_mixing_matrix(country)
+  
   ## -----------------------------------------------------------------------------
   ## Step 3: Run PMCMC
   ## -----------------------------------------------------------------------------
   
-  # mixing matrix - assume is same as country as whole
-  mix_mat <- squire::get_mixing_matrix(country)
+  pi <- readRDS("pars_init.rds")
+  pf <- pi[[state]]
+  pars_init <- lapply(pars_init,function(x) {
+    pos_mat <- match(names(x), names(pf))
+    x[which(!is.na(pos_mat))] <- as.list(pf[na.omit(pos_mat)])
+  })
   
   # run the pmcmc
   res <- squire::pmcmc(data = data, 
