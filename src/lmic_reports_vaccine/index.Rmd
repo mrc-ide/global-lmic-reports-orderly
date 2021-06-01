@@ -472,7 +472,7 @@ By fitting to the time series of deaths, we are able to estimate a time-varying 
 
 <br>
 
-```{r fig0, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 3: Time-varying effective reproduction number, $R_{eff}$.** $R_{eff}$ (**green**) is the average number of secondary infections caused by a single infected person at time equal to $t$. A horizonatal dashed line is shown at $R_{eff}$ = 1. $R_{eff}$ < 1 indicates a slowing epidemic in which new infections are not increasing. $R_{eff}$ > 1 indicates a growing epidemic in which new infections are increasing over time. Dark green shows the 50% CI and light green shows the 95% CI), fig.height=fig_height(3.5,5), fig.width=fig_height(6,10), fig.align=fig_center()}
+```{r fig0, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 3: Time-varying effective reproduction number, $R_{eff}$.** $R_{eff}$ (**green**) is the average number of secondary infections caused by a single infected person at time equal to $t$. A horizonatal dashed line is shown at $R_{eff}$ = 1. $R_{eff}$ < 1 indicates a slowing epidemic in which new infections are not increasing. $R_{eff}$ > 1 indicates a growing epidemic in which new infections are increasing over time. Dark green shows the 50% CI and light green shows the 95% CI"), fig.height=fig_height(3.5,5), fig.width=fig_height(6,10), fig.align=fig_center()}
 
 suppressWarnings(suppressMessages(print(rt$plot)))
 
