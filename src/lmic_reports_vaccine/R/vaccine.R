@@ -1116,7 +1116,7 @@ get_immunity_ratios_vaccine <- function(out, max_date = NULL) {
 
 
 
-rt_plot_immunity_vaccine <- function(out) {
+rt_plot_immunity_vaccine <- function(out, R0_plot = FALSE) {
   
   iso3c <- squire::get_population(out$parameters$country)$iso3c[1]
   
@@ -1201,16 +1201,13 @@ rt_plot_immunity_vaccine <- function(out) {
   
   min_date <- min(as.Date(out$replicate_parameters$start_date))
   
-  country_plot <- function(vjust = -1.2) {
-    ggplot(sum_rt %>% filter(
+  country_plot <- function(vjust = -1.2, R0 = FALSE) {
+    g1 <- ggplot(sum_rt %>% filter(
       date > min_date & date <= as.Date(as.character(date_0+as.numeric(lubridate::wday(date_0)))))) +
-      geom_ribbon(mapping = aes(x=date, ymin=R0_min, ymax = R0_max, group = iso), fill = "#8cbbca") +
-      geom_ribbon(mapping = aes(x = date, ymin = R0_q25, ymax = R0_q75, group = iso), fill = "#3f8da7") +
       geom_ribbon(mapping = aes(x=date, ymin=Reff_min, ymax = Reff_max, group = iso), fill = "#96c4aa") +
       geom_ribbon(mapping = aes(x = date, ymin = Reff_q25, ymax = Reff_q75, group = iso), fill = "#48996b") +
       geom_line(mapping = aes(x = date, y = Reff_median), color = "#48996b") +
       geom_hline(yintercept = 1, linetype = "dashed") +
-      geom_hline(yintercept = sum_rt$R0_median[1], linetype = "dashed") +
       theme_bw() +
       theme(axis.text = element_text(size=12)) +
       xlab("") +
@@ -1227,10 +1224,18 @@ rt_plot_immunity_vaccine <- function(out) {
             panel.background = element_blank(), 
             axis.line = element_line(colour = "black")
       )
+    
+    if(R0) {
+      g1 <- g1 + 
+        geom_ribbon(mapping = aes(x=date, ymin=R0_min, ymax = R0_max, group = iso), fill = "#8cbbca") +
+        geom_ribbon(mapping = aes(x = date, ymin = R0_q25, ymax = R0_q75, group = iso), fill = "#3f8da7") +
+        geom_hline(yintercept = sum_rt$R0_median[1], linetype = "dashed")
+    }
+    g1
   }
   
   
-  res <- list("plot" = suppressWarnings(country_plot()), "rts" = sum_rt)
+  res <- list("plot" = suppressWarnings(country_plot(R0 = R0_plot)), "rts" = sum_rt)
   return(res)  
 }
 

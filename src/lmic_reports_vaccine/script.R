@@ -785,7 +785,8 @@ if(sum(ecdc_df$deaths) > 0) {
     geom_vline(xintercept = as.Date(last_shift_date) + seq(Rt_rw_duration, Rt_rw_duration*rw_needed, by = Rt_rw_duration),
                linetype = "dashed") + xlab("") + theme(axis.text.x = element_text(angle=45, vjust = 0.5))
   
-  rtp <- rt_plot_immunity_vaccine(out)
+  rtp <- rt_plot_immunity_vaccine(out, R0_plot = TRUE)
+  rtp2 <- rt_plot_immunity_vaccine(out, R0_plot = FALSE)
   
   date_range <- as.Date(c(min(as.Date(out$replicate_parameters$start_date)),date_0))
   suppressMessages(suppressWarnings(
@@ -1019,7 +1020,7 @@ if(sum(ecdc_df$deaths) > 0) {
                                   "date_0" = date_0,
                                   "country" = country,
                                   "surging" = surging, 
-                                  "rt" = rtp),
+                                  "rt" = rtp2),
                     output_options = list(pandoc_args = c(paste0("--metadata=title:",country," COVID-19 report "))))
   
   
