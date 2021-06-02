@@ -176,7 +176,7 @@ fit_spline_rt <- function(data,
   # MCMC Functions - Prior and Likelihood Calculation
   logprior <- function(pars){
     ret <- dunif(x = pars[["start_date"]], min = -55, max = -10, log = TRUE) +
-      dnorm(x = pars[["R0"]], mean = 3, sd = 1, log = TRUE) +
+      dunif(x = pars[["R0"]], min = 1.5, max = 10, log = TRUE) +
       dnorm(x = pars[["Meff"]], mean = 0, sd = 1, log = TRUE) +
       dunif(x = pars[["Meff_pl"]], min = 0, max = 1, log = TRUE) +
       dnorm(x = pars[["Rt_shift"]], mean = 0, sd = 1, log = TRUE) +
@@ -186,7 +186,7 @@ fit_spline_rt <- function(data,
     if(any(grepl("Rt_rw", names(pars)))) {
       Rt_rws <- pars[grepl("Rt_rw", names(pars))]
       for (i in seq_along(Rt_rws)) {
-        ret <- ret + dnorm(x = Rt_rws[[i]], mean = 0, sd = 0.5, log = TRUE) 
+        ret <- ret + dnorm(x = Rt_rws[[i]], mean = 0, sd = 1, log = TRUE) 
       }
     }
     return(ret)
