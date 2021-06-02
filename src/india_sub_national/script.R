@@ -79,8 +79,8 @@ fit_spline_rt <- function(data,
   suppressWarnings(future::plan(future::multiprocess()))
   
   # Defualt parameter edges for pmcmc
-  R0_min <- 1.6
-  R0_max <- 5.6
+  R0_min <- 1.5
+  R0_max <- 10
   last_start_date <- as.Date(null_na(min_death_date))-10
   first_start_date <- as.Date(null_na(min_death_date))-55
   start_date <- as.Date(null_na(min_death_date))-30
