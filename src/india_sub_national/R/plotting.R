@@ -236,7 +236,7 @@ ar_plot <- function(res) {
     mutate(infections = lag(cumsum(replace_na(infections, 0)), 5, default = 0))
   
  
-  g2 <- ggplot(inf, aes(date, infections/S_tot)) + geom_line() +
+  g2 <- ggplot(inf, aes(date, infections/S_tot, group = replicate)) + geom_line() +
     scale_x_date(date_labels = "%b %Y", date_breaks = "3 months") +
     ylab("Attack Rate") + xlab("") + theme_bw()  
   
