@@ -224,3 +224,21 @@ sero_plot <- function(res) {
   return(gg)
   
 }
+
+ar_plot <- function(res) {
+  
+  S_tot <- sum(res$pmcmc_results$inputs$model_params$population)
+  
+  inf <- nim_sq_format(res, "infections", date_0 = date_0) %>% 
+                     mutate(infections = as.integer(y)) %>% 
+                     select(replicate, t, date, infections) %>% 
+    group_by(replicate) %>% 
+    mutate(infections = lag(cumsum(replace_na(infections, 0)), 5, default = 0))
+  
+ 
+  g2 <- ggplot(inf, aes(date, infections/S_tot)) + geom_line() +
+    scale_x_date(date_labels = "%b %Y", date_breaks = "3 months") +
+    ylab("Attack Rate") + xlab("") + theme_bw()  
+  
+  return(g2)
+}
