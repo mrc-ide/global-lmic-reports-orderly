@@ -228,7 +228,7 @@ sero_plot <- function(res) {
 ar_plot <- function(res) {
   
   S_tot <- sum(res$pmcmc_results$inputs$model_params$population)
-  
+  date_0 <- max(res$pmcmc_results$inputs$data$date)
   inf <- nim_sq_format(res, "infections", date_0 = date_0) %>% 
                      mutate(infections = as.integer(y)) %>% 
                      select(replicate, t, date, infections) %>% 
