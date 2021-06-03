@@ -285,10 +285,8 @@ fit_spline_rt <- function(data,
 ## -----------------------------------------------------------------------------
 
 # get pop data from file
-pop <- readRDS("pop.rds")
 demog <- readRDS("demog.rds")
-n <- demog$n[demog$state == state]
-pop <- round((sum(n)/pop$population[pop$state == state])*n)
+pop <- demog$n[demog$state == state]
 
 # get icu beds from file
 icu_beds <- readRDS("icu_beds.rds")
@@ -360,8 +358,11 @@ res$output <- output
 
 # make a quick plot so we can check fits easily
 rtp <- rt_plot_immunity(res)
-dp <- plot(res, particle_fit = TRUE)
-ggsave("fitting.pdf",width=12, height=6, 
-       cowplot::plot_grid(rtp$plot + ggtitle(state), dp, ncol = 1))
+dp <- plot(res, particle_fit = TRUE) + theme(legend.position = "none")
+sero <- sero_plot(res)
+ar <- ar_plot(res)
+
+ggsave("fitting.pdf",width=12, height=12, 
+       cowplot::plot_grid(rtp$plot + ggtitle(state), dp, sero, ar, ncol = 1))
 
 

@@ -178,3 +178,49 @@ rt_plot_immunity <- function(out) {
   res <- list("plot" = suppressWarnings(country_plot()), "rts" = sum_rt)
   return(res)  
 }
+
+sero_plot <- function(res) {
+  
+  # seroconversion data from brazeay report 34
+  prob_conversion <-  cumsum(dgamma(0:300,shape = 5, rate = 1/2))/max(cumsum(dgamma(0:300,shape = 5, rate = 1/2)))*0.95
+  sero_det <- cumsum(dweibull(0:300, 3.669807, scale = 143.7046))
+  sero_det <- cumsum(prob_conversion-sero_det)
+  sero_det[sero_det < 0] <- 0
+  sero_det <- sero_det/max(sero_det)
+  
+  # additional_functions for rolling
+  roll_func <- function(x, det) {
+    l <- length(det)
+    c(NA, 
+      zoo::rollapply(x, 
+                     list(seq(-l, -1)),
+                     function(i) {
+                       sum(i*tail(det, length(i)), na.rm = TRUE)
+                     },
+                     partial = 1
+      ))
+  }
+  
+  # get symptom onset data
+  date_0 <- max(res$pmcmc_results$inputs$data$date)
+  inf <- nim_sq_format(res, c("infections"), date_0 = date_0) %>% 
+    rename(symptoms = y) %>%
+    left_join(nim_sq_format(res, "S", date_0 = date_0), 
+              by = c("replicate", "t", "date")) %>% 
+    rename(S = y) %>% 
+    select(replicate, t, date, S, symptoms)
+  
+  inf <- inf %>% group_by(replicate) %>%
+    mutate(sero_positive = roll_func(symptoms, sero_det),
+           sero_perc = sero_positive/max(S,na.rm = TRUE))
+  
+  gg <- ggplot(inf, aes(date, sero_perc, group = replicate)) + 
+    geom_line() + 
+    scale_x_date(date_labels = "%b %Y", date_breaks = "3 months") +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    theme_bw() + ylab("Seroprevalence") + xlab("")
+  
+  
+  return(gg)
+  
+}
