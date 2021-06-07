@@ -181,23 +181,30 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
       
     } else {
       
+      # first see if they have persons vaccinated or just total. 
+      if(is.na(who_vacc$PERSONS_VACCINATED_1PLUS_DOSE)) {
+        pers_vacc <- who_vacc$TOTAL_VACCINATIONS
+      } else {
+        pers_vacc <- who_vacc$PERSONS_VACCINATED_1PLUS_DOSE
+      }
+      
       # if there is no start date just distribute the vaccines equally over the last 1 month for now
       if(nrow(who_vacc_meta) == 0) {
         
         date_vaccine_change <- seq.Date(as.Date(who_vacc$DATE_UPDATED) - 30, as.Date(who_vacc$DATE_UPDATED), 1)
-        max_vaccine <- round(who_vacc$PERSONS_VACCINATED_1PLUS_DOSE/length(date_vaccine_change))
+        max_vaccine <- round(pers_vacc/length(date_vaccine_change))
         max_vaccine <- rep(max_vaccine, length(date_vaccine_change))
         
       } else if (nrow(who_vacc_meta) >= 1 && all(is.na(who_vacc_meta$START_DATE))) {
         
         date_vaccine_change <- seq.Date(as.Date(who_vacc$DATE_UPDATED) -30, as.Date(who_vacc$DATE_UPDATED), 1)
-        max_vaccine <- round(who_vacc$PERSONS_VACCINATED_1PLUS_DOSE/length(date_vaccine_change))
+        max_vaccine <- round(pers_vacc/length(date_vaccine_change))
         max_vaccine <- rep(max_vaccine, length(date_vaccine_change))
         
       } else {
         
         date_vaccine_change <- seq.Date(min(as.Date(who_vacc_meta$START_DATE), na.rm=TRUE), as.Date(who_vacc$DATE_UPDATED), 1)
-        max_vaccine <- round(who_vacc$PERSONS_VACCINATED_1PLUS_DOSE/length(date_vaccine_change))
+        max_vaccine <- round(pers_vacc/length(date_vaccine_change))
         max_vaccine <- rep(max_vaccine, length(date_vaccine_change))
         
       }
@@ -213,8 +220,8 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
       # format for odin
       vaccine_efficacy_infection <- (1-dose_ratio)*ve_i_low + dose_ratio*ve_i_high
       vaccine_efficacy_disease <- (1-dose_ratio)*ve_d_low + dose_ratio*ve_d_high
-      vaccine_efficacy_infection <- seq(ve_i_low, vaccine_efficacy_infection, length.out = length(max_vaccine))
-      vaccine_efficacy_disease <- seq(ve_d_low, vaccine_efficacy_disease, length.out = length(max_vaccine))
+      vaccine_efficacy_infection <- c(rep(ve_i_low,28),  rep(vaccine_efficacy_infection, length.out = length(max_vaccine) - 28))
+      vaccine_efficacy_disease <- c(rep(ve_d_low,28),  rep(vaccine_efficacy_disease, length.out = length(max_vaccine) - 28))
       vaccine_efficacy_infection <- lapply(vaccine_efficacy_infection, rep, 17)
       vaccine_efficacy_disease <- lapply(vaccine_efficacy_disease, rep, 17)
       
@@ -358,13 +365,11 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
       # interpolate the total vaccinations. Some though have most recnt data only for 
       # people vaccinated in which case do that first and use the dates from that for the 
       # total vaccination interpolation
-      if(max(owid$date[!is.na(owid$total_vaccinations)]) >= max(owid$date[!is.na(owid$people_vaccinated)])) {
-        tots <- interp_diffs(date_vacc = owid$date, tot = owid$total_vaccinations)
-        peeps <- interp_for_dates(date_vacc = owid$date, tot = owid$people_vaccinated, dates = tots$date)
-      } else {
-        peeps <- interp_diffs(date_vacc = owid$date, tot = owid$people_vaccinated)  
-        tots <- interp_for_dates(date_vacc = owid$date, tot = owid$total_vaccinations, dates = peeps$date)
-      }
+      min_date <- min(c(owid$date[!is.na(owid$people_vaccinated)], owid$date[!is.na(owid$total_vaccinations)]))
+      max_date <- max(c(owid$date[!is.na(owid$people_vaccinated)], owid$date[!is.na(owid$total_vaccinations)]))
+      dates_to_interp <- seq.Date(as.Date(min_date), as.Date(max_date), 1)
+      tots <- interp_for_dates(date_vacc = owid$date, tot = owid$total_vaccinations, dates = dates_to_interp)
+      peeps <- interp_for_dates(date_vacc = owid$date, tot = owid$people_vaccinated, dates = dates_to_interp)
       
       # peeps vaccinations given out per day
       date_vaccine_change <- peeps$date
