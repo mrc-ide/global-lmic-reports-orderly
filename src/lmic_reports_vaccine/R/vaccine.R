@@ -939,7 +939,7 @@ generate_draws_pmcmc_nimue_case_fitted <- function(out, n_particles = 10, grad_d
 }
 
 
-ammend_df_covidsim_for_vaccs <- function(df, out, strategy) {
+ammend_df_covidsim_for_vaccs <- function(df, out, strategy, available_doses_proportion) {
   
   # add in vaccine pars
   df$max_vaccine <- 0
@@ -967,8 +967,7 @@ ammend_df_covidsim_for_vaccs <- function(df, out, strategy) {
   
   df$vaccine_strategy <- strategy
   df$vaccine_coverage <- max(out$pmcmc_results$inputs$model_params$vaccine_coverage_mat)
-  total_vacc <- sum((tail(out$pmcmc_results$inputs$model_params$vaccine_coverage_mat,1) * out$pmcmc_results$inputs$model_params$population))
-  df$vaccines_available <- total_vacc / sum(out$pmcmc_results$inputs$model_params$population)
+  df$vaccines_available <- available_doses_proportion
   
   return(df)
   
