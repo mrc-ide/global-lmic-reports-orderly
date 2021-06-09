@@ -619,7 +619,12 @@ regional_plot_overview <- function(date_0) {
   wb <- read.csv("wb.csv")
   #ecdc <- readRDS("ecdc_all.rds")
   ecdc <- readRDS("jhu_all.rds")
- 
+  wo <- readRDS("worldometers_all.rds")
+  ecdc <- rbind(
+    ecdc %>% filter(countryterritoryCode != "PER"),
+    wo %>% filter(countryterritoryCode == "PER")
+  )
+  
   ecdc$income <- wb$income_group[match(ecdc$countryterritoryCode,wb$country_code)]
   ecdc$date <- as.Date(ecdc$dateRep)
   
@@ -631,7 +636,7 @@ regional_plot_overview <- function(date_0) {
                                               "Upper middle income", "High income")))
   
   ggplot(sum, aes(x = date, y = deaths, fill = income)) + 
-    geom_bar(stat = "identity") + 
+    geom_bar(stat = "identity", color = NA) + 
     theme_bw() + 
     scale_fill_brewer(name = "", type="qual", palette = 3) + 
     scale_x_date(date_breaks = "1 month", date_labels = "%b %Y") + 
