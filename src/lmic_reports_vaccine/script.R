@@ -726,7 +726,7 @@ if(sum(ecdc_df$deaths) > 0) {
   df_new_covidsim$iso3c <- iso3c
   
   # and add in the vaccine args
-  df_new_covidsim <- ammend_df_covidsim_for_vaccs(df_new_covidsim, out, strategy = strategy)
+  df_new_covidsim <- ammend_df_covidsim_for_vaccs(df_new_covidsim, out, strategy = strategy, available_doses_proportion = available_doses_proportion)
   writeLines(jsonlite::toJSON(df_new_covidsim, pretty = TRUE), "input_params.json")
   
   
