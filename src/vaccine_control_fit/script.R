@@ -140,8 +140,8 @@ if(short_run) {
 } else {
   n_particles <- 50
   replicates <- 50
-  n_mcmc <- 10000
-  n_chains <- 1
+  n_mcmc <- 15000
+  n_chains <- 3
   grid_spread <- 11
   sleep <- 120
   start_adaptation <- 1000
