@@ -3,18 +3,6 @@ set -e
 # ./orderly migrate
 # ./orderly rebuild
 
-parameters:
- 
-    dur_R: 
-      default: 365
-    dur_V: 
-      default: 1095
-    vaccine_uptake:
-      default: 0.95
-    available_doses_proportion:
-      default: 0.95
-    vaccine_scenario:
-      default: ~
 
 COUNTRY=$1
 
