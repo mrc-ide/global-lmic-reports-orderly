@@ -586,8 +586,10 @@ get_coverage_mat <- function(iso3c,
     
     # next_group
     next_group <- cov_mat[step,]-cov_mat[step-1,]
-    new_cov <- remaining/(next_group[which(next_group > 0)] * pop[which(next_group > 0)])
+    poss_to_vacc <- (next_group[which(next_group > 0)] * pop[which(next_group > 0)])
+    new_cov <- (remaining/sum(poss_to_vacc)) * cov_mat[step, which(next_group > 0)]
     cov_mat[step, which(next_group > 0)] <- new_cov
+    cov_mat <- cov_mat[rowSums(cov_mat) != 0,]
     return(cov_mat)
   }
   
