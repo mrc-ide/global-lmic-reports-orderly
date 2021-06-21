@@ -303,7 +303,7 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
         dose_ratio <- 0.5
       }
     } else {
-      dose_ratio <- 1 - (owid$people_vaccinated[!is.na(owid$people_vaccinated)]/owid$total_vaccinations[!is.na(owid$total_vaccinations)])
+      dose_ratio <- mean(1 - (owid$people_vaccinated[!is.na(owid$people_vaccinated)]/owid$total_vaccinations[!is.na(owid$people_vaccinated)]))
     }
     
     # format for odin
