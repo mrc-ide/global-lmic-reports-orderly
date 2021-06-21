@@ -454,7 +454,9 @@ icu_beds <- squire:::get_ICU_bed_capacity(country)
 if (iso3c == "BRA") {
   # https://g1.globo.com/bemestar/coronavirus/noticia/2020/06/08/casos-de-coronavirus-e-numero-de-mortes-no-brasil-em-8-de-junho.ghtml - date we predicted ICU to be at capacity and reported to be at 70% 
   icu_beds <- icu_beds / 0.7
-} 
+} else if (iso3c == "GBR") {
+  icu_beds <- 8000
+}
 
 # slight hack to enforce transmission through long period with no deaths
 elong_summer_isos <- c("EST", "ISL", "ATG")
