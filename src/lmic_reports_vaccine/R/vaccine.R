@@ -269,6 +269,14 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
       date_vaccine_change <- owid$date[!is.na(owid$people_vaccinated)]
       max_vaccine <- owid$people_vaccinated[!is.na(owid$people_vaccinated)]
       
+      # and is there a start date
+      if(nrow(who_vacc_meta) >= 1) {
+        if(any(!is.na(who_vacc_meta$START_DATE))) {
+          date_vaccine_change <- c(min(as.Date(who_vacc_meta$START_DATE), na.rm = TRUE), date_vaccine_change)
+          max_vaccine <- c(0, max_vaccine)
+        }
+      }
+      
     }
     
     # assume took 1 month if still only one data point 
