@@ -636,15 +636,16 @@ regional_plot_overview <- function(date_0) {
                                               "Upper middle income", "High income")))
   
   ggplot(sum, aes(x = date, y = deaths, fill = income)) + 
-    geom_bar(stat = "identity", color = NA) + 
+    geom_bar(stat = "identity", color = NA, lwd = 0) + 
     theme_bw() + 
     scale_fill_brewer(name = "", type="qual", palette = 3) + 
-    scale_x_date(date_breaks = "1 month", date_labels = "%b %Y") + 
+    scale_x_date(date_breaks = "1 month", date_labels = "%b %Y", expand = c(0,0)) + 
     ylab("Deaths") + 
     xlab("") + 
     theme(legend.position = "top",
           panel.border = element_blank(), 
-          axis.line = element_line(size=0.5))
+          axis.line = element_line(size=0.5),
+          axis.text.x = element_text(angle = 45, hjust = 1)))
     
   
 
