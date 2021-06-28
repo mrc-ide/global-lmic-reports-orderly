@@ -645,7 +645,7 @@ regional_plot_overview <- function(date_0) {
     theme(legend.position = "top",
           panel.border = element_blank(), 
           axis.line = element_line(size=0.5),
-          axis.text.x = element_text(angle = 45, hjust = 1)))
+          axis.text.x = element_text(angle = 45, hjust = 1))
     
   
 
