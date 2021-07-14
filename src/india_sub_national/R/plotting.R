@@ -179,27 +179,26 @@ rt_plot_immunity <- function(out) {
   return(res)  
 }
 
-sero_plot <- function(res) {
+sero_plot <- function(res, sero_df) {
   
   # seroconversion data from brazeay report 34
-  prob_conversion <-  cumsum(dgamma(0:300,shape = 5, rate = 1/2))/max(cumsum(dgamma(0:300,shape = 5, rate = 1/2)))*0.95
+  prob_conversion <-  cumsum(dgamma(0:300,shape = 5, rate = 1/2))/max(cumsum(dgamma(0:300,shape = 5, rate = 1/2)))
   sero_det <- cumsum(dweibull(0:300, 3.669807, scale = 143.7046))
-  sero_det <- cumsum(prob_conversion-sero_det)
+  sero_det <- prob_conversion-sero_det
   sero_det[sero_det < 0] <- 0
-  sero_det <- sero_det/max(sero_det)
+  sero_det <- sero_det/max(sero_det)*0.95  # assumed maximum test sensitivitys
   
   # additional_functions for rolling
   roll_func <- function(x, det) {
     l <- length(det)
-    c(NA, 
-      zoo::rollapply(x, 
-                     list(seq(-l, -1)),
-                     function(i) {
-                       sum(i*tail(det, length(i)), na.rm = TRUE)
-                     },
-                     partial = 1
-      ))
+    ret <- rep(0, length(x))
+    for(i in seq_along(ret)) {
+      to_sum <- tail(x[seq_len(i)], length(det))
+      ret[i] <- sum(rev(to_sum)*head(det, length(to_sum)))
+    }
+    return(ret)
   }
+  
   
   # get symptom onset data
   date_0 <- max(res$pmcmc_results$inputs$data$date)
@@ -212,14 +211,26 @@ sero_plot <- function(res) {
   
   inf <- inf %>% group_by(replicate) %>%
     mutate(sero_positive = roll_func(symptoms, sero_det),
-           sero_perc = sero_positive/max(S,na.rm = TRUE))
+           sero_perc = sero_positive/max(S,na.rm = TRUE)) %>% 
+    group_by(date) %>% 
+    summarise(sero_perc_med = median(sero_perc, na.rm=TRUE),
+              sero_perc_min = quantile(sero_perc, 0.025, na.rm=TRUE),
+              sero_perc_max = quantile(sero_perc, 0.975, na.rm=TRUE))
   
-  gg <- ggplot(inf, aes(date, sero_perc, group = replicate)) + 
+  gg <- ggplot(inf, aes(date, sero_perc_med, ymin = sero_perc_min, ymax = sero_perc_max)) + 
     geom_line() + 
+    geom_ribbon(alpha = 0.2) +
+    geom_point(aes(x = date_start + (date_end-date_start)/2, y = sero),
+               sero_df, inherit.aes = FALSE) +
+    geom_errorbar(aes(x = date_start + (date_end-date_start)/2,
+                      ymin = sero_min, ymax = sero_max),
+                  sero_df, inherit.aes = FALSE, width = 0) +
+    geom_errorbarh(aes(y = sero, xmin = date_start, xmax = date_end), 
+                   sero_df, inherit.aes = FALSE, height = 0) +
     scale_x_date(date_labels = "%b %Y", date_breaks = "3 months") +
     theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
     theme_bw() + ylab("Seroprevalence") + xlab("")
-  
+  gg
   
   return(gg)
   
@@ -230,12 +241,12 @@ ar_plot <- function(res) {
   S_tot <- sum(res$pmcmc_results$inputs$model_params$population)
   date_0 <- max(res$pmcmc_results$inputs$data$date)
   inf <- nim_sq_format(res, "infections", date_0 = date_0) %>% 
-                     mutate(infections = as.integer(y)) %>% 
-                     select(replicate, t, date, infections) %>% 
+    mutate(infections = as.integer(y)) %>% 
+    select(replicate, t, date, infections) %>% 
     group_by(replicate) %>% 
     mutate(infections = lag(cumsum(replace_na(infections, 0)), 5, default = 0))
   
- 
+  
   g2 <- ggplot(inf, aes(date, infections/S_tot, group = replicate)) + geom_line() +
     scale_x_date(date_labels = "%b %Y", date_breaks = "3 months") +
     ylab("Attack Rate") + xlab("") + theme_bw()  
