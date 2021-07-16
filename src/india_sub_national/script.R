@@ -43,7 +43,7 @@ sero_df <- readRDS("sero.rds")
 sero_df <- sero_df[sero_df$state == state,]
 
 # minimum rf allowed
-min_rf_df <- readRDS("min_rf.rds")
+min_rf_df <- readRDS("min_rfs.rds")
 min_rf <- min_rf_df$min_rf[min_rf_df$state == state]
 
 
