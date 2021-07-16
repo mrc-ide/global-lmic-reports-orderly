@@ -2,15 +2,16 @@
 fit_spline_rt <- function(data,
                           country,
                           pop,
-                          reporting_fraction,
+                          min_rf,
                           vacc_inputs,
                           sero_df, 
+                          sero_det,
                           n_mcmc = 10000,
                           replicates = 100,
                           rw_duration = 14,
                           hosp_beds = 10000000000,
                           icu_beds = 10000000000
-                          ) {
+) {
   
   
   
@@ -127,14 +128,14 @@ fit_spline_rt <- function(data,
                    'Meff_pl' = Meff_pl_start,
                    "Rt_shift" = 0,
                    "Rt_shift_scale" = Rt_shift_scale_start,
-                   "rf" = 0.5)
+                   "rf" = min_rf + (1-min_rf)/2)
   pars_min = list('start_date' = first_start_date, 
                   'R0' = R0_min, 
                   'Meff' = Meff_min, 
                   'Meff_pl' = Meff_pl_min,
                   "Rt_shift" = Rt_shift_min,
                   "Rt_shift_scale" = Rt_shift_scale_min,
-                  "rf" = 0.01)
+                  "rf" = min_rf)
   pars_max = list('start_date' = last_start_date, 
                   'R0' = R0_max, 
                   'Meff' = Meff_max, 
@@ -146,7 +147,7 @@ fit_spline_rt <- function(data,
                        'Meff_pl' = FALSE, "Rt_shift" = FALSE, "Rt_shift_scale" = FALSE,
                        "rf" = FALSE)
   pars_obs = list(phi_cases = 1, k_cases = 2, phi_death = 1, k_death = 2, exp_noise = 1e6,
-                  sero_df = sero_df)
+                  sero_df = sero_df, sero_det = sero_det)
   
   # add in the spline list
   pars_init <- append(pars_init, pars_init_rw)
@@ -168,7 +169,7 @@ fit_spline_rt <- function(data,
       dnorm(x = pars[["Rt_shift"]], mean = 0, sd = 1, log = TRUE) +
       dunif(x = pars[["Rt_shift_scale"]], min = 0.1, max = 10, log = TRUE) + 
       dunif(x = pars[["rf"]], min = 0.01, max = 1, log = TRUE)
-      
+    
     
     # get rw spline parameters
     if(any(grepl("Rt_rw", names(pars)))) {
@@ -215,7 +216,7 @@ fit_spline_rt <- function(data,
                        n_particles = 1,
                        steps_per_day = 1,
                        log_likelihood = india_log_likelihood,
-                       reporting_fraction = reporting_fraction,
+                       reporting_fraction = pars_init$rf,
                        squire_model = squire:::deterministic_model(),
                        output_proposals = FALSE,
                        n_chains = n_chains,
@@ -223,6 +224,7 @@ fit_spline_rt <- function(data,
                        pars_min = pars_min,
                        pars_max = pars_max,
                        pars_discrete = pars_discrete,
+                       pars_obs = pars_obs,
                        proposal_kernel = proposal_kernel,
                        population = pop,
                        baseline_contact_matrix = mix_mat,
@@ -270,7 +272,7 @@ fit_spline_rt <- function(data,
 
 
 india_log_likelihood <- function(pars, data, squire_model, model_params, pars_obs, n_particles, 
-                                  forecast_days = 0, return = "ll", Rt_args, interventions, ...) {
+                                 forecast_days = 0, return = "ll", Rt_args, interventions, ...) {
   switch(return, full = {
     save_particles <- TRUE
     full_output <- TRUE
@@ -381,10 +383,10 @@ india_log_likelihood <- function(pars, data, squire_model, model_params, pars_ob
   model_params$beta_set <- beta_set
   if (inherits(squire_model, "stochastic")) {
     pf_result <- squire:::run_particle_filter(data = data, squire_model = squire_model, 
-                                     model_params = model_params, model_start_date = start_date, 
-                                     obs_params = pars_obs, n_particles = n_particles, 
-                                     forecast_days = forecast_days, save_particles = save_particles, 
-                                     full_output = full_output, return = pf_return)
+                                              model_params = model_params, model_start_date = start_date, 
+                                              obs_params = pars_obs, n_particles = n_particles, 
+                                              forecast_days = forecast_days, save_particles = save_particles, 
+                                              full_output = full_output, return = pf_return)
   }
   else if (inherits(squire_model, "deterministic")) {
     pf_result <- run_deterministic_comparison_india(data = data, 
@@ -419,7 +421,7 @@ run_deterministic_comparison_india <- function(data, squire_model, model_params,
   
   # set up as normal
   data <- squire:::particle_filter_data(data = data, start_date = model_start_date, 
-                               steps_per_day = round(1/model_params$dt))
+                                        steps_per_day = round(1/model_params$dt))
   model_params$tt_beta <- round(model_params$tt_beta * model_params$dt)
   model_params$tt_contact_matrix <- round(model_params$tt_contact_matrix * 
                                             model_params$dt)
@@ -451,57 +453,41 @@ run_deterministic_comparison_india <- function(data, squire_model, model_params,
     Ds_heathcare <- diff(rowSums(out[, index$D_get]))
     Ds_heathcare <- Ds_heathcare[data$day_end[-1]]
     ll <- squire:::ll_nbinom(deaths, Ds_heathcare, obs_params$phi_death, 
-                    obs_params$k_death, obs_params$exp_noise)
+                             obs_params$k_death, obs_params$exp_noise)
   }
   else {
     ll <- squire:::ll_nbinom(deaths, Ds, obs_params$phi_death, obs_params$k_death, 
-                    obs_params$exp_noise)
+                             obs_params$exp_noise)
   }
   
   # now the ll for the seroprevalence
   if(nrow(sero_df) > 0) {
-  
-  # seroconversion data from brazeay report 34
-  prob_conversion <-  cumsum(dgamma(0:300,shape = 5, rate = 1/2))/max(cumsum(dgamma(0:300,shape = 5, rate = 1/2)))
-  sero_det <- cumsum(dweibull(0:300, 3.669807, scale = 143.7046))
-  sero_det <- prob_conversion-sero_det
-  sero_det[sero_det < 0] <- 0
-  sero_det <- sero_det/max(sero_det)
-  
-  # additional_functions for rolling
-  roll_func <- function(x, det) {
-    l <- length(det)
-    ret <- rep(0, length(x))
-    for(i in seq_along(ret)) {
-      to_sum <- tail(x[seq_len(i)], length(det))
-      ret[i] <- sum(rev(to_sum)*head(det, length(to_sum)))
+    
+    sero_at_date <- function(date, symptoms, det, dates, N) {
+      
+      di <- which(dates == date)
+      to_sum <- tail(symptoms[seq_len(di)], length(det))
+      sum(rev(to_sum)*head(det, length(to_sum)), na.rm=TRUE)/N
+      
     }
-    return(ret)
-  }
-  
-  # get data frame of infections
-  symptoms <- rowSums(out[,index$E2]) * model_params$gamma_E
-  S <- rowSums(out[,index$S])
-  inf <- data.frame(
-    "symptoms" = symptoms,
-    "S" = S, 
-    "replicate" = 1, 
-    "t" = seq_along(S)-1,
-    "date" = data$date[[1]] + seq_len(nrow(out)) - 1L) %>% 
-    select(replicate, t, date, S, symptoms)
-  
-  inf <- inf %>% group_by(replicate) %>%
-    mutate(sero_positive = roll_func(symptoms, sero_det),
-           sero_perc = sero_positive/max(S,na.rm = TRUE)) %>% 
-    group_by(date) %>% 
-    summarise(sero_perc_med = median(sero_perc, na.rm=TRUE),
-              sero_perc_min = quantile(sero_perc, 0.025, na.rm=TRUE),
-              sero_perc_max = quantile(sero_perc, 0.975, na.rm=TRUE))
-  
-  lls1 <- dbinom(sero_df$sero_samples, sero_df$samples, inf$sero_perc_med[match(sero_df$date_end, inf$date)], log = TRUE)
-  lls2 <- dbinom(sero_df$sero_samples, sero_df$samples, inf$sero_perc_med[match(sero_df$date_start, inf$date)], log = TRUE)
-  lls3 <- dbinom(sero_df$sero_samples, sero_df$samples, inf$sero_perc_med[match(sero_df$date_start + (sero_df$date_end - sero_df$date_start)/2, inf$date)], log = TRUE)
-  lls <- rowMeans(cbind(lls1, lls2, lls3))
+    
+    # get symptom incidence
+    symptoms <- rowSums(out[,index$E2]) * model_params$gamma_E
+    
+    # dates of incidence, pop size and dates of sero surveys 
+    dates <- data$date[[1]] + seq_len(nrow(out)) - 1L
+    N <- sum(model_params$population)
+    sero_dates <- list(sero_df$date_end, sero_df$date_start, sero_df$date_start + as.integer((sero_df$date_end - sero_df$date_start)/2))
+    unq_sero_dates <- unique(c(sero_df$date_end, sero_df$date_start, sero_df$date_start + as.integer((sero_df$date_end - sero_df$date_start)/2)))
+    det <- obs_params$sero_det
+    
+    # estimate model seroprev
+    sero_model <- vapply(unq_sero_dates, sero_at_date, numeric(1), symptoms, det, dates, N)
+    sero_model_mat <- do.call(cbind,lapply(sero_dates, function(x) {sero_model[match(x, unq_sero_dates)]}))
+    
+    # likelihood of model obvs
+    lls <- rowMeans(dbinom(sero_df$sero_samples, sero_df$samples, sero_model_mat, log = TRUE))
+    
   } else {
     lls <- 0
   }

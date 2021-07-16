@@ -138,6 +138,7 @@ resources:
   - icu_beds.rds
   - pars_init.rds
   - sero.rds
+  - min_rf.rds
 
 global_resources:
 

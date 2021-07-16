@@ -253,3 +253,25 @@ ar_plot <- function(res) {
   
   return(g2)
 }
+
+cdp_plot <- function(res) {
+  
+  cdp <- plot(res, "D", date_0 = max(res$pmcmc_results$inputs$data$date), x_var = "date") + 
+    theme(legend.position = "none", axis.title.x = element_blank()) + 
+    ylab("Cumulative Deaths") +
+    scale_x_date(date_labels = "%b %Y", date_breaks = "3 months") +
+    xlab("") + theme_bw()  
+  
+  cdp
+}
+
+dp_plot <- function(res) {
+
+dp <- plot(res, particle_fit = TRUE) + 
+  theme(legend.position = "none", axis.title.x = element_blank()) +
+  scale_x_date(date_labels = "%b %Y", date_breaks = "3 months") +
+  xlab("") + theme_bw() 
+
+dp
+
+}
