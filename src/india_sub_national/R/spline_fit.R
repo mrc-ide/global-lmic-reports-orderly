@@ -486,7 +486,7 @@ run_deterministic_comparison_india <- function(data, squire_model, model_params,
     sero_model_mat <- do.call(cbind,lapply(sero_dates, function(x) {sero_model[match(x, unq_sero_dates)]}))
     
     # likelihood of model obvs
-    lls <- rowMeans(dbinom(sero_df$sero_samples, sero_df$samples, sero_model_mat, log = TRUE))
+    lls <- rowMeans(dbinom(sero_df$sero_pos, sero_df$samples, sero_model_mat, log = TRUE))
     
   } else {
     lls <- 0
