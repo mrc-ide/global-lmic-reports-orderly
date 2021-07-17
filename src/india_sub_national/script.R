@@ -49,7 +49,7 @@ min_rf <- min_rf_df$min_rf[min_rf_df$state == state]
 
 # seroconversion data from brazeau report 34 addjusted in light of more longer term studies
 prob_conversion <-  cumsum(dgamma(0:300,shape = 5, rate = 1/2))/max(cumsum(dgamma(0:300,shape = 5, rate = 1/2)))
-sero_det <- cumsum(dweibull(0:300, 3.669807, scale = 210.7046))
+sero_det <- cumsum(dweibull(0:300, 3.669807, scale = 280.7046))
 sero_det <- prob_conversion-sero_det
 sero_det[sero_det < 0] <- 0
 sero_det <- sero_det/max(sero_det)
@@ -140,6 +140,12 @@ if (state == "Madhya Pradesh") {
 }
 if (state == "Tamil Nadu") {
   df <- redist_deaths(df, as.Date("2020-07-22"))
+}
+if (state == "West Bengal") {
+  df <- redist_deaths(df, as.Date("2020-05-03"))
+}
+if (state == "Uttarakhand") {
+  df <- redist_deaths(df, as.Date("2020-10-17"))
 }
 
 

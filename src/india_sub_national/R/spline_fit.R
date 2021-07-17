@@ -175,7 +175,7 @@ fit_spline_rt <- function(data,
     if(any(grepl("Rt_rw", names(pars)))) {
       Rt_rws <- pars[grepl("Rt_rw", names(pars))]
       for (i in seq_along(Rt_rws)) {
-        ret <- ret + dnorm(x = Rt_rws[[i]], mean = 0, sd = 0.1, log = TRUE) 
+        ret <- ret + dnorm(x = Rt_rws[[i]], mean = 0, sd = 0.05, log = TRUE) 
       }
     }
     return(ret)
@@ -467,7 +467,7 @@ run_deterministic_comparison_india <- function(data, squire_model, model_params,
       
       di <- which(dates == date)
       to_sum <- tail(symptoms[seq_len(di)], length(det))
-      sum(rev(to_sum)*head(det, length(to_sum)), na.rm=TRUE)/N
+      min(sum(rev(to_sum)*head(det, length(to_sum)), na.rm=TRUE)/N, 0.99)
       
     }
     
