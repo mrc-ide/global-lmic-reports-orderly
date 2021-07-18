@@ -182,11 +182,7 @@ rt_plot_immunity <- function(out) {
 sero_plot <- function(res, sero_df) {
   
   # seroconversion data from brazeay report 34
-  prob_conversion <-  cumsum(dgamma(0:300,shape = 5, rate = 1/2))/max(cumsum(dgamma(0:300,shape = 5, rate = 1/2)))
-  sero_det <- cumsum(dweibull(0:300, 3.669807, scale = 143.7046))
-  sero_det <- prob_conversion-sero_det
-  sero_det[sero_det < 0] <- 0
-  sero_det <- sero_det/max(sero_det)*0.95  # assumed maximum test sensitivitys
+  sero_det <- res$pmcmc_results$inputs$pars_obs$sero_det
   
   # additional_functions for rolling
   roll_func <- function(x, det) {
