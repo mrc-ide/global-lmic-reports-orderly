@@ -175,8 +175,8 @@ res <- fit_spline_rt(data = df,
                      icu_beds = as.numeric(icu_beds),
                      sero_df = sero_df,
                      sero_det = sero_det,
-                     pars_obs_dur_R = dur_R,
-                     pars_obs_prob_hosp_multiplier = prob_hosp_multiplier,
+                     pars_obs_dur_R = as.numeric(dur_R),
+                     pars_obs_prob_hosp_multiplier = as.numeric(prob_hosp_multiplier),
                      ) 
 
 
