@@ -447,16 +447,16 @@ run_deterministic_comparison_india <- function(data, squire_model, model_params,
                       1L)
   steps <- unique(c(steps, fore_steps))
   
-  if("dur_R" %in% names(pars_obs)) {
+  if("dur_R" %in% names(obs_params)) {
     ch_dur_R <- as.intger(as.Date("2021-03-01") - model_start_date)
     model_params$tt_dur_R <- c(0, ch_dur_R, ch_dur_R+60)
-    model_params$gamma_R <- c(model_params$gamma_R, 2/pars_obs$dur_R, model_params$gamma_R)
+    model_params$gamma_R <- c(model_params$gamma_R, 2/obs_params$dur_R, model_params$gamma_R)
   }
   
-  if("prob_hosp_multiplier" %in% names(pars_obs)) {
+  if("prob_hosp_multiplier" %in% names(obs_params)) {
     ch_dur_R <- as.intger(as.Date("2021-03-01") - model_start_date)
     model_params$tt_prob_hosp_multiplier <- c(0, ch_dur_R)
-    model_params$prob_hosp_multiplier <- c(model_params$prob_hosp_multiplier, pars_obs$prob_hosp_multiplier)
+    model_params$prob_hosp_multiplier <- c(model_params$prob_hosp_multiplier, obs_params$prob_hosp_multiplier)
   }
   
   # run model
