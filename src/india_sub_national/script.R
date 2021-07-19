@@ -3,6 +3,16 @@ RhpcBLASctl::omp_set_num_threads(1L)
 
 system(paste0("echo India Subnational for  ",state))
 
+version_min <- "0.6.7"
+if(packageVersion("squire") < version_min) {
+  stop("squire needs to be updated to at least v", version_min)
+}
+
+version_min <- "0.1.22"
+if(packageVersion("nimue") < version_min) {
+  stop("nimue needs to be updated to at least v", version_min)
+}
+
 ## -----------------------------------------------------------------------------
 ## 0. Checks and Function Definitions
 ## -----------------------------------------------------------------------------
@@ -164,7 +174,10 @@ res <- fit_spline_rt(data = df,
                      hosp_beds = as.numeric(hosp_beds),
                      icu_beds = as.numeric(icu_beds),
                      sero_df = sero_df,
-                     sero_det = sero_det) 
+                     sero_det = sero_det,
+                     pars_obs_dur_R = dur_R,
+                     pars_obs_prob_hosp_multiplier = prob_hosp_multiplier,
+                     ) 
 
 
 # add state for ease and remove the output for memory

@@ -6,6 +6,8 @@ fit_spline_rt <- function(data,
                           vacc_inputs,
                           sero_df, 
                           sero_det,
+                          pars_obs_dur_R = 365,
+                          pars_obs_prob_hosp_multiplier = 1,
                           n_mcmc = 10000,
                           replicates = 100,
                           rw_duration = 14,
@@ -147,7 +149,9 @@ fit_spline_rt <- function(data,
                        'Meff_pl' = FALSE, "Rt_shift" = FALSE, "Rt_shift_scale" = FALSE,
                        "rf" = FALSE)
   pars_obs = list(phi_cases = 1, k_cases = 2, phi_death = 1, k_death = 2, exp_noise = 1e6,
-                  sero_df = sero_df, sero_det = sero_det)
+                  sero_df = sero_df, sero_det = sero_det, 
+                  dur_R = pars_obs_dur_R, 
+                  prob_hosp_multiplier = pars_obs_prob_hosp_multiplier)
   
   # add in the spline list
   pars_init <- append(pars_init, pars_init_rw)
@@ -201,6 +205,13 @@ fit_spline_rt <- function(data,
   ## -----------------------------------------------------------------------------
   
   pi <- readRDS("pars_init.rds")
+  if(pars_obs$dur_R == 365 && pars_obs$prob_hosp_multiplier == 1) {
+    pi <- pi$optimistic
+  } else if (pars_obs$dur_R == 180 && pars_obs$prob_hosp_multiplier == 1) {
+    pi <- pi$central
+  } else if (pars_obs$dur_R < 180 && pars_obs$prob_hosp_multiplier > 1) {
+    pi <- pi$worst
+  } 
   pf <- pi[[state]]
   pf$start_date <- as.Date(pf$start_date)
   pos_mat <- match(names(pars_init), names(pf))
@@ -429,8 +440,6 @@ run_deterministic_comparison_india <- function(data, squire_model, model_params,
                                        model_params$dt)
   model_params$tt_ICU_beds <- round(model_params$tt_ICU_beds * 
                                       model_params$dt)
-  model_func <- squire_model$odin_model(user = model_params, 
-                                        unused_user_action = "ignore")
   
   # steps as normal
   steps <- c(0, data$day_end)
@@ -438,7 +447,21 @@ run_deterministic_comparison_india <- function(data, squire_model, model_params,
                       1L)
   steps <- unique(c(steps, fore_steps))
   
+  if("dur_R" %in% names(pars_obs)) {
+    ch_dur_R <- as.intger(as.Date("2021-03-01") - model_start_date)
+    model_params$tt_dur_R <- c(0, ch_dur_R, ch_dur_R+60)
+    model_params$gamma_R <- c(model_params$gamma_R, 2/pars_obs$dur_R, model_params$gamma_R)
+  }
+  
+  if("prob_hosp_multiplier" %in% names(pars_obs)) {
+    ch_dur_R <- as.intger(as.Date("2021-03-01") - model_start_date)
+    model_params$tt_prob_hosp_multiplier <- c(0, ch_dur_R)
+    model_params$prob_hosp_multiplier <- c(model_params$prob_hosp_multiplier, pars_obs$prob_hosp_multiplier)
+  }
+  
   # run model
+  model_func <- squire_model$odin_model(user = model_params, 
+                                        unused_user_action = "ignore")
   out <- model_func$run(t = seq(0, tail(steps, 1), 1))
   index <- squire:::odin_index(model_func)
   
