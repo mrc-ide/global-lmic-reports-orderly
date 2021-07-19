@@ -12,12 +12,21 @@ REPLICATES=${2:-$DEFAULT_REPLICATES}
 DEFAULT_N_MCMC="100000"
 N_MCMC=${3:-$DEFAULT_N_MCMC}
 
+DEFAULT_PROB_HOSP_MULTIPLIER="1"
+PROB_HOSP_MULTIPLIER=${4:-$DEFAULT_N_MCMC}
+
+DEFAULT_DUR_R="365"
+DUR_R=${5:-$DEFAULT_N_MCMC}
+
 TODAY=$(date "+%Y-%m-%d")
-DATE=${4:-$TODAY}
+DATE=${6:-$TODAY}
 
 
 echo "*** RF: $RF"
 echo "*** Replicates: $REPLICATES"
+echo "*** MCMC Iterations: $N_MCMC"
+echo "*** Prob Hosp Multiplier: $PROB_HOSP_MULTIPLIER"
+echo "*** Dur R: $DUR_R"
 echo "*** MCMC Iterations: $N_MCMC"
 
 # Batch in 18
@@ -25,6 +34,6 @@ parallel -k echo ::: "Andaman and Nicobar Islands" "Andhra Pradesh" "Arunachal P
 
 # Parallel
 grep -E "*." prov-file | \
-parallel --progress -j 18 ./orderly run india_sub_national state={} rf=$RF replicates=$REPLICATES n_mcmc=$N_MCMC date=$DATE
+parallel --progress -j 18 ./orderly run india_sub_national state={} rf=$RF replicates=$REPLICATES n_mcmc=$N_MCMC prob_hosp_multiplier=$PROB_HOSP_MULTIPLIER dur_R=$DUR_R date=$DATE
 
 rm prov-file
