@@ -204,4 +204,6 @@ ggsave("fitting.pdf",width=12, height=15,
        cowplot::plot_grid(rtp$plot + ggtitle(paste0(state, ". Death Reporting at ", rf_over)), 
                           dp, cdp, sero, ar, ncol = 1))
 
+projs <- get_projections(res)
+saveRDS(projs, "proj.rds")
 

@@ -277,3 +277,37 @@ dp_plot <- function(res) {
 dp
 
 }
+
+get_projections <- function(res, state) {
+  
+  date_0 <- max(res$pmcmc_results$inputs$data$date)
+  state <- res$parameters$state
+  proj1 <- squire::projections(res, time_period = as.integer(as.Date("2022-01-01") - date_0))
+  proj2 <- squire::projections(res, time_period = as.integer(as.Date("2022-01-01") - date_0), R0_change = 1.1)
+  proj3 <- squire::projections(res, time_period = as.integer(as.Date("2022-01-01") - date_0), R0_change = 1.25)
+  
+  # get data
+  get_ret <- function(proj, r_increase) {
+    inf <- nim_sq_format(proj, c("infections"), date_0 = date_0) %>% 
+      rename(symptoms = y) %>%
+      left_join(nim_sq_format(proj, "S", date_0 = date_0), 
+                by = c("replicate", "t", "date")) %>% 
+      rename(S = y) %>% 
+      select(replicate, t, date, S, symptoms)
+    
+    deaths <- nim_sq_format(proj, c("deaths"), date_0 = date_0) %>%
+      rename(deaths = y) %>%
+      select(replicate, t, date, deaths)
+    
+    ret <- left_join(inf, deaths)
+    ret$state <- state
+    ret$r_increase <- r_increase
+    
+    return(ret)
+  }
+  
+  rbind(get_ret(proj1, "No Change"),
+        get_ret(proj2, "10% Increase"),
+        get_ret(proj3, "25% Increase"))
+  
+}
