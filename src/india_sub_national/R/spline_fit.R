@@ -434,7 +434,7 @@ india_log_likelihood <- function(pars, data, squire_model, model_params, pars_ob
     tt_vaccine_efficacy_infection <- 0
   }
   else {
-    tt_list <- intervention_dates_for_odin(dates = date_vaccine_efficacy_infection_change, 
+    tt_list <- squire:::intervention_dates_for_odin(dates = date_vaccine_efficacy_infection_change, 
                                            change = seq_along(interventions$vaccine_efficacy_infection)[-1], 
                                            start_date = start_date, steps_per_day = round(1/model_params$dt), 
                                            starting_change = 1)
