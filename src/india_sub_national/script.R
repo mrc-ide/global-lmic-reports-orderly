@@ -55,11 +55,12 @@ sero_df <- sero_df[sero_df$state == state,]
 # minimum rf allowed
 min_rf_df <- readRDS("min_rfs.rds")
 min_rf <- min_rf_df$min_rf[min_rf_df$state == state]
+max_rf <- min_rf_df$max_rf[min_rf_df$state == state]
 
 
 # seroconversion data from brazeau report 34 addjusted in light of more longer term studies
 prob_conversion <-  cumsum(dgamma(0:600,shape = 5, rate = 1/2))/max(cumsum(dgamma(0:300,shape = 5, rate = 1/2)))
-sero_det <- cumsum(dweibull(0:600, 3.669807, scale = 240.7046))
+sero_det <- cumsum(dweibull(0:600, 3.669807, scale = 210.7046))
 sero_det <- prob_conversion-sero_det
 sero_det[sero_det < 0] <- 0
 sero_det <- sero_det/max(sero_det)
@@ -168,6 +169,7 @@ res <- fit_spline_rt(data = df,
                      country = as.character("India"), 
                      pop = pop, 
                      min_rf = as.numeric(min_rf), 
+                     max_rf = as.numeric(max_rf), 
                      vacc_inputs = vacc_inputs,
                      n_mcmc = as.numeric(n_mcmc),
                      replicates = as.numeric(replicates),

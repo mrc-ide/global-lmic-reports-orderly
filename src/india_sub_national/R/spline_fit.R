@@ -3,6 +3,7 @@ fit_spline_rt <- function(data,
                           country,
                           pop,
                           min_rf,
+                          max_rf, 
                           vacc_inputs,
                           sero_df, 
                           sero_det,
@@ -145,7 +146,7 @@ fit_spline_rt <- function(data,
                   'Meff_pl' = Meff_pl_max,
                   "Rt_shift" = Rt_shift_max,
                   "Rt_shift_scale" = Rt_shift_scale_max,
-                  "rf" = 1)
+                  "rf" = max_rf)
   pars_discrete = list('start_date' = TRUE, 'R0' = FALSE, 'Meff' = FALSE, 
                        'Meff_pl' = FALSE, "Rt_shift" = FALSE, "Rt_shift_scale" = FALSE,
                        "rf" = FALSE)
