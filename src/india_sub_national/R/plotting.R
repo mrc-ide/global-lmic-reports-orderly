@@ -254,12 +254,12 @@ cdp_plot <- function(res) {
   
   suppressWarnings(
     cdp <- plot(res, "D", date_0 = max(res$pmcmc_results$inputs$data$date), x_var = "date") + 
-    theme_bw() +
-    theme(legend.position = "none", axis.title.x = element_blank()) + 
-    ylab("Cumulative Deaths") +
-    scale_x_date(date_labels = "%b %Y", date_breaks = "3 months") +
-    xlab("")
-    )  
+      theme_bw() +
+      theme(legend.position = "none", axis.title.x = element_blank()) + 
+      ylab("Cumulative Deaths") +
+      scale_x_date(date_labels = "%b %Y", date_breaks = "3 months") +
+      xlab("")
+  )  
   
   cdp
 }
@@ -272,19 +272,29 @@ dp_plot <- function(res) {
       theme(legend.position = "none", axis.title.x = element_blank()) +
       scale_x_date(date_labels = "%b %Y", date_breaks = "3 months") +
       xlab("")
-    ) 
+  ) 
   
-dp
-
+  dp
+  
 }
 
-get_projections <- function(res, state) {
+get_projections <- function(res, vaccine_inputs, state) {
   
+  ## Functions for working out the relative changes in R0 for given scenarios
   date_0 <- max(res$pmcmc_results$inputs$data$date)
+  time_period <- as.integer(as.Date("2022-01-01") - date_0)
+  
+  ## We need to know work out vaccine doses and efficacy going forwards
+  model_user_args <- extend_vaccine_inputs(vaccine_inputs, time_period, res)
+  model_user_args <- lapply(model_user_args, function(x) {
+    x$prob_hosp_multiplier <- res$pmcmc_results$inputs$pars_obs$prob_hosp_multiplier 
+    return(x)
+  })
+  
   state <- res$parameters$state
-  proj1 <- squire::projections(res, time_period = as.integer(as.Date("2022-01-01") - date_0))
-  proj2 <- squire::projections(res, time_period = as.integer(as.Date("2022-01-01") - date_0), R0_change = 1.1)
-  proj3 <- squire::projections(res, time_period = as.integer(as.Date("2022-01-01") - date_0), R0_change = 1.25)
+  proj1 <- squire::projections(res, time_period = time_period, model_user_args = model_user_args)
+  proj2 <- squire::projections(res, time_period = time_period, R0_change = 1.1, model_user_args = model_user_args)
+  proj3 <- squire::projections(res, time_period = time_period, R0_change = 1.25, model_user_args = model_user_args)
   
   # get data
   get_ret <- function(proj, r_increase) {
