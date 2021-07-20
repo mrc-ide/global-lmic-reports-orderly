@@ -1,11 +1,11 @@
+# defaults
+ve_i_low <- 0.33
+ve_i_high <- 0.58
+ve_d_low <- 0.8
+ve_d_high <- 0.90
+
 # sort out vaccine inputs
 get_vaccine_inputs <- function(date_0, subnat_vacc) {
-  
-  # defaults
-  ve_i_low <- 0.6
-  ve_i_high <- 0.8
-  ve_d_low <- 0.8
-  ve_d_high <- 0.98
   
   # function to remove over estimates of vaccine, i.e. where total vaccinations have gone down
   remove_overestimates <- function(tot) {
@@ -169,8 +169,8 @@ get_vaccine_inputs <- function(date_0, subnat_vacc) {
   dose_ratio[seq_len(min(length(dose_ratio), 28))] <- 0
   
   # now to work out the efficacy
-  vaccine_efficacy_infection <- (1-dose_ratio)*0.6 + dose_ratio*0.8
-  vaccine_efficacy_disease <- (1-dose_ratio)*0.8 + dose_ratio*0.98
+  vaccine_efficacy_infection <- (1-dose_ratio)*ve_i_low + dose_ratio*ve_i_high
+  vaccine_efficacy_disease <- (1-dose_ratio)*ve_d_low + dose_ratio*ve_d_low
   vaccine_efficacy_infection <- lapply(vaccine_efficacy_infection, rep, 17)
   vaccine_efficacy_disease <- lapply(vaccine_efficacy_disease, rep, 17)
   
@@ -190,7 +190,7 @@ get_vaccine_inputs <- function(date_0, subnat_vacc) {
     ret_res$vaccine_efficacy_disease <- ret_res$vaccine_efficacy_disease[pos_keep] 
   }
   
-  ret_res$rel_infectiousness_vaccinated <- rep(0.5, 17)
+  ret_res$rel_infectiousness_vaccinated <- rep(0.6, 17)
   
   # and now conver vaccine efficacy against disease to be the additional efficacy
   # after accounting for the present infection efficacy
@@ -205,10 +205,10 @@ get_vaccine_inputs <- function(date_0, subnat_vacc) {
   if(any(ret_res$max_vaccine<0)) {
     stop("Neg Vaccines")
   }
-  if(any(unlist(ret_res$vaccine_efficacy_infection)<0.6)) {
+  if(any(unlist(ret_res$vaccine_efficacy_infection)<ve_i_low)) {
     stop("Too low VE_I")
   }
-  if(any(unlist(ret_res$vaccine_efficacy_infection)>0.8)) {
+  if(any(unlist(ret_res$vaccine_efficacy_infection)>ve_i_high)) {
     stop("Too high VE_I")
   }
   if(length(unique(unlist(lapply(ret_res, length))[1:4])) != 1) {
@@ -241,7 +241,7 @@ extend_vaccine_inputs <- function(vaccine_inputs, time_period, out) {
     lm(y~x, data.frame("x" = seq_along(vei), "y" = vei)), 
     newdata = data.frame("x" = length(vei)+seq_len(time_period))
   )
-  vei_new <- vapply(vei_new, min, numeric(1), 0.8)
+  vei_new <- vapply(vei_new, min, numeric(1), ve_i_high)
   
   vaccine_efficacy_infection <- lapply(vei_new, rep, 17)
   tt_vaccine_efficacy_infection <- seq_along(vaccine_efficacy_infection)-1
@@ -260,7 +260,7 @@ extend_vaccine_inputs <- function(vaccine_inputs, time_period, out) {
     lm(y~x, data.frame("x" = seq_along(ved), "y" = ved)), 
     newdata = data.frame("x" = length(ved)+seq_len(time_period))
   )
-  ved_new <- vapply(ved_new, min, numeric(1), 0.98)
+  ved_new <- vapply(ved_new, min, numeric(1), ve_d_high)
   vaccine_efficacy_disease <- lapply(ved_new, rep, 17)
   tt_vaccine_efficacy_disease <- seq_along(vaccine_efficacy_disease)-1
   
