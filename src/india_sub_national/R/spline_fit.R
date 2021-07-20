@@ -219,48 +219,96 @@ fit_spline_rt <- function(data,
   pos_mat <- match(names(pars_init), names(pf))
   pars_init[which(!is.na(pos_mat))] <- as.list(pf[na.omit(pos_mat)])
   
+  # grab old scaling factor
+  scaling_factor <- 1
+  if("scaling_factor" %in% names(pf)) {
+    scaling_factor <- as.numeric(pf$scaling_factor)
+  }
+  
+  # grab old covariance matrix
+  # use the old covar matrix if available
+  if("covariance_matrix" %in% names(pf)) {
+    
+    # old proposal kernel
+    proposal_kernel_proposed <- pf$covariance_matrix[[1]]
+    
+    # check if it needs to be expanded
+    if(length(grep("Rt_rw", colnames(proposal_kernel_proposed))) == rw_needed) {
+      
+      proposal_kernel <- proposal_kernel_proposed
+      
+    } else if(length(grep("Rt_rw", colnames(proposal_kernel_proposed))) < rw_needed) {
+      
+      add_similar_cr <- function(x) {
+        x <- cbind(rbind(x, 0), 0) 
+        rw_num <- colnames(x)[nrow(x)-1]
+        new_rw <- paste0("Rt_rw_", as.numeric(gsub("(.*_)(\\d*)$", "\\2", rw_num)) + 1)
+        colnames(x)[ncol(x)] <- rownames(x)[nrow(x)] <- new_rw
+        x[nrow(x),] <- x[nrow(x) - 1,]
+        x[,ncol(x)] <- x[,ncol(x) - 1]
+        return(x)
+      }
+      
+      # add as needed
+      for(i in seq_len(rw_needed - length(grep("Rt_rw", colnames(proposal_kernel_proposed))))) {  
+        proposal_kernel_proposed <- add_similar_cr(proposal_kernel_proposed)
+      }
+      proposal_kernel <- proposal_kernel_proposed
+    } else {
+      
+      # remove as needed
+      for(i in seq_len(length(grep("Rt_rw", colnames(proposal_kernel_proposed))) - rw_needed)) {  
+        proposal_kernel_proposed <- proposal_kernel_proposed[-nrow(proposal_kernel_proposed),-ncol(proposal_kernel_proposed)]
+      }
+      proposal_kernel <- proposal_kernel_proposed
+      
+    }
+    
+  }
+  
   if (model == "SQUIRE") {
     squire_model = squire:::deterministic_model()
   } else if(model == "NIMUE") {
-    squire_model = nimue::nimue_deterministic_model()
+    squire_model = nimue::nimue_deterministic_model(use_dde = TRUE)
   }
   
   # run the pmcmc
   res <- pmcmc_india(data = data, 
-                       gibbs_days = NULL,
-                       gibbs_sampling = FALSE,
-                       n_mcmc = n_mcmc,
-                       log_prior = logprior,
-                       n_particles = 1,
-                       steps_per_day = 1,
-                       log_likelihood = india_log_likelihood,
-                       reporting_fraction = pars_init$rf,
-                       squire_model = squire_model,
-                       output_proposals = FALSE,
-                       n_chains = n_chains,
-                       pars_init = pars_init,
-                       pars_min = pars_min,
-                       pars_max = pars_max,
-                       pars_discrete = pars_discrete,
-                       pars_obs = pars_obs,
-                       proposal_kernel = proposal_kernel,
-                       population = pop,
-                       baseline_contact_matrix = mix_mat,
-                       R0_change = R0_change,
-                       date_R0_change = date_R0_change,
-                       Rt_args = squire:::Rt_args_list(
-                         date_Meff_change = date_Meff_change,
-                         scale_Meff_pl = TRUE,
-                         Rt_shift_duration = 1,
-                         Rt_rw_duration = Rt_rw_duration), 
-                       burnin = ceiling(n_mcmc/10),
-                       seeding_cases = 5,
-                       replicates = replicates,
-                       required_acceptance_ratio = 0.20,
-                       start_adaptation = start_adaptation,
-                       baseline_hosp_bed_capacity = hosp_beds, 
-                       baseline_ICU_bed_capacity = icu_beds,
-                       dur_R = 365) 
+                     gibbs_days = NULL,
+                     gibbs_sampling = FALSE,
+                     n_mcmc = n_mcmc,
+                     log_prior = logprior,
+                     n_particles = 1,
+                     steps_per_day = 1,
+                     log_likelihood = india_log_likelihood,
+                     reporting_fraction = pars_init$rf,
+                     squire_model = squire_model,
+                     output_proposals = FALSE,
+                     n_chains = n_chains,
+                     pars_init = pars_init,
+                     pars_min = pars_min,
+                     pars_max = pars_max,
+                     pars_discrete = pars_discrete,
+                     pars_obs = pars_obs,
+                     proposal_kernel = proposal_kernel,
+                     population = pop,
+                     baseline_contact_matrix = mix_mat,
+                     R0_change = R0_change,
+                     date_R0_change = date_R0_change,
+                     Rt_args = squire:::Rt_args_list(
+                       date_Meff_change = date_Meff_change,
+                       scale_Meff_pl = TRUE,
+                       Rt_shift_duration = 1,
+                       Rt_rw_duration = Rt_rw_duration), 
+                     burnin = ceiling(n_mcmc/10),
+                     seeding_cases = 5,
+                     replicates = replicates,
+                     required_acceptance_ratio = 0.20,
+                     start_adaptation = start_adaptation,
+                     baseline_hosp_bed_capacity = hosp_beds, 
+                     baseline_ICU_bed_capacity = icu_beds,
+                     dur_R = 365,
+                     scaling_factor = scaling_factor) 
   
   
   ## remove things so they don't atke up so much memory when you save them :)
@@ -456,17 +504,17 @@ run_deterministic_comparison_india <- function(data, squire_model, model_params,
   
   if("dur_R" %in% names(obs_params)) {
     if(obs_params$dur_R != 365) {
-    ch_dur_R <- as.integer(as.Date("2021-03-01") - model_start_date)
-    model_params$tt_dur_R <- c(0, ch_dur_R, ch_dur_R+60)
-    model_params$gamma_R <- c(model_params$gamma_R, 2/obs_params$dur_R, model_params$gamma_R)
+      ch_dur_R <- as.integer(as.Date("2021-03-01") - model_start_date)
+      model_params$tt_dur_R <- c(0, ch_dur_R, ch_dur_R+60)
+      model_params$gamma_R <- c(model_params$gamma_R, 2/obs_params$dur_R, model_params$gamma_R)
     }
   }
   
   if("prob_hosp_multiplier" %in% names(obs_params)) {
     if(obs_params$prob_hosp_multiplier != 1) {
-    ch_dur_R <- as.integer(as.Date("2021-03-01") - model_start_date)
-    model_params$tt_prob_hosp_multiplier <- c(0, ch_dur_R)
-    model_params$prob_hosp_multiplier <- c(model_params$prob_hosp_multiplier, obs_params$prob_hosp_multiplier)
+      ch_dur_R <- as.integer(as.Date("2021-03-01") - model_start_date)
+      model_params$tt_prob_hosp_multiplier <- c(0, ch_dur_R)
+      model_params$prob_hosp_multiplier <- c(model_params$prob_hosp_multiplier, obs_params$prob_hosp_multiplier)
     }
   }
   
@@ -554,74 +602,74 @@ run_deterministic_comparison_india <- function(data, squire_model, model_params,
 
 
 pmcmc_india <- function(data,
-         n_mcmc,
-         log_likelihood = NULL,
-         log_prior = NULL,
-         n_particles = 1e2,
-         steps_per_day = 4,
-         output_proposals = FALSE,
-         n_chains = 1,
-         squire_model = explicit_model(),
-         pars_obs = list(phi_cases = 1,
-                         k_cases = 2,
-                         phi_death = 1,
-                         k_death = 2,
-                         exp_noise = 1e6),
-         pars_init = list('start_date'     = as.Date("2020-02-07"),
-                          'R0'             = 2.5,
-                          'Meff'           = 2,
-                          'Meff_pl'        = 3,
-                          "R0_pl_shift"    = 0),
-         pars_min = list('start_date'      = as.Date("2020-02-01"),
-                         'R0'              = 0,
-                         'Meff'            = 1,
-                         'Meff_pl'         = 2,
-                         "R0_pl_shift"     = -2),
-         pars_max = list('start_date'      = as.Date("2020-02-20"),
-                         'R0'              = 5,
-                         'Meff'            = 3,
-                         'Meff_pl'         = 4,
-                         "R0_pl_shift"     = 5),
-         pars_discrete = list('start_date' = TRUE,
-                              'R0'         = FALSE,
-                              'Meff'       = FALSE,
-                              'Meff_pl'    = FALSE,
-                              "R0_pl_shift" = FALSE),
-         proposal_kernel = NULL,
-         scaling_factor = 1,
-         reporting_fraction = 1,
-         treated_deaths_only = FALSE,
-         country = NULL,
-         population = NULL,
-         contact_matrix_set = NULL,
-         baseline_contact_matrix = NULL,
-         date_contact_matrix_set_change = NULL,
-         R0_change = NULL,
-         date_R0_change = NULL,
-         hosp_bed_capacity = NULL,
-         baseline_hosp_bed_capacity = NULL,
-         date_hosp_bed_capacity_change = NULL,
-         ICU_bed_capacity = NULL,
-         baseline_ICU_bed_capacity = NULL,
-         date_ICU_bed_capacity_change = NULL,
-         date_vaccine_change = NULL,
-         baseline_max_vaccine = NULL,
-         max_vaccine = NULL,
-         date_vaccine_efficacy_infection_change = NULL,
-         baseline_vaccine_efficacy_infection = NULL,
-         vaccine_efficacy_infection = NULL,
-         date_vaccine_efficacy_disease_change = NULL,
-         baseline_vaccine_efficacy_disease = NULL,
-         vaccine_efficacy_disease = NULL,
-         Rt_args = NULL,
-         burnin = 0,
-         replicates = 100,
-         forecast = 0,
-         required_acceptance_ratio = 0.23,
-         start_adaptation = round(n_mcmc/2),
-         gibbs_sampling = FALSE,
-         gibbs_days = NULL,
-         ...) {
+                        n_mcmc,
+                        log_likelihood = NULL,
+                        log_prior = NULL,
+                        n_particles = 1e2,
+                        steps_per_day = 4,
+                        output_proposals = FALSE,
+                        n_chains = 1,
+                        squire_model = explicit_model(),
+                        pars_obs = list(phi_cases = 1,
+                                        k_cases = 2,
+                                        phi_death = 1,
+                                        k_death = 2,
+                                        exp_noise = 1e6),
+                        pars_init = list('start_date'     = as.Date("2020-02-07"),
+                                         'R0'             = 2.5,
+                                         'Meff'           = 2,
+                                         'Meff_pl'        = 3,
+                                         "R0_pl_shift"    = 0),
+                        pars_min = list('start_date'      = as.Date("2020-02-01"),
+                                        'R0'              = 0,
+                                        'Meff'            = 1,
+                                        'Meff_pl'         = 2,
+                                        "R0_pl_shift"     = -2),
+                        pars_max = list('start_date'      = as.Date("2020-02-20"),
+                                        'R0'              = 5,
+                                        'Meff'            = 3,
+                                        'Meff_pl'         = 4,
+                                        "R0_pl_shift"     = 5),
+                        pars_discrete = list('start_date' = TRUE,
+                                             'R0'         = FALSE,
+                                             'Meff'       = FALSE,
+                                             'Meff_pl'    = FALSE,
+                                             "R0_pl_shift" = FALSE),
+                        proposal_kernel = NULL,
+                        scaling_factor = 1,
+                        reporting_fraction = 1,
+                        treated_deaths_only = FALSE,
+                        country = NULL,
+                        population = NULL,
+                        contact_matrix_set = NULL,
+                        baseline_contact_matrix = NULL,
+                        date_contact_matrix_set_change = NULL,
+                        R0_change = NULL,
+                        date_R0_change = NULL,
+                        hosp_bed_capacity = NULL,
+                        baseline_hosp_bed_capacity = NULL,
+                        date_hosp_bed_capacity_change = NULL,
+                        ICU_bed_capacity = NULL,
+                        baseline_ICU_bed_capacity = NULL,
+                        date_ICU_bed_capacity_change = NULL,
+                        date_vaccine_change = NULL,
+                        baseline_max_vaccine = NULL,
+                        max_vaccine = NULL,
+                        date_vaccine_efficacy_infection_change = NULL,
+                        baseline_vaccine_efficacy_infection = NULL,
+                        vaccine_efficacy_infection = NULL,
+                        date_vaccine_efficacy_disease_change = NULL,
+                        baseline_vaccine_efficacy_disease = NULL,
+                        vaccine_efficacy_disease = NULL,
+                        Rt_args = NULL,
+                        burnin = 0,
+                        replicates = 100,
+                        forecast = 0,
+                        required_acceptance_ratio = 0.23,
+                        start_adaptation = round(n_mcmc/2),
+                        gibbs_sampling = FALSE,
+                        gibbs_days = NULL,
+                        ...) {
   
   #------------------------------------------------------------
   # Section 1 of pMCMC Wrapper: Checks & Setup
@@ -653,7 +701,7 @@ pmcmc_india <- function(data,
   squire:::assert_in("deaths", names(data))
   squire:::assert_date(data$date)
   squire:::assert_increasing(as.numeric(as.Date(data$date)),
-                    message = "Dates must be in increasing order")
+                             message = "Dates must be in increasing order")
   
   # check input pars df
   squire:::assert_list(pars_init)
@@ -665,7 +713,7 @@ pmcmc_india <- function(data,
   squire:::assert_eq(names(pars_min), names(pars_max))
   squire:::assert_eq(names(pars_max), names(pars_discrete))
   squire:::assert_in(c("R0", "start_date"),names(pars_init[[1]]),
-            message = "Params to infer must include R0, start_date")
+                     message = "Params to infer must include R0, start_date")
   squire:::assert_date(pars_init[[1]]$start_date)
   squire:::assert_date(pars_min$start_date)
   squire:::assert_date(pars_max$start_date)
@@ -684,9 +732,9 @@ pmcmc_india <- function(data,
   for(var in names(pars_init[[1]])) {
     
     squire:::assert_bounded(as.numeric(pars_init[[1]][[var]]),
-                   left = as.numeric(pars_min[[var]]),
-                   right = as.numeric(pars_max[[var]]),
-                   name = paste(var, "init"))
+                            left = as.numeric(pars_min[[var]]),
+                            right = as.numeric(pars_max[[var]]),
+                            name = paste(var, "init"))
     
     squire:::assert_single_numeric(as.numeric(pars_min[[var]]), name = paste(var, "min"))
     squire:::assert_single_numeric(as.numeric(pars_max[[var]]), name = paste(var, "max"))
@@ -1140,12 +1188,12 @@ pmcmc_india <- function(data,
   # Section 3 of pMCMC Wrapper: Sample PMCMC Results
   #--------------------------------------------------------
   pmcmc_samples <- squire:::sample_pmcmc(pmcmc_results = pmcmc,
-                                burnin = burnin,
-                                n_chains = n_chains,
-                                n_trajectories = replicates,
-                                log_likelihood = log_likelihood,
-                                n_particles = n_particles,
-                                forecast_days = forecast)
+                                         burnin = burnin,
+                                         n_chains = n_chains,
+                                         n_trajectories = replicates,
+                                         log_likelihood = log_likelihood,
+                                         n_particles = n_particles,
+                                         forecast_days = forecast)
   
   #--------------------------------------------------------
   # Section 4 of pMCMC Wrapper: Tidy Output
