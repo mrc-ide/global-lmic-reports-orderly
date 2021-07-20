@@ -13,13 +13,16 @@ DEFAULT_N_MCMC="100000"
 N_MCMC=${3:-$DEFAULT_N_MCMC}
 
 DEFAULT_PROB_HOSP_MULTIPLIER="1"
-PROB_HOSP_MULTIPLIER=${4:-$DEFAULT_N_MCMC}
+PROB_HOSP_MULTIPLIER=${4:-$DEFAULT_PROB_HOSP_MULTIPLIER}
 
 DEFAULT_DUR_R="365"
-DUR_R=${5:-$DEFAULT_N_MCMC}
+DUR_R=${5:-$DEFAULT_DUR_R}
+
+DEFAULT_MODEL="SQUIRE"
+MODEL=${6:-$DEFAULT_MODEL}
 
 TODAY=$(date "+%Y-%m-%d")
-DATE=${6:-$TODAY}
+DATE=${7:-$TODAY}
 
 
 echo "*** RF: $RF"
@@ -34,6 +37,6 @@ parallel -k echo ::: "Andaman and Nicobar Islands" "Andhra Pradesh" "Arunachal P
 
 # Parallel
 grep -E "*." prov-file | \
-parallel --progress -j 18 ./orderly run india_sub_national state={} rf=$RF replicates=$REPLICATES n_mcmc=$N_MCMC prob_hosp_multiplier=$PROB_HOSP_MULTIPLIER dur_R=$DUR_R date=$DATE
+parallel --progress -j 18 ./orderly run india_sub_national state={} rf=$RF replicates=$REPLICATES n_mcmc=$N_MCMC prob_hosp_multiplier=$PROB_HOSP_MULTIPLIER dur_R=$DUR_R model=$MODEL date=$DATE
 
 rm prov-file

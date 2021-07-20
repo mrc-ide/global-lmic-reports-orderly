@@ -8,6 +8,7 @@ fit_spline_rt <- function(data,
                           sero_det,
                           pars_obs_dur_R = 365,
                           pars_obs_prob_hosp_multiplier = 1,
+                          model = "SQUIRE",
                           n_mcmc = 10000,
                           replicates = 100,
                           rw_duration = 14,
@@ -217,6 +218,11 @@ fit_spline_rt <- function(data,
   pos_mat <- match(names(pars_init), names(pf))
   pars_init[which(!is.na(pos_mat))] <- as.list(pf[na.omit(pos_mat)])
   
+  if (model == "SQUIRE") {
+    squire_model = squire:::deterministic_model()
+  } else if(model == "NIMUE") {
+    squire_model = nimue::nimue_deterministic_model()
+  }
   
   # run the pmcmc
   res <- pmcmc_india(data = data, 
@@ -228,7 +234,7 @@ fit_spline_rt <- function(data,
                        steps_per_day = 1,
                        log_likelihood = india_log_likelihood,
                        reporting_fraction = pars_init$rf,
-                       squire_model = squire:::deterministic_model(),
+                       squire_model = squire_model,
                        output_proposals = FALSE,
                        n_chains = n_chains,
                        pars_init = pars_init,

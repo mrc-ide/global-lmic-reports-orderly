@@ -46,6 +46,8 @@ parameters:
       default: 1
     dur_R: 
       default: 365
+    model:
+      default: "SQUIRE"
     date: ~
       
 
