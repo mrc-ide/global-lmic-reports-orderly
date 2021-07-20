@@ -37,5 +37,4 @@ echo "*** Model: $MODEL"
 echo "*** State: $STATE"
 
 # Parallel
-grep -E "*." prov-file | \
 parallel --progress -j 18 ./orderly run india_sub_national state=$STATE rf=$RF replicates=$REPLICATES n_mcmc=$N_MCMC prob_hosp_multiplier=$PROB_HOSP_MULTIPLIER dur_R=$DUR_R model=$MODEL date=$DATE
