@@ -308,7 +308,20 @@ fit_spline_rt <- function(data,
                      baseline_hosp_bed_capacity = hosp_beds, 
                      baseline_ICU_bed_capacity = icu_beds,
                      dur_R = 365,
-                     scaling_factor = scaling_factor) 
+                     scaling_factor = scaling_factor,
+                     date_vaccine_change = vacc_inputs$date_vaccine_change,
+                     max_vaccine = vacc_inputs$max_vaccine,
+                     baseline_max_vaccine = 0,
+                     date_vaccine_efficacy_infection_change = vacc_inputs$date_vaccine_change,
+                     vaccine_efficacy_infection = vacc_inputs$vaccine_efficacy_infection,
+                     baseline_vaccine_efficacy_infection = vacc_inputs$vaccine_efficacy_infection[[1]],
+                     date_vaccine_efficacy_disease_change = vacc_inputs$date_vaccine_change,
+                     vaccine_efficacy_disease = vacc_inputs$vaccine_efficacy_disease,
+                     baseline_vaccine_efficacy_disease = vacc_inputs$vaccine_efficacy_disease[[1]],
+                     rel_infectiousness_vaccinated = vacc_inputs$rel_infectiousness_vaccinated, 
+                     vaccine_coverage_mat = vaccine_coverage_mat,
+                     dur_R = 365,
+                     dur_V = 5000) 
   
   
   ## remove things so they don't atke up so much memory when you save them :)
