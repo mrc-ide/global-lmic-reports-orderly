@@ -196,7 +196,7 @@ res$output <- output
 if (model == "SQUIRE") {
 rtp <- rt_plot_immunity(res)
 } else {
-  rtp <- rt_plot_immunity_vaccine(res)
+  rtp <- rt_plot_immunity(res)
 }
 dp <- dp_plot(res)
 cdp <- cdp_plot(res)
