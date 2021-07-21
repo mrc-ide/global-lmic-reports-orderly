@@ -555,6 +555,7 @@ run_deterministic_comparison_india <- function(data, squire_model, model_params,
   }
   
   # now the ll for the seroprevalence
+  sero_df <- obs_params$sero_df
   if(nrow(sero_df) > 0) {
     
     sero_at_date <- function(date, symptoms, det, dates, N) {
