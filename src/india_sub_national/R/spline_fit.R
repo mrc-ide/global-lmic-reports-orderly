@@ -209,9 +209,9 @@ fit_spline_rt <- function(data,
   pi <- readRDS("pars_init.rds")
   if(pars_obs$dur_R >= 180 && pars_obs$prob_hosp_multiplier == 1) {
     pi <- pi$optimistic
-  } else if (pars_obs$dur_R == 115 && pars_obs$prob_hosp_multiplier == 1) {
+  } else if ((pars_obs$dur_R > 80 && pars_obs$dur_R < 180) && pars_obs$prob_hosp_multiplier == 1) {
     pi <- pi$central
-  } else if (pars_obs$dur_R < 80 && pars_obs$prob_hosp_multiplier > 1) {
+  } else {
     pi <- pi$worst
   }
   pf <- pi[[state]]
