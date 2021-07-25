@@ -323,7 +323,7 @@ fit_spline_rt <- function(data,
                      dur_V = 5000)
 
 
-  R## remove things so they don't atke up so much memory when you save them :)
+  ## remove things so they don't atke up so much memory when you save them :)
 
   # Add the prior
   res$pmcmc_results$inputs$prior <- as.function(c(formals(logprior),
