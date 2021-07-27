@@ -54,8 +54,12 @@ sero_df <- sero_df[sero_df$state == state,]
 
 # minimum rf allowed
 min_rf_df <- readRDS("min_rfs.rds")
-min_rf <- min_rf_df$min_rf[min_rf_df$state == state]
-max_rf <- min_rf_df$max_rf[min_rf_df$state == state]
+min_rf <- max(min_rf_df$min_rf[min_rf_df$state == state], 0.01)
+if(nrow(sero_df) > 0) {
+max_rf <- min(min_rf_df$max_rf[min_rf_df$state == state]*1.5, 1.00)
+} else {
+max_rf <- min(min_rf_df$max_rf[min_rf_df$state == state], 1.00)
+}
 
 
 # seroconversion data from brazeau report 34 addjusted in light of more longer term studies
