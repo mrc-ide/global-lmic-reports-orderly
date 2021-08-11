@@ -459,6 +459,11 @@ if(sum(ecdc_df$deaths) > 0) {
     icu_beds <- icu_beds / 0.7
   }
 
+  # slight mobility data issue here
+  if(iso3c == "BGD") {
+    R0_change[R0_change > 1.4] <- 1
+  }
+
   # slight hack to enforce transmission through long period with no deaths
   elong_summer_isos <- c("EST", "ISL", "ATG")
   if (iso3c %in% elong_summer_isos) {
