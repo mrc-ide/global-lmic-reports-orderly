@@ -21,6 +21,9 @@ HICs=${5:-$DEFAULT_HICs}
 DEFAULT_GIBBS="FALSE"
 GIBBS=${6:-$DEFAULT_GIBBS}
 
+DEFAULT_N_MCMC=20000
+N_MCMC=${7:-$DEFAULT_N_MCMC}
+
 echo "*** Date: $DATE"
 
 echo "*** Short Run: $SHORT_RUN"
@@ -30,6 +33,8 @@ echo "*** Full Scenarios: $FULL_SCENARIOS"
 echo "*** HICs: $HICs"
 
 echo "*** GIBBS: $GIBBS"
+
+echo "*** N_MCMC: $N_MCMC"
 
 echo "*** ECDC data"
 ./orderly run ecdc date=$DATE
@@ -49,7 +54,8 @@ echo "*** Running country reports"
 grep -E '^[A-Z]{3}\s*' countries | \
 parallel --progress -j 48 ./orderly run lmic_reports_vaccine \
 iso3c={} date=$DATE short_run=$SHORT_RUN \
-parallel=$PARALLEL full_scenarios=$FULL_SCENARIOS gibbs_sampling=$GIBBS
+parallel=$PARALLEL full_scenarios=$FULL_SCENARIOS gibbs_sampling=$GIBBS \
+n_mcmc=$N_MCMC
 
 # Serial (useful if debugging)
 # for ISO in $(grep -E '^[A-Z]{3}\s*' countries); do
@@ -58,7 +64,7 @@ parallel=$PARALLEL full_scenarios=$FULL_SCENARIOS gibbs_sampling=$GIBBS
 # done
 
 echo "*** Copying reports"
-./run/copy_reports_google_pmcmc_spline_np.R $DATE
+./run/copy_reports_google_vaccine.R $DATE
 
 echo "*** Index page"
 ./orderly run index_page date=$DATE

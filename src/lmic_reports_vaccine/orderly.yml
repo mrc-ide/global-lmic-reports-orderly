@@ -45,6 +45,8 @@ parameters:
       default: FALSE
     gibbs_sampling:
       default: FALSE
+    n_mcmc:
+      defalut: 20000
 
 # You must list at least one artefact that your report will generate.
 # Each artefact consists of one or more files.  The format is to list

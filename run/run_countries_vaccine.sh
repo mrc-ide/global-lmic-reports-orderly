@@ -24,6 +24,9 @@ COUNTRIES=${6:-$DEFAULT_COUNTRIES}
 DEFAULT_GIBBS="FALSE"
 GIBBS=${7:-$DEFAULT_GIBBS}
 
+DEFAULT_N_MCMC=20000
+N_MCMC=${8:-$DEFAULT_N_MCMC}
+
 echo "*** Date: $DATE"
 
 echo "*** Short Run: $SHORT_RUN"
@@ -38,6 +41,8 @@ echo "*** Countries: $COUNTRIES"
 
 echo "*** GIBBS: $GIBBS"
 
+echo "*** N_MCMC: $N_MCMC"
+
 #echo "*** Updating country list"
 #./run/update_run_sh.R $DATE $HICs
 
@@ -48,5 +53,6 @@ grep -E '^[A-Z]{3}\s*' $COUNTRIES | \
 parallel --progress -j 48  ./orderly run lmic_reports_vaccine \
 iso3c={} date=$DATE short_run=$SHORT_RUN \
 parallel=$PARALLEL full_scenarios=$FULL_SCENARIOS \
-gibbs_sampling=$GIBBS
+gibbs_sampling=$GIBBS \
+n_mcmc=$N_MCMC
 

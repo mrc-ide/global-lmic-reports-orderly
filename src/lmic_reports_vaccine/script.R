@@ -143,7 +143,7 @@ if(sum(ecdc_df$deaths) > 0) {
   } else {
     n_particles <- 50
     replicates <- 50
-    n_mcmc <- 40000
+    n_mcmc <- as.integer(n_mcmc)
     n_chains <- 1
     grid_spread <- 11
     sleep <- 120
