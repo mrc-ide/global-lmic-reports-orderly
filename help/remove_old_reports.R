@@ -33,7 +33,7 @@ remove_old_reports <- function(date = NULL, keep = 5, pdf_keep = 5) {
   setwd(wd)
   country_root <- list.files("gh-pages", full.names = TRUE)
   country_root <- country_root[dir.exists(country_root)]
-  country_root <- country_root[-grep("data", country_root)]
+  country_root <- country_root[-grep("data|input_jsons", country_root)]
   
   for(i in seq_along(country_root)) {
     message(i)

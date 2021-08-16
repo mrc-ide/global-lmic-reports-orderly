@@ -8,7 +8,7 @@ draft
 *.o
 *.so
 *.dll
-.rds
+*.rds
 gh-pages
 gh-results
 orderly.sqlite
