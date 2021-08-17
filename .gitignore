@@ -8,11 +8,12 @@ draft
 *.o
 *.so
 *.dll
-*.rds
+.rds
 gh-pages
 gh-results
 orderly.sqlite
 index_files
+src/under_reporting_investigation
 src/*/_site.yml
 src/*/styles.css
 src/*/footer.html
