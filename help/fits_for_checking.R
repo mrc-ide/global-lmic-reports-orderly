@@ -1,3 +1,4 @@
+#!/usr/bin/env Rscript
 
 fits_for_checking <- function(date, report = "lmic_reports_vaccine") {
 
