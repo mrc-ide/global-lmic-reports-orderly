@@ -5,9 +5,8 @@ fits_for_checking <- function(date, report = "lmic_reports_vaccine") {
 # ------------------------------------------------------------------------------
 ### Get the reports ------------------------------------------------------------
 # ------------------------------------------------------------------------------
-reports_day <- function(reports = "lmic_reports", date = NULL) {
-  wdold <- getwd()
-  setwd(wd)
+reports_day <- function(date = NULL, report = "lmic_reports_vaccine") {
+
   db <- orderly::orderly_db("destination")
   if (is.null(date)) {
     date <- as.character(Sys.Date())
@@ -46,7 +45,7 @@ reports_day <- function(reports = "lmic_reports", date = NULL) {
             JOIN parameters
               ON parameters.report_version = report_version.id
            WHERE report_version_artefact.report_version IN (%s)
-             AND report = "', reports, '"
+             AND report = "', report, '"
              AND parameters.name = "iso3c"
            ORDER BY country, report_version.id')
   sql <- sprintf(sql, paste(sprintf('"%s"', id), collapse = ", "))
@@ -59,11 +58,11 @@ reports_day <- function(reports = "lmic_reports", date = NULL) {
   }
 
   reports$date <- as.character(date)
-  setwd(wdold)
+
   return(reports)
 }
 
-reports <- reports_day(report, date)
+reports <- reports_day(date, report)
 if(grepl("vaccine", report)){
   file_suffix <- "_vaccine"
 } else if(is.na(strsplit(report,"_")[[1]][3])){
@@ -82,13 +81,12 @@ pdfs <- file.path(paste0("archive/",report), reports$id, "fitting.pdf")
 fz <- file.size(pdfs)
 dir.create("fits", showWarnings = FALSE)
 td <- tempdir()
+dir.create(file.path(td, "fits"))
 pdf_out <- file.path(td, "fits",paste0(reports$country[which(fz>0)],file_suffix,".pdf"))
 pdf_input <- file.copy(pdfs[which(fz>0)], pdf_out, overwrite = TRUE)
 qpdf::pdf_combine(pdf_out, file.path(paste0("fits/",report,"_",date,".pdf")))
 
 }
-
-
 
 if (!interactive()) {
   usage <- "Usage:\n./fits_for_checking.R [<date>] [<report>]"

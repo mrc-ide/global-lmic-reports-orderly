@@ -8,7 +8,14 @@ This is an [`orderly`](https://github.com/vimc/orderly) project.  The directorie
 
 (you can delete or edit this file safely)
 
-## Instructions on the server
+## Instructions for DIDE server
+
+#### 1. pars_init generation
+
+
+
+
+## Instructions for Azure server [OLD]
 
 This is still a manual process requiring logging into the server and executing the model fits.
 

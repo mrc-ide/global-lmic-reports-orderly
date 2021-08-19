@@ -5,6 +5,13 @@ print(sessionInfo())
 RhpcBLASctl::blas_set_num_threads(1L)
 RhpcBLASctl::omp_set_num_threads(1L)
 
+# pandoc linking
+if(file.exists("L:\\OJ\\pandoc")) {
+  rmarkdown:::set_pandoc_info("L:\\OJ\\pandoc")
+  Sys.setenv(RSTUDIO_PANDOC="L:\\OJ\\pandoc")
+  tinytex::use_tinytex("L:\\OJ\\TinyTex")
+}
+
 version_min <- "0.6.6"
 if(packageVersion("squire") < version_min) {
   stop("squire needs to be updated to at least v", version_min)
@@ -1017,6 +1024,7 @@ if(sum(ecdc_df$deaths) > 0) {
   data <- data[data$date <= as.Date(date_0), ]
 
   # prepare reports
+  options(tinytex.verbose = TRUE)
   rmarkdown::render("index.Rmd",
                     output_format = c("html_document","pdf_document"),
                     params = list("o_list" = o_list,
