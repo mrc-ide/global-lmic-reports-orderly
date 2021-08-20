@@ -10,6 +10,7 @@ if(file.exists("L:\\OJ\\pandoc")) {
   rmarkdown:::set_pandoc_info("L:\\OJ\\pandoc")
   Sys.setenv(RSTUDIO_PANDOC="L:\\OJ\\pandoc")
   tinytex::use_tinytex("L:\\OJ\\TinyTex")
+  tinytex::tlmgr_update()
 }
 
 version_min <- "0.6.6"

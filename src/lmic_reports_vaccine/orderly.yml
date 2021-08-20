@@ -158,6 +158,7 @@ global_resources:
   logo.png: logo.png
   header.html: header.html
   ganalytics.html: ganalytics.html
+  ganalytics.txt: ganalytics.txt
 
 # Indicate which reports your report depends on.  You can use this to
 # pull in artefacts from previous reports.  You can depend in multiple

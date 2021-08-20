@@ -6,11 +6,12 @@ VERSION=$(git rev-parse --short HEAD)
 WHERE=$1
 
 if [[ $WHERE == "staging" ]]; then
-    REMOTE_URL=git@github.com:mrc-ide/global-lmic-reports-staging.git
+    echo "Pushing to staging not supported using this script. See documentation"
+    exit 1
 elif [[ $WHERE == "production" ]]; then
     REMOTE_URL=git@github.com:mrc-ide/global-lmic-reports.git
 else
-    echo "Usage: ./publish.sh staging|production"
+    echo "Usage: ./publish_website.sh staging|production"
     exit 1
 fi
 
@@ -20,14 +21,12 @@ if [ -f .ssh/$WHERE/id_rsa ]; then
     export GIT_SSH_COMMAND="ssh -i ../.ssh/$WHERE/id_rsa"
 fi
 
-# rm -rf ${DOCS_DIR}/.git
-# git init ${DOCS_DIR}
+
 if [ -z $(git -C ${DOCS_DIR} config --get user.email) ]; then
     git -C ${DOCS_DIR} config user.email "oj.watson@hotmail.co.uk"
     git -C ${DOCS_DIR} config user.name "OJWatson"
 fi
 
-git -C ${DOCS_DIR} remote add origin ${REMOTE_URL}
 git -C ${DOCS_DIR} add data
 git -C ${DOCS_DIR} commit --no-verify -m "Add data for version ${VERSION}"
 git -C ${DOCS_DIR} push --force -u origin master

@@ -11,7 +11,7 @@ output:
     theme: cosmo
     fig_caption: TRUE
     includes:
-      in_header: ganalytics.html
+      in_header: ganalytics.txt
   pdf_document: 
     fig_caption: true
     toc: false

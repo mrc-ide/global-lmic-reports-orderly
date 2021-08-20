@@ -1,0 +1,263 @@
+---
+title: "Running Fits on DIDE Cluster"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+```{r, setup, include=FALSE}
+knitr::opts_chunk$set(fig.width = 8, collapse = TRUE)
+knitr::opts_knit$set(root.dir = here::here())
+```
+
+# Overview
+
+This Rmd document gives an overview of the steps to be taken to run model fits
+on the DIDE HPC cluster, check results before collating and pushing to github. 
+
+As a background, the fits used to be run through a series of tasks in specific
+docker containers. At writing, docker can't be run locally due to virtualisation
+not being enabled on this windows machine, but this will be explored again 
+once/if this is enabled. 
+
+# Set up
+
+All tasks for running the model fits are conducted using orderly. This includes:
+
+1. *ecdc*
+
+This task grabs input data from various online databases, that are then fed into
+downstream processes. 
+
+2. *oxford_grt*
+
+This task is largely redundant and is a hangover from when the oxford GRT database
+was used as a model input, but this has been replaced by Google mobility data. 
+
+3. *google_brt*
+
+Grabs and formats Google mobility data. For countries without mobility data, we
+use a Boosted regression tree model to infer mobility based on timing of govt. 
+policies. 
+
+These 3 tasks form the initial tasks that ensure all the correct data is ready
+before running the actual model fits. To run these tasks, we simply need to provide
+what the `date` is that we are conducting model fits for, i.e. up to what date are
+we running, and also whether we are doing a `short_run`. The `short_run` argument
+dictates whether a small number of trees are used in the BRT.
+
+```{r, eval = FALSE}
+date <- "2021-08-16"
+short_run <- TRUE
+```
+
+These arguments are then passed to our 3 tasks:
+
+```{r, eval=FALSE, message=FALSE}
+message("*** ECDC data")
+ecdc_id <- orderly::orderly_run("ecdc", parameters = list(date=date), echo = FALSE)
+orderly::orderly_commit(ecdc_id)
+
+message("*** Oxford GRT data")
+oxford_id <- orderly::orderly_run("oxford_grt", parameters = list(date=date), echo = FALSE)
+orderly::orderly_commit(oxford_id)
+
+message("*** Google BRT data")
+google_id <- orderly::orderly_run("brt_google_mobility", parameters = list(date=date, short_run = short_run), echo = FALSE)
+orderly::orderly_commit(google_id)
+```
+
+Above, we are using `orderly::orderly_run` to run our 3 tasks in our R session, 
+before then committing them to the orderly archive. Alternatively, you could run
+these from the terminal using:
+
+```{bash}
+# date=2021-08-16
+# ./orderly run ecdc date=$DATE
+```
+With these tasks run, we now begin by creating our model fit tasks. Throughout
+the pandemic, we have updated the model fit tasks to include new data, new models
+etc. Each of the various model fit tasks starts `lmic_reports_`, but the current 
+model task is `lmic_reports_vaccine`. 
+
+We run the the model fits on the DIDE HPC cluster. To do this we first bundle the 
+orderly reports to be run using `orderly::orderly_bundle_pack`. The zip files
+generated from this are then copied to the `glodide` repository, which is used to 
+submit these tasks. 
+
+```{r, message=FALSE}
+
+message("*** Creating country task bundles")
+
+# main input parameters
+n_mcmc <- 20
+countries <- "countries"
+parallel <- FALSE
+
+# less needed input parameters
+full_scenarios <- FALSE
+gibbs_sampling <- FALSE
+
+# get the isos
+iso3cs <- grep('^[A-Z]{3}\\s*', readLines(countries), value = TRUE)
+
+# make the orderly bundles to be run on the cluster
+path_bundles <- file.path("L:/OJ/glodide/analysis/data/raw/", date)
+dir.create(path_bundles, showWarnings = FALSE)
+
+# bundle these up - this will take like 10 mins to create all the zips. 
+bundles <- lapply(
+  iso3cs, function(x) {
+    orderly::orderly_bundle_pack(
+      path = path_bundles,
+      name = "lmic_reports_vaccine",
+      parameters = list(
+        iso3c = x,
+        date=date,
+        short_run=short_run,
+        parallel=parallel,
+        full_scenarios=full_scenarios,
+        gibbs_sampling=gibbs_sampling,
+        n_mcmc=n_mcmc
+      )
+    )
+  }
+)
+
+# now label these with the iso3cs and save the file paths
+names(bundles) <- iso3cs
+saveRDS(bundles, file.path(path_bundles, "bundles.rds"))
+
+```
+
+This will create an orderly task for each country that is then saved in the 
+location on the server where they are to be run. At this point, open the 
+`glodide` repository on the server and run through the submission script to submit
+these to the cluster:
+
+```{r}
+system(paste0("open ","\"","L:/OJ/glodide/glodide.Rproj","\""))
+```
+
+----
+
+After the tasks have all finished, we can check to see the fits to see if they are good:
+
+# Check the fits
+
+To do this we take the path of the finished tasks from our bundles
+
+```{r}
+
+# use the bundles paths to work out the path to the runs in derived
+paths <- gsub("raw", "derived", vapply(bundles, FUN = "[[", FUN.VALUE = character(1), "path"))
+
+# no extract the fitting.pdf files
+td <- tempdir()
+fits <- lapply(paths, function(x) {
+  zip::unzip(
+    zipfile = x, 
+    files = file.path(gsub("\\.zip", "", basename(x)), "pack/fitting.pdf"), 
+    exdir = td
+  )})
+
+# get the filepaths for these 
+pdfs <- grep("fitting", list.files(td, full.names = TRUE, recursive = TRUE), value = TRUE)
+
+# combine the files that are larger than 0b. Ob files are for countries that have
+# no COVID-19 deaths to date and as such don't have a fitting.pdf but this file is
+# created because it needs to be for orderly to finish the task
+qpdf::pdf_combine(
+  input = pdfs[file.size(pdfs) > 0], 
+  output = file.path("fits", paste0("lmic_reports_vaccine_", date, ".pdf"))
+)
+```
+
+Now we can view these to work out if they look good. See the troubleshoot for more
+info on what to look out for etc. If some countries need to be rerun, then work
+which countries require rerunning and rebundle those to be run again. For example, 
+let's say France and India need rerunning:
+
+```{r}
+# bundle the countries we need to rerun
+iso3cs_to_rerun <- c("FRA", "IND") 
+bundles_to_rerun <- lapply(
+  iso3cs_to_rerun, 
+  function(x) {
+    orderly::orderly_bundle_pack(
+      path = path_bundles,
+      name = "lmic_reports_vaccine",
+      parameters = list(
+        iso3c = x,
+        date=date,
+        short_run=short_run,
+        parallel=parallel,
+        full_scenarios=full_scenarios,
+        gibbs_sampling=gibbs_sampling,
+        n_mcmc=n_mcmc
+      )
+    )
+  }
+)
+
+names(bundles_to_rerun) <- iso3cs_to_rerun
+saveRDS(bundles_to_rerun, file.path(path_bundles, "bundles_to_rerun.rds"))
+
+```
+
+Then go to `glodide` and resubmit these and repeat above to see the fits. If they
+are better then replace the bundle paths in `bundles`
+
+# pull these back into orderly
+path_outs <- list.files(file.path("L:/OJ/glodide/analysis/data/derived", date), full.names = TRUE)
+import <- lapply(path_outs, orderly::orderly_bundle_import)
+
+# now we run this script to output out combined pdf of fits for us to manually check in the fits folder
+system(
+  command = "cmd.exe",
+  input = paste(
+    '"C:\\Program Files\\R\\R-4.0.2\\bin\\i386\\Rscript.exe" help/fits_for_checking.R',
+    date,
+    "lmic_reports_vaccine"
+  )
+)
+
+# TODO:
+
+# 1. Get gh-pages
+# If gh-pages is not in the repo, i.e. it has just been called then you need to run following in terminal
+# mkdir gh-pages
+# git clone git@github.com:mrc-ide/global-lmic-reports.git gh-pages
+
+# 2. The collation step for run_collate_vaccine
+# Jump to the terminal and execute the bash (probably a way to do this from R but still working on it)
+# alt + shift + m to go to terminal and then run
+# ./run/run_collate_vaccine.sh 2021-08-16
+
+# 3. Push the results to the repository if we are happy with them again from bash
+# N.B. This is done in two steps as the git pack size if all done at once is too big
+# VERSION=$(git rev-parse --short HEAD)
+# git add data
+# git commit --no-verify -m "Update data for version ${VERSION}"
+# git push
+# git add .
+# git commit --no-verify -m "Update pages for version ${VERSION}"
+# git push
+
+# Alternatively, this is bundled in this one bash:
+# ./scripts/publish_website.sh production
+
+# Lastly we also have a staging site, so if you ever want to check that the pages etc look okay
+# the set the remote to there and push to there
+# N.B. The hyperlinks in the page build refer to the main site but the URLs are correct so you can check an individual page by going to the URL.
+# git remote set-url origin git@github.com:mrc-ide/global-lmic-reports-staging.git
+
+
+
+
+
+
+#
+# if we are happy with these
