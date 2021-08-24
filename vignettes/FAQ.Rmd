@@ -11,3 +11,38 @@ vignette: >
 knitr::opts_chunk$set(fig.width = 8, collapse = TRUE)
 knitr::opts_knit$set(root.dir = here::here())
 ```
+
+
+Some values were not matched unambiguously: Channel Islands, Micronesia, Saint Martin, St. Barth
+
+pars_init role
+
+mcmc process and ignored parameters
+
+atol and rtol
+
+countries file
+
+mcmc chain length
+
+elongated summers
+
+complete reintroduction handling 
+
+splines vs mobility
+
+github file size issue for the combined zip will soon need to be split into two...
+
+where to put old runs when github runs out of space:
+
+Ask Wes. https://mrcdata.dide.ic.ac.uk/global-lmic-reports/
+
+Staging site
+
+Lastly we also have a staging site, so if you ever want to check that the pages etc look okay 
+then set the remote to there and push to there. You may have to the set the remote to there and push to there
+# N.B. The hyperlinks in the page build refer to the main site but the URLs are correct so you can check an individual page by going to the URL.
+# git remote set-url origin git@github.com:mrc-ide/global-lmic-reports-staging.git
+
+
+

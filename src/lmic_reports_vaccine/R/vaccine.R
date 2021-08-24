@@ -478,7 +478,7 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
 }
 
 
-extend_vaccine_inputs <- function(vaccine_inputs, time_period, out) {
+extend_vaccine_inputs <- function(vacc_inputs, time_period, out) {
 
   # weekly mean vaccine distributions
   max_vaccine <- mean(tail(vacc_inputs$max_vaccine,7))

@@ -49,13 +49,13 @@ we running, and also whether we are doing a `short_run`. The `short_run` argumen
 dictates whether a small number of trees are used in the BRT.
 
 ```{r, eval = FALSE}
-date <- "2021-08-16"
-short_run <- TRUE
+date <- "2021-08-19"
+short_run <- FALSE
 ```
 
 These arguments are then passed to our 3 tasks:
 
-```{r, eval=FALSE, message=FALSE}
+```{r, eval=FALSE, message=FALSE, warning=FALSE}
 message("*** ECDC data")
 ecdc_id <- orderly::orderly_run("ecdc", parameters = list(date=date), echo = FALSE)
 orderly::orderly_commit(ecdc_id)
@@ -87,12 +87,12 @@ orderly reports to be run using `orderly::orderly_bundle_pack`. The zip files
 generated from this are then copied to the `glodide` repository, which is used to 
 submit these tasks. 
 
-```{r, message=FALSE}
+```{r, message=FALSE, warning = FALSE, echo=FALSE}
 
 message("*** Creating country task bundles")
 
 # main input parameters
-n_mcmc <- 20
+n_mcmc <- 20000
 countries <- "countries"
 parallel <- FALSE
 
@@ -104,7 +104,12 @@ gibbs_sampling <- FALSE
 iso3cs <- grep('^[A-Z]{3}\\s*', readLines(countries), value = TRUE)
 
 # make the orderly bundles to be run on the cluster
-path_bundles <- file.path("L:/OJ/glodide/analysis/data/raw/", date)
+test <- FALSE
+if(test) {
+path_bundles <- file.path("L:/OJ/glodide/analysis/data","raw_test", date)
+} else {
+  path_bundles <- file.path("L:/OJ/glodide/analysis/data", "raw", date)
+}
 dir.create(path_bundles, showWarnings = FALSE)
 
 # bundle these up - this will take like 10 mins to create all the zips. 
@@ -149,19 +154,22 @@ After the tasks have all finished, we can check to see the fits to see if they a
 
 To do this we take the path of the finished tasks from our bundles
 
-```{r}
+```{r, message=FALSE, warning = FALSE, echo=FALSE}
 
 # use the bundles paths to work out the path to the runs in derived
 paths <- gsub("raw", "derived", vapply(bundles, FUN = "[[", FUN.VALUE = character(1), "path"))
 
-# no extract the fitting.pdf files
+# now extract the fitting.pdf files
 td <- tempdir()
 fits <- lapply(paths, function(x) {
-  zip::unzip(
-    zipfile = x, 
-    files = file.path(gsub("\\.zip", "", basename(x)), "pack/fitting.pdf"), 
-    exdir = td
-  )})
+  if(file.exists(x)){
+    zip::unzip(
+      zipfile = x, 
+      files = file.path(gsub("\\.zip", "", basename(x)), "pack/fitting.pdf"), 
+      exdir = td
+    )
+  }
+})
 
 # get the filepaths for these 
 pdfs <- grep("fitting", list.files(td, full.names = TRUE, recursive = TRUE), value = TRUE)
@@ -176,13 +184,12 @@ qpdf::pdf_combine(
 ```
 
 Now we can view these to work out if they look good. See the troubleshoot for more
-info on what to look out for etc. If some countries need to be rerun, then work
-which countries require rerunning and rebundle those to be run again. For example, 
-let's say France and India need rerunning:
+info on what to look out for etc. If some countries need to be rerun, then work out
+which countries require rerunning and rebundle those to be run again:
 
-```{r}
+```{r, message=FALSE, warning = FALSE, echo=FALSE}
 # bundle the countries we need to rerun
-iso3cs_to_rerun <- c("FRA", "IND") 
+iso3cs_to_rerun <- c("BGD") 
 bundles_to_rerun <- lapply(
   iso3cs_to_rerun, 
   function(x) {
@@ -203,61 +210,81 @@ bundles_to_rerun <- lapply(
 )
 
 names(bundles_to_rerun) <- iso3cs_to_rerun
-saveRDS(bundles_to_rerun, file.path(path_bundles, "bundles_to_rerun.rds"))
+saveRDS(bundles_to_rerun, file.path(path_bundles, "BGD_to_rerun.rds"))
 
 ```
 
 Then go to `glodide` and resubmit these and repeat above to see the fits. If they
-are better then replace the bundle paths in `bundles`
+are better then replace the bundle paths in `bundles` object so we know which 
+are the correct tasks to then pull back down. 
 
-# pull these back into orderly
-path_outs <- list.files(file.path("L:/OJ/glodide/analysis/data/derived", date), full.names = TRUE)
-import <- lapply(path_outs, orderly::orderly_bundle_import)
+# Pull fits back into orderly
 
-# now we run this script to output out combined pdf of fits for us to manually check in the fits folder
-system(
-  command = "cmd.exe",
-  input = paste(
-    '"C:\\Program Files\\R\\R-4.0.2\\bin\\i386\\Rscript.exe" help/fits_for_checking.R',
-    date,
-    "lmic_reports_vaccine"
-  )
-)
+Once we are happy with a set of fits for each country, we need to pull them back
+down off the server to local.
 
-# TODO:
+```{r, message=FALSE, warning = FALSE, echo=FALSE}
+# get the original bundles
+bundles <- readRDS(file.path(path_bundles, "bundles.rds"))
 
-# 1. Get gh-pages
-# If gh-pages is not in the repo, i.e. it has just been called then you need to run following in terminal
+# any that we had to rerun
+rerun <- readRDS(file.path(path_bundles, "bundles_to_rerun.rds"))
+bgd_rerun <- readRDS(file.path(path_bundles, "BGD_to_rerun.rds"))
+
+# replace the ones we rerun within bundles
+nms_ch <- c(names(rerun), names(bgd_rerun))
+bundles[nms_ch] <- c(rerun, bgd_rerun)
+
+# now get the filepaths of the tasks to import back
+tasks <- gsub("raw", "derived", as.character(vapply(bundles, "[[", character(1), "path")))
+import <- lapply(tasks, orderly::orderly_bundle_import)
+
+# just double check they all imported
+all(unlist(import))
+```
+
+
+# Create the changes to the github pages
+
+## 1. Get gh-pages
+
+The Github pages repository is at [www.github.com:mrc-ide/global-lmic-reports](www.github.com:mrc-ide/global-lmic-reports) and
+contains all the outputs of model fits conducted to date and the web pages to describe the model fits for each country. It is
+cloned into `gh-pages`, which is where we collate the outputs of the model fits into. 
+
+If gh-pages is not in the repo, i.e. you have just clones `global-lmic-reports-orderly` down for example, then you need to run following in terminal (or from within this repo if the bash chunk tag is working correctly).
+
+```{bash}
 # mkdir gh-pages
 # git clone git@github.com:mrc-ide/global-lmic-reports.git gh-pages
+```
 
-# 2. The collation step for run_collate_vaccine
-# Jump to the terminal and execute the bash (probably a way to do this from R but still working on it)
-# alt + shift + m to go to terminal and then run
-# ./run/run_collate_vaccine.sh 2021-08-16
+## 2. The collation step for run_collate_vaccine
 
-# 3. Push the results to the repository if we are happy with them again from bash
-# N.B. This is done in two steps as the git pack size if all done at once is too big
-# VERSION=$(git rev-parse --short HEAD)
-# git add data
-# git commit --no-verify -m "Update data for version ${VERSION}"
-# git push
-# git add .
-# git commit --no-verify -m "Update pages for version ${VERSION}"
-# git push
+Next we run the collation step, where the necessary outputs from the model fits are copied to gh-pages. It conducts the following steps:
 
-# Alternatively, this is bundled in this one bash:
-# ./scripts/publish_website.sh production
+1. Fetches the latest run model fit for each country for the date argument provided. 
+2. Updates `pars_init.rds` in `lmic_reports_vaccine` with parameters from best model fit for each country.
+3. Copies the pdfs/html files over to `gh-pages`
+4. Copies the projections from each model fit over and combines these into a combined data zip
+5. Copies model projections to the `index_page` and `regional_page` tasks
+6. Runs the remaining tasks needed to create the website (index, FAQ, regional pages)
+7. Copies the output from these remaining tasks to gh-pages. 
 
-# Lastly we also have a staging site, so if you ever want to check that the pages etc look okay
-# the set the remote to there and push to there
-# N.B. The hyperlinks in the page build refer to the main site but the URLs are correct so you can check an individual page by going to the URL.
-# git remote set-url origin git@github.com:mrc-ide/global-lmic-reports-staging.git
+Things to note before running. In step 2, we overwrite the `pars_init.rds` object in `lmic_reports_vaccine`. This is so that next time this task is run, we are using the best initial conditions for the next time you run `lmic_reports_vaccine`. As a result of this overwrite, be careful to make sure you are only calling this collation once you are happy you have the right model fits (and if not make sure `pars_init.rds` is backed up/committed).
 
+Either execute this from the terminal or you can run it using the bash code chunk below (though it doesn't produce output u at the moment, which may be annoying so you can see the output). 
+```{bash}
+# ./run/run_collate_vaccine.sh 2021-08-19
+```
 
+## 3. Push the results to the repository 
 
+Once we are happy that the collation has worked we need to push this to Github. We
+do this in two steps as the git pack size if all done at once is too big. This is all in 
+the following script:
 
+```{bash}
+# ./scripts/publish_website production
+```
 
-
-#
-# if we are happy with these

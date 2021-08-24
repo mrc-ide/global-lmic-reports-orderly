@@ -13,7 +13,7 @@ if(file.exists("L:\\OJ\\pandoc")) {
   tinytex::tlmgr_update()
 }
 
-version_min <- "0.6.6"
+version_min <- "0.6.9"
 if(packageVersion("squire") < version_min) {
   stop("squire needs to be updated to at least v", version_min)
 }
@@ -358,6 +358,12 @@ if(sum(ecdc_df$deaths) > 0) {
   pars_discrete = list('start_date' = TRUE, 'R0' = FALSE, 'Meff' = FALSE,
                        'Meff_pl' = FALSE, "Rt_shift" = FALSE, "Rt_shift_scale" = FALSE)
   pars_obs = list(phi_cases = 1, k_cases = 2, phi_death = 1, k_death = 2, exp_noise = 1e6)
+
+  # here use lower tolerance for countries that have had a really long time without deaths
+  if(iso3c %in% c("NZL", "BRN")) {
+    pars_obs$atol <- 1e-8
+    pars_obs$rtol <- 1e-8
+  }
 
   # add in the spline list
   pars_init <- lapply(pars_init, append, pars_init_rw)
