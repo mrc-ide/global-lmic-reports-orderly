@@ -24,7 +24,8 @@ src/*/header.html
 src/*/_navbar.html
 src/*/logo.png
 src/*/ganalytics.html
-src/*/all_data.rds
+*all_data.rds
+*summaries.rds
 src/*/summaries.rds
 src/parameters/parameters.html
 src/parameters/parameters.md
