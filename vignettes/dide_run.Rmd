@@ -2,7 +2,7 @@
 title: "Running Fits on DIDE Cluster"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteIndexEntry{Running Fits on DIDE Cluster}
   %\VignetteEngine{knitr::rmarkdown}
   \usepackage[utf8]{inputenc}
 ---
@@ -21,6 +21,15 @@ As a background, the fits used to be run through a series of tasks in specific
 docker containers. At writing, docker can't be run locally due to virtualisation
 not being enabled on this windows machine, but this will be explored again 
 once/if this is enabled. 
+
+All code chunks are set to not eval so the knitted html is just for display purposes. 
+I would recommend stepping through this Rmd each time to rerun the fits, updating
+parameters etc as and where needed. Sections with bash code are commented out and can
+be run from within the Rmd script if bash is correctly set up, and if not then can be
+run from the RStudio Terminal if set up to use Git Bash as the default for the
+terminal (see Tools > Global Options > Terminal > New Terminals Open With)  
+
+\
 
 # Set up
 
@@ -49,13 +58,13 @@ we running, and also whether we are doing a `short_run`. The `short_run` argumen
 dictates whether a small number of trees are used in the BRT.
 
 ```{r, eval = FALSE}
-date <- "2021-08-19"
+# date <- "2021-08-20"
 short_run <- FALSE
 ```
 
 These arguments are then passed to our 3 tasks:
 
-```{r, eval=FALSE, message=FALSE, warning=FALSE}
+```{r eval=FALSE, message=FALSE, warning=FALSE}
 message("*** ECDC data")
 ecdc_id <- orderly::orderly_run("ecdc", parameters = list(date=date), echo = FALSE)
 orderly::orderly_commit(ecdc_id)
@@ -87,7 +96,7 @@ orderly reports to be run using `orderly::orderly_bundle_pack`. The zip files
 generated from this are then copied to the `glodide` repository, which is used to 
 submit these tasks. 
 
-```{r, message=FALSE, warning = FALSE, echo=FALSE}
+```{r eval=FALSE, message=FALSE, warning = FALSE}
 
 message("*** Creating country task bundles")
 
@@ -142,19 +151,21 @@ location on the server where they are to be run. At this point, open the
 `glodide` repository on the server and run through the submission script to submit
 these to the cluster:
 
-```{r}
+```{r eval=FALSE}
 system(paste0("open ","\"","L:/OJ/glodide/glodide.Rproj","\""))
 ```
 
 ----
 
-After the tasks have all finished, we can check to see the fits to see if they are good:
+After the tasks have all finished, we can check to see the fits to see if they are good:  
+
+\
 
 # Check the fits
 
 To do this we take the path of the finished tasks from our bundles
 
-```{r, message=FALSE, warning = FALSE, echo=FALSE}
+```{r eval=FALSE, message=FALSE, warning = FALSE}
 
 # use the bundles paths to work out the path to the runs in derived
 paths <- gsub("raw", "derived", vapply(bundles, FUN = "[[", FUN.VALUE = character(1), "path"))
@@ -187,7 +198,7 @@ Now we can view these to work out if they look good. See the troubleshoot for mo
 info on what to look out for etc. If some countries need to be rerun, then work out
 which countries require rerunning and rebundle those to be run again:
 
-```{r, message=FALSE, warning = FALSE, echo=FALSE}
+```{r eval=FALSE, message=FALSE, warning = FALSE}
 # bundle the countries we need to rerun
 iso3cs_to_rerun <- c("BGD") 
 bundles_to_rerun <- lapply(
@@ -216,16 +227,28 @@ saveRDS(bundles_to_rerun, file.path(path_bundles, "BGD_to_rerun.rds"))
 
 Then go to `glodide` and resubmit these and repeat above to see the fits. If they
 are better then replace the bundle paths in `bundles` object so we know which 
-are the correct tasks to then pull back down. 
+are the correct tasks to then pull back down.  
+
+\
 
 # Pull fits back into orderly
 
 Once we are happy with a set of fits for each country, we need to pull them back
 down off the server to local.
 
-```{r, message=FALSE, warning = FALSE, echo=FALSE}
+First read in the paths of the original bundles
+
+```{r eval=FALSE, message=FALSE, warning = FALSE}
 # get the original bundles
 bundles <- readRDS(file.path(path_bundles, "bundles.rds"))
+```
+
+Depending on whether any needed to be rerun, the below will be needed to 
+replace paths in bundles, with the file paths of any new runs. For example, 
+below I did two reruns ('bundles_to_rerun.rds' and 'BGD_to_rerun.rds'), which
+I will use to replace their corresponding countries with in `bundles`:
+
+```{r eval=FALSE, message=FALSE, warning = FALSE}
 
 # any that we had to rerun
 rerun <- readRDS(file.path(path_bundles, "bundles_to_rerun.rds"))
@@ -237,12 +260,19 @@ bundles[nms_ch] <- c(rerun, bgd_rerun)
 
 # now get the filepaths of the tasks to import back
 tasks <- gsub("raw", "derived", as.character(vapply(bundles, "[[", character(1), "path")))
+```
+
+Now that we have updated with the rerun bundles, we know import these back into 
+our local `orderly` archive:
+
+```{r eval=FALSE, message=FALSE, warning = FALSE}
 import <- lapply(tasks, orderly::orderly_bundle_import)
 
 # just double check they all imported
 all(unlist(import))
 ```
 
+\
 
 # Create the changes to the github pages
 
@@ -273,7 +303,7 @@ Next we run the collation step, where the necessary outputs from the model fits 
 
 Things to note before running. In step 2, we overwrite the `pars_init.rds` object in `lmic_reports_vaccine`. This is so that next time this task is run, we are using the best initial conditions for the next time you run `lmic_reports_vaccine`. As a result of this overwrite, be careful to make sure you are only calling this collation once you are happy you have the right model fits (and if not make sure `pars_init.rds` is backed up/committed).
 
-Either execute this from the terminal or you can run it using the bash code chunk below (though it doesn't produce output u at the moment, which may be annoying so you can see the output). 
+Either execute this from the terminal or you can run it using the bash code chunk below (though it doesn't produce output until after it has finished at the moment, which may be annoying so you can see the output). 
 ```{bash}
 # ./run/run_collate_vaccine.sh 2021-08-19
 ```
