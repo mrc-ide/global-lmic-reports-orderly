@@ -3,16 +3,20 @@
 This is an [`orderly`](https://github.com/vimc/orderly) project.  The directories are:
 
 * `src`: create new reports here
-* `archive`: versioed results of running your report
+* `archive`: versioned results of running your report
 * `data`: copies of data used in the reports
 
 (you can delete or edit this file safely)
 
-## Instructions for DIDE server
+## Instructions for DIDE server [CURRENT]
 
-#### 1. pars_init generation
+On overview of the submission of model fits to the DIDE cluster is in the 
+`dide_run.Rmd` vignette in the vignettes folder. All instructions should be self
+contained in that Rmd document, and it is advised to follow through that document. 
+To see an overview, click [here](https://htmlpreview.github.io/?https://github.com/mrc-ide/global-lmic-reports-orderly/blob/master/vignettes/dide_run.html). 
 
-
+For any troubleshooting help, please see the `FAQ.Rmd` vignette in the vignettes folder 
+(also available to viewe [here](https://htmlpreview.github.io/?https://github.com/mrc-ide/global-lmic-reports-orderly/blob/master/vignettes/faq.html))
 
 
 ## Instructions for Azure server [OLD]

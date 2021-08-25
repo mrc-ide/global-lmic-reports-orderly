@@ -1,6 +1,8 @@
 ---
 title: "FAQ"
-output: rmarkdown::html_vignette
+output: rmarkdown::html_vignette:
+  toc: true
+  toc_depth: 4  
 vignette: >
   %\VignetteIndexEntry{FAQ}
   %\VignetteEngine{knitr::rmarkdown}
@@ -12,10 +14,37 @@ knitr::opts_chunk$set(fig.width = 8, collapse = TRUE)
 knitr::opts_knit$set(root.dir = here::here())
 ```
 
+This is a living FAQ with everything to be aware of while running the fits. 
 
+
+### 1. countrycode warnings
+
+A number of countries are not in the `countrycode` database but we don't currently model these so this warning is fine:
+
+```
 Some values were not matched unambiguously: Channel Islands, Micronesia, Saint Martin, St. Barth
+```
 
-pars_init role
+### 2. pars_init role
+
+`pars_init.rds` in the `lmic_reports_vaccine` task contains for each country:
+
+1. Initial conditions for each country that should provide the best fit from the last model run
+
+All the named parameters from `start_date` to `Rt_rw_xx` are the parameters that are
+being changed during the fitting.
+
+2. The scaling factor and covariance matrix for the parameters used as part of the fitting
+
+These two are the final values from the end of the mcmc chain and are stored here as they
+are used to initialise each run. This helps ensure that the mcmc chain can pick up where it
+left off when being rerun and should improve fitting speed dramatically as a result.
+
+3. Few other parameters specific to each country used in creation of Rt trend 
+
+These include: `date_Meff_change`, `Rt_shift_duration` and `Rt_rw_duration`. `date_Meff_change`
+is specific to each country and was previously estimated to be the rough date that mobility
+starts to increase again in each country. `Rt_shift_duration` specifies
 
 mcmc process and ignored parameters
 
