@@ -101,11 +101,20 @@ submit these tasks.
 message("*** Creating country task bundles")
 
 # main input parameters
+
+# how long is the mcmc for
 n_mcmc <- 20000
-countries <- "countries"
+
+# should tasks be run in parallel and use multiple chains. 
+# leave this as FALSE and see FAQs for more info on this
 parallel <- FALSE
 
-# less needed input parameters
+# are we doing just a short run. If so only 20 mcmc iterations are used
+# and only 2 draws from the posterior. Set this to TRUE to do a quick test 
+# run that everything is working basically.
+short_run <- FALSE
+
+# not needed input parameters - leave as FALSE. See FAQ for more info on these
 full_scenarios <- FALSE
 gibbs_sampling <- FALSE
 

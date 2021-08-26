@@ -42,35 +42,33 @@ left off when being rerun and should improve fitting speed dramatically as a res
 
 3. Few other parameters specific to each country used in creation of Rt trend 
 
-These include: `date_Meff_change`, `Rt_shift_duration` and `Rt_rw_duration`. `date_Meff_change`
-is specific to each country and was previously estimated to be the rough date that mobility
-starts to increase again in each country. `Rt_shift_duration` specifies
+These include: `date_Meff_change`, `Rt_shift_duration`, `Rt_shift_scale` and `Rt_rw_duration`. `date_Meff_change` are specific to each country and was previously estimated to be the rough date that mobility starts to increase again in each country. This determines when `Meff_pl` is used for calculating Rt. `Rt_rw_duration` specifies the length of the random walk parameters - this must stay as 14 to ensure that the fitted `Rt_rw_xx` parameters are correct, i.e. these are estimated assuming a 14 day random walk. `Rt_shift_duration`and `Rt_shift_scale` are parameters that were previously used in creating a one time shift in Rt after mobility started increasing, however, in the `lmic_reports_vaccine` script these are bounded so that the shift ~ 0 and so have no impact on the fitting, so ignore these.
 
-mcmc process and ignored parameters
+### 3. mcmc process
 
-atol and rtol
+### 4. atol and rtol
 
-countries file
+### 5. countries file
 
-mcmc chain length
+### 6. mcmc chain length
 
-elongated summers
+### 7. elongated summers
 
-complete reintroduction handling 
+### 8. complete reintroduction handling 
 
-splines vs mobility
+### 9. splines vs mobility
 
-github file size issue for the combined zip will soon need to be split into two...
+### 10. github file size issue for the combined zip will soon need to be split into two...
 
-where to put old runs when github runs out of space:
+### 11. where to put old runs when github runs out of space:
 
 Ask Wes. https://mrcdata.dide.ic.ac.uk/global-lmic-reports/
 
-Staging site
+### 12. Staging site
 
 Lastly we also have a staging site, so if you ever want to check that the pages etc look okay 
 then set the remote to there and push to there. You may have to the set the remote to there and push to there
-# N.B. The hyperlinks in the page build refer to the main site but the URLs are correct so you can check an individual page by going to the URL.
+N.B. The hyperlinks in the page build refer to the main site but the URLs are correct so you can check an individual page by going to the URL.
 # git remote set-url origin git@github.com:mrc-ide/global-lmic-reports-staging.git
 
 
