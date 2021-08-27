@@ -119,7 +119,7 @@ full_scenarios <- FALSE
 gibbs_sampling <- FALSE
 
 # get the isos
-iso3cs <- grep('^[A-Z]{3}\\s*', readLines(countries), value = TRUE)
+iso3cs <- grep('^[A-Z]{3}\\s*', readLines(file.path(here::here(), "countries")), value = TRUE)
 
 # make the orderly bundles to be run on the cluster
 test <- FALSE

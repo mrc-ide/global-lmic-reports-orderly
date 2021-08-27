@@ -853,7 +853,7 @@ if(sum(ecdc_df$deaths) > 0) {
   time_period <- 365
 
   ## We need to know work out vaccine doses and efficacy going forwards
-  model_user_args <- extend_vaccine_inputs(vaccine_inputs, time_period, out)
+  model_user_args <- extend_vaccine_inputs(vacc_inputs, time_period, out)
 
   # Maintaining the current set of measures for a further 3 months
   maintain_scenario <- squire::projections(out,
