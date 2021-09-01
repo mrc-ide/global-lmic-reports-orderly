@@ -208,7 +208,7 @@ which countries require rerunning and rebundle those to be run again:
 
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
 # bundle the countries we need to rerun
-iso3cs_to_rerun <- c("BGD") 
+iso3cs_to_rerun <- c("SDN", "RUS", "TUR", "VEN", "ITA") 
 bundles_to_rerun <- lapply(
   iso3cs_to_rerun, 
   function(x) {
@@ -229,7 +229,7 @@ bundles_to_rerun <- lapply(
 )
 
 names(bundles_to_rerun) <- iso3cs_to_rerun
-saveRDS(bundles_to_rerun, file.path(path_bundles, "BGD_to_rerun.rds"))
+saveRDS(bundles_to_rerun, file.path(path_bundles, "bundles_to_rerun.rds"))
 
 ```
 
@@ -260,11 +260,10 @@ I will use to replace their corresponding countries with in `bundles`:
 
 # any that we had to rerun
 rerun <- readRDS(file.path(path_bundles, "bundles_to_rerun.rds"))
-bgd_rerun <- readRDS(file.path(path_bundles, "BGD_to_rerun.rds"))
 
 # replace the ones we rerun within bundles
-nms_ch <- c(names(rerun), names(bgd_rerun))
-bundles[nms_ch] <- c(rerun, bgd_rerun)
+nms_ch <- c(names(rerun))
+bundles[nms_ch] <- c(rerun)
 
 # now get the filepaths of the tasks to import back
 tasks <- gsub("raw", "derived", as.character(vapply(bundles, "[[", character(1), "path")))
@@ -313,7 +312,7 @@ Things to note before running. In step 2, we overwrite the `pars_init.rds` objec
 
 Either execute this from the terminal or you can run it using the bash code chunk below (though it doesn't produce output until after it has finished at the moment, which may be annoying so you can see the output). 
 ```{bash}
-# ./run/run_collate_vaccine.sh 2021-08-19
+ ./run/run_collate_vaccine.sh 2021-08-25
 ```
 
 ## 3. Push the results to the repository 
@@ -323,6 +322,7 @@ do this in two steps as the git pack size if all done at once is too big. This i
 the following script:
 
 ```{bash}
-# ./scripts/publish_website production
+#must run from git bash
+#./scripts/publish_website production
 ```
 
