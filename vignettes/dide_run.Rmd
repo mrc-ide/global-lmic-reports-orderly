@@ -58,7 +58,7 @@ we running, and also whether we are doing a `short_run`. The `short_run` argumen
 dictates whether a small number of trees are used in the BRT.
 
 ```{r, eval = FALSE}
-date <- "2021-09-09"
+date <- "2021-09-19"
 
 # are we doing just a short run. If so only 20 mcmc iterations are used
 # and only 2 draws from the posterior. Set this to TRUE to do a quick test 
@@ -122,7 +122,6 @@ submit these tasks.
 
 message("*** Creating country task bundles")
 
-  google_id <- orderly::orderly_run("excess_mortality", parameters = list(iso3c = "GBR", date=date, n_mcmc = 1000, adjust_delta = FALSE), echo = FALSE)
 # main input parameters
 
 # how long is the mcmc for
@@ -164,7 +163,6 @@ if(excess_mortality){
       parameters = list(
         iso3c = x,
         date=date,
-        short_run=short_run,
         n_mcmc=n_mcmc,
         adjust_delta = adjust_delta
       )

@@ -139,10 +139,12 @@ fit_spline_rt <- function(data,
                   "Rt_shift_scale" = Rt_shift_scale_max)
   pars_discrete = list('start_date' = TRUE, 'R0' = FALSE, 'Meff' = FALSE,
                        'Meff_pl' = FALSE, "Rt_shift" = FALSE, "Rt_shift_scale" = FALSE)
-  pars_obs = list(phi_cases = 1, k_cases = 2, phi_death = 1, k_death = 2, exp_noise = 1e6,
-                  dur_R = delta_characteristics$required_dur_R,
-                  prob_hosp_multiplier = delta_characteristics$prob_hosp_multiplier,
-                  delta_start_date = delta_characteristics$delta_start_date)
+  pars_obs = list(phi_cases = 1, k_cases = 2, phi_death = 1, k_death = 2, exp_noise = 1e6)
+  #assing this way so they keep NULL if NULL
+  pars_obs$dur_R <- delta_characteristics$required_dur_R
+  pars_obs$prob_hosp_multiplier <- delta_characteristics$prob_hosp_multiplier
+  pars_obs$delta_start_date <- delta_characteristics$start_date
+  pars_obs$shift_duration <- delta_characteristics$shift_duration
 
   # add in the spline list
   pars_init <- append(pars_init, pars_init_rw)
@@ -195,7 +197,9 @@ fit_spline_rt <- function(data,
   owid <- owid %>% filter(countryterritoryCode == iso3c) %>%
     select(date, contains("vacc"))
 
-  vacc_inputs <- get_vaccine_inputs(iso3c, vdm, vacc_types, owid, date_0, who_vacc, who_vacc_meta)
+  vacc_inputs <- get_vaccine_inputs(iso3c, vdm, vacc_types, owid, date_0, who_vacc, who_vacc_meta,
+                                    delta_start_date = pars_obs$delta_start_date,
+                                    shift_duration = pars_obs$shift_duration)
 
   # mixing matrix - assume is same as country as whole
   mix_mat <- squire::get_mixing_matrix(country)
@@ -512,7 +516,7 @@ run_deterministic_comparison_excess <- function(data, squire_model, model_params
   if("dur_R" %in% names(obs_params)) {
     if(obs_params$dur_R != 365) {
       ch_dur_R <- as.integer(as.Date(obs_params$delta_start_date) - model_start_date)
-      model_params$tt_dur_R <- c(0, ch_dur_R, ch_dur_R+60)
+      model_params$tt_dur_R <- c(0, ch_dur_R, ch_dur_R+obs_params$shift_duration)
       model_params$gamma_R <- c(model_params$gamma_R, 2/obs_params$dur_R, model_params$gamma_R)
     }
   }
@@ -521,15 +525,17 @@ run_deterministic_comparison_excess <- function(data, squire_model, model_params
   if("prob_hosp_multiplier" %in% names(obs_params)) {
     if(obs_params$prob_hosp_multiplier != 1) {
       ch_dur_R <- as.integer(as.Date(obs_params$delta_start_date) - model_start_date)
-      model_params$tt_prob_hosp_multiplier <- c(0, ch_dur_R)
-      model_params$prob_hosp_multiplier <- c(model_params$prob_hosp_multiplier, obs_params$prob_hosp_multiplier)
+      model_params$tt_prob_hosp_multiplier <- c(0, seq(ch_dur_R, ch_dur_R + obs_params$shift_duration, by = 1))
+      model_params$prob_hosp_multiplier <- seq(model_params$prob_hosp_multiplier,
+                                               obs_params$prob_hosp_multiplier,
+                                               length.out = length(model_params$tt_prob_hosp_multiplier))
     }
   }
 
   # run model
   model_func <- squire_model$odin_model(user = model_params,
                                         unused_user_action = "ignore")
-  out <- model_func$run(t = seq(0, tail(steps, 1), 1), atol = 1e-8, rtol = 1e-8)
+  out <- model_func$run(t = seq(0, tail(steps, 1), 1), atol = 1e-8, rtol = 1e-8, step_size_min_allow = TRUE)
   index <- squire:::odin_index(model_func)
 
   # get deaths for comparison

@@ -101,8 +101,6 @@ if(adjust_delta){
 } else{
   #these settings should lead to no adjustment
   delta_characteristics <- data.frame(
-    required_dur_R = 365,
-    prob_hosp_multiplier = 1
   )
 }
 

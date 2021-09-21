@@ -5,7 +5,8 @@ ve_d_low <- 0.8
 ve_d_high <- 0.90
 
 # sort out vaccine inputs
-get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, who_vacc_meta) {
+get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, who_vacc_meta,
+                               delta_start_date, shift_duration) {
 
   # filter to just relevant dates
   owid <- owid %>% filter(date <= as.Date(date_0))
@@ -152,122 +153,147 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
 
   }
 
-  # does owid have no data
-  if(all(is.na(owid$total_vaccinations))) {
+  #define a function to calculate vaccine efficientcy for a given set of values
+  get_ret_res <- function(owid, who_vacc, who_vacc_meta, date_vaccine_change,
+                          ve_i_low, ve_i_high, ve_d_low, ve_d_high){
+    # does owid have no data
+    if(all(is.na(owid$total_vaccinations))) {
 
-    # next then check for who data
+      # next then check for who data
 
-    # if this has no data then return 0 for simplicity
-    if(nrow(who_vacc) == 0) {
+      # if this has no data then return 0 for simplicity
+      if(nrow(who_vacc) == 0) {
 
-      vaccine_efficacy_infection <- rep(ve_i_low, 1)
-      vaccine_efficacy_disease <- rep(ve_d_low, 1)
-      vaccine_efficacy_infection <- lapply(vaccine_efficacy_infection, rep, 17)
-      vaccine_efficacy_disease <- lapply(vaccine_efficacy_disease, rep, 17)
+        #must assume dose ratio for future use in counter factuals
 
-      ret_res <- list(
-        date_vaccine_change = date_0,
-        max_vaccine = rep(0, 1),
-        vaccine_efficacy_infection = vaccine_efficacy_infection,
-        vaccine_efficacy_disease = vaccine_efficacy_disease
-      )
+        dose_ratio <- 0
 
-    } else if (is.na(who_vacc$TOTAL_VACCINATIONS)) {
+        vaccine_efficacy_infection <- rep((1-dose_ratio)*ve_i_low + dose_ratio*ve_i_high, 1)
+        vaccine_efficacy_disease <- rep((1-dose_ratio)*ve_d_low + dose_ratio*ve_d_high, 1)
+        vaccine_efficacy_infection <- lapply(vaccine_efficacy_infection, rep, 17)
+        vaccine_efficacy_disease <- lapply(vaccine_efficacy_disease, rep, 17)
 
-      vaccine_efficacy_infection <- rep(ve_i_low, 1)
-      vaccine_efficacy_disease <- rep(ve_d_low, 1)
-      vaccine_efficacy_infection <- lapply(vaccine_efficacy_infection, rep, 17)
-      vaccine_efficacy_disease <- lapply(vaccine_efficacy_disease, rep, 17)
+        ret_res <- list(
+          date_vaccine_change = date_0,
+          max_vaccine = rep(0, 1),
+          vaccine_efficacy_infection = vaccine_efficacy_infection,
+          vaccine_efficacy_disease = vaccine_efficacy_disease
+        )
 
-      ret_res <- list(
-        date_vaccine_change = date_0,
-        max_vaccine = rep(0, 1),
-        vaccine_efficacy_infection = vaccine_efficacy_infection,
-        vaccine_efficacy_disease = vaccine_efficacy_disease
-      )
+      } else if (is.na(who_vacc$TOTAL_VACCINATIONS)) {
 
-    } else {
+        #must assume dose ratio for future use in counter factuals
 
-      # first see if they have persons vaccinated or just total.
-      if(is.na(who_vacc$PERSONS_VACCINATED_1PLUS_DOSE)) {
-        pers_vacc <- who_vacc$TOTAL_VACCINATIONS
-      } else {
-        pers_vacc <- who_vacc$PERSONS_VACCINATED_1PLUS_DOSE
-      }
+        dose_ratio <- 0
 
-      # if there is no start date just distribute the vaccines equally over the last 1 month for now
-      if(nrow(who_vacc_meta) == 0) {
+        vaccine_efficacy_infection <- rep((1-dose_ratio)*ve_i_low + dose_ratio*ve_i_high, 1)
+        vaccine_efficacy_disease <- rep((1-dose_ratio)*ve_d_low + dose_ratio*ve_d_high, 1)
+        vaccine_efficacy_infection <- lapply(vaccine_efficacy_infection, rep, 17)
+        vaccine_efficacy_disease <- lapply(vaccine_efficacy_disease, rep, 17)
 
-        date_vaccine_change <- seq.Date(as.Date(who_vacc$DATE_UPDATED) - 30, as.Date(who_vacc$DATE_UPDATED), 1)
-
-      } else if (nrow(who_vacc_meta) >= 1 && all(is.na(who_vacc_meta$START_DATE))) {
-
-        date_vaccine_change <- seq.Date(as.Date(who_vacc$DATE_UPDATED) -30, as.Date(who_vacc$DATE_UPDATED), 1)
+        ret_res <- list(
+          date_vaccine_change = date_0,
+          max_vaccine = rep(0, 1),
+          vaccine_efficacy_infection = vaccine_efficacy_infection,
+          vaccine_efficacy_disease = vaccine_efficacy_disease
+        )
 
       } else {
 
-        date_vaccine_change <- seq.Date(min(as.Date(who_vacc_meta$START_DATE), na.rm=TRUE), as.Date(who_vacc$DATE_UPDATED), 1)
-
-      }
-
-      # assume took 1 month if still only one data point
-      if(length(unique(date_vaccine_change)) == 1) {
-        date_vaccine_change <- seq.Date(as.Date(date_vaccine_change[1])-30, as.Date(date_vaccine_change[1]), 1)
-      }
-
-      max_vaccine <- round(pers_vacc/length(date_vaccine_change))
-      max_vaccine <- rep(max_vaccine, length(date_vaccine_change))
-
-
-      # ratio of 1st to 2nd doses given
-      if(is.na(who_vacc$PERSONS_VACCINATED_1PLUS_DOSE)) {
-        dose_ratio <- 0.5
-      } else {
-        second <- who_vacc$TOTAL_VACCINATIONS - who_vacc$PERSONS_VACCINATED_1PLUS_DOSE
-        dose_ratio <- second/who_vacc$PERSONS_VACCINATED_1PLUS_DOSE
-        if(is.nan(dose_ratio)) {
-          dose_ratio <- 0
+        # first see if they have persons vaccinated or just total.
+        if(is.na(who_vacc$PERSONS_VACCINATED_1PLUS_DOSE)) {
+          pers_vacc <- who_vacc$TOTAL_VACCINATIONS
+        } else {
+          pers_vacc <- who_vacc$PERSONS_VACCINATED_1PLUS_DOSE
         }
-      }
 
-      # format for odin
-      vaccine_efficacy_infection <- (1-dose_ratio)*ve_i_low + dose_ratio*ve_i_high
-      vaccine_efficacy_disease <- (1-dose_ratio)*ve_d_low + dose_ratio*ve_d_high
-      vaccine_efficacy_infection <- c(rep(ve_i_low,28),  rep(vaccine_efficacy_infection, length.out = max(length(max_vaccine) - 28, 1)))
-      vaccine_efficacy_disease <- c(rep(ve_d_low,28),  rep(vaccine_efficacy_disease, length.out = max(length(max_vaccine) - 28, 1)))
-      vaccine_efficacy_infection <- lapply(vaccine_efficacy_infection, rep, 17)
-      vaccine_efficacy_disease <- lapply(vaccine_efficacy_disease, rep, 17)
+        # if there is no start date just distribute the vaccines equally over the last 1 month for now
+        if(nrow(who_vacc_meta) == 0) {
 
-      ret_res <- list(
-        date_vaccine_change = date_vaccine_change,
-        max_vaccine = max_vaccine,
-        vaccine_efficacy_infection = vaccine_efficacy_infection,
-        vaccine_efficacy_disease = vaccine_efficacy_disease
-      )
-    }
+          date_vaccine_change <- seq.Date(as.Date(who_vacc$DATE_UPDATED) - 30, as.Date(who_vacc$DATE_UPDATED), 1)
 
-  } else if (sum(!is.na(owid$people_vaccinated)) == 1) {
+        } else if (nrow(who_vacc_meta) >= 1 && all(is.na(who_vacc_meta$START_DATE))) {
 
-    # first is there any additional data in the WHO
-    if(nrow(who_vacc) == 1) {
+          date_vaccine_change <- seq.Date(as.Date(who_vacc$DATE_UPDATED) -30, as.Date(who_vacc$DATE_UPDATED), 1)
 
-      if(!is.na(who_vacc$PERSONS_VACCINATED_1PLUS_DOSE)) {
+        } else {
 
-        # if we have an extra data point here then add it in
-        date_vaccine_change <- c(who_vacc$DATE_UPDATED, owid$date[!is.na(owid$people_vaccinated)])
-        max_vaccine <- c(who_vacc$PERSONS_VACCINATED_1PLUS_DOSE, owid$people_vaccinated[!is.na(owid$people_vaccinated)])
+          date_vaccine_change <- seq.Date(min(as.Date(who_vacc_meta$START_DATE), na.rm=TRUE), as.Date(who_vacc$DATE_UPDATED), 1)
 
-        # and is there a start date
-        if(nrow(who_vacc_meta) >= 1) {
-          if(any(!is.na(who_vacc_meta$START_DATE))) {
-            date_vaccine_change <- c(min(as.Date(who_vacc_meta$START_DATE), na.rm = TRUE), date_vaccine_change)
-            max_vaccine <- c(0, max_vaccine)
+        }
+
+        # assume took 1 month if still only one data point
+        if(length(unique(date_vaccine_change)) == 1) {
+          date_vaccine_change <- seq.Date(as.Date(date_vaccine_change[1])-30, as.Date(date_vaccine_change[1]), 1)
+        }
+
+        max_vaccine <- round(pers_vacc/length(date_vaccine_change))
+        max_vaccine <- rep(max_vaccine, length(date_vaccine_change))
+
+
+        # ratio of 1st to 2nd doses given
+        if(is.na(who_vacc$PERSONS_VACCINATED_1PLUS_DOSE)) {
+          dose_ratio <- 0.5
+        } else {
+          second <- who_vacc$TOTAL_VACCINATIONS - who_vacc$PERSONS_VACCINATED_1PLUS_DOSE
+          dose_ratio <- second/who_vacc$PERSONS_VACCINATED_1PLUS_DOSE
+          if(is.nan(dose_ratio)) {
+            dose_ratio <- 0
           }
         }
 
-        # order them
-        max_vaccine <- max_vaccine[order(date_vaccine_change)]
-        date_vaccine_change <- date_vaccine_change[order(date_vaccine_change)]
+        # format for odin
+        vaccine_efficacy_infection <- (1-dose_ratio)*ve_i_low + dose_ratio*ve_i_high
+        vaccine_efficacy_disease <- (1-dose_ratio)*ve_d_low + dose_ratio*ve_d_high
+        vaccine_efficacy_infection <- c(rep(ve_i_low,28),  rep(vaccine_efficacy_infection, length.out = max(length(max_vaccine) - 28, 1)))
+        vaccine_efficacy_disease <- c(rep(ve_d_low,28),  rep(vaccine_efficacy_disease, length.out = max(length(max_vaccine) - 28, 1)))
+        vaccine_efficacy_infection <- lapply(vaccine_efficacy_infection, rep, 17)
+        vaccine_efficacy_disease <- lapply(vaccine_efficacy_disease, rep, 17)
+
+        ret_res <- list(
+          date_vaccine_change = date_vaccine_change,
+          max_vaccine = max_vaccine,
+          vaccine_efficacy_infection = vaccine_efficacy_infection,
+          vaccine_efficacy_disease = vaccine_efficacy_disease
+        )
+      }
+
+    } else if (sum(!is.na(owid$people_vaccinated)) == 1) {
+
+      # first is there any additional data in the WHO
+      if(nrow(who_vacc) == 1) {
+
+        if(!is.na(who_vacc$PERSONS_VACCINATED_1PLUS_DOSE)) {
+
+          # if we have an extra data point here then add it in
+          date_vaccine_change <- c(who_vacc$DATE_UPDATED, owid$date[!is.na(owid$people_vaccinated)])
+          max_vaccine <- c(who_vacc$PERSONS_VACCINATED_1PLUS_DOSE, owid$people_vaccinated[!is.na(owid$people_vaccinated)])
+
+          # and is there a start date
+          if(nrow(who_vacc_meta) >= 1) {
+            if(any(!is.na(who_vacc_meta$START_DATE))) {
+              date_vaccine_change <- c(min(as.Date(who_vacc_meta$START_DATE), na.rm = TRUE), date_vaccine_change)
+              max_vaccine <- c(0, max_vaccine)
+            }
+          }
+
+          # order them
+          max_vaccine <- max_vaccine[order(date_vaccine_change)]
+          date_vaccine_change <- date_vaccine_change[order(date_vaccine_change)]
+
+        } else {
+
+          date_vaccine_change <- owid$date[!is.na(owid$people_vaccinated)]
+          max_vaccine <- owid$people_vaccinated[!is.na(owid$people_vaccinated)]
+
+          # and is there a start date
+          if(nrow(who_vacc_meta) >= 1) {
+            if(any(!is.na(who_vacc_meta$START_DATE))) {
+              date_vaccine_change <- c(min(as.Date(who_vacc_meta$START_DATE), na.rm = TRUE), date_vaccine_change)
+              max_vaccine <- c(0, max_vaccine)
+            }
+          }
+        }
 
       } else {
 
@@ -281,169 +307,276 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
             max_vaccine <- c(0, max_vaccine)
           }
         }
+
       }
 
-    } else {
-
-      date_vaccine_change <- owid$date[!is.na(owid$people_vaccinated)]
-      max_vaccine <- owid$people_vaccinated[!is.na(owid$people_vaccinated)]
-
-      # and is there a start date
-      if(nrow(who_vacc_meta) >= 1) {
-        if(any(!is.na(who_vacc_meta$START_DATE))) {
-          date_vaccine_change <- c(min(as.Date(who_vacc_meta$START_DATE), na.rm = TRUE), date_vaccine_change)
-          max_vaccine <- c(0, max_vaccine)
-        }
+      # assume took 1 month if still only one data point
+      if(length(unique(date_vaccine_change)) == 1) {
+        max_vaccine <- c(0, max(max_vaccine))
+        date_vaccine_change <- c(as.Date(date_vaccine_change[1])-30, as.Date(date_vaccine_change[1]))
       }
 
-    }
+      peeps <- interp_diffs(date_vacc = date_vaccine_change, tot = max_vaccine)
+      date_vaccine_change <- peeps$date
+      max_vaccine <- peeps$max
 
-    # assume took 1 month if still only one data point
-    if(length(unique(date_vaccine_change)) == 1) {
-      max_vaccine <- c(0, max(max_vaccine))
-      date_vaccine_change <- c(as.Date(date_vaccine_change[1])-30, as.Date(date_vaccine_change[1]))
-    }
-
-    peeps <- interp_diffs(date_vacc = date_vaccine_change, tot = max_vaccine)
-    date_vaccine_change <- peeps$date
-    max_vaccine <- peeps$max
-
-    # ratio of 1st to 2nd doses given
-    if (all(is.na(owid$people_vaccinated))) {
-      if(nrow(who_vacc) == 1) {
-        if(is.na(who_vacc$PERSONS_VACCINATED_1PLUS_DOSE)) {
-          dose_ratio <- 0.5
+      # ratio of 1st to 2nd doses given
+      if (all(is.na(owid$people_vaccinated))) {
+        if(nrow(who_vacc) == 1) {
+          if(is.na(who_vacc$PERSONS_VACCINATED_1PLUS_DOSE)) {
+            dose_ratio <- 0.5
+          } else {
+            second <- who_vacc$TOTAL_VACCINATIONS - who_vacc$PERSONS_VACCINATED_1PLUS_DOSE
+            dose_ratio <- second/who_vacc$PERSONS_VACCINATED_1PLUS_DOSE
+            dose_ratio[seq_len(min(length(dose_ratio), 28))] <- 0
+          }
         } else {
-          second <- who_vacc$TOTAL_VACCINATIONS - who_vacc$PERSONS_VACCINATED_1PLUS_DOSE
-          dose_ratio <- second/who_vacc$PERSONS_VACCINATED_1PLUS_DOSE
-          dose_ratio[seq_len(min(length(dose_ratio), 28))] <- 0
+          dose_ratio <- 0.5
         }
       } else {
-        dose_ratio <- 0.5
+        dose_ratio <- mean(1 - (owid$people_vaccinated[!is.na(owid$people_vaccinated)]/owid$total_vaccinations[!is.na(owid$people_vaccinated)]))
       }
+
+      # format for odin
+      vaccine_efficacy_infection <- (1-dose_ratio)*ve_i_low + dose_ratio*ve_i_high
+      vaccine_efficacy_disease <- (1-dose_ratio)*ve_d_low + dose_ratio*ve_d_high
+      vaccine_efficacy_infection <- seq(ve_i_low, vaccine_efficacy_infection, length.out = length(max_vaccine))
+      vaccine_efficacy_disease <- seq(ve_d_low, vaccine_efficacy_disease, length.out = length(max_vaccine))
+      vaccine_efficacy_infection <- lapply(vaccine_efficacy_infection, rep, 17)
+      vaccine_efficacy_disease <- lapply(vaccine_efficacy_disease, rep, 17)
+
+      ret_res <- list(
+        date_vaccine_change = date_vaccine_change,
+        max_vaccine = max_vaccine,
+        vaccine_efficacy_infection = vaccine_efficacy_infection,
+        vaccine_efficacy_disease = vaccine_efficacy_disease
+      )
+
+
+
     } else {
-      dose_ratio <- mean(1 - (owid$people_vaccinated[!is.na(owid$people_vaccinated)]/owid$total_vaccinations[!is.na(owid$people_vaccinated)]))
-    }
 
-    # format for odin
-    vaccine_efficacy_infection <- (1-dose_ratio)*ve_i_low + dose_ratio*ve_i_high
-    vaccine_efficacy_disease <- (1-dose_ratio)*ve_d_low + dose_ratio*ve_d_high
-    vaccine_efficacy_infection <- seq(ve_i_low, vaccine_efficacy_infection, length.out = length(max_vaccine))
-    vaccine_efficacy_disease <- seq(ve_d_low, vaccine_efficacy_disease, length.out = length(max_vaccine))
-    vaccine_efficacy_infection <- lapply(vaccine_efficacy_infection, rep, 17)
-    vaccine_efficacy_disease <- lapply(vaccine_efficacy_disease, rep, 17)
+      # if no indication on split in dosng assume all 1st dose
+      if(all(is.na(owid$people_vaccinated))) {
 
-    ret_res <- list(
-      date_vaccine_change = date_vaccine_change,
-      max_vaccine = max_vaccine,
-      vaccine_efficacy_infection = vaccine_efficacy_infection,
-      vaccine_efficacy_disease = vaccine_efficacy_disease
-    )
+        if(sum(!is.na(owid$total_vaccinations)) == 1) {
 
+          if(nrow(who_vacc) == 1) {
 
+            if(!is.na(who_vacc$TOTAL_VACCINATIONS)) {
 
-  } else {
+              # if we have an extra data point here then add it in
+              date_vaccine_change <- c(who_vacc$DATE_UPDATED, owid$date[!is.na(owid$total_vaccinations)])
+              max_vaccine <- c(who_vacc$TOTAL_VACCINATIONS, owid$total_vaccinations[!is.na(owid$total_vaccinations)])
 
-    # if no indication on split in dosng assume all 1st dose
-    if(all(is.na(owid$people_vaccinated))) {
-
-      if(sum(!is.na(owid$total_vaccinations)) == 1) {
-
-        if(nrow(who_vacc) == 1) {
-
-          if(!is.na(who_vacc$TOTAL_VACCINATIONS)) {
-
-            # if we have an extra data point here then add it in
-            date_vaccine_change <- c(who_vacc$DATE_UPDATED, owid$date[!is.na(owid$total_vaccinations)])
-            max_vaccine <- c(who_vacc$TOTAL_VACCINATIONS, owid$total_vaccinations[!is.na(owid$total_vaccinations)])
-
-            # and is there a start date
-            if(nrow(who_vacc_meta) >= 1) {
-              if(any(!is.na(who_vacc_meta$START_DATE))) {
-                if(any(who_vacc_meta$START_DATE != "")) {
-                  date_vaccine_change <- c(min(as.Date(who_vacc_meta$START_DATE), na.rm = TRUE), date_vaccine_change)
-                  max_vaccine <- c(0, max_vaccine)
+              # and is there a start date
+              if(nrow(who_vacc_meta) >= 1) {
+                if(any(!is.na(who_vacc_meta$START_DATE))) {
+                  if(any(who_vacc_meta$START_DATE != "")) {
+                    date_vaccine_change <- c(min(as.Date(who_vacc_meta$START_DATE), na.rm = TRUE), date_vaccine_change)
+                    max_vaccine <- c(0, max_vaccine)
+                  }
                 }
               }
-            }
 
-            # order them
-            max_vaccine <- max_vaccine[order(date_vaccine_change)]
-            date_vaccine_change <- date_vaccine_change[order(date_vaccine_change)]
+              # order them
+              max_vaccine <- max_vaccine[order(date_vaccine_change)]
+              date_vaccine_change <- date_vaccine_change[order(date_vaccine_change)]
 
-            # assume took 1 month.
-            if(length(unique(date_vaccine_change)) == 1) {
-              max_vaccine <- c(0, max(max_vaccine))
-              date_vaccine_change <- c(as.Date(date_vaccine_change[1])-30, as.Date(date_vaccine_change[1]))
+              # assume took 1 month.
+              if(length(unique(date_vaccine_change)) == 1) {
+                max_vaccine <- c(0, max(max_vaccine))
+                date_vaccine_change <- c(as.Date(date_vaccine_change[1])-30, as.Date(date_vaccine_change[1]))
+              }
+
             }
 
           }
 
+          peeps <- interp_diffs(date_vacc = date_vaccine_change, tot = max_vaccine)
+
+        } else {
+
+          peeps <- interp_diffs(date_vacc = owid$date, tot = owid$total_vaccinations)
+
+        }
+        # peeps vaccinations given out per day
+        date_vaccine_change <- peeps$date
+        max_vaccine <- peeps$max
+        dose_ratio <- rep(0, length(date_vaccine_change))
+
+      } else {
+
+        # interpolate the total vaccinations. Some though have most recnt data only for
+        # people vaccinated in which case do that first and use the dates from that for the
+        # total vaccination interpolation
+        min_date <- min(c(owid$date[!is.na(owid$people_vaccinated)], owid$date[!is.na(owid$total_vaccinations)]))
+        max_date <- max(c(owid$date[!is.na(owid$people_vaccinated)], owid$date[!is.na(owid$total_vaccinations)]))
+        dates_to_interp <- seq.Date(as.Date(min_date), as.Date(max_date), 1)
+        tots <- interp_for_dates(date_vacc = owid$date, tot = owid$total_vaccinations, dates = dates_to_interp)
+        peeps <- interp_for_dates(date_vacc = owid$date, tot = owid$people_vaccinated, dates = dates_to_interp)
+
+        # peeps vaccinations given out per day
+        date_vaccine_change <- peeps$date
+        max_vaccine <- peeps$max
+
+        # now for doses
+        firsts <- tots$max
+        if (all(is.na(owid$people_fully_vaccinated))) {
+          dose_ratio <- rep(0, length(date_vaccine_change))
+        } else {
+
+          seconds <- tots$max - peeps$max
+          seconds[seconds < 0] <- 0
+          firsts <- cumsum(firsts)
+          seconds <- cumsum(seconds)
+          dose_ratio <- vapply(seconds/firsts, min, numeric(1), 1.0)
+          dose_ratio[is.na(dose_ratio)] <- 0
+          dose_ratio <- dose_ratio[which(tots$date %in% peeps$date)]
+
+          # and now let sort it out to be more realistic
+          # ratio should start at 0 for the first 28 days de facto
+          dose_ratio[seq_len(min(length(dose_ratio), 28))] <- 0
+
         }
 
-        peeps <- interp_diffs(date_vacc = date_vaccine_change, tot = max_vaccine)
-
-      } else {
-
-        peeps <- interp_diffs(date_vacc = owid$date, tot = owid$total_vaccinations)
-
-      }
-      # peeps vaccinations given out per day
-      date_vaccine_change <- peeps$date
-      max_vaccine <- peeps$max
-      dose_ratio <- rep(0, length(date_vaccine_change))
-
-    } else {
-
-      # interpolate the total vaccinations. Some though have most recnt data only for
-      # people vaccinated in which case do that first and use the dates from that for the
-      # total vaccination interpolation
-      min_date <- min(c(owid$date[!is.na(owid$people_vaccinated)], owid$date[!is.na(owid$total_vaccinations)]))
-      max_date <- max(c(owid$date[!is.na(owid$people_vaccinated)], owid$date[!is.na(owid$total_vaccinations)]))
-      dates_to_interp <- seq.Date(as.Date(min_date), as.Date(max_date), 1)
-      tots <- interp_for_dates(date_vacc = owid$date, tot = owid$total_vaccinations, dates = dates_to_interp)
-      peeps <- interp_for_dates(date_vacc = owid$date, tot = owid$people_vaccinated, dates = dates_to_interp)
-
-      # peeps vaccinations given out per day
-      date_vaccine_change <- peeps$date
-      max_vaccine <- peeps$max
-
-      # now for doses
-      firsts <- tots$max
-      if (all(is.na(owid$people_fully_vaccinated))) {
-        dose_ratio <- rep(0, length(date_vaccine_change))
-      } else {
-
-        seconds <- tots$max - peeps$max
-        seconds[seconds < 0] <- 0
-        firsts <- cumsum(firsts)
-        seconds <- cumsum(seconds)
-        dose_ratio <- vapply(seconds/firsts, min, numeric(1), 1.0)
-        dose_ratio[is.na(dose_ratio)] <- 0
-        dose_ratio <- dose_ratio[which(tots$date %in% peeps$date)]
-
-        # and now let sort it out to be more realistic
-        # ratio should start at 0 for the first 28 days de facto
-        dose_ratio[seq_len(min(length(dose_ratio), 28))] <- 0
-
       }
 
+      # possibly best to interpolate
+
+      # now to work out the efficacy
+      vaccine_efficacy_infection <- (1-dose_ratio)*ve_i_low + dose_ratio*ve_i_high
+      vaccine_efficacy_disease <- (1-dose_ratio)*ve_d_low + dose_ratio*ve_d_high
+      vaccine_efficacy_infection <- lapply(vaccine_efficacy_infection, rep, 17)
+      vaccine_efficacy_disease <- lapply(vaccine_efficacy_disease, rep, 17)
+
+      ret_res <- list(
+        date_vaccine_change = date_vaccine_change,
+        max_vaccine = max_vaccine,
+        vaccine_efficacy_infection = vaccine_efficacy_infection,
+        vaccine_efficacy_disease = vaccine_efficacy_disease
+      )
+    }
+    ret_res$dose_ratio <- dose_ratio #append this for future use
+    return(ret_res)
+  }
+  ret_res <- get_ret_res(owid, who_vacc, who_vacc_meta, date_vaccine_change,
+                         ve_i_low, ve_i_high, ve_d_low, ve_d_high)
+  dose_ratio <- ret_res$dose_ratio
+  ret_res$dose_ratio <- NULL
+  # if delta start date and shift duration are given then apply an adjust on
+  # vaccine efficacy for the delta variant
+  if(!is.null(delta_start_date)){
+    if(is.null(shift_duration)){
+      stop("Only one of delta start date and shift duration supplied")
     }
 
-    # possibly best to interpolate
+    #if both are not NULL then we apply the shift
 
-    # now to work out the efficacy
-    vaccine_efficacy_infection <- (1-dose_ratio)*0.6 + dose_ratio*0.8
-    vaccine_efficacy_disease <- (1-dose_ratio)*0.8 + dose_ratio*0.98
-    vaccine_efficacy_infection <- lapply(vaccine_efficacy_infection, rep, 17)
-    vaccine_efficacy_disease <- lapply(vaccine_efficacy_disease, rep, 17)
+    #values to shift to once delta is dominant
+    ve_i_low_d <- 0.33
+    ve_i_high_d <- 0.58
+    ve_d_low_d <- 0.8
+    ve_d_high_d <- 0.90
 
-    ret_res <- list(
-      date_vaccine_change = date_vaccine_change,
-      max_vaccine = max_vaccine,
-      vaccine_efficacy_infection = vaccine_efficacy_infection,
-      vaccine_efficacy_disease = vaccine_efficacy_disease
+    ret_res_delta <- get_ret_res(owid, who_vacc, who_vacc_meta, date_vaccine_change,
+                                 ve_i_low_d, ve_i_high_d, ve_d_low_d, ve_d_high_d)
+
+    #some basic checks that should always be correct
+    if(
+      !all(ret_res$date_vaccine_change == ret_res_delta$date_vaccine_change) |
+      !all(ret_res$max_vaccine == ret_res_delta$max_vaccine)
+    ){
+      stop("Unequal vaccine assingment/date changes in Delta adjustment, please check coding.")
+    }
+    if(
+      all(unlist(ret_res$vaccine_efficacy_infection) == unlist(ret_res_delta$vaccine_efficacy_infection)) |
+      all(unlist(ret_res$vaccine_efficacy_disease) == unlist(ret_res_delta$vaccine_efficacy_disease))
+    ){
+      #check if ratio is == 0 then we won't expect a change or it doesn't matter
+      if(all(dose_ratio != 0) | all(ret_res_delta$dose_ratio != 0)){
+        stop("Vaccine efficacy unchanged in Delta adjustment, please check coding.")
+      }
+    }
+
+    #set it so that over the shift period the values swap from the non delta values
+    #to the delta values
+
+    #function to extract efficacy from list of vectors
+    get_efficacy <- function(x){
+      if(length(unique(x))!=1){
+        stop("This code is only set up to handle identical values of efficacy across age groups")
+      }
+      x[1]
+    }
+
+    #convert to data frame for ease
+    ret_res_df <- data.frame(
+      date = ret_res$date_vaccine_change,
+      max_vaccine = ret_res$max_vaccine,
+      vei = sapply(ret_res$vaccine_efficacy_infection, get_efficacy),
+      ved = sapply(ret_res$vaccine_efficacy_disease, get_efficacy),
+      vei_d = sapply(ret_res_delta$vaccine_efficacy_infection, get_efficacy),
+      ved_d = sapply(ret_res_delta$vaccine_efficacy_disease, get_efficacy)
     )
+
+    #add the first and last day of the shift period and fill the values
+    ret_res_df <- ret_res_df %>%
+      dplyr::right_join(
+        data.frame(
+          date = unique(c(delta_start_date, delta_start_date + shift_duration, ret_res_df$date))
+        ),
+        by = "date"
+      ) %>%
+      dplyr::arrange(date) %>%
+      tidyr::fill(
+        c(max_vaccine, vei, ved, vei_d, ved_d),
+        .direction = "downup" #the up only effects things if there is no data before the shift, at which point we might as well use the later data
+      )
+
+    #calculate the combined value
+    ret_res_df <- ret_res_df %>%
+      mutate(
+        shift = if_else(
+          date >= delta_start_date & date <= delta_start_date + shift_duration,
+          as.numeric(date - delta_start_date)/shift_duration,
+          0),
+        shift = if_else(
+          shift == 0 & date > delta_start_date + shift_duration,
+          1,
+          shift
+        ),
+        vei_c = (1-shift)*vei + shift*vei_d,
+        ved_c = (1-shift)*ved + shift*ved_d
+      ) %>%
+      select(date, max_vaccine, vei_c, ved_c)
+
+    #add a date for every day in the shift period
+    ret_res_df <- ret_res_df %>%
+      dplyr::right_join(
+        data.frame(
+          date = unique(c(ret_res_df$date, delta_start_date + seq(0, shift_duration, by = 1)))
+        ),
+        by = "date"
+      ) %>% arrange(
+        date
+      ) %>%
+      mutate(
+        across(
+          c(vei_c, ved_c, max_vaccine),
+          ~approx(date,.x,date)$y
+        )
+      )
+
+    #add to ret_res
+
+    ret_res$date_vaccine_change <- ret_res_df$date
+    ret_res$max_vaccine <- ret_res_df$max_vaccine
+    ret_res$vaccine_efficacy_infection <- lapply(ret_res_df$vei_c, rep, 17)
+    ret_res$vaccine_efficacy_disease <- lapply(ret_res_df$ved_c, rep, 17)
+
+  } else if(!is.null(shift_duration)){
+    stop("Only one of delta start date and shift duration supplied")
   }
 
   # trim to date
@@ -469,12 +602,6 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
   # Checks here
   if(any(ret_res$max_vaccine<0)) {
     stop("Neg Vaccines")
-  }
-  if(any(unlist(ret_res$vaccine_efficacy_infection)<0.6)) {
-    stop("Too low VE_I")
-  }
-  if(any(unlist(ret_res$vaccine_efficacy_infection)>0.8)) {
-    stop("Too high VE_I")
   }
   if(length(unique(unlist(lapply(ret_res, length))[1:4])) != 1) {
     stop("Incorrect lengths")
