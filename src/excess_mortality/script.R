@@ -22,34 +22,20 @@ if(packageVersion("nimue") < version_min) {
 ## -----------------------------------------------------------------------------
 
 # get data from file
-data <- read.csv("export_country.csv")
-data2 <- data[data$iso3c == iso3c, ] %>%
-  mutate(date = as.Date(date)) %>%
-  arrange(date) %>%
-  select(date, estimated_daily_excess_deaths, daily_covid_deaths) %>%
-  rename(deaths = estimated_daily_excess_deaths,
-         covid = daily_covid_deaths) %>%
-  complete(date = seq.Date(min(date), max(date), 1)) %>%
-  fill(deaths, covid,  .direction = "down") %>%
-  mutate(only_pos = deaths) %>%
-  mutate(only_pos = replace(only_pos, which(only_pos < 0), 0)) %>%
-  rowwise() %>%
-  mutate(new = max(c(deaths, covid))) %>%
-  filter(date <= date_0)
-
-# TODO: Figure out what our actual timeseries of daily deaths is and how to create it:
-# e.g. currently the following plot will show isues with say using the max of either deaths or covid above:
-# ggplot(data2, aes(date, cumsum(deaths))) + geom_line() +
-# geom_line(aes(y = cumsum(covid)), color = "red") +
-# geom_line(aes(y = cumsum(new)), color = "blue") +
-# geom_line(aes(y = cumsum(only_pos)), color = "green")
+data <- readRDS("excess_deaths.Rds")
+data2 <- data[data$iso3c == iso3c, ]
 
 ## b. Sort out what is to be our death time series
 ## -----------------------------------------------------------------------------
 
 # here I have just taken the maximum of either excess or covid on each day.
 # but this is probably not the best idea as it likely overestimates covid deaths
-df <- data2 %>% select(date, new) %>% rename(deaths = new)
+
+# I'm not sure this does over estimate, if excess mortality is disconnected to
+# covid deaths then we are essentially using reported deaths (an under-estimate)
+# Only case I can think of for over-estimate is when excess deaths spikes due to
+# lack of treatment etc, whilst covid deaths are well reported and tested for.
+df <- data2
 df$deaths <- as.integer(df$deaths)
 
 ## c. Any other parameters needed to be worked out
@@ -62,6 +48,63 @@ if(!(iso3c %in% squire::population$iso3c)) {
 country <- squire::population$country[match(iso3c, squire::population$iso3c)]
 pop <- squire::get_population(country)$n
 
+if(adjust_delta){
+  #open data from covariants
+  delta_characteristics <- readRDS("delta_characteristics.Rds") %>% ungroup()
+
+  #get data or impute if not there
+  if (iso3c %in% delta_characteristics$iso3c) {
+    this_iso3c <- iso3c
+    delta_characteristics <- delta_characteristics %>%
+      filter(iso3c == this_iso3c) %>%
+      select(where(~is.numeric(.x) | is.Date(.x)))
+  } else if (
+    countrycode::countrycode(iso3c, origin = "iso3c",
+                             destination = "un.regionsub.name") %in%
+    delta_characteristics$sub_region
+  ) {
+    this_sub_region <- countrycode::countrycode(iso3c,
+                                                origin = "iso3c", destination = "un.regionsub.name")
+    #we then use the median values of all countries in that sub region
+    delta_characteristics <- delta_characteristics %>%
+      filter(
+        sub_region == this_sub_region
+      ) %>%
+      summarise(across(
+        where(~is.numeric(.x) | is.Date(.x)),
+        ~median(.x, na.rm = T)
+      ))
+  } else if (
+    countrycode::countrycode(iso3c, origin = "iso3c",
+                             destination = "continent") %in%
+    delta_characteristics$continent
+  ) {
+    this_continent <- countrycode::countrycode(iso3c, origin = "iso3c",
+                                               destination = "continent")
+    #we then use the median values of all countries in that contient
+    delta_characteristics <- delta_characteristics %>%
+      filter(
+        continent == this_continent
+      ) %>%
+      summarise(across(
+        where(~is.numeric(.x) | is.Date(.x)),
+        ~median(.x, na.rm = T)
+      ))
+  } else{
+    #else we use the median values for the world
+    delta_characteristics <- delta_characteristics %>%
+      summarise(across(
+        where(~is.numeric(.x) | is.Date(.x)),
+        ~median(.x, na.rm = T)
+      ))
+  }
+} else{
+  #these settings should lead to no adjustment
+  delta_characteristics <- data.frame(
+    required_dur_R = 365,
+    prob_hosp_multiplier = 1
+  )
+}
 
 ## -----------------------------------------------------------------------------
 ## 2. Fit Model
@@ -75,9 +118,7 @@ res <- fit_spline_rt(
   n_mcmc = as.numeric(n_mcmc),
   replicates = as.numeric(replicates),
   model = model,
-  pars_obs_dur_R = as.numeric(dur_R),
-  pars_obs_prob_hosp_multiplier = as.numeric(prob_hosp_multiplier),
-  pars_obs_delta_start_date = as.Date(delta_start_date),
+  delta_characteristics = delta_characteristics
 )
 
 ## -----------------------------------------------------------------------------
@@ -106,4 +147,3 @@ ar <- ar_plot(res)
 ggsave("fitting.pdf",width=12, height=12,
        cowplot::plot_grid(rtp$plot + ggtitle(country),
                           dp, cdp, ar, ncol = 1))
-

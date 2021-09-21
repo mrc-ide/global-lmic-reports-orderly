@@ -40,15 +40,13 @@ parameters:
       default: 20
     n_mcmc:
       default: 20000
-    prob_hosp_multiplier:
-      default: 1
-    dur_R:
-      default: 365
-    delta_start_date:
-      default: "2021-05-01"
+    n_chains:
+      default: 3
     date: ~
     model:
       default: "NIMUE"
+    adjust_delta:
+      default: TRUE
 
 
 # You must list at least one artefact that your report will generate.
@@ -114,6 +112,7 @@ packages:
   - countrycode
   - cowplot
   - RhpcBLASctl
+  - lubridate
 
 # Source files, in addition to the script.  Typically these will
 # contain function definitions.  These will be sourced after loading
@@ -138,7 +137,6 @@ sources:
 #
 resources:
   - pars_init.rds
-  - export_country.csv
   - coverage_strategies.rds
 
 global_resources:
@@ -177,3 +175,11 @@ depends:
       who_vacc_meta.rds: who_vacc_meta.rds
       who_vacc.rds: who_vacc.rds
       owid.rds: owid.rds
+  economist:
+    id: latest(parameter:date == date)
+    use:
+      excess_deaths.rds: excess_deaths.rds
+  covariants:
+    id: latest(parameter:date == date)
+    use:
+      delta_characteristics.rds: delta_characteristics.rds

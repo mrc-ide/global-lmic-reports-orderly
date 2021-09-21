@@ -3,9 +3,7 @@ fit_spline_rt <- function(data,
                           country,
                           pop,
                           vacc_inputs,
-                          pars_obs_dur_R = 365,
-                          pars_obs_prob_hosp_multiplier = 1,
-                          pars_obs_delta_start_date = as.Date("2021-04-01"),
+                          delta_characteristics,
                           model = "NIMUE",
                           n_mcmc = 10000,
                           replicates = 20,
@@ -142,9 +140,9 @@ fit_spline_rt <- function(data,
   pars_discrete = list('start_date' = TRUE, 'R0' = FALSE, 'Meff' = FALSE,
                        'Meff_pl' = FALSE, "Rt_shift" = FALSE, "Rt_shift_scale" = FALSE)
   pars_obs = list(phi_cases = 1, k_cases = 2, phi_death = 1, k_death = 2, exp_noise = 1e6,
-                  dur_R = pars_obs_dur_R,
-                  prob_hosp_multiplier = pars_obs_prob_hosp_multiplier,
-                  delta_start_date = pars_obs_delta_start_date)
+                  dur_R = delta_characteristics$required_dur_R,
+                  prob_hosp_multiplier = delta_characteristics$prob_hosp_multiplier,
+                  delta_start_date = delta_characteristics$delta_start_date)
 
   # add in the spline list
   pars_init <- append(pars_init, pars_init_rw)
@@ -203,11 +201,20 @@ fit_spline_rt <- function(data,
   mix_mat <- squire::get_mixing_matrix(country)
 
   # Now overwrite these with the initial conditions previously found
-  pi <- readRDS("pars_init.rds")
-  pf <- pi[[iso3c]]
-  pf$start_date <- as.Date(pf$start_date)
+  pf <- readRDS("pars_init.rds")
+  if(!is.null(pf)){
+    if(!is.null(pf[[iso3c]])){
+      pf <- pi[[iso3c]]
+      if(pf$start_date < pars_min$start_date | pf$start_date > pars_max$start_date){
+        #if the start date is in compatible then we remove it, these can change as we are using estimates
+        pf$start_date <- NULL
+      }
+    }
+  }
+  #only use if compatible and present
   pos_mat <- match(names(pars_init), names(pf))
   pars_init[which(!is.na(pos_mat))] <- as.list(pf[na.omit(pos_mat)])
+  pars_init$start_date <- as.Date(pars_init$start_date)
 
   # grab old scaling factor
   scaling_factor <- 1
@@ -271,48 +278,48 @@ fit_spline_rt <- function(data,
   # run the pmcmc
   res <- pmcmc_excess(country = country,
                       data = data,
-                     gibbs_days = NULL,
-                     gibbs_sampling = FALSE,
-                     n_mcmc = n_mcmc,
-                     log_prior = logprior,
-                     n_particles = 1,
-                     steps_per_day = 1,
-                     log_likelihood = excess_log_likelihood,
-                     squire_model = squire_model,
-                     output_proposals = FALSE,
-                     n_chains = n_chains,
-                     pars_init = pars_init,
-                     pars_min = pars_min,
-                     pars_max = pars_max,
-                     pars_discrete = pars_discrete,
-                     pars_obs = pars_obs,
-                     proposal_kernel = proposal_kernel,
-                     R0_change = R0_change,
-                     date_R0_change = date_R0_change,
-                     Rt_args = squire:::Rt_args_list(
-                       date_Meff_change = date_Meff_change,
-                       scale_Meff_pl = TRUE,
-                       Rt_shift_duration = 1,
-                       Rt_rw_duration = Rt_rw_duration),
-                     burnin = ceiling(n_mcmc/10),
-                     seeding_cases = 5,
-                     replicates = replicates,
-                     required_acceptance_ratio = 0.20,
-                     start_adaptation = start_adaptation,
-                     scaling_factor = scaling_factor,
-                     date_vaccine_change = vacc_inputs$date_vaccine_change,
-                     max_vaccine = vacc_inputs$max_vaccine,
-                     baseline_max_vaccine = 0,
-                     date_vaccine_efficacy_infection_change = vacc_inputs$date_vaccine_change,
-                     vaccine_efficacy_infection = vacc_inputs$vaccine_efficacy_infection,
-                     baseline_vaccine_efficacy_infection = vacc_inputs$vaccine_efficacy_infection[[1]],
-                     date_vaccine_efficacy_disease_change = vacc_inputs$date_vaccine_change,
-                     vaccine_efficacy_disease = vacc_inputs$vaccine_efficacy_disease,
-                     baseline_vaccine_efficacy_disease = vacc_inputs$vaccine_efficacy_disease[[1]],
-                     rel_infectiousness_vaccinated = vacc_inputs$rel_infectiousness_vaccinated,
-                     vaccine_coverage_mat = vaccine_coverage_mat,
-                     dur_R = 365,
-                     dur_V = 5000)
+                      gibbs_days = NULL,
+                      gibbs_sampling = FALSE,
+                      n_mcmc = n_mcmc,
+                      log_prior = logprior,
+                      n_particles = 1,
+                      steps_per_day = 1,
+                      log_likelihood = excess_log_likelihood,
+                      squire_model = squire_model,
+                      output_proposals = FALSE,
+                      n_chains = n_chains,
+                      pars_init = pars_init,
+                      pars_min = pars_min,
+                      pars_max = pars_max,
+                      pars_discrete = pars_discrete,
+                      pars_obs = pars_obs,
+                      proposal_kernel = proposal_kernel,
+                      R0_change = R0_change,
+                      date_R0_change = date_R0_change,
+                      Rt_args = squire:::Rt_args_list(
+                        date_Meff_change = date_Meff_change,
+                        scale_Meff_pl = TRUE,
+                        Rt_shift_duration = 1,
+                        Rt_rw_duration = Rt_rw_duration),
+                      burnin = ceiling(n_mcmc/10),
+                      seeding_cases = 5,
+                      replicates = replicates,
+                      required_acceptance_ratio = 0.20,
+                      start_adaptation = start_adaptation,
+                      scaling_factor = scaling_factor,
+                      date_vaccine_change = vacc_inputs$date_vaccine_change,
+                      max_vaccine = vacc_inputs$max_vaccine,
+                      baseline_max_vaccine = 0,
+                      date_vaccine_efficacy_infection_change = vacc_inputs$date_vaccine_change,
+                      vaccine_efficacy_infection = vacc_inputs$vaccine_efficacy_infection,
+                      baseline_vaccine_efficacy_infection = vacc_inputs$vaccine_efficacy_infection[[1]],
+                      date_vaccine_efficacy_disease_change = vacc_inputs$date_vaccine_change,
+                      vaccine_efficacy_disease = vacc_inputs$vaccine_efficacy_disease,
+                      baseline_vaccine_efficacy_disease = vacc_inputs$vaccine_efficacy_disease[[1]],
+                      rel_infectiousness_vaccinated = vacc_inputs$rel_infectiousness_vaccinated,
+                      vaccine_coverage_mat = vaccine_coverage_mat,
+                      dur_R = 365,
+                      dur_V = 5000)
 
 
   ## remove things so they don't atke up so much memory when you save them :)
@@ -339,7 +346,7 @@ fit_spline_rt <- function(data,
 
 
 excess_log_likelihood <- function(pars, data, squire_model, model_params, pars_obs, n_particles,
-                                 forecast_days = 0, return = "ll", Rt_args, interventions, ...) {
+                                  forecast_days = 0, return = "ll", Rt_args, interventions, ...) {
   switch(return, full = {
     save_particles <- TRUE
     full_output <- TRUE
@@ -422,9 +429,9 @@ excess_log_likelihood <- function(pars, data, squire_model, model_params, pars_o
   }
   else {
     tt_list <- squire:::intervention_dates_for_odin(dates = date_vaccine_efficacy_infection_change,
-                                           change = seq_along(interventions$vaccine_efficacy_infection)[-1],
-                                           start_date = start_date, steps_per_day = round(1/model_params$dt),
-                                           starting_change = 1)
+                                                    change = seq_along(interventions$vaccine_efficacy_infection)[-1],
+                                                    start_date = start_date, steps_per_day = round(1/model_params$dt),
+                                                    starting_change = 1)
     model_params$tt_vaccine_efficacy_infection <- tt_list$tt
     model_params$vaccine_efficacy_infection <- model_params$vaccine_efficacy_infection[tt_list$change,
                                                                                        , ]
@@ -455,10 +462,10 @@ excess_log_likelihood <- function(pars, data, squire_model, model_params, pars_o
   }
   else if (inherits(squire_model, "deterministic")) {
     pf_result <- run_deterministic_comparison_excess(data = data,
-                                                    squire_model = squire_model, model_params = model_params,
-                                                    model_start_date = start_date, obs_params = pars_obs,
-                                                    forecast_days = forecast_days, save_history = save_particles,
-                                                    return = pf_return)
+                                                     squire_model = squire_model, model_params = model_params,
+                                                     model_start_date = start_date, obs_params = pars_obs,
+                                                     forecast_days = forecast_days, save_history = save_particles,
+                                                     return = pf_return)
   }
   pf_result
 
@@ -467,14 +474,14 @@ excess_log_likelihood <- function(pars, data, squire_model, model_params, pars_o
 
 
 run_deterministic_comparison_excess <- function(data, squire_model, model_params, model_start_date = "2020-02-02",
-                                               obs_params = list(
-                                                 phi_cases = 0.1,
-                                                 k_cases = 2,
-                                                 phi_death = 1,
-                                                 k_death = 2,
-                                                 exp_noise = 1e+06
-                                               ), forecast_days = 0, save_history = FALSE,
-                                               return = "ll") {
+                                                obs_params = list(
+                                                  phi_cases = 0.1,
+                                                  k_cases = 2,
+                                                  phi_death = 1,
+                                                  k_death = 2,
+                                                  exp_noise = 1e+06
+                                                ), forecast_days = 0, save_history = FALSE,
+                                                return = "ll") {
 
   if (!(return %in% c("full", "ll", "sample", "single"))) {
     stop("return argument must be full, ll, sample", "single")
@@ -571,74 +578,74 @@ run_deterministic_comparison_excess <- function(data, squire_model, model_params
 
 
 pmcmc_excess <- function(data,
-                        n_mcmc,
-                        log_likelihood = NULL,
-                        log_prior = NULL,
-                        n_particles = 1e2,
-                        steps_per_day = 4,
-                        output_proposals = FALSE,
-                        n_chains = 1,
-                        squire_model = explicit_model(),
-                        pars_obs = list(phi_cases = 1,
-                                        k_cases = 2,
-                                        phi_death = 1,
-                                        k_death = 2,
-                                        exp_noise = 1e6),
-                        pars_init = list('start_date'     = as.Date("2020-02-07"),
-                                         'R0'             = 2.5,
-                                         'Meff'           = 2,
-                                         'Meff_pl'        = 3,
-                                         "R0_pl_shift"    = 0),
-                        pars_min = list('start_date'      = as.Date("2020-02-01"),
-                                        'R0'              = 0,
-                                        'Meff'            = 1,
-                                        'Meff_pl'         = 2,
-                                        "R0_pl_shift"     = -2),
-                        pars_max = list('start_date'      = as.Date("2020-02-20"),
-                                        'R0'              = 5,
-                                        'Meff'            = 3,
-                                        'Meff_pl'         = 4,
-                                        "R0_pl_shift"     = 5),
-                        pars_discrete = list('start_date' = TRUE,
-                                             'R0'         = FALSE,
-                                             'Meff'       = FALSE,
-                                             'Meff_pl'    = FALSE,
-                                             "R0_pl_shift" = FALSE),
-                        proposal_kernel = NULL,
-                        scaling_factor = 1,
-                        reporting_fraction = 1,
-                        treated_deaths_only = FALSE,
-                        country = NULL,
-                        population = NULL,
-                        contact_matrix_set = NULL,
-                        baseline_contact_matrix = NULL,
-                        date_contact_matrix_set_change = NULL,
-                        R0_change = NULL,
-                        date_R0_change = NULL,
-                        hosp_bed_capacity = NULL,
-                        baseline_hosp_bed_capacity = NULL,
-                        date_hosp_bed_capacity_change = NULL,
-                        ICU_bed_capacity = NULL,
-                        baseline_ICU_bed_capacity = NULL,
-                        date_ICU_bed_capacity_change = NULL,
-                        date_vaccine_change = NULL,
-                        baseline_max_vaccine = NULL,
-                        max_vaccine = NULL,
-                        date_vaccine_efficacy_infection_change = NULL,
-                        baseline_vaccine_efficacy_infection = NULL,
-                        vaccine_efficacy_infection = NULL,
-                        date_vaccine_efficacy_disease_change = NULL,
-                        baseline_vaccine_efficacy_disease = NULL,
-                        vaccine_efficacy_disease = NULL,
-                        Rt_args = NULL,
-                        burnin = 0,
-                        replicates = 100,
-                        forecast = 0,
-                        required_acceptance_ratio = 0.23,
-                        start_adaptation = round(n_mcmc/2),
-                        gibbs_sampling = FALSE,
-                        gibbs_days = NULL,
-                        ...) {
+                         n_mcmc,
+                         log_likelihood = NULL,
+                         log_prior = NULL,
+                         n_particles = 1e2,
+                         steps_per_day = 4,
+                         output_proposals = FALSE,
+                         n_chains = 1,
+                         squire_model = explicit_model(),
+                         pars_obs = list(phi_cases = 1,
+                                         k_cases = 2,
+                                         phi_death = 1,
+                                         k_death = 2,
+                                         exp_noise = 1e6),
+                         pars_init = list('start_date'     = as.Date("2020-02-07"),
+                                          'R0'             = 2.5,
+                                          'Meff'           = 2,
+                                          'Meff_pl'        = 3,
+                                          "R0_pl_shift"    = 0),
+                         pars_min = list('start_date'      = as.Date("2020-02-01"),
+                                         'R0'              = 0,
+                                         'Meff'            = 1,
+                                         'Meff_pl'         = 2,
+                                         "R0_pl_shift"     = -2),
+                         pars_max = list('start_date'      = as.Date("2020-02-20"),
+                                         'R0'              = 5,
+                                         'Meff'            = 3,
+                                         'Meff_pl'         = 4,
+                                         "R0_pl_shift"     = 5),
+                         pars_discrete = list('start_date' = TRUE,
+                                              'R0'         = FALSE,
+                                              'Meff'       = FALSE,
+                                              'Meff_pl'    = FALSE,
+                                              "R0_pl_shift" = FALSE),
+                         proposal_kernel = NULL,
+                         scaling_factor = 1,
+                         reporting_fraction = 1,
+                         treated_deaths_only = FALSE,
+                         country = NULL,
+                         population = NULL,
+                         contact_matrix_set = NULL,
+                         baseline_contact_matrix = NULL,
+                         date_contact_matrix_set_change = NULL,
+                         R0_change = NULL,
+                         date_R0_change = NULL,
+                         hosp_bed_capacity = NULL,
+                         baseline_hosp_bed_capacity = NULL,
+                         date_hosp_bed_capacity_change = NULL,
+                         ICU_bed_capacity = NULL,
+                         baseline_ICU_bed_capacity = NULL,
+                         date_ICU_bed_capacity_change = NULL,
+                         date_vaccine_change = NULL,
+                         baseline_max_vaccine = NULL,
+                         max_vaccine = NULL,
+                         date_vaccine_efficacy_infection_change = NULL,
+                         baseline_vaccine_efficacy_infection = NULL,
+                         vaccine_efficacy_infection = NULL,
+                         date_vaccine_efficacy_disease_change = NULL,
+                         baseline_vaccine_efficacy_disease = NULL,
+                         vaccine_efficacy_disease = NULL,
+                         Rt_args = NULL,
+                         burnin = 0,
+                         replicates = 100,
+                         forecast = 0,
+                         required_acceptance_ratio = 0.23,
+                         start_adaptation = round(n_mcmc/2),
+                         gibbs_sampling = FALSE,
+                         gibbs_days = NULL,
+                         ...) {
 
   #------------------------------------------------------------
   # Section 1 of pMCMC Wrapper: Checks & Setup
