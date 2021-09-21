@@ -366,6 +366,12 @@ who_vacc <- download_url(who_vacc_url)
 who_vacc <- read.csv(who_vacc) 
 who_vacc$countryterritoryCode <- who_vacc$ISO3
 who_vacc$DATE_UPDATED <- as.Date(who_vacc$DATE_UPDATED)
+
+message("Temporary hack for Tanzanias Janssen vaccines")
+#just put all in the lower section for now
+who_vacc[who_vacc$ISO3 == "TZA",]$PERSONS_FULLY_VACCINATED <- 0
+who_vacc[who_vacc$ISO3 == "TZA",]$PERSONS_VACCINATED_1PLUS_DOSE <- who_vacc[who_vacc$ISO3 == "TZA",]$TOTAL_VACCINATIONS
+
 saveRDS(who_vacc, "who_vacc.rds")
 
 

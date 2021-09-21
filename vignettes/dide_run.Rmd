@@ -132,7 +132,6 @@ if(!excess_mortality){
   # should tasks be run in parallel and use multiple chains. 
   # leave this as FALSE and see FAQs for more info on this
   parallel <- FALSE
-
   # not needed input parameters - leave as FALSE. See FAQ for more info on these
   full_scenarios <- FALSE
   gibbs_sampling <- FALSE
