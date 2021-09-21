@@ -55,6 +55,10 @@ if(nrow(df) == 0 | sum(df$deaths) == 0){
   country <- squire::population$country[match(iso3c, squire::population$iso3c)]
   pop <- squire::get_population(country)$n
 
+  if(model == "SQUIRE"){
+    adjust_delta <- FALSE
+  }
+
   if(adjust_delta){
     #open data from covariants
     delta_characteristics <- readRDS("delta_characteristics.Rds") %>% ungroup()

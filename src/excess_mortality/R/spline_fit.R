@@ -51,7 +51,6 @@ fit_spline_rt <- function(data,
 
   # pmcmc args
   n_particles <- 2 # we use the deterministic model now so this does nothing (makes your life quicker and easier too)
-  n_chains <- 3 # number of chains
   start_adaptation <- max(2, round(n_mcmc/10)) # how long before adapting
 
   # parallel call
@@ -176,30 +175,38 @@ fit_spline_rt <- function(data,
     return(ret)
   }
 
-  # Defaults for now for vaccines
-  strategy <- "HCW, Elderly and High-Risk"
-  available_doses_proportion <- 0.95
-  vaccine_uptake <- 0.8
-  vaccine_coverage_mat <- get_coverage_mat(
-    iso3c = iso3c,
-    pop = pop,
-    available_doses_proportion = available_doses_proportion,
-    strategy = strategy,
-    vaccine_uptake = vaccine_uptake
-  )
+  if(model == "NIMUE"){
+    # Defaults for now for vaccines
+    strategy <- "HCW, Elderly and High-Risk"
+    available_doses_proportion <- 0.95
+    vaccine_uptake <- 0.8
+    vaccine_coverage_mat <- get_coverage_mat(
+      iso3c = iso3c,
+      pop = pop,
+      available_doses_proportion = available_doses_proportion,
+      strategy = strategy,
+      vaccine_uptake = vaccine_uptake
+    )
 
-  # read in the vaccine inputs from the ecdc tasks
-  vdm <- readRDS("vaccine_doses_by_manufacturer.rds")
-  vacc_types <- readRDS("vaccine_agreements.rds")
-  who_vacc <- readRDS("who_vacc.rds")
-  who_vacc_meta <- readRDS("who_vacc_meta.rds")
-  owid <- readRDS("owid.rds")
-  owid <- owid %>% filter(countryterritoryCode == iso3c) %>%
-    select(date, contains("vacc"))
+    # read in the vaccine inputs from the ecdc tasks
+    vdm <- readRDS("vaccine_doses_by_manufacturer.rds")
+    vacc_types <- readRDS("vaccine_agreements.rds")
+    who_vacc <- readRDS("who_vacc.rds")
+    who_vacc_meta <- readRDS("who_vacc_meta.rds")
+    owid <- readRDS("owid.rds")
+    owid <- owid %>% filter(countryterritoryCode == iso3c) %>%
+      select(date, contains("vacc"))
 
-  vacc_inputs <- get_vaccine_inputs(iso3c, vdm, vacc_types, owid, date_0, who_vacc, who_vacc_meta,
-                                    delta_start_date = pars_obs$delta_start_date,
-                                    shift_duration = pars_obs$shift_duration)
+    vacc_inputs <- get_vaccine_inputs(iso3c, vdm, vacc_types, owid, date_0, who_vacc, who_vacc_meta,
+                                      delta_start_date = pars_obs$delta_start_date,
+                                      shift_duration = pars_obs$shift_duration)
+
+    dur_V <- 5000
+  } else {
+    vacc_inputs <- NULL
+    vaccine_coverage_mat <- NULL
+    dur_V <- NULL
+  }
 
   # mixing matrix - assume is same as country as whole
   mix_mat <- squire::get_mixing_matrix(country)
@@ -323,7 +330,7 @@ fit_spline_rt <- function(data,
                       rel_infectiousness_vaccinated = vacc_inputs$rel_infectiousness_vaccinated,
                       vaccine_coverage_mat = vaccine_coverage_mat,
                       dur_R = 365,
-                      dur_V = 5000)
+                      dur_V = dur_V)
 
 
   ## remove things so they don't atke up so much memory when you save them :)
@@ -651,6 +658,7 @@ pmcmc_excess <- function(data,
                          start_adaptation = round(n_mcmc/2),
                          gibbs_sampling = FALSE,
                          gibbs_days = NULL,
+                         dur_R = 365,
                          ...) {
 
   #------------------------------------------------------------
@@ -962,23 +970,36 @@ pmcmc_excess <- function(data,
   pars_obs$treated_deaths_only <- treated_deaths_only
 
   # build model parameters
-  model_params <- squire_model$parameter_func(
-    country = country,
-    population = population,
-    dt = 1/steps_per_day,
-    contact_matrix_set = contact_matrix_set,
-    tt_contact_matrix = tt_contact_matrix,
-    hosp_bed_capacity = hosp_bed_capacity,
-    tt_hosp_beds = tt_hosp_beds,
-    ICU_bed_capacity = ICU_bed_capacity,
-    tt_ICU_beds = tt_ICU_beds,
-    max_vaccine = max_vaccine,
-    tt_vaccine = tt_vaccine,
-    vaccine_efficacy_infection = vaccine_efficacy_infection,
-    tt_vaccine_efficacy_infection = tt_vaccine_efficacy_infection,
-    vaccine_efficacy_disease = vaccine_efficacy_disease,
-    tt_vaccine_efficacy_disease = tt_vaccine_efficacy_disease,
-    ...)
+  if("nimue_model" %in% class(squire_model)){
+    model_params <- squire_model$parameter_func(
+      country = country,
+      population = population,
+      dt = 1/steps_per_day,
+      contact_matrix_set = contact_matrix_set,
+      tt_contact_matrix = tt_contact_matrix,
+      hosp_bed_capacity = hosp_bed_capacity,
+      tt_hosp_beds = tt_hosp_beds,
+      ICU_bed_capacity = ICU_bed_capacity,
+      tt_ICU_beds = tt_ICU_beds,
+      max_vaccine = max_vaccine,
+      tt_vaccine = tt_vaccine,
+      vaccine_efficacy_infection = vaccine_efficacy_infection,
+      tt_vaccine_efficacy_infection = tt_vaccine_efficacy_infection,
+      vaccine_efficacy_disease = vaccine_efficacy_disease,
+      tt_vaccine_efficacy_disease = tt_vaccine_efficacy_disease,
+      ...)
+  } else {
+    model_params <- squire_model$parameter_func(
+      country = country,
+      population = population,
+      dt = 1/steps_per_day,
+      contact_matrix_set = contact_matrix_set,
+      tt_contact_matrix = tt_contact_matrix,
+      hosp_bed_capacity = hosp_bed_capacity,
+      tt_hosp_beds = tt_hosp_beds,
+      ICU_bed_capacity = ICU_bed_capacity,
+      tt_ICU_beds = tt_ICU_beds)
+  }
 
   # collect interventions for odin model likelihood
   interventions <- list(
@@ -1185,7 +1206,8 @@ pmcmc_excess <- function(data,
   # Pull Sampled results and "recreate" squire models
   #----------------
   # create a fake run object and fill in the required elements
-  r <- squire_model$run_func(country = country,
+  if("nimue_model" %in% class(squire_model)){
+    r <- squire_model$run_func(country = country,
                              contact_matrix_set = contact_matrix_set,
                              tt_contact_matrix = tt_contact_matrix,
                              hosp_bed_capacity = hosp_bed_capacity,
@@ -1203,7 +1225,20 @@ pmcmc_excess <- function(data,
                              day_return = TRUE,
                              time_period = nrow(pmcmc_samples$trajectories),
                              ...)
-
+  } else {
+    r <- squire_model$run_func(country = country,
+                               contact_matrix_set = contact_matrix_set,
+                               tt_contact_matrix = tt_contact_matrix,
+                               hosp_bed_capacity = hosp_bed_capacity,
+                               tt_hosp_beds = tt_hosp_beds,
+                               ICU_bed_capacity = ICU_bed_capacity,
+                               tt_ICU_beds = tt_ICU_beds,
+                               population = population,
+                               replicates = 1,
+                               day_return = TRUE,
+                               time_period = nrow(pmcmc_samples$trajectories)
+                               )
+  }
   # and add the parameters that changed between each simulation, i.e. posterior draws
   r$replicate_parameters <- pmcmc_samples$sampled_PMCMC_Results
 
