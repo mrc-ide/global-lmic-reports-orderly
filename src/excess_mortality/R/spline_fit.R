@@ -69,7 +69,7 @@ fit_spline_rt <- function(data,
   date_start <- min(max(as.Date(start_date), as.Date(first_start_date)), as.Date(last_start_date))
 
   #new variable to say when spline starts
-  date_spline_start <- last_start_date
+  date_spline_start <- last_start_date + 1
 
   ## -----------------------------------------------------------------------------
   ## Step 2c: Spline set up
@@ -174,7 +174,7 @@ fit_spline_rt <- function(data,
   pf <- readRDS("pars_init.rds")
   if(!is.null(pf)){
     if(!is.null(pf[[iso3c]])){
-      pf <- pi[[iso3c]]
+      pf <- pf[[iso3c]]
       if(pf$start_date < pars_min$start_date | pf$start_date > pars_max$start_date){
         #if the start date is in compatible then we remove it, these can change as we are using estimates
         pf$start_date <- NULL
@@ -460,6 +460,9 @@ run_deterministic_comparison_excess <- function(data, squire_model, model_params
   # set up as normal
   data <- squire:::particle_filter_data(data = data, start_date = model_start_date,
                                         steps_per_day = round(1/model_params$dt))
+  #we make an adjustment as we only have data once a week and this result makes
+  #our corresponding times a week out of data
+  data$day_end <- data$day_start + 1
   model_params$tt_beta <- round(model_params$tt_beta * model_params$dt)
   model_params$tt_contact_matrix <- round(model_params$tt_contact_matrix *
                                             model_params$dt)
