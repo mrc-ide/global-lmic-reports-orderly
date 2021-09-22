@@ -932,12 +932,12 @@ generate_draws_pmcmc_nimue_case_fitted <- function(out, n_particles = 10, grad_d
   #--------------------------------------------------------
 
   # first what is the model predicted infections
-  infections <- nimue_format(out, "infections", date_0 = max(data$date))
-  infections_end <- infections %>% filter(date > (max(data$date) - grad_dur) & date <= (max(data$date))) %>%
+  infections <- nimue_format(out, "infections", date_0 = max(data$week_end))
+  infections_end <- infections %>% filter(date > (max(data$week_end) - grad_dur) & date <= (max(data$week_end))) %>%
     group_by(date) %>% summarise(y = median(y))
 
   infections_pre_end <- infections %>%
-    filter(date > (max(data$date) - grad_dur - rw_dur) & date <= (max(data$date) - grad_dur) ) %>%
+    filter(date > (max(data$week_end) - grad_dur - rw_dur) & date <= (max(data$week_end) - grad_dur) ) %>%
     group_by(date) %>% summarise(y = median(y))
 
   # and the observed cases
@@ -1016,15 +1016,15 @@ generate_draws_pmcmc_nimue_case_fitted <- function(out, n_particles = 10, grad_d
         saved_full <- out$output[,"time",full_row]
         for(i in seq_len(replicates)) {
           na_pos <- which(is.na(out$output[,"time",i]))
-          full_to_place <- saved_full - which(rownames(out$output) == as.Date(max(data$date))) + 1L
+          full_to_place <- saved_full - which(rownames(out$output) == as.Date(max(data$week_start))) + 1L
           if(length(na_pos) > 0) {
             full_to_place[na_pos] <- NA
           }
           out$output[,"time",i] <- full_to_place
         }
 
-        infections <- nimue_format(out, "infections", date_0 = max(data$date))
-        this_infs <- infections %>% filter(date > (max(data$date) - grad_dur) & date <= (max(data$date))) %>%
+        infections <- nimue_format(out, "infections", date_0 = max(data$week_end))
+        this_infs <- infections %>% filter(date > (max(data$week_end) - grad_dur) & date <= (max(data$week_end))) %>%
           group_by(date) %>% summarise(y = median(y))
 
         ans[alt] <- get_infs(this_infs$y)
@@ -1081,7 +1081,7 @@ generate_draws_pmcmc_nimue_case_fitted <- function(out, n_particles = 10, grad_d
   saved_full <- out$output[,"time",full_row]
   for(i in seq_len(replicates)) {
     na_pos <- which(is.na(out$output[,"time",i]))
-    full_to_place <- saved_full - which(rownames(out$output) == as.Date(max(data$date))) + 1L
+    full_to_place <- saved_full - which(rownames(out$output) == as.Date(max(data$week_end))) + 1L
     if(length(na_pos) > 0) {
       full_to_place[na_pos] <- NA
     }
@@ -1192,7 +1192,7 @@ get_immunity_ratios_vaccine <- function(out, max_date = NULL) {
   pop <- out$parameters$population
 
   if(is.null(max_date)) {
-    max_date <- max(out$pmcmc_results$inputs$data$date)
+    max_date <- max(out$pmcmc_results$inputs$data$week_start)
   }
   t_now <- which(as.Date(rownames(out$output)) == max_date)
 
@@ -1285,7 +1285,7 @@ rt_plot_immunity_vaccine <- function(out, R0_plot = FALSE) {
     wh <- "scan_results"
   }
 
-  date <- max(as.Date(out$pmcmc_results$inputs$data$date))
+  date <- max(as.Date(out$pmcmc_results$inputs$data$week_end))
   date_0 <- date
 
   # impact of immunity ratios

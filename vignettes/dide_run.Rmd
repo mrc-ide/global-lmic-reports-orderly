@@ -365,7 +365,7 @@ if(excess_mortality){
   }
   
   # get old conditions
-  pars_init <- readRDS("src/lmic_reports_vaccine/pars_init.rds")
+  pars_init <- readRDS("src/excess_mortality/pars_init.rds")
   for(x in seq_along(ids)) {
 
     out <- readRDS(file.path("archive/excess_mortality", ids[x], "res.rds"))
@@ -380,15 +380,13 @@ if(excess_mortality){
       rownames(best) <- NULL
       best$start_date <- as.character(
         squire:::offset_to_start_date(
-          out$pmcmc_results$inputs$data$date[1],
+          out$pmcmc_results$inputs$data$week_start[1],
           round(best$start_date)
           )
         )
       best$iso3c <- countrycode::countrycode(
         out$parameters$country, origin = "country.name", destination = "iso3c"
         )
-      best$date_Meff_change <- out$pmcmc_results$inputs$Rt_args$date_Meff_change
-      best$Rt_shift_duration <- out$pmcmc_results$inputs$Rt_args$Rt_shift_duration
       best$Rt_rw_duration <- out$pmcmc_results$inputs$Rt_args$Rt_rw_duration
 
       if("chains" %in% names(out$pmcmc_results)) {

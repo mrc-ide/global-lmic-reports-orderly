@@ -29,7 +29,7 @@ get_immunity_ratios <- function(out, max_date = NULL) {
   pop <- out$parameters$population
 
   if(is.null(max_date)) {
-    max_date <- max(out$pmcmc_results$inputs$data$date)
+    max_date <- max(out$pmcmc_results$inputs$data$week_start)
   }
   t_now <- which(as.Date(rownames(out$output)) == max_date)
   prop_susc <- lapply(seq_len(dim(out$output)[3]), function(x) {
@@ -72,7 +72,7 @@ rt_plot_immunity <- function(out) {
     wh <- "scan_results"
   }
 
-  date <- max(as.Date(out$pmcmc_results$inputs$data$date))
+  date <- max(as.Date(out$pmcmc_results$inputs$data$week_end))
   date_0 <- date
 
   # impact of immunity ratios
@@ -196,7 +196,7 @@ sero_plot <- function(res, sero_df) {
 
 
   # get symptom onset data
-  date_0 <- max(res$pmcmc_results$inputs$data$date)
+  date_0 <- max(res$pmcmc_results$inputs$data$week_end)
   inf <- nim_sq_format(res, c("infections"), date_0 = date_0) %>%
     rename(symptoms = y) %>%
     left_join(nim_sq_format(res, "S", date_0 = date_0),
@@ -234,7 +234,7 @@ sero_plot <- function(res, sero_df) {
 ar_plot <- function(res) {
 
   S_tot <- sum(res$pmcmc_results$inputs$model_params$population)
-  date_0 <- max(res$pmcmc_results$inputs$data$date)
+  date_0 <- max(res$pmcmc_results$inputs$data$week_end)
   inf <- nim_sq_format(res, "infections", date_0 = date_0) %>%
     mutate(infections = as.integer(y)) %>%
     select(replicate, t, date, infections) %>%
@@ -252,7 +252,7 @@ ar_plot <- function(res) {
 cdp_plot <- function(res) {
 
   suppressWarnings(
-    cdp <- plot(res, "D", date_0 = max(res$pmcmc_results$inputs$data$date), x_var = "date") +
+    cdp <- plot(res, "D", date_0 = max(res$pmcmc_results$inputs$data$week_end), x_var = "date") +
       theme_bw() +
       theme(legend.position = "none", axis.title.x = element_blank()) +
       ylab("Cumulative Deaths") +
@@ -270,8 +270,14 @@ dp_plot <- function(res) {
       theme_bw() +
       theme(legend.position = "none", axis.title.x = element_blank()) +
       scale_x_date(date_labels = "%b %Y", date_breaks = "3 months") +
-      xlab("")
+      xlab("") +
+      geom_segment(data = res$pmcmc_results$inputs$data,
+                   aes(x = week_start, xend = week_end,
+                       y = deaths/7, yend = deaths/7),
+                   size = 1)
   )
+
+  dp$layers[[5]] <- NULL
 
   dp
 
@@ -280,7 +286,7 @@ dp_plot <- function(res) {
 get_projections <- function(res, vaccine_inputs, state) {
 
   ## Functions for working out the relative changes in R0 for given scenarios
-  date_0 <- max(res$pmcmc_results$inputs$data$date)
+  date_0 <- max(res$pmcmc_results$inputs$data$week_end)
   time_period <- as.integer(as.Date("2022-01-01") - date_0)
 
   ## We need to know work out vaccine doses and efficacy going forwards

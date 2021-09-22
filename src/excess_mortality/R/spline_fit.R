@@ -17,8 +17,9 @@ fit_spline_rt <- function(data,
   ## -----------------------------------------------------------------------------
 
   # order data
-  data <- data[order(data$date),]
-  data$date <- as.Date(data$date)
+  data <- data[order(data$week_start),]
+  data$week_start <- as.Date(data$week_start)
+  data$week_end <- as.Date(data$week_end)
 
   # and remove the rows with no data up to the first date that a death was reported
   first_report <- which(data$deaths>0)[1]
@@ -37,11 +38,11 @@ fit_spline_rt <- function(data,
   ## -----------------------------------------------------------------------------
 
   # dat_0 is just the current date now
-  date_0 <- max(data$date)
+  date_0 <- max(data$week_end)
 
   # what is the date of first death
   null_na <- function(x) {if(is.null(x)) {NA} else {x}}
-  min_death_date <- data$date[which(data$deaths>0)][1]
+  min_death_date <- data$week_start[which(data$deaths>0)][1]
 
   # pmcmc args
   n_particles <- 2 # we use the deterministic model now so this does nothing (makes your life quicker and easier too)
@@ -61,7 +62,7 @@ fit_spline_rt <- function(data,
   ## Step 2b: Sourcing suitable starting conditions
   ## -----------------------------------------------------------------------------
 
-  date_start <- data$date[which(cumsum(data$deaths)>10)[1]] - 30
+  date_start <- data$week_start[which(cumsum(data$deaths)>10)[1]] - 30
   R0_start <- 3
 
   # These are the the initial conditions now loaded from our previous run.
@@ -101,7 +102,7 @@ fit_spline_rt <- function(data,
   pars_max = list('start_date' = last_start_date,
                   'R0' = R0_max)
   pars_discrete = list('start_date' = TRUE, 'R0' = FALSE)
-  pars_obs = list(phi_cases = 1, k_cases = 2, phi_death = 1, k_death = 2, exp_noise = 1e6)
+  pars_obs = list(phi_cases = 1, k_cases = 2, phi_death = 1, k_death = 2, exp_noise = 1e2)
   #assing this way so they keep NULL if NULL
   pars_obs$dur_R <- delta_characteristics$required_dur_R
   pars_obs$prob_hosp_multiplier <- delta_characteristics$prob_hosp_multiplier
@@ -198,6 +199,12 @@ fit_spline_rt <- function(data,
 
     # old proposal kernel
     proposal_kernel_proposed <- pf$covariance_matrix[[1]]
+
+    #reduce to required variables
+    proposal_kernel_proposed <- proposal_kernel_proposed[
+      rownames(proposal_kernel_proposed) %in% rownames(proposal_kernel),
+      colnames(proposal_kernel_proposed) %in% colnames(proposal_kernel)
+    ]
 
     # check if it needs to be expanded
     if(length(grep("Rt_rw", colnames(proposal_kernel_proposed))) == rw_needed) {
@@ -445,24 +452,19 @@ run_deterministic_comparison_excess <- function(data, squire_model, model_params
                                                   k_cases = 2,
                                                   phi_death = 1,
                                                   k_death = 2,
-                                                  exp_noise = 1e+06
+                                                  exp_noise = 1e02
                                                 ), forecast_days = 0, save_history = FALSE,
                                                 return = "ll") {
 
   if (!(return %in% c("full", "ll", "sample", "single"))) {
     stop("return argument must be full, ll, sample", "single")
   }
-  if (as.Date(data$date[data$deaths > 0][1], "%Y-%m-%d") <
+  if (as.Date(data$week_start[data$deaths > 0][1], "%Y-%m-%d") <
       as.Date(model_start_date, "%Y-%m-%d")) {
     stop("Model start date is later than data start date")
   }
 
-  # set up as normal
-  data <- squire:::particle_filter_data(data = data, start_date = model_start_date,
-                                        steps_per_day = round(1/model_params$dt))
-  #we make an adjustment as we only have data once a week and this result makes
-  #our corresponding times a week out of data
-  data$day_end <- data$day_start + 1
+  #set up to use our weekly data instead of perday
   model_params$tt_beta <- round(model_params$tt_beta * model_params$dt)
   model_params$tt_contact_matrix <- round(model_params$tt_contact_matrix *
                                             model_params$dt)
@@ -470,12 +472,16 @@ run_deterministic_comparison_excess <- function(data, squire_model, model_params
                                        model_params$dt)
   model_params$tt_ICU_beds <- round(model_params$tt_ICU_beds *
                                       model_params$dt)
+  #convert weeks into days relevant to our start_date
+  data$date <- data$week_start
+  data <- squire:::particle_filter_data(data = data, start_date = model_start_date,
+                                        steps_per_day = round(1/model_params$dt))
+  data$week_start <- data$day_start
+  data$week_end <- data$day_end
 
-  # steps as normal
-  steps <- c(0, data$day_end)
-  fore_steps <- seq(data$day_end[nrow(data)], length.out = forecast_days +
-                      1L)
-  steps <- unique(c(steps, fore_steps))
+  #set the last day to the same distance as the previous one
+  data$week_end[nrow(data)] <- data$week_start[nrow(data)] +
+    data$week_end[nrow(data)-1]  - data$week_start[nrow(data)-1]
 
   # here we change the dur_R for 60 days from delta_start_date
   if("dur_R" %in% names(obs_params)) {
@@ -500,26 +506,17 @@ run_deterministic_comparison_excess <- function(data, squire_model, model_params
   # run model
   model_func <- squire_model$odin_model(user = model_params,
                                         unused_user_action = "ignore")
-  out <- model_func$run(t = seq(0, tail(steps, 1), 1), atol = 1e-8, rtol = 1e-8, step_size_min_allow = TRUE)
+  out <- model_func$run(t = seq(0, tail(data$week_end, 1), 1), atol = 1e-8, rtol = 1e-8, step_size_min_allow = TRUE)
   index <- squire:::odin_index(model_func)
 
-  # get deaths for comparison
-  Ds <- diff(rowSums(out[, index$D]))
-  Ds <- Ds[data$day_end[-1]]
+  #calculate the deaths for each week
+  cumDs <- rowSums(out[, index$D])
+  Ds <- cumDs[data$week_end[-1]] - cumDs[data$week_start[-1]]
   Ds[Ds < 0] <- 0
   deaths <- data$deaths[-1]
 
-  # what type of ll for deaths
-  if (obs_params$treated_deaths_only) {
-    Ds_heathcare <- diff(rowSums(out[, index$D_get]))
-    Ds_heathcare <- Ds_heathcare[data$day_end[-1]]
-    ll <- squire:::ll_nbinom(deaths, Ds_heathcare, obs_params$phi_death,
-                             obs_params$k_death, obs_params$exp_noise)
-  }
-  else {
-    ll <- squire:::ll_nbinom(deaths, Ds, obs_params$phi_death, obs_params$k_death,
-                             obs_params$exp_noise)
-  }
+  ll <- squire:::ll_nbinom(deaths, Ds, obs_params$phi_death, obs_params$k_death,
+                           obs_params$exp_noise)
 
   # and wrap up as normal
   date <- data$date[[1]] + seq_len(nrow(out)) - 1L
@@ -561,7 +558,7 @@ pmcmc_excess <- function(data,
                                          k_cases = 2,
                                          phi_death = 1,
                                          k_death = 2,
-                                         exp_noise = 1e6),
+                                         exp_noise = 1e2),
                          pars_init = list('start_date'     = as.Date("2020-02-07"),
                                           'R0'             = 2.5,
                                           'Meff'           = 2,
@@ -585,7 +582,6 @@ pmcmc_excess <- function(data,
                          proposal_kernel = NULL,
                          scaling_factor = 1,
                          reporting_fraction = 1,
-                         treated_deaths_only = FALSE,
                          country = NULL,
                          population = NULL,
                          contact_matrix_set = NULL,
@@ -644,10 +640,14 @@ pmcmc_excess <- function(data,
 
   # data assertions
   squire:::assert_dataframe(data)
-  squire:::assert_in("date", names(data))
+  squire:::assert_in("week_end", names(data))
+  squire:::assert_in("week_start", names(data))
   squire:::assert_in("deaths", names(data))
-  squire:::assert_date(data$date)
-  squire:::assert_increasing(as.numeric(as.Date(data$date)),
+  squire:::assert_date(data$week_start)
+  squire:::assert_date(data$week_end)
+  squire:::assert_increasing(as.numeric(as.Date(data$week_start)),
+                             message = "Dates must be in increasing order")
+  squire:::assert_increasing(as.numeric(as.Date(data$week_end)),
                              message = "Dates must be in increasing order")
 
   # check input pars df
@@ -664,7 +664,7 @@ pmcmc_excess <- function(data,
   squire:::assert_date(pars_init[[1]]$start_date)
   squire:::assert_date(pars_min$start_date)
   squire:::assert_date(pars_max$start_date)
-  if (pars_max$start_date >= as.Date(data$date[1])-1) {
+  if (pars_max$start_date >= as.Date(data$week_start[1])-1) {
     stop("Maximum start date must be at least 2 days before the first date in data")
   }
 
@@ -734,7 +734,7 @@ pmcmc_excess <- function(data,
   # checks that dates are not in the future compared to our data
   if (!is.null(date_Rt_change)) {
     squire:::assert_date(date_Rt_change)
-    if(as.Date(tail(date_Rt_change,1)) > as.Date(tail(data$date, 1))) {
+    if(as.Date(tail(date_Rt_change,1)) > as.Date(tail(data$week_end, 1))) {
       stop("Last date in date_Rt_change is greater than the last date in data")
     }
   }
@@ -762,7 +762,7 @@ pmcmc_excess <- function(data,
     if(is.null(baseline_contact_matrix)) {
       stop("baseline_contact_matrix can't be NULL if date_contact_matrix_set_change is provided")
     }
-    if(as.Date(tail(date_contact_matrix_set_change,1)) > as.Date(tail(data$date, 1))) {
+    if(as.Date(tail(date_contact_matrix_set_change,1)) > as.Date(tail(data$week_end, 1))) {
       stop("Last date in date_contact_matrix_set_change is greater than the last date in data")
     }
 
@@ -790,7 +790,7 @@ pmcmc_excess <- function(data,
       stop("baseline_ICU_bed_capacity can't be NULL if date_ICU_bed_capacity_change is provided")
     }
     squire:::assert_numeric(baseline_ICU_bed_capacity)
-    if(as.Date(tail(date_ICU_bed_capacity_change,1)) > as.Date(tail(data$date, 1))) {
+    if(as.Date(tail(date_ICU_bed_capacity_change,1)) > as.Date(tail(data$week_end, 1))) {
       stop("Last date in date_ICU_bed_capacity_change is greater than the last date in data")
     }
 
@@ -813,7 +813,7 @@ pmcmc_excess <- function(data,
     if(is.null(baseline_max_vaccine)) {
       stop("baseline_max_vaccine can't be NULL if date_vaccine_change is provided")
     }
-    if(as.Date(tail(date_vaccine_change,1)) > as.Date(tail(data$date, 1))) {
+    if(as.Date(tail(date_vaccine_change,1)) > as.Date(tail(data$week_end, 1))) {
       stop("Last date in date_vaccine_change is greater than the last date in data")
     }
 
@@ -843,7 +843,7 @@ pmcmc_excess <- function(data,
     if(is.null(baseline_vaccine_efficacy_infection)) {
       stop("baseline_vaccine_efficacy_infection can't be NULL if date_vaccine_efficacy_infection_change is provided")
     }
-    if(as.Date(tail(date_vaccine_efficacy_infection_change,1)) > as.Date(tail(data$date, 1))) {
+    if(as.Date(tail(date_vaccine_efficacy_infection_change,1)) > as.Date(tail(data$week_end, 1))) {
       stop("Last date in date_vaccine_efficacy_infection_change is greater than the last date in data")
     }
 
@@ -873,7 +873,7 @@ pmcmc_excess <- function(data,
     if(is.null(baseline_vaccine_efficacy_disease)) {
       stop("baseline_vaccine_efficacy_disease can't be NULL if date_vaccine_efficacy_disease_change is provided")
     }
-    if(as.Date(tail(date_vaccine_efficacy_disease_change,1)) > as.Date(tail(data$date, 1))) {
+    if(as.Date(tail(date_vaccine_efficacy_disease_change,1)) > as.Date(tail(data$week_end, 1))) {
       stop("Last date in date_vaccine_efficacy_disease_change is greater than the last date in data")
     }
 
@@ -901,7 +901,7 @@ pmcmc_excess <- function(data,
       stop("baseline_hosp_bed_capacity can't be NULL if date_hosp_bed_capacity_change is provided")
     }
     squire:::assert_numeric(baseline_hosp_bed_capacity)
-    if(as.Date(tail(date_hosp_bed_capacity_change,1)) > as.Date(tail(data$date, 1))) {
+    if(as.Date(tail(date_hosp_bed_capacity_change,1)) > as.Date(tail(data$week_end, 1))) {
       stop("Last date in date_hosp_bed_capacity_change is greater than the last date in data")
     }
 
@@ -918,12 +918,12 @@ pmcmc_excess <- function(data,
   #----------------
 
   # make the date definitely a date
-  data$date <- as.Date(as.character(data$date))
+  data$week_start <- as.Date(as.character(data$week_start))
+  data$week_end <- as.Date(as.character(data$week_end))
 
   # adjust for reporting fraction
   pars_obs$phi_cases <- reporting_fraction
   pars_obs$phi_death <- reporting_fraction
-  pars_obs$treated_deaths_only <- treated_deaths_only
 
   # build model parameters
   if("nimue_model" %in% class(squire_model)){
@@ -1071,7 +1071,7 @@ pmcmc_excess <- function(data,
       inputs = inputs,
       calc_lprior = calc_lprior,
       calc_ll = calc_ll,
-      first_data_date = data$date[1],
+      first_data_date = data$week_start[1],
       output_proposals = output_proposals,
       required_acceptance_ratio = required_acceptance_ratio,
       start_adaptation = start_adaptation,
@@ -1090,7 +1090,7 @@ pmcmc_excess <- function(data,
       inputs = inputs,
       calc_lprior = calc_lprior,
       calc_ll = calc_ll,
-      first_data_date = data$date[1],
+      first_data_date = data$week_start[1],
       output_proposals = output_proposals,
       required_acceptance_ratio = required_acceptance_ratio,
       start_adaptation = start_adaptation,
@@ -1116,7 +1116,7 @@ pmcmc_excess <- function(data,
 
       traces <- x$results
       if('start_date' %in% names(pars_init[[1]])) {
-        traces$start_date <- squire:::start_date_to_offset(data$date[1], traces$start_date)
+        traces$start_date <- squire:::start_date_to_offset(data$week_start[1], traces$start_date)
       }
 
       coda::as.mcmc(traces[, names(pars_init[[1]])])
@@ -1145,6 +1145,10 @@ pmcmc_excess <- function(data,
   #--------------------------------------------------------
   # Section 3 of pMCMC Wrapper: Sample PMCMC Results
   #--------------------------------------------------------
+
+  #change to ley the following work
+  pmcmc$inputs$data$date <- pmcmc$inputs$data$week_start
+
   pmcmc_samples <- squire:::sample_pmcmc(pmcmc_results = pmcmc,
                                          burnin = burnin,
                                          n_chains = n_chains,
@@ -1152,6 +1156,8 @@ pmcmc_excess <- function(data,
                                          log_likelihood = log_likelihood,
                                          n_particles = n_particles,
                                          forecast_days = forecast)
+  #remove the added dates so that its not confusing
+  pmcmc$inputs$data$date <- NULL
 
   #--------------------------------------------------------
   # Section 4 of pMCMC Wrapper: Tidy Output
@@ -1191,7 +1197,8 @@ pmcmc_excess <- function(data,
                                population = population,
                                replicates = 1,
                                day_return = TRUE,
-                               time_period = nrow(pmcmc_samples$trajectories)
+                               time_period = nrow(pmcmc_samples$trajectories),
+                               dur_R = dur_R
                                )
   }
   # and add the parameters that changed between each simulation, i.e. posterior draws
@@ -1210,7 +1217,7 @@ pmcmc_excess <- function(data,
   saved_full <- r$output[,"time",full_row]
   for(i in seq_len(replicates)) {
     na_pos <- which(is.na(r$output[,"time",i]))
-    full_to_place <- saved_full - which(rownames(r$output) == as.Date(max(data$date))) + 1L
+    full_to_place <- saved_full - which(rownames(r$output) == as.Date(max(data$week_start))) + 1L
     if(length(na_pos) > 0) {
       full_to_place[na_pos] <- NA
     }
@@ -1315,7 +1322,7 @@ generate_draws <- function(out, draws = 10, parallel = TRUE, burnin = 100, log_l
   saved_full <- r$output[,"time",full_row]
   for(i in seq_len(replicates)) {
     na_pos <- which(is.na(r$output[,"time",i]))
-    full_to_place <- saved_full - which(rownames(r$output) == as.Date(max(data$date))) + 1L
+    full_to_place <- saved_full - which(rownames(r$output) == as.Date(max(data$week_start))) + 1L
     if(length(na_pos) > 0) {
       full_to_place[na_pos] <- NA
     }
@@ -1404,7 +1411,8 @@ generate_draws_no_vacc <- function(out, draws = 10, parallel = TRUE, burnin = 10
                              population = population,
                              day_return = TRUE,
                              replicates = 1,
-                             time_period = nrow(pmcmc_samples$trajectories))
+                             time_period = nrow(pmcmc_samples$trajectories),
+                             dur_R = dur_R)
 
   # and add the parameters that changed between each simulation, i.e. posterior draws
   r$replicate_parameters <- pmcmc_samples$sampled_PMCMC_Results
@@ -1422,7 +1430,7 @@ generate_draws_no_vacc <- function(out, draws = 10, parallel = TRUE, burnin = 10
   saved_full <- r$output[,"time",full_row]
   for(i in seq_len(replicates)) {
     na_pos <- which(is.na(r$output[,"time",i]))
-    full_to_place <- saved_full - which(rownames(r$output) == as.Date(max(data$date))) + 1L
+    full_to_place <- saved_full - which(rownames(r$output) == as.Date(max(data$week_start))) + 1L
     if(length(na_pos) > 0) {
       full_to_place[na_pos] <- NA
     }

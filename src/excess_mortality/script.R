@@ -23,7 +23,7 @@ if(packageVersion("nimue") < version_min) {
 
 # get data from file
 data <- readRDS("excess_deaths.Rds")
-data2 <- data[data$iso3c == iso3c, ]
+df <- data[data$iso3c == iso3c, ]
 
 ## b. Sort out what is to be our death time series
 ## -----------------------------------------------------------------------------
@@ -35,8 +35,6 @@ data2 <- data[data$iso3c == iso3c, ]
 # covid deaths then we are essentially using reported deaths (an under-estimate)
 # Only case I can think of for over-estimate is when excess deaths spikes due to
 # lack of treatment etc, whilst covid deaths are well reported and tested for.
-df <- data2
-df$deaths <- as.integer(df$deaths)
 
 #if we have no deaths then we do not proceed
 
@@ -149,9 +147,14 @@ if(nrow(df) == 0 | sum(df$deaths) == 0){
     rtp <- rt_plot_immunity_vaccine(res)
   }
 
+  #just for this
+  res$pmcmc_results$inputs$data$date <- res$pmcmc_results$inputs$data$week_start
+
   dp <- dp_plot(res)
   cdp <- cdp_plot(res)
   ar <- ar_plot(res)
+
+  res$pmcmc_results$inputs$data$date <- NULL
 
   ggsave("fitting.pdf",width=12, height=12,
          cowplot::plot_grid(rtp$plot + ggtitle(country),
