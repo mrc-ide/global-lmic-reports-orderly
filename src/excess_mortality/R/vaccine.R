@@ -1279,13 +1279,7 @@ rt_plot_immunity_vaccine <- function(out, R0_plot = FALSE) {
 
   iso3c <- squire::get_population(out$parameters$country)$iso3c[1]
 
-  if("pmcmc_results" %in% names(out)) {
-    wh <- "pmcmc_results"
-  } else {
-    wh <- "scan_results"
-  }
-
-  date <- max(as.Date(out$pmcmc_results$inputs$data$week_end))
+  date <- max(as.Date(out$pmcmc_results$inputs$data$week_start))
   date_0 <- date
 
   # impact of immunity ratios
@@ -1299,45 +1293,39 @@ rt_plot_immunity_vaccine <- function(out, R0_plot = FALSE) {
                                                start_date = out$replicate_parameters$start_date[y],
                                                steps_per_day = 1/out$parameters$dt)
 
-    if(wh == "scan_results") {
-      Rt <- c(out$replicate_parameters$R0[y],
-              vapply(tt$change, out[[wh]]$inputs$Rt_func, numeric(1),
-                     R0 = out$replicate_parameters$R0[y], Meff = out$replicate_parameters$Meff[y]))
-    } else {
       Rt <- evaluate_Rt_pmcmc_custom(
         date_Rt_change = tt$dates,
         R0 = out$replicate_parameters$R0[y],
         pars = as.list(out$replicate_parameters[y,]),
         Rt_args = out$pmcmc_results$inputs$Rt_args)
-    }
 
-    df <- data.frame(
-      "Rt" = Rt,
-      "Reff" = Rt*tail(na.omit(ratios[[y]]),length(Rt)),
-      "R0" = na.omit(Rt)[1]*tail(na.omit(ratios[[y]]),length(Rt)),
-      "date" = tt$dates,
-      "iso" = iso3c,
-      rep = y,
-      stringsAsFactors = FALSE)
-    df$pos <- seq_len(nrow(df))
-    return(df)
+      df <- data.frame(
+        Rt = Rt,
+        date = tt$dates
+      ) %>%
+        complete(date = seq(min(date), date_0, by = "days")) %>%
+        fill(Rt) %>%
+        mutate(ratios = ratios[[y]]) %>%
+        mutate(
+          Reff = Rt*ratios,
+          R0 = Rt[1]*ratios,
+          rep = y
+        ) %>%
+        select(!ratios)
+      df$pos <- seq_len(nrow(df))
+      return(df)
+
   } )
 
   rt <- do.call(rbind, rts)
   rt$date <- as.Date(rt$date)
 
-  rt <- rt[,c(5,4,1,2,3,6,7)]
-
   new_rt_all <- rt %>%
-    group_by(iso, rep) %>%
-    arrange(date) %>%
-    complete(date = seq.Date(min(rt$date), date_0, by = "days"))
+    group_by(rep) %>%
+    arrange(date)
 
-  column_names <- colnames(new_rt_all)[-c(1,2,3)]
-  new_rt_all <- fill(new_rt_all, all_of(column_names), .direction = c("down"))
-  new_rt_all <- fill(new_rt_all, all_of(column_names), .direction = c("up"))
 
-  suppressMessages(sum_rt <- group_by(new_rt_all, iso, date) %>%
+  suppressMessages(sum_rt <- group_by(new_rt_all, date) %>%
                      summarise(Rt_min = quantile(Rt, 0.025),
                                Rt_q25 = quantile(Rt, 0.25),
                                Rt_q75 = quantile(Rt, 0.75),
@@ -1362,8 +1350,12 @@ rt_plot_immunity_vaccine <- function(out, R0_plot = FALSE) {
   country_plot <- function(vjust = -1.2, R0 = FALSE) {
     g1 <- ggplot(sum_rt %>% filter(
       date > min_date & date <= as.Date(as.character(date_0+as.numeric(lubridate::wday(date_0)))))) +
-      geom_ribbon(mapping = aes(x=date, ymin=Reff_min, ymax = Reff_max, group = iso), fill = "#96c4aa") +
-      geom_ribbon(mapping = aes(x = date, ymin = Reff_q25, ymax = Reff_q75, group = iso), fill = "#48996b") +
+      geom_ribbon(mapping = aes(x = date, ymin = Rt_q25, ymax = Rt_q75),
+                  fill = "grey71", alpha = 0.25) +
+      geom_line(mapping = aes(x = date, y = Rt_median), linetype = "dashed",
+                color = "grey71", alpha = 0.55) +
+      geom_ribbon(mapping = aes(x=date, ymin=Reff_min, ymax = Reff_max), fill = "#96c4aa") +
+      geom_ribbon(mapping = aes(x = date, ymin = Reff_q25, ymax = Reff_q75), fill = "#48996b") +
       geom_line(mapping = aes(x = date, y = Reff_median), color = "#48996b") +
       geom_hline(yintercept = 1, linetype = "dashed") +
       theme_bw() +
@@ -1385,8 +1377,8 @@ rt_plot_immunity_vaccine <- function(out, R0_plot = FALSE) {
 
     if(R0) {
       g1 <- g1 +
-        geom_ribbon(mapping = aes(x=date, ymin=R0_min, ymax = R0_max, group = iso), fill = "#8cbbca") +
-        geom_ribbon(mapping = aes(x = date, ymin = R0_q25, ymax = R0_q75, group = iso), fill = "#3f8da7") +
+        geom_ribbon(mapping = aes(x=date, ymin=R0_min, ymax = R0_max), fill = "#8cbbca") +
+        geom_ribbon(mapping = aes(x = date, ymin = R0_q25, ymax = R0_q75), fill = "#3f8da7") +
         geom_hline(yintercept = sum_rt$R0_median[1], linetype = "dashed")
     }
     g1

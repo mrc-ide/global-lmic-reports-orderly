@@ -52,7 +52,7 @@ fit_spline_rt <- function(data,
   suppressWarnings(future::plan(future::multiprocess()))
 
   # Defualt parameter edges for pmcmc
-  R0_min <- 1.5
+  R0_min <- 1
   R0_max <- 10
   last_start_date <- as.Date(null_na(min_death_date))-10
   first_start_date <- as.Date(null_na(min_death_date))-55
@@ -123,7 +123,7 @@ fit_spline_rt <- function(data,
   # MCMC Functions - Prior and Likelihood Calculation
   logprior <- function(pars){
     ret <- dunif(x = pars[["start_date"]], min = -55, max = -10, log = TRUE) +
-      dunif(x = pars[["R0"]], min = 1.5, max = 10, log = TRUE)
+      dunif(x = pars[["R0"]], min = 1, max = 10, log = TRUE)
 
     # get rw spline parameters
     if(any(grepl("Rt_rw", names(pars)))) {
