@@ -25,6 +25,14 @@ if(packageVersion("nimue") < version_min) {
 data <- readRDS("excess_deaths.Rds")
 df <- data[data$iso3c == iso3c, ]
 
+#add a check for brunei, a long gap of no deaths makes this is impossible to fit
+if(iso3c == "BRN"){
+  #proceed if there's a lot of space with less than 1 tenth of the deaths
+  if(sum(df[df$week_start < "2021-06-20",]$deaths) < sum(df$deaths)/10){
+    df <- df[df$week_start >= "2021-06-20",]
+  }
+}
+
 ## b. Sort out what is to be our death time series
 ## -----------------------------------------------------------------------------
 

@@ -58,7 +58,7 @@ we running, and also whether we are doing a `short_run`. The `short_run` argumen
 dictates whether a small number of trees are used in the BRT.
 
 ```{r, eval = FALSE}
-date <- "2021-09-19"
+date <- "2021-09-24"
 
 # are we doing just a short run. If so only 20 mcmc iterations are used
 # and only 2 draws from the posterior. Set this to TRUE to do a quick test 
@@ -68,7 +68,7 @@ short_run <- FALSE
 # Are we fitting to excess mortality data?
 # if yes we call the economist models from github and use the excess_mortality task
 # to fit to the data
-excess_mortality <- TRUE
+excess_mortality <- FALSE
 ```
 
 These arguments are then passed to our 3 tasks:
@@ -126,6 +126,7 @@ message("*** Creating country task bundles")
 
 # how long is the mcmc for
 n_mcmc <- 20000
+n_chains <- 3
 
 if(!excess_mortality){
   # should tasks be run in parallel and use multiple chains. 
@@ -136,6 +137,7 @@ if(!excess_mortality){
   gibbs_sampling <- FALSE
 } else{
   adjust_delta <- TRUE
+  model <- "NIMUE"
 }
 
 # get the isos
@@ -164,7 +166,9 @@ if(excess_mortality){
         iso3c = x,
         date=date,
         n_mcmc=n_mcmc,
-        adjust_delta = adjust_delta
+        n_chains=n_chains,
+        adjust_delta = adjust_delta,
+        model = model
       )
     )
   }
@@ -239,7 +243,7 @@ pdfs <- grep("fitting", list.files(td, full.names = TRUE, recursive = TRUE), val
 # created because it needs to be for orderly to finish the task
 qpdf::pdf_combine(
   input = pdfs[file.size(pdfs) > 0], 
-  output = file.path("fits", paste0("lmic_reports_vaccine_", date, ".pdf"))
+  output = file.path("fits", paste0(ifelse(excess_mortality, "excess_mortality_", "lmic_reports_vaccine_"), date, ".pdf"))
 )
 ```
 
@@ -249,21 +253,20 @@ which countries require rerunning and rebundle those to be run again:
 
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
 # bundle the countries we need to rerun
-iso3cs_to_rerun <- c("BGD", "BRN", "ITA") 
+iso3cs_to_rerun <- c("BRN") 
 bundles_to_rerun <- lapply(
   iso3cs_to_rerun, 
   function(x) {
     orderly::orderly_bundle_pack(
       path = path_bundles,
-      name = "lmic_reports_vaccine",
+      name = "excess_mortality",
       parameters = list(
         iso3c = x,
         date=date,
-        short_run=short_run,
-        parallel=parallel,
-        full_scenarios=full_scenarios,
-        gibbs_sampling=gibbs_sampling,
-        n_mcmc=n_mcmc
+        n_mcmc=n_mcmc,
+        n_chains=n_chains,
+        adjust_delta = adjust_delta,
+        model = model
       )
     )
   }
@@ -272,29 +275,28 @@ bundles_to_rerun <- lapply(
 names(bundles_to_rerun) <- iso3cs_to_rerun
 saveRDS(bundles_to_rerun, file.path(path_bundles, "bundles_to_rerun.rds"))
 
-
-iso3cs_to_rerun <- c("BRN") 
-bundles_to_rerun <- lapply(
-  iso3cs_to_rerun, 
+iso3cs_to_rerun_2 <- c("PRY", "SGP", "SVK", "HKG") 
+bundles_to_rerun_2 <- lapply(
+  iso3cs_to_rerun_2, 
   function(x) {
     orderly::orderly_bundle_pack(
       path = path_bundles,
-      name = "lmic_reports_vaccine",
+      name = "excess_mortality",
       parameters = list(
         iso3c = x,
         date=date,
-        short_run=short_run,
-        parallel=parallel,
-        full_scenarios=full_scenarios,
-        gibbs_sampling=gibbs_sampling,
-        n_mcmc=n_mcmc
+        n_mcmc=n_mcmc,
+        adjust_delta = adjust_delta,
+        model = model,
+        n_chains = 1
       )
     )
   }
 )
 
-names(bundles_to_rerun) <- iso3cs_to_rerun
-saveRDS(bundles_to_rerun, file.path(path_bundles, "BRN_to_rerun.rds"))
+names(bundles_to_rerun_2) <- iso3cs_to_rerun_2
+saveRDS(bundles_to_rerun_2, file.path(path_bundles, "bundles_to_rerun_2.rds"))
+
 
 ```
 
@@ -369,7 +371,8 @@ if(excess_mortality){
   for(x in seq_along(ids)) {
 
     out <- readRDS(file.path("archive/excess_mortality", ids[x], "res.rds"))
-    if("pmcmc_results" %in% names(out)) {
+    if(!is.null(out)){
+      if("pmcmc_results" %in% names(out)) {
       if("chains" %in% names(out$pmcmc_results)) {
         mc <- do.call(rbind, lapply(out$pmcmc_results$chains, "[[", "results"))
       } else {
@@ -384,6 +387,7 @@ if(excess_mortality){
           round(best$start_date)
           )
         )
+    }
       best$iso3c <- countrycode::countrycode(
         out$parameters$country, origin = "country.name", destination = "iso3c"
         )

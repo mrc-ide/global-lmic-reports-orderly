@@ -1304,8 +1304,10 @@ rt_plot_immunity_vaccine <- function(out, R0_plot = FALSE) {
         date = tt$dates
       ) %>%
         complete(date = seq(min(date), date_0, by = "days")) %>%
-        fill(Rt) %>%
-        mutate(ratios = ratios[[y]]) %>%
+        fill(Rt)
+      #add ratio, first ensure the same length
+      df <- df %>%
+        mutate(ratios = ratios[[y]][1:nrow(df)]) %>%
         mutate(
           Reff = Rt*ratios,
           R0 = Rt[1]*ratios,
