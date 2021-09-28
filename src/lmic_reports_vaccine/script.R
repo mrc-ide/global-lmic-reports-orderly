@@ -52,18 +52,6 @@ ecdc_df <- ecdc_df[ecdc_df$date <= as.Date(date_0),]
 ## MAIN LOOP IS ONLY FOR THOSE WITH DEATHS
 if(sum(ecdc_df$deaths) > 0) {
 
-  # Remove any deaths at beginning that were followed by 21 days of no deaths as we have no information in these situations
-  if(sum(ecdc_df$deaths>0)>1) {
-    if(tail(diff(which(ecdc_df$deaths>0)),1) > 21) {
-      ecdc_df$deaths[tail(which(ecdc_df$deaths>0),1)] <- 0
-      deaths_removed <- sum(ecdc_df$deaths[tail(which(ecdc_df$deaths>0),1)])
-    } else {
-      deaths_removed <- 0
-    }
-  } else {
-    deaths_removed <- 0
-  }
-
   # get the raw data correct
   data <- ecdc_df[,c("dateRep", "deaths", "cases")]
   names(data)[1] <- "date"
@@ -72,10 +60,15 @@ if(sum(ecdc_df$deaths) > 0) {
   data <- data[data$date <= as.Date(date_0), ]
 
   # Handle for countries that have eliminated and had reintroduction events
-  reintroduction_iso3cs <- c("MMR", "BLZ", "TTO", "BHS", "HKG", "ABW", "GUM", "ISL", "BRB", "MUS")
+  reintroduction_iso3cs <- c("MMR", "BLZ", "TTO", "BHS", "HKG", "ABW", "GUM", "ISL", "BRB", "MUS", "BRN")
   if (iso3c %in% reintroduction_iso3cs) {
-    deaths_removed <- deaths_removed + sum(data$deaths[data$date < as.Date("2020-06-01")])
-    data$deaths[data$date < as.Date("2020-06-01")] <- 0
+    if(iso3c == "BRN"){
+      deaths_removed <- deaths_removed + sum(data$deaths[data$date < as.Date("2020-07-01")])
+      data$deaths[data$date < as.Date("2020-07-01")] <- 0
+    } else {
+      deaths_removed <- deaths_removed + sum(data$deaths[data$date < as.Date("2020-06-01")])
+      data$deaths[data$date < as.Date("2020-06-01")] <- 0
+    }
   }
 
   # and remove the rows with no data up to the first date that a death was reported

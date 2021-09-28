@@ -254,6 +254,7 @@ which countries require rerunning and rebundle those to be run again:
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
 # bundle the countries we need to rerun
 iso3cs_to_rerun <- c("BRN") 
+if(excess_mortality){
 bundles_to_rerun <- lapply(
   iso3cs_to_rerun, 
   function(x) {
@@ -271,6 +272,25 @@ bundles_to_rerun <- lapply(
     )
   }
 )
+} else {
+  bundles_to_rerun <- lapply(
+  iso3cs_to_rerun, function(x) {
+    orderly::orderly_bundle_pack(
+      path = path_bundles,
+      name = "lmic_reports_vaccine",
+      parameters = list(
+        iso3c = x,
+        date=date,
+        short_run=short_run,
+        parallel=parallel,
+        full_scenarios=full_scenarios,
+        gibbs_sampling=gibbs_sampling,
+        n_mcmc=n_mcmc
+      )
+    )
+  }
+)
+}
 
 names(bundles_to_rerun) <- iso3cs_to_rerun
 saveRDS(bundles_to_rerun, file.path(path_bundles, "bundles_to_rerun.rds"))
