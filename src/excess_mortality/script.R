@@ -25,13 +25,11 @@ if(packageVersion("nimue") < version_min) {
 data <- readRDS("excess_deaths.Rds")
 df <- data[data$iso3c == iso3c, ]
 
-#add a check for brunei, a long gap of no deaths makes this is impossible to fit
-if(iso3c == "BRN"){
-  #proceed if there's a lot of space with less than 1 tenth of the deaths
-  if(sum(df[df$week_start < "2021-06-20",]$deaths) < sum(df$deaths)/10){
-    df <- df[df$week_start >= "2021-06-20",]
-  }
-}
+#this step removes deaths that were likely due to importations that lead nowhere
+#or small contained epidemics simply to help the model fit better
+df <- preprocess_for_fitting(df)
+removed_deaths <- df[[2]] #save to store later
+df <- df[[1]]
 
 ## b. Sort out what is to be our death time series
 ## -----------------------------------------------------------------------------
@@ -143,6 +141,9 @@ if(nrow(df) == 0 | sum(df$deaths) == 0){
   # remove the output for memory and ease
   output <- res$output
   res$output <- NULL
+
+  #add removed deaths to interventions list
+  res$interventions$pre_epidemic_isolated_deaths <- removed_deaths
 
   # save output without output for memory
   saveRDS(res, "res.rds")

@@ -2,7 +2,6 @@
 fit_spline_rt <- function(data,
                           country,
                           pop,
-                          vacc_inputs,
                           delta_characteristics,
                           model = "NIMUE",
                           n_mcmc = 10000,
@@ -160,7 +159,6 @@ fit_spline_rt <- function(data,
     vacc_inputs <- get_vaccine_inputs(iso3c, vdm, vacc_types, owid, date_0, who_vacc, who_vacc_meta,
                                       delta_start_date = pars_obs$delta_start_date,
                                       shift_duration = pars_obs$shift_duration)
-
     dur_V <- 5000
   } else {
     vacc_inputs <- NULL
@@ -302,6 +300,8 @@ fit_spline_rt <- function(data,
   res$pmcmc_results$inputs$prior <- as.function(c(formals(logprior),
                                                   body(logprior)),
                                                 envir = new.env(parent = environment(stats::acf)))
+
+  res$interventions$delta_adjustments <- as.list(delta_characteristics)
 
   # remove states to keep object memory save down
   if("chains" %in% names(res$pmcmc_results)) {
@@ -483,23 +483,49 @@ run_deterministic_comparison_excess <- function(data, squire_model, model_params
   data$week_end[nrow(data)] <- data$week_start[nrow(data)] +
     data$week_end[nrow(data)-1]  - data$week_start[nrow(data)-1]
 
-  # here we change the dur_R for 60 days from delta_start_date
-  if("dur_R" %in% names(obs_params)) {
-    if(obs_params$dur_R != 365) {
-      ch_dur_R <- as.integer(as.Date(obs_params$delta_start_date) - model_start_date)
-      model_params$tt_dur_R <- c(0, ch_dur_R, ch_dur_R+obs_params$shift_duration)
-      model_params$gamma_R <- c(model_params$gamma_R, 2/obs_params$dur_R, model_params$gamma_R)
-    }
-  }
-
-  # here we change the prob_hosp as needed
-  if("prob_hosp_multiplier" %in% names(obs_params)) {
-    if(obs_params$prob_hosp_multiplier != 1) {
-      ch_dur_R <- as.integer(as.Date(obs_params$delta_start_date) - model_start_date)
-      model_params$tt_prob_hosp_multiplier <- c(0, seq(ch_dur_R, ch_dur_R + obs_params$shift_duration, by = 1))
-      model_params$prob_hosp_multiplier <- seq(model_params$prob_hosp_multiplier,
-                                               obs_params$prob_hosp_multiplier,
-                                               length.out = length(model_params$tt_prob_hosp_multiplier))
+  #make the delta adjustments
+  if("prob_hosp_multiplier" %in% names(obs_params) |
+     "dur_R" %in% names(obs_params)) {
+    #get the dates in the shift as t
+    shift_start <- as.integer(as.Date(obs_params$delta_start_date) - model_start_date)
+    shift_end <- as.integer(as.Date(obs_params$delta_start_date) -
+                              model_start_date +
+                              obs_params$shift_duration)
+    #if the epidemic starts before the end of the shift we just swap over the numbers
+    if(shift_end <= 0 & "prob_hosp_multiplier" %in% names(obs_params)){
+      model_params$prob_hosp_multiplier <- obs_params$prob_hosp_multiplier
+    } else {
+      #we must figure where along we are and fit that in, slowly increase the
+      #modified parameter until we reach the end of the shift
+      if("prob_hosp_multiplier" %in% names(obs_params) & (
+        obs_params$prob_hosp_multiplier != model_params$prob_hosp_multiplier
+        | is.null(model_params$prob_hosp_multiplier)
+      )){
+        #update prob_hosp
+        tt_prob_hosp_multiplier <- seq(shift_start, shift_end, by = 1)
+        prob_hosp_multiplier <- seq(model_params$prob_hosp_multiplier,
+                                    obs_params$prob_hosp_multiplier,
+                                    length.out = length(tt_prob_hosp_multiplier))
+        if(!(0 %in% tt_prob_hosp_multiplier)){
+          #since we've already covered before the start we must be after and just
+          #change the first entry to 0
+          tt_prob_hosp_multiplier[1] <- 0
+        }
+        model_params$tt_prob_hosp_multiplier <- tt_prob_hosp_multiplier
+        model_params$prob_hosp_multiplier <- prob_hosp_multiplier
+      }
+      if("dur_R" %in% names(obs_params) & (
+        2/obs_params$dur_R != model_params$gamma_R
+      )){
+        tt_dur_R <- c(shift_start, shift_end)
+        gamma_R <- c(2/obs_params$dur_R, model_params$gamma_R)
+        if(shift_start > 0){
+          tt_dur_R <- c(0, tt_dur_R)
+          gamma_R <- c(model_params$gamma_R, gamma_R)
+        }
+        model_params$tt_dur_R <- tt_dur_R
+        model_params$gamma_R <- gamma_R
+      }
     }
   }
 
@@ -943,6 +969,7 @@ pmcmc_excess <- function(data,
       tt_vaccine_efficacy_infection = tt_vaccine_efficacy_infection,
       vaccine_efficacy_disease = vaccine_efficacy_disease,
       tt_vaccine_efficacy_disease = tt_vaccine_efficacy_disease,
+      dur_R = dur_R,
       ...)
   } else {
     model_params <- squire_model$parameter_func(
@@ -954,7 +981,8 @@ pmcmc_excess <- function(data,
       hosp_bed_capacity = hosp_bed_capacity,
       tt_hosp_beds = tt_hosp_beds,
       ICU_bed_capacity = ICU_bed_capacity,
-      tt_ICU_beds = tt_ICU_beds)
+      tt_ICU_beds = tt_ICU_beds,
+      dur_R = dur_R)
   }
 
   # collect interventions for odin model likelihood
@@ -1026,7 +1054,6 @@ pmcmc_excess <- function(data,
     )
     X
   }
-
   #----------------
   # create mcmc run functions depending on whether Gibbs Sampling
   #----------------
@@ -1185,6 +1212,7 @@ pmcmc_excess <- function(data,
                              replicates = 1,
                              day_return = TRUE,
                              time_period = nrow(pmcmc_samples$trajectories),
+                             dur_R = dur_R,
                              ...)
   } else {
     r <- squire_model$run_func(country = country,
@@ -1239,217 +1267,6 @@ pmcmc_excess <- function(data,
   #--------------------..
   # out
   #--------------------..
-  return(r)
-
-}
-
-
-generate_draws <- function(out, draws = 10, parallel = TRUE, burnin = 100, log_likelihood = excess_log_likelihood) {
-
-  # handle for no death days
-  if(!("pmcmc_results" %in% names(out))) {
-    message("`out` was not generated by pmcmc as no deaths for this country. \n",
-            "Returning the oroginal object, which assumes epidemic seeded on date ",
-            "fits were run")
-    return(out)
-  }
-
-  # grab information from the pmcmc run
-  pmcmc <- out$pmcmc_results
-  squire_model <- out$pmcmc_results$inputs$squire_model
-  country <- out$parameters$country
-  population <- out$parameters$population
-  interventions <- out$interventions
-  data <- out$pmcmc_results$inputs$data
-
-  # sample parameters
-  replicates <- draws
-  burnin <- burnin
-  if("chains" %in% names(out$pmcmc_results)) {
-    n_chains <- length(out$pmcmc_results$chains)
-  } else {
-    n_chains <- 1
-  }
-  n_particles <- 2
-  forecast <- 0
-
-  # are we drawing in parallel
-  if (parallel) {
-    suppressWarnings(future::plan(future::multisession()))
-  }
-
-  #--------------------------------------------------------
-  # Section 3 of pMCMC Wrapper: Sample PMCMC Results
-  #--------------------------------------------------------
-  pmcmc_samples <- squire:::sample_pmcmc(pmcmc_results = pmcmc,
-                                         burnin = burnin,
-                                         n_chains = n_chains,
-                                         n_trajectories = replicates,
-                                         n_particles = n_particles,
-                                         forecast_days = forecast,
-                                         log_likelihood = log_likelihood)
-
-  #--------------------------------------------------------
-  # Section 4 of pMCMC Wrapper: Tidy Output
-  #--------------------------------------------------------
-
-  # create a fake run object and fill in the required elements
-  r <- squire_model$run_func(country = country,
-                             contact_matrix_set = pmcmc$inputs$model_params$contact_matrix_set,
-                             tt_contact_matrix = pmcmc$inputs$model_params$tt_matrix,
-                             hosp_bed_capacity = pmcmc$inputs$model_params$hosp_bed_capacity,
-                             tt_hosp_beds = pmcmc$inputs$model_params$tt_hosp_beds,
-                             ICU_bed_capacity = pmcmc$inputs$model_params$ICU_bed_capacity,
-                             tt_ICU_beds = pmcmc$inputs$model_params$tt_ICU_beds,
-                             population = population,
-                             day_return = TRUE,
-                             replicates = 1,
-                             time_period = nrow(pmcmc_samples$trajectories))
-
-  # and add the parameters that changed between each simulation, i.e. posterior draws
-  r$replicate_parameters <- pmcmc_samples$sampled_PMCMC_Results
-
-  # as well as adding the pmcmc chains so it's easy to draw from the chains again in the future
-  r$pmcmc_results <- pmcmc
-
-  # then let's create the output that we are going to use
-  names(pmcmc_samples)[names(pmcmc_samples) == "trajectories"] <- "output"
-  dimnames(pmcmc_samples$output) <- list(dimnames(pmcmc_samples$output)[[1]], dimnames(r$output)[[2]], NULL)
-  r$output <- pmcmc_samples$output
-
-  # and adjust the time as before
-  full_row <- match(0, apply(r$output[,"time",],2,function(x) { sum(is.na(x)) }))
-  saved_full <- r$output[,"time",full_row]
-  for(i in seq_len(replicates)) {
-    na_pos <- which(is.na(r$output[,"time",i]))
-    full_to_place <- saved_full - which(rownames(r$output) == as.Date(max(data$week_start))) + 1L
-    if(length(na_pos) > 0) {
-      full_to_place[na_pos] <- NA
-    }
-    r$output[,"time",i] <- full_to_place
-  }
-
-  # second let's recreate the output
-  r$model <- pmcmc_samples$inputs$squire_model$odin_model(
-    user = pmcmc_samples$inputs$model_params, unused_user_action = "ignore"
-  )
-
-  # we will add the interventions here so that we know what times are needed for projection
-  r$interventions <- interventions
-
-  # and fix the replicates
-  r$parameters$replicates <- replicates
-  r$parameters$time_period <- as.numeric(diff(as.Date(range(rownames(r$output)))))
-  r$parameters$dt <- pmcmc$inputs$model_params$dt
-
-  return(r)
-
-}
-
-
-generate_draws_no_vacc <- function(out, draws = 10, parallel = TRUE, burnin = 100, log_likelihood = excess_log_likelihood) {
-
-  # handle for no death days
-  if(!("pmcmc_results" %in% names(out))) {
-    message("`out` was not generated by pmcmc as no deaths for this country. \n",
-            "Returning the oroginal object, which assumes epidemic seeded on date ",
-            "fits were run")
-    return(out)
-  }
-
-  # grab information from the pmcmc run
-  pmcmc <- out$pmcmc_results
-  squire_model <- out$pmcmc_results$inputs$squire_model
-  country <- out$parameters$country
-  population <- out$parameters$population
-  interventions <- out$interventions
-  data <- out$pmcmc_results$inputs$data
-
-  # sample parameters
-  replicates <- draws
-  burnin <- burnin
-  if("chains" %in% names(out$pmcmc_results)) {
-    n_chains <- length(out$pmcmc_results$chains)
-  } else {
-    n_chains <- 1
-  }
-  n_particles <- 2
-  forecast <- 0
-
-  # are we drawing in parallel
-  if (parallel) {
-    suppressWarnings(future::plan(future::multisession()))
-  }
-
-  # now let's remove vaccines
-  interventions$max_vaccine <- rep(0, length(interventions$max_vaccine))
-  pmcmc$inputs$interventions <- interventions
-
-  #--------------------------------------------------------
-  # Section 3 of pMCMC Wrapper: Sample PMCMC Results
-  #--------------------------------------------------------
-  pmcmc_samples <- squire:::sample_pmcmc(pmcmc_results = pmcmc,
-                                         burnin = burnin,
-                                         n_chains = n_chains,
-                                         n_trajectories = replicates,
-                                         n_particles = n_particles,
-                                         forecast_days = forecast,
-                                         log_likelihood = log_likelihood)
-
-  #--------------------------------------------------------
-  # Section 4 of pMCMC Wrapper: Tidy Output
-  #--------------------------------------------------------
-
-  # create a fake run object and fill in the required elements
-  r <- squire_model$run_func(country = country,
-                             contact_matrix_set = pmcmc$inputs$model_params$contact_matrix_set,
-                             tt_contact_matrix = pmcmc$inputs$model_params$tt_matrix,
-                             hosp_bed_capacity = pmcmc$inputs$model_params$hosp_bed_capacity,
-                             tt_hosp_beds = pmcmc$inputs$model_params$tt_hosp_beds,
-                             ICU_bed_capacity = pmcmc$inputs$model_params$ICU_bed_capacity,
-                             tt_ICU_beds = pmcmc$inputs$model_params$tt_ICU_beds,
-                             population = population,
-                             day_return = TRUE,
-                             replicates = 1,
-                             time_period = nrow(pmcmc_samples$trajectories),
-                             dur_R = dur_R)
-
-  # and add the parameters that changed between each simulation, i.e. posterior draws
-  r$replicate_parameters <- pmcmc_samples$sampled_PMCMC_Results
-
-  # as well as adding the pmcmc chains so it's easy to draw from the chains again in the future
-  r$pmcmc_results <- pmcmc
-
-  # then let's create the output that we are going to use
-  names(pmcmc_samples)[names(pmcmc_samples) == "trajectories"] <- "output"
-  dimnames(pmcmc_samples$output) <- list(dimnames(pmcmc_samples$output)[[1]], dimnames(r$output)[[2]], NULL)
-  r$output <- pmcmc_samples$output
-
-  # and adjust the time as before
-  full_row <- match(0, apply(r$output[,"time",],2,function(x) { sum(is.na(x)) }))
-  saved_full <- r$output[,"time",full_row]
-  for(i in seq_len(replicates)) {
-    na_pos <- which(is.na(r$output[,"time",i]))
-    full_to_place <- saved_full - which(rownames(r$output) == as.Date(max(data$week_start))) + 1L
-    if(length(na_pos) > 0) {
-      full_to_place[na_pos] <- NA
-    }
-    r$output[,"time",i] <- full_to_place
-  }
-
-  # second let's recreate the output
-  r$model <- pmcmc_samples$inputs$squire_model$odin_model(
-    user = pmcmc_samples$inputs$model_params, unused_user_action = "ignore"
-  )
-
-  # we will add the interventions here so that we know what times are needed for projection
-  r$interventions <- interventions
-
-  # and fix the replicates
-  r$parameters$replicates <- replicates
-  r$parameters$time_period <- as.numeric(diff(as.Date(range(rownames(r$output)))))
-  r$parameters$dt <- pmcmc$inputs$model_params$dt
-
   return(r)
 
 }
