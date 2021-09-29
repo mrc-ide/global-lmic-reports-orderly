@@ -69,14 +69,14 @@ fit_spline_rt <- function(data,
   date_start <- min(max(as.Date(start_date), as.Date(first_start_date)), as.Date(last_start_date))
 
   #new variable to say when spline starts
-  date_spline_start <- last_start_date + 1
+  date_spline_start <- first_start_date + rw_duration
 
   ## -----------------------------------------------------------------------------
   ## Step 2c: Spline set up
   ## -----------------------------------------------------------------------------
 
   #calculate how many times our Rt spline changes and at what date
-  date_Rt_change <- seq(date_spline_start, as.Date(date_0) - 14, by = 14)
+  date_Rt_change <- seq(date_spline_start, as.Date(date_0) - rw_duration, by = rw_duration)
 
   # how many spline pars do we need
   Rt_rw_duration <- rw_duration # i.e. we fit with a 2 week duration for our random walks.
@@ -185,6 +185,11 @@ fit_spline_rt <- function(data,
   pars_init[which(!is.na(pos_mat))] <- as.list(pf[na.omit(pos_mat)])
   pars_init$start_date <- as.Date(pars_init$start_date)
 
+  #temp
+  #pars_init$R0 <- 3
+  #pars_init[grepl("Rt_rw", names(pars_init))] <- 0
+  #pars_init[grepl("Rt_rw", names(pars_init))][[1]] <- c(1.609)
+
   # grab old scaling factor
   scaling_factor <- 1
   if("scaling_factor" %in% names(pf)) {
@@ -272,7 +277,8 @@ fit_spline_rt <- function(data,
                       date_Rt_change = date_Rt_change,
                       Rt_args = list(
                         Rt_date_spline_start = date_spline_start,
-                        Rt_rw_duration = Rt_rw_duration),
+                        Rt_rw_duration = Rt_rw_duration,
+                        date_Rt_change = date_Rt_change),
                       burnin = ceiling(n_mcmc/10),
                       seeding_cases = 5,
                       replicates = replicates,
@@ -349,11 +355,15 @@ excess_log_likelihood <- function(pars, data, squire_model, model_params, pars_o
     tt_beta <- 0
   }
   else {
-    tt_list <- squire:::intervention_dates_for_odin(dates = c(start_date, date_Rt_change),
-                                                    change = rep(1, length(date_Rt_change) + 1), start_date = start_date, steps_per_day = round(1/model_params$dt),
+    #get the Rt values from R0 and the Rt_change values
+    Rt <- evaluate_Rt_pmcmc_custom(R0 = R0, pars = pars, Rt_args = Rt_args)
+    #get the dates in t and the corresponding Rt indexes
+    tt_list <- squire:::intervention_dates_for_odin(dates = date_Rt_change,
+                                                    change = seq(2, length(Rt)), start_date = start_date, steps_per_day = round(1/model_params$dt),
                                                     starting_change = 1)
     model_params$tt_beta <- tt_list$tt
-    date_Rt_change <- tt_list$dates
+    #reduce Rt to the values needed
+    Rt <- Rt[tt_list$change]
   }
   if (is.null(date_contact_matrix_set_change)) {
     tt_contact_matrix <- 0
@@ -420,11 +430,9 @@ excess_log_likelihood <- function(pars, data, squire_model, model_params, pars_o
     model_params$prob_hosp <- model_params$prob_hosp[tt_list$change,
                                                      , ]
   }
-  #calculate R0 using new function
-  R0 <- evaluate_Rt_pmcmc_custom(R0 = R0, date_Rt_change = date_Rt_change,
-                                 pars = pars, Rt_args = Rt_args)
+  #calculate Beta from Rt
   beta_set <- squire:::beta_est(squire_model = squire_model, model_params = model_params,
-                                R0 = R0)
+                                R0 = Rt)
   model_params$beta_set <- beta_set
   if (inherits(squire_model, "stochastic")) {
     pf_result <- squire:::run_particle_filter(data = data, squire_model = squire_model,
@@ -540,6 +548,14 @@ run_deterministic_comparison_excess <- function(data, squire_model, model_params
   Ds <- cumDs[data$week_end[-1]] - cumDs[data$week_start[-1]]
   Ds[Ds < 0] <- 0
   deaths <- data$deaths[-1]
+
+  #print(cbind(
+  #  deaths, as.integer(Ds)
+  #))
+  #print(ggplot() +
+  #  geom_line(aes(x = seq_along(deaths), y = deaths)) +
+  #  geom_line(aes(x = seq_along(Ds), y = Ds), colour = "red")
+  #)
 
   ll <- squire:::ll_nbinom(deaths, Ds, obs_params$phi_death, obs_params$k_death,
                            obs_params$exp_noise)
@@ -1271,15 +1287,8 @@ pmcmc_excess <- function(data,
 
 }
 
-evaluate_Rt_pmcmc_custom <- function(R0, date_Rt_change,
-                                     pars, Rt_args){
-  #first just double check all dates are set up correctly, other than the first
-  #date which should be the start_date, then the difference between all dates should
-  #Rt_rw_duration
-  if(any(diff(date_Rt_change[-1]) != Rt_args$Rt_rw_duration)){
-    stop("Incorrect Rt change times, please check R0/Rt code")
-  }
-  #now calculate the values
+evaluate_Rt_pmcmc_custom <- function(R0, pars, Rt_args){
+  #calculate the values
   Rt <- as.numeric(c(R0, R0*2*plogis(cumsum(-unlist(pars[grepl("Rt_rw", names(pars))])))))
   return(Rt)
 }

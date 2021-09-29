@@ -75,16 +75,18 @@ rt_plot_immunity <- function(out) {
   # create the Rt data frame
   rts <- lapply(seq_len(length(out$replicate_parameters$R0)), function(y) {
 
-    tt <- squire:::intervention_dates_for_odin(dates = c(out$replicate_parameters$start_date[y], out$interventions$date_Rt_change),
-                                               change = rep(1, length(out$interventions$date_Rt_change) + 1),
+    #get the Rt values from R0 and the Rt_change values
+    Rt <- evaluate_Rt_pmcmc_custom(R0 = out$replicate_parameters$R0[y],
+                                   pars = as.list(out$replicate_parameters[y,]),
+                                   Rt_args = out$pmcmc_results$inputs$Rt_args)
+    #get the dates in t and the corresponding Rt indexes
+    tt <- squire:::intervention_dates_for_odin(dates = out$interventions$date_Rt_change,
+                                               change = seq(2, length(Rt)),
                                                start_date = out$replicate_parameters$start_date[y],
-                                               steps_per_day = 1/out$parameters$dt)
-
-    Rt <- evaluate_Rt_pmcmc_custom(
-      date_Rt_change = tt$dates,
-      R0 = out$replicate_parameters$R0[y],
-      pars = as.list(out$replicate_parameters[y,]),
-      Rt_args = out$pmcmc_results$inputs$Rt_args)
+                                               steps_per_day = 1/out$parameters$dt,
+                                               starting_change = 1)
+    #reduce Rt to the values needed
+    Rt <- Rt[tt$change]
 
     df <- data.frame(
       Rt = Rt,
