@@ -157,8 +157,7 @@ fit_spline_rt <- function(data,
       select(date, contains("vacc"))
 
     vacc_inputs <- get_vaccine_inputs(iso3c, vdm, vacc_types, owid, date_0, who_vacc, who_vacc_meta,
-                                      delta_start_date = pars_obs$delta_start_date,
-                                      shift_duration = pars_obs$shift_duration)
+                                      delta_characteristics = delta_characteristics)
     dur_V <- 5000
   } else {
     vacc_inputs <- NULL

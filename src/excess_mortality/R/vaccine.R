@@ -1,6 +1,6 @@
 # sort out vaccine inputs
 get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, who_vacc_meta,
-                               delta_start_date, shift_duration) {
+                               delta_characteristics) {
 
   # filter to just relevant dates
   owid <- owid %>% filter(date <= as.Date(date_0))
@@ -458,23 +458,18 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
                          ve_i_low, ve_i_high, ve_d_low, ve_d_high)
   dose_ratio <- ret_res$dose_ratio
   ret_res$dose_ratio <- NULL
-  # if delta start date and shift duration are given then apply an adjust on
+  # if delta characteristics are given then apply an adjust on
   # vaccine efficacy for the delta variant
-  if(!is.null(delta_start_date)){
-    if(is.null(shift_duration)){
-      stop("Only one of delta start date and shift duration supplied")
-    }
+  if(nrow(delta_characteristics) > 0){
 
-    #if both are not NULL then we apply the shift
-
-    #values to shift to once delta is dominant
-    ve_i_low_d <- 0.33
-    ve_i_high_d <- 0.58
-    ve_d_low_d <- 0.8
-    ve_d_high_d <- 0.90
+    delta_start_date <- delta_characteristics$start_date
+    shift_duration <- delta_characteristics$shift_duration
 
     ret_res_delta <- get_ret_res(owid, who_vacc, who_vacc_meta, date_vaccine_change,
-                                 ve_i_low_d, ve_i_high_d, ve_d_low_d, ve_d_high_d)
+                                 delta_characteristics$ve_i_low_d,
+                                 delta_characteristics$ve_i_high_d,
+                                 delta_characteristics$ve_d_low_d,
+                                 delta_characteristics$ve_d_high_d)
 
     #some basic checks that should always be correct
     if(
@@ -568,9 +563,6 @@ get_vaccine_inputs <- function(iso3c, vdm, vacc_types, owid, date_0, who_vacc, w
     ret_res$max_vaccine <- ret_res_df$max_vaccine
     ret_res$vaccine_efficacy_infection <- lapply(ret_res_df$vei_c, rep, 17)
     ret_res$vaccine_efficacy_disease <- lapply(ret_res_df$ved_c, rep, 17)
-
-  } else if(!is.null(shift_duration)){
-    stop("Only one of delta start date and shift duration supplied")
   }
 
   # trim to date

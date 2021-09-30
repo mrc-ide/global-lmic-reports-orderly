@@ -127,14 +127,10 @@ delta_characteristics <- delta_characteristics %>%
     mutate(shift_duration = as.numeric(end_date - start_date)) %>%
     select(!end_date)
 
-#assume 46% immune escape
-#(https://assets.publishing.service.gov.uk/government/uploads/system/uploads/
-#attachment_data/file/1005517/Technical_Briefing_19.pdf)
-#lack of effect <180 days means we can use this as a stand in for
-#alpha/non-delta to delta re-infection increase
+#assume 25%
 delta_characteristics <- delta_characteristics %>%
   mutate(
-    immune_escape = 0.46
+    immune_escape = 0.25
   )
 
 #calculate require dur_R for the shift period
@@ -144,8 +140,7 @@ delta_characteristics <- delta_characteristics %>%
     required_dur_R = 1 / (
       (shift_duration / 365 - log(1 - immune_escape)) / shift_duration
     )
-  ) %>%
-  select(!immune_escape)
+  )
 
 #add increased hospitalization
 #(https://www.thelancet.com/journals/laninf/article/PIIS1473-3099(21)00475-8/
@@ -153,6 +148,15 @@ delta_characteristics <- delta_characteristics %>%
 delta_characteristics <- delta_characteristics %>%
   mutate(
     prob_hosp_multiplier = 1.45
+  )
+
+#decreased vaccine efficacy
+delta_characteristics <- delta_characteristics %>%
+  mutate(
+    ve_i_low_d = 0.33,
+    ve_i_high_d = 0.58,
+    ve_d_low_d = 0.8,
+    ve_d_high_d = 0.90,
   )
 
 #print a plot to check our results
