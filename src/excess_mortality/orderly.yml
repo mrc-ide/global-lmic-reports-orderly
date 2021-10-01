@@ -109,7 +109,6 @@ packages:
   - xml2
   - grid
   - ggforce
-  - countrycode
   - cowplot
   - RhpcBLASctl
   - lubridate

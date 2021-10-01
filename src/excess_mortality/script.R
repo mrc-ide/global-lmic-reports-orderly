@@ -65,54 +65,11 @@ if(nrow(df) == 0 | sum(df$deaths) == 0){
 
   if(adjust_delta){
     #open data from covariants
-    delta_characteristics <- readRDS("delta_characteristics.Rds") %>% ungroup()
-
-    #get data or impute if not there
-    if (iso3c %in% delta_characteristics$iso3c) {
-      this_iso3c <- iso3c
-      delta_characteristics <- delta_characteristics %>%
-        filter(iso3c == this_iso3c) %>%
-        select(where(~is.numeric(.x) | is.Date(.x)))
-    } else if (
-      countrycode::countrycode(iso3c, origin = "iso3c",
-                               destination = "un.regionsub.name") %in%
-      delta_characteristics$sub_region
-    ) {
-      this_sub_region <- countrycode::countrycode(iso3c,
-                                                  origin = "iso3c", destination = "un.regionsub.name")
-      #we then use the median values of all countries in that sub region
-      delta_characteristics <- delta_characteristics %>%
-        filter(
-          sub_region == this_sub_region
-        ) %>%
-        summarise(across(
-          where(~is.numeric(.x) | is.Date(.x)),
-          ~median(.x, na.rm = T)
-        ))
-    } else if (
-      countrycode::countrycode(iso3c, origin = "iso3c",
-                               destination = "continent") %in%
-      delta_characteristics$continent
-    ) {
-      this_continent <- countrycode::countrycode(iso3c, origin = "iso3c",
-                                                 destination = "continent")
-      #we then use the median values of all countries in that contient
-      delta_characteristics <- delta_characteristics %>%
-        filter(
-          continent == this_continent
-        ) %>%
-        summarise(across(
-          where(~is.numeric(.x) | is.Date(.x)),
-          ~median(.x, na.rm = T)
-        ))
-    } else{
-      #else we use the median values for the world
-      delta_characteristics <- delta_characteristics %>%
-        summarise(across(
-          where(~is.numeric(.x) | is.Date(.x)),
-          ~median(.x, na.rm = T)
-        ))
-    }
+    delta_characteristics <- readRDS("delta_characteristics.Rds") %>%
+      ungroup() %>%
+      rename(iso3c_ = iso3c) %>%
+      filter(iso3c_ == iso3c) %>%
+      select(where(~is.numeric(.x) | is.Date(.x)))
   } else{
     #these settings should lead to no adjustment
     delta_characteristics <- data.frame(

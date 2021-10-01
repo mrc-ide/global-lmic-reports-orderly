@@ -28,11 +28,15 @@ excess_deaths <- excess_deaths_raw %>%
       deaths
     ),#ensure date is first of week then move to mid week
     week_start = lubridate::floor_date(date, unit = "week"),
-    week_end = lubridate::ceiling_date(date, unit = "week"),
+    week_end = lubridate::ceiling_date(date, unit = "week")
+  ) %>% #summarise incase multiple entries a week
+    group_by(iso3c, week_start, week_end) %>%
+    summarise(deaths = mean(deaths)) %>%
+    ungroup() %>%
+  mutate(
     #make it weekly
     deaths = as.integer(deaths*7)
   ) %>%
-  select(iso3c, week_start, week_end, deaths) %>%
   #if deaths are negative set to 0
   mutate(
     deaths = if_else(

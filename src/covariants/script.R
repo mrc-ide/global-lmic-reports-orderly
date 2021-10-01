@@ -68,17 +68,9 @@ delta_characteristics <-
     by = "iso3c"
   )
 
-#only keep countries with start dates, and add un region/sub region for data
-#imputation for countries with no data later on
+#only keep countries with start dates
 delta_characteristics <- delta_characteristics %>%
-  filter(!is.na(start_date)) %>%
-  mutate(
-    sub_region = countrycode(
-      if_else(iso3c == "TWN", "CHN", iso3c),
-      origin = "iso3c",
-      destination = "un.regionsub.name"),
-    continent = countrycode(iso3c, origin = "iso3c", destination = "continent")
-  )
+  filter(!is.na(start_date))
 
 #check if any end dates are before the start dates
 if (length(filter(delta_characteristics, start_date > end_date) %>%
@@ -141,6 +133,101 @@ delta_characteristics <- delta_characteristics %>%
       (shift_duration / 365 - log(1 - immune_escape)) / shift_duration
     )
   )
+
+##now expand over all iso3cs in squire using means across sub region, contient
+#and world if not there
+all_iso3cs <- data.frame(
+  iso3c = unique(squire::population$iso3c)
+  ) %>%
+  mutate(
+  sub_region = countrycode(
+    case_when(iso3c == "TWN" ~ "CHN",
+              iso3c == "CHI" ~ "GBR",
+              TRUE ~ iso3c),
+    origin = "iso3c",
+    destination = "un.regionsub.name"),
+  continent = countrycode(
+    case_when(iso3c == "TWN" ~ "CHN",
+              iso3c == "CHI" ~ "GBR",
+              TRUE ~ iso3c),
+    origin = "iso3c",
+    destination = "continent")
+)
+
+parameters <- c("start_date", "shift_duration", "immune_escape", "required_dur_R")
+
+#function to add the median of the parameters by some measure
+add_median <- function(data, join_on){
+  if(join_on=="" & nrow(data %>% filter(
+    if_any(
+      all_of(parameters),
+      ~is.na(.x)
+    )
+  ) ) > 0){
+    data %>% filter(
+      if_all(
+        all_of(parameters),
+        ~!is.na(.x)
+      )
+    ) %>%
+      rbind(
+        data %>% filter(
+          if_any(
+            all_of(parameters),
+            ~is.na(.x)
+          )
+        ) %>%
+          select(!all_of(parameters)) %>%
+          cbind(
+            data %>%
+              summarise(across(
+                all_of(parameters),
+                ~median(.x, na.rm = T)
+              ))
+          )
+      )
+  } else if(nrow(data %>% filter(
+    if_any(
+      all_of(parameters),
+      ~is.na(.x)
+    )
+  ) ) > 0){
+    data %>% filter(
+      if_all(
+        all_of(parameters),
+        ~!is.na(.x)
+      )
+    ) %>%
+      rbind(
+        data %>% filter(
+          if_any(
+            all_of(parameters),
+            ~is.na(.x)
+          )
+        ) %>%
+          select(!all_of(parameters)) %>%
+          left_join(
+            data %>%
+              group_by(across(all_of(join_on))) %>%
+              summarise(across(
+                all_of(parameters),
+                ~median(.x, na.rm = T)
+              )),
+            by = join_on
+          )
+      )
+  } else{
+    data
+  }
+}
+
+#for data that is missing add sub_region medians
+delta_characteristics <- all_iso3cs %>% #add countries with data
+  left_join(delta_characteristics, by = "iso3c") %>% #add sub_region median
+  add_median("sub_region") %>% #add contient median
+  add_median("continent") %>% #add world median
+  add_median("") %>%
+  select(!c(continent, sub_region))
 
 #add increased hospitalization
 #(https://www.thelancet.com/journals/laninf/article/PIIS1473-3099(21)00475-8/
