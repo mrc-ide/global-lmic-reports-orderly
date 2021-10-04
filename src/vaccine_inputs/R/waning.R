@@ -71,8 +71,25 @@ calculate_waning_eff_country <- function(date, dose_ratio,
         if(start_doses_second <= row){
           #if second doses have occured
           index_second <- start_doses_second:row
-          index_cross_over <- which(index_first %in% index_second)
-          #calculating effect of second vaccine
+          #estimate the mean date of the doses before each date that second doses
+          #occur
+          mean_dates_first_dose <- unlist(lapply(start_doses_second:row, function(x){
+            #get indexes of the releveant dates
+            indexes <- start_doses_first:(x-1) #up to the day before for now
+            weighted.mean(date[indexes], first_doses[indexes])
+          }))
+          #estimate first dose efficacy for those dates
+          ve_i_first_mean_dates <- get_eff_disease(
+            cur_date,
+            mean_dates_first_dose,
+            efficacy_infection_first[row]
+          )
+          ve_d_first_mean_dates <- get_eff_disease(
+            cur_date,
+            mean_dates_first_dose,
+            efficacy_disease_first[row]
+          )
+          #estimate efficacy for second doses
           ve_i_second <- get_eff_disease(
             cur_date,
             date[index_second],
@@ -84,15 +101,15 @@ calculate_waning_eff_country <- function(date, dose_ratio,
             efficacy_disease_second[row]
           )
           out_df <- out_df %>% mutate(
-            #calculate averages
+            #estimate the average difference made by the doses
             vaccine_efficacy_infection_second_diff = weighted.mean(
-              ve_i_second,
+              ve_i_second - ve_i_first_mean_dates,
               second_doses[index_second]
-            ) - vaccine_efficacy_infection_first,
+            ),
             vaccine_efficacy_disease_second_diff = weighted.mean(
-              ve_d_second,
+              ve_d_second - ve_d_first_mean_dates,
               second_doses[index_second]
-            ) - vaccine_efficacy_disease_first,
+            ),
             #calculate overall vaccine efficacy with dose_ratio
             vaccine_efficacy_infection = vaccine_efficacy_infection_first +
             vaccine_efficacy_infection_second_diff * dose_ratio[row],
@@ -151,6 +168,7 @@ calculate_waning_eff <- function(data, countries, dose_ratio,
         rbind,
         lapply(countries, function(country){
           data <- data %>% ungroup() %>%  filter(iso3c == country)
+
             calculate_waning_eff_country(date = data$date_vaccine_change,
               dose_ratio = data[[dose_ratio]],
               first_doses = data[[first_doses]],
@@ -164,17 +182,15 @@ calculate_waning_eff <- function(data, countries, dose_ratio,
               mutate(iso3c = country)
         })
       )
-    ) #%>% #any values not filled are by design 0
-    # mutate(
-    #   vaccine_efficacy_infection = if_else(
-    #     is.na(vaccine_efficacy_infection),
-    #     0,
-    #     vaccine_efficacy_infection
-    #   ),
-    #   vaccine_efficacy_disease = if_else(
-    #     is.na(vaccine_efficacy_disease),
-    #     0,
-    #     vaccine_efficacy_disease
-    #   )
-    # )
+    )
+}
+estimate_increase_in_efficacy_from_second_doses <- function(first_doses,
+                                                            second_doses){
+  #assume mean first dose date
+  weighted.mean(unlist(lapply(1:length(second_doses), function(x){
+    #get the first doses that could be the one it is
+    mean_time_of_first_dose <- mean(first_doses[first_doses > x])
+    210/x - 200/mean_time_of_first_dose
+  })), table(second_doses)) * percentage_second_dose + mean(200/first_doses)
+
 }
