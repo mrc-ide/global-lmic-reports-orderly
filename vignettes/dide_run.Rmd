@@ -68,7 +68,7 @@ short_run <- FALSE
 # Are we fitting to excess mortality data?
 # if yes we call the economist models from github and use the excess_mortality task
 # to fit to the data
-excess_mortality <- FALSE
+excess_mortality <- TRUE
 ```
 
 These arguments are then passed to our 3 tasks:
@@ -125,7 +125,7 @@ message("*** Creating country task bundles")
 # main input parameters
 
 # how long is the mcmc for
-n_mcmc <- 20000
+n_mcmc <- 100000
 n_chains <- 3
 
 if(!excess_mortality){
@@ -137,7 +137,7 @@ if(!excess_mortality){
   gibbs_sampling <- FALSE
 } else{
   adjust_delta <- TRUE
-  model <- "NIMUE"
+  model <- "SQUIRE"
 }
 
 # get the isos
