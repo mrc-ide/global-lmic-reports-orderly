@@ -103,6 +103,7 @@ who_vacc <- who_vacc %>%
 ### Set up vaccine efficacies
 
 dur_vaccine_delay <- 14
+rel_infectiousness_vaccinated <- 0.5
 dur_V <- Inf
 ve_i_low <- 0.6
 ve_i_high <- 0.8
@@ -167,7 +168,7 @@ dose_df <- dose_df %>%
     #from this we calculate people getting two doses each day
     people_with_two_doses = people_with_atleast_one_dose*dose_ratio,
     #from this we get the number of new second doses each day
-    new_second_doses = c(0, diff(people_with_two_doses))
+    second_doses = c(0, diff(people_with_two_doses))
   )
 
 #countries to check
@@ -178,7 +179,7 @@ dose_df <- dose_df %>%
 #for now we set negatives to 0
 dose_df <- dose_df %>%
   mutate(
-    new_second_doses = if_else(new_second_doses <0, 0, new_second_doses)
+    second_doses = if_else(second_doses <0, 0, second_doses)
     ) %>%
   select(!c(people_with_atleast_one_dose, people_with_two_doses))
 
@@ -197,13 +198,18 @@ if(adjust_delta){
 #calculate efficacy on each day for each country with waning and dose adjustment
 dose_df <- dose_df %>%
   arrange(iso3c, date_vaccine_change) %>%
-  calculate_waning_eff(countries = iso3cs, dose_ratio = "dose_ratio",
-                       first_doses = "max_vaccine",
-                       second_doses = "new_second_doses",
-                       efficacy_infection_first = "ve_i_low",
-                       efficacy_infection_second = "ve_i_high",
-                       efficacy_disease_first = "ve_d_low",
-                       efficacy_disease_second = "ve_d_high")
+  calculate_waning_eff(
+    dates = "date_vaccine_change", #name of the variable with the dates
+    first_doses = "max_vaccine", #name of variable of timeseries of first doses
+    second_doses = "second_doses", #name of variable of timeseries when people get second doses
+    efficacy_infection_first = "ve_i_low", #names of variables of the efficacy for each
+    efficacy_infection_second = "ve_i_high", #type of protection/dose
+    efficacy_disease_first = "ve_d_low",
+    efficacy_disease_second = "ve_d_high",
+    dur_vaccine_delay = dur_vaccine_delay, #the level of delay in first dose protection (numeric)
+    countries = "iso3c",
+    diagnostic = TRUE
+  )
 
 ### Calibration plot
 dir.create("calibration", showWarnings = FALSE)
@@ -215,13 +221,13 @@ waning_data <- tibble(
   mutate(
     Delta = FALSE,
     `Protection against Infection, first dose` =
-      get_eff_infection(`Days from Vaccination`, 1, ve_i_low),
+      get_eff_infection(`Days from Vaccination`, ve_i_low),
     `Protection against Infection, second dose` =
-      get_eff_infection(`Days from Vaccination`, 1, ve_i_high),
+      get_eff_infection(`Days from Vaccination`, ve_i_high),
     `Protection against Disease, first dose` =
-      get_eff_infection(`Days from Vaccination`, 1, ve_d_low),
+      get_eff_infection(`Days from Vaccination`, ve_d_low),
     `Protection against Disease, second dose` =
-      get_eff_infection(`Days from Vaccination`, 1, ve_d_high)
+      get_eff_infection(`Days from Vaccination`, ve_d_high)
   )
 if(adjust_delta){
   delta_adjustments <- readRDS("delta_characteristics.Rds") %>%
@@ -232,13 +238,13 @@ if(adjust_delta){
       mutate(
              Delta = TRUE,
         `Protection against Infection, first dose` =
-          get_eff_infection(`Days from Vaccination`, 1, delta_adjustments$ve_i_low_d),
+          get_eff_infection(`Days from Vaccination`, delta_adjustments$ve_i_low_d),
         `Protection against Infection, second dose` =
-          get_eff_infection(`Days from Vaccination`, 1, delta_adjustments$ve_i_high_d),
+          get_eff_infection(`Days from Vaccination`, delta_adjustments$ve_i_high_d),
         `Protection against Disease, first dose` =
-          get_eff_infection(`Days from Vaccination`, 1, delta_adjustments$ve_d_low_d),
+          get_eff_infection(`Days from Vaccination`, delta_adjustments$ve_d_low_d),
         `Protection against Disease, second dose` =
-          get_eff_infection(`Days from Vaccination`, 1, delta_adjustments$ve_d_high_d)
+          get_eff_infection(`Days from Vaccination`, delta_adjustments$ve_d_high_d)
       )
   )
 }
@@ -264,7 +270,7 @@ for(country in iso3cs){
   #plot of new doses each day
   dose_plot <- ggplot(this_country %>%
            rename(`First Dose` = max_vaccine,
-                  `Second Dose` = new_second_doses
+                  `Second Dose` = second_doses
                   ) %>%
           pivot_longer(c(`First Dose`,
                          `Second Dose`),
@@ -273,38 +279,60 @@ for(country in iso3cs){
          aes(x = Date, y = `Doses given each day`, colour = `Dose:`, linetype = imputed)) +
     geom_line() + theme_pubclean() +
     scale_linetype(guide = "none")
+  dose_comp_plot <- ggplot(this_country %>%
+                             mutate(`First Dose` = diff(c(0,INTERNAL_cum_first_in_comp)),
+                                    `Second Dose` = diff(c(0,INTERNAL_cum_second_in_comp))
+                             ) %>%
+                             pivot_longer(c(`First Dose`,
+                                            `Second Dose`),
+                                          values_to = "Cumulative Vaccinated,\nadjusted for delay",
+                                          names_to = "Dose:"),
+                           aes(x = Date, y = `Cumulative Vaccinated,\nadjusted for delay`, colour = `Dose:`, linetype = imputed)) +
+    geom_line() + theme_pubclean() +
+    scale_linetype(guide = "none")
   #plot dose ratio
   dose_ratio_plot <- ggplot(this_country %>%
-                              rename(`Dose Ratio` = dose_ratio),
-                            aes(x = Date, y = `Dose Ratio`, linetype = imputed)) +
+                              rename(`Adjusted for` = INTERNAL_dose_ratio_comp,
+                                     `Raw` = dose_ratio) %>%
+                              pivot_longer(c(`Adjusted for`, `Raw`),
+                                           names_to = "Delay", values_to = "Dose Ratio"),
+                            aes(x = Date, y = `Dose Ratio`, linetype = imputed, colour = Delay)) +
                               geom_line() +
                               theme_pubclean() + ylim(c(0,1)) +
     scale_linetype(guide = "none")
-  #first dose second dose efficacies over time
-  infection_eff_dose_plot <-
-    ggplot(this_country %>%
-           mutate(`First Dose`=vaccine_efficacy_infection_first,
-                  `Second Dose`=vaccine_efficacy_infection_second_diff +
-                    vaccine_efficacy_infection_first) %>%
-    pivot_longer(c(`First Dose`, `Second Dose`), names_to = "Dose:",
-                 values_to = "Mean VE-Infection"),
-  aes(x = Date, y = `Mean VE-Infection`,
-      linetype = imputed, colour = `Dose:`)) +
-    geom_step() +
+  #plot mean first does
+  mean_first_plot <- ggplot(this_country %>%
+                            mutate(`Assumed days\nbetween doses` =as.numeric(Date - INTERNAL_mean_first_dose_date)),
+                            aes(x = Date, y = `Assumed days\nbetween doses`,
+                                linetype = imputed)) +
+    geom_point() +
     theme_pubclean() +
-    scale_linetype(guide = "none") + ylim(c(0,1))
-  disease_eff_dose_plot <-
-    ggplot(this_country %>%
-             mutate(`First Dose` = vaccine_efficacy_disease_first,
-                    `Second Dose` = vaccine_efficacy_disease_second_diff +
-                      vaccine_efficacy_disease_first) %>%
-             pivot_longer(c(`First Dose`, `Second Dose`), names_to = "Dose:",
-                          values_to = "Mean VE-Disease"),
-           aes(x = Date, y = `Mean VE-Disease`,
-               linetype = imputed, colour = `Dose:`)) +
-    geom_step() +
-    theme_pubclean() +
-    scale_linetype(guide = "none") + ylim(c(0,1))
+    scale_linetype(guide = "none")
+  #first dose second dose efficacies over time NOT USED CURRENTLY
+  # infection_eff_dose_plot <-
+  #   ggplot(this_country %>%
+  #          mutate(`First Dose`=vaccine_efficacy_infection_first,
+  #                 `Second Dose`=vaccine_efficacy_infection_second_diff +
+  #                   vaccine_efficacy_infection_first) %>%
+  #   pivot_longer(c(`First Dose`, `Second Dose`), names_to = "Dose:",
+  #                values_to = "Mean VE-Infection"),
+  # aes(x = Date, y = `Mean VE-Infection`,
+  #     linetype = imputed, colour = `Dose:`)) +
+  #   geom_step() +
+  #   theme_pubclean() +
+  #   scale_linetype(guide = "none") + ylim(c(0,1))
+  # disease_eff_dose_plot <-
+  #   ggplot(this_country %>%
+  #            mutate(`First Dose` = vaccine_efficacy_disease_first,
+  #                   `Second Dose` = vaccine_efficacy_disease_second_diff +
+  #                     vaccine_efficacy_disease_first) %>%
+  #            pivot_longer(c(`First Dose`, `Second Dose`), names_to = "Dose:",
+  #                         values_to = "Mean VE-Disease"),
+  #          aes(x = Date, y = `Mean VE-Disease`,
+  #              linetype = imputed, colour = `Dose:`)) +
+  #   geom_step() +
+  #   theme_pubclean() +
+  #   scale_linetype(guide = "none") + ylim(c(0,1))
   #final efficacy plots
   final_eff_plot <-
     ggplot(this_country %>%
@@ -328,21 +356,21 @@ for(country in iso3cs){
       rbind(delta_values) %>%
       arrange(x) %>%
       mutate(y = c(Inf, -Inf, -Inf, Inf))
-    infection_eff_dose_plot <- infection_eff_dose_plot +
-      geom_polygon(inherit.aes = FALSE, data = delta_values, aes(
-        x = x,
-        y = y
-      ), alpha = 0.05) +
-      geom_vline(data = delta_values, aes(xintercept = x),
-                 linetype = "dashed")
-
-    disease_eff_dose_plot <- disease_eff_dose_plot +
-      geom_polygon(inherit.aes = FALSE, data = delta_values, aes(
-        x = x,
-        y = y
-      ), alpha = 0.05) +
-      geom_vline(data = delta_values, aes(xintercept = x),
-                 linetype = "dashed")
+    # infection_eff_dose_plot <- infection_eff_dose_plot +
+    #   geom_polygon(inherit.aes = FALSE, data = delta_values, aes(
+    #     x = x,
+    #     y = y
+    #   ), alpha = 0.05) +
+    #   geom_vline(data = delta_values, aes(xintercept = x),
+    #              linetype = "dashed")
+    #
+    # disease_eff_dose_plot <- disease_eff_dose_plot +
+    #   geom_polygon(inherit.aes = FALSE, data = delta_values, aes(
+    #     x = x,
+    #     y = y
+    #   ), alpha = 0.05) +
+    #   geom_vline(data = delta_values, aes(xintercept = x),
+    #              linetype = "dashed")
 
     final_eff_plot <- final_eff_plot +
       geom_polygon(inherit.aes = FALSE, data = delta_values, aes(
@@ -360,13 +388,13 @@ for(country in iso3cs){
       ggarrange(
         ggarrange(
           dose_plot,
-          dose_ratio_plot,
+          dose_comp_plot,
           common.legend = TRUE,
           ncol = 1
         ),
         ggarrange(
-          infection_eff_dose_plot,
-          disease_eff_dose_plot,
+          dose_ratio_plot,
+          mean_first_plot,
           common.legend = TRUE,
           ncol = 1
         )
@@ -397,12 +425,14 @@ dose_list <-
            country_df <- dose_df %>%
              filter(iso3c == country)
            list(
+             dur_vaccine_delay = dur_vaccine_delay,
+             dur_V = dur_V,
              date_vaccine_change = country_df$date_vaccine_change,
              vaccine_efficacy_disease = rep(country_df$vaccine_efficacy_disease,
                                             17),
              vaccine_efficacy_infection = rep(country_df$vaccine_efficacy_infection,
                                             17),
-             rel_infectiousness_vaccinated = rep(0.5, 17),
+             rel_infectiousness_vaccinated = rep(rel_infectiousness_vaccinated, 17),
              max_vaccine = country_df$max_vaccine
            )
          }

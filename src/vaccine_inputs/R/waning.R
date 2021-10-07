@@ -1,196 +1,203 @@
 #a function when given a date when vaccinated (2nd dose) and the present date,
 #returns the level of protection
-get_eff_disease <- function(date, vaccination_date, efficacy){
+get_eff_disease <- function(days_from_vacc, efficacy){
   #for now use Toms RTM values
-  diff_times <- as.numeric(date - vaccination_date)
   reduction_per_day <- 0.9984446
   no_waning_period <- 42
-  if_else(diff_times < no_waning_period,
+  if_else(days_from_vacc < no_waning_period,
           efficacy,
-          efficacy*reduction_per_day^(diff_times - no_waning_period)
+          efficacy*reduction_per_day^(days_from_vacc - no_waning_period)
           )
 }
-get_eff_infection <- function(date, vaccination_date, efficacy){
+get_eff_infection <- function(days_from_vacc, efficacy){
   #for now use Toms RTM values
-  diff_times <- as.numeric(date - vaccination_date)
   reduction_per_day <- 0.9970089
   no_waning_period <- 42
-  if_else(diff_times < no_waning_period,
+  if_else(days_from_vacc < no_waning_period,
           efficacy,
-          efficacy*reduction_per_day^(diff_times - no_waning_period)
+          efficacy*reduction_per_day^(days_from_vacc - no_waning_period)
   )
 }
-#calculates vaccine efficacy with waning for a country
-calculate_waning_eff_country <- function(date, dose_ratio,
-                                         first_doses, second_doses,
-                                         efficacy_infection_first,
-                                         efficacy_infection_second,
-                                         efficacy_disease_first,
-                                         efficacy_disease_second,
-                                         diagnostic = FALSE){
-  #calculate efficacy first dose
-  if(any(first_doses > 0)){
-    #if there are vaccinations
-    #when is the first dose?
-    start_doses_first <- min(which(first_doses > 0))
-    if(any(second_doses > 0)){
-      #when is the second dose?
-      start_doses_second <- min(which(second_doses > 0))
-    } else {
-      start_doses_second <- Inf
-    }
-    do.call(
-      rbind, #rbind the list into a df
-      lapply(start_doses_first:length(date), function(row){
-        #for rows with post vaccinations
-        #get the date at the moment
-        cur_date <- date[row]
-        #get the data in the past
-        index_first <- start_doses_first:row
-        #calculate efficacies
-        ve_i_first <- get_eff_infection(
-          cur_date,
-          date[index_first],
-          efficacy_infection_first[row]
+#this function controls the dlay in tentry
+vaccine_delay <- function(days_from_vacc, delay){
+  pgamma(days_from_vacc, rate = 1/delay, shape = 2)
+}
+#function to calculate the waning efficacy for a country
+calculate_waning_eff <- function(
+  data, #data frame countaining info
+  dates, #name of the variable with the dates
+  first_doses, #name of variable of timeseries of first doses
+  second_doses, #name of variable of timeseries when people get second doses
+  efficacy_infection_first, #names of variables of the efficacy for each
+  efficacy_infection_second, #type of protection/dose
+  efficacy_disease_first,
+  efficacy_disease_second,
+  dur_vaccine_delay, #the level of delay in first dose protection (numeric)
+  countries = NULL,#name of the country variables, if null not used
+  diagnostic = FALSE #return INTERNAL variables
+){
+  #set up names for easier calling
+  data <- data %>%
+    mutate(
+      INTERNAL_date = .data[[dates]],
+      INTERNAL_first_dose = .data[[first_doses]],
+      INTERNAL_second_dose = .data[[second_doses]],
+      INTERNAL_ve_i_f = .data[[efficacy_infection_first]],
+      INTERNAL_ve_i_s = .data[[efficacy_infection_second]],
+      INTERNAL_ve_d_f = .data[[efficacy_disease_first]],
+      INTERNAL_ve_d_s = .data[[efficacy_disease_second]],
+      INTERNAL_country = .data[[countries]]
+    )  %>%
+    arrange(INTERNAL_country, INTERNAL_date) %>%
+    mutate(
+      #calculate the mean time of first dose for each time a second dose is received
+      INTERNAL_mean_first_dose_date = unlist(
+        lapply(
+          INTERNAL_date,
+          function(date){
+            prev_dates <- INTERNAL_date[INTERNAL_date < date]
+            prev_first_doses <- INTERNAL_first_dose[INTERNAL_date < date]
+            weighted.mean(prev_dates, prev_first_doses)
+          }
         )
-        ve_d_first <- get_eff_disease(
-          cur_date,
-          date[index_first],
-          efficacy_disease_first[row]
-        )
-        out_df <- data.frame(date_vaccine_change = cur_date,
-                             vaccine_efficacy_infection_first = weighted.mean(
-                               ve_i_first,
-                               first_doses[index_first]
-                             ),
-                             vaccine_efficacy_disease_first = weighted.mean(
-                               ve_d_first,
-                               first_doses[index_first]
-                             )
-        )
-        if(start_doses_second <= row){
-          #if second doses have occured
-          index_second <- start_doses_second:row
-          #estimate the mean date of the doses before each date that second doses
-          #occur
-          mean_dates_first_dose <- unlist(lapply(start_doses_second:row, function(x){
-            #get indexes of the releveant dates
-            indexes <- start_doses_first:(x-1) #up to the day before for now
-            weighted.mean(date[indexes], first_doses[indexes])
-          }))
-          #estimate first dose efficacy for those dates
-          ve_i_first_mean_dates <- get_eff_disease(
-            cur_date,
-            mean_dates_first_dose,
-            efficacy_infection_first[row]
-          )
-          ve_d_first_mean_dates <- get_eff_disease(
-            cur_date,
-            mean_dates_first_dose,
-            efficacy_disease_first[row]
-          )
-          #estimate efficacy for second doses
-          ve_i_second <- get_eff_disease(
-            cur_date,
-            date[index_second],
-            efficacy_infection_second[row]
-          )
-          ve_d_second <- get_eff_disease(
-            cur_date,
-            date[index_second],
-            efficacy_disease_second[row]
-          )
-          out_df <- out_df %>% mutate(
-            #estimate the average difference made by the doses
-            vaccine_efficacy_infection_second_diff = weighted.mean(
-              ve_i_second - ve_i_first_mean_dates,
-              second_doses[index_second]
-            ),
-            vaccine_efficacy_disease_second_diff = weighted.mean(
-              ve_d_second - ve_d_first_mean_dates,
-              second_doses[index_second]
-            ),
-            #calculate overall vaccine efficacy with dose_ratio
-            vaccine_efficacy_infection = vaccine_efficacy_infection_first +
-            vaccine_efficacy_infection_second_diff * dose_ratio[row],
-            vaccine_efficacy_disease = vaccine_efficacy_disease_first +
-              vaccine_efficacy_disease_second_diff * dose_ratio[row]
-          )
-
-        } else {
-          out_df <- out_df %>% mutate(
-            vaccine_efficacy_infection_second_diff = NA,
-            vaccine_efficacy_disease_second_diff = NA,
-            vaccine_efficacy_infection = vaccine_efficacy_infection_first,
-            vaccine_efficacy_disease = vaccine_efficacy_disease_first
-          )
-        }
-        if(!diagnostic){
-          out_df <- out_df %>%
-            select(
-              date_vaccine_change,
-              vaccine_efficacy_infection,
-              vaccine_efficacy_disease
-            )
-        }
-        out_df
-      }
       )
     )
-    } else {
-      if(!diagnostic){
-        data.frame(
-          date_vaccine_change = date[1],
-          vaccine_efficacy_infection = NA,
-          vaccine_efficacy_disease = NA
-        )
-      }
-    data.frame(
-      date_vaccine_change = date[1],
-      vaccine_efficacy_infection_first = NA,
-      vaccine_efficacy_infection_second_diff = NA,
-      vaccine_efficacy_disease_first = NA,
-      vaccine_efficacy_disease_second_diff = NA,
-      vaccine_efficacy_infection = NA,
-      vaccine_efficacy_disease = NA
-    )
+  #do by country if relevant
+  if(!is.null(iso3cs)){
+    data <- data %>% group_by(INTERNAL_country)
   }
-}
-calculate_waning_eff <- function(data, countries, dose_ratio,
-                                 first_doses, second_doses,
-                                 efficacy_infection_first,
-                                 efficacy_infection_second,
-                                 efficacy_disease_first,
-                                 efficacy_disease_second){
-  data %>%
-    full_join(
-      do.call(
-        rbind,
-        lapply(countries, function(country){
-          data <- data %>% ungroup() %>%  filter(iso3c == country)
-
-            calculate_waning_eff_country(date = data$date_vaccine_change,
-              dose_ratio = data[[dose_ratio]],
-              first_doses = data[[first_doses]],
-              second_doses = data[[second_doses]],
-              efficacy_infection_first = data[[efficacy_infection_first]],
-              efficacy_infection_second = data[[efficacy_infection_second]],
-              efficacy_disease_first = data[[efficacy_disease_first]],
-              efficacy_disease_second = data[[efficacy_disease_second]],
-              diagnostic = TRUE
-            ) %>%
-              mutate(iso3c = country)
-        })
+  #if relevant (dur_vaccine_delay > 0) set up functions
+  if(dur_vaccine_delay == 0){
+    delay_func <- function(days_from_vacc){
+      rep(1, length(days_from_vacc))
+    }
+    data <- data %>%
+      mutate(
+        INTERNAL_cum_first_in_comp = cumsum(INTERNAL_first_dose),
+        INTERNAL_cum_second_in_comp = cumsum(INTERNAL_second_dose)
       )
+  } else {
+    delay_func <- function(days_from_vacc){
+      vaccine_delay(days_from_vacc, delay = dur_vaccine_delay)
+    }
+    #calculate entries into first dose compartment with delay
+    data <- data %>%
+      mutate(
+        INTERNAL_cum_first_in_comp = expand.grid(INTERNAL_date,
+                                                 INTERNAL_date) %>%
+          cbind(dose_values = INTERNAL_first_dose) %>%
+          mutate(diff = as.numeric(Var2 - Var1),
+                 date = Var2) %>%
+          filter(diff >= 0) %>%
+          group_by(date) %>%
+          summarise(
+            value = sum(delay_func(diff) * dose_values)
+          ) %>%
+          pull(value)
+      )
+  }
+  #some extra things for plotting utility
+  if(diagnostic){
+    data <- data %>%
+      mutate(#people in compartment with second doses
+        INTERNAL_cum_second_in_comp = expand.grid(INTERNAL_date,
+                                                  INTERNAL_date) %>%
+          cbind(dose_values = INTERNAL_second_dose,
+                first_dose_date = INTERNAL_mean_first_dose_date) %>%
+          mutate(date = Var2,
+                 diff_2 = as.numeric(date - first_dose_date),
+                 diff_1 = as.numeric(date - Var1),
+                 diff_2 = if_else(diff_1 < 0 | is.na(diff_2),
+                                0,
+                                diff_2)) %>%
+          group_by(date) %>%
+          summarise(
+            value = sum(delay_func(diff_2) * dose_values)
+          ) %>%
+          pull(value), #inferred dose_ratio
+        INTERNAL_dose_ratio_comp = INTERNAL_cum_second_in_comp/INTERNAL_cum_first_in_comp
+      )
+  }
+  #calculate effective vaccine efficacy for each time and country
+  data <- data %>%
+    mutate(
+      #calculate for disease
+      value = #get all combinations of dates
+        expand.grid(INTERNAL_date,
+                      INTERNAL_date) %>%
+        cbind(first_dose =  INTERNAL_first_dose, #add doses and efficacies
+              second_dose =  INTERNAL_second_dose,
+              cum_first_in_comp =  INTERNAL_cum_first_in_comp,
+              mean_first_dose_date =  INTERNAL_mean_first_dose_date,
+              ve_d_f =  INTERNAL_ve_d_f,
+              ve_d_s =  INTERNAL_ve_d_s,
+              ve_i_f =  INTERNAL_ve_i_f,
+              ve_i_s =  INTERNAL_ve_i_s) %>%
+        mutate( #calculate the days from
+          days_from_vacc = as.numeric(Var2 - Var1),
+          date = Var2
+        )  %>%
+        filter(days_from_vacc >= 0) %>% #remove days that are after our date
+        arrange(date, days_from_vacc) %>% #arrange by date
+        group_by(date) %>% #group by date
+        mutate(#calculate the things that will be same/used twice in the summarising
+          cum_first_in_comp_max = max(cum_first_in_comp),
+          days_from_mean_vacc = as.numeric(date - mean_first_dose_date)
+        ) %>%
+        summarise( #calculate the two parts of the efficacy
+          f_ve_d = sum(
+            get_eff_disease(days_from_vacc, ve_d_f) *
+              delay_func(days_from_vacc) *
+              first_dose,
+            na.rm = TRUE
+          )/head(cum_first_in_comp_max, 1), #this maximum gets the cumulative value at the current time
+          s_ve_d_diff = sum(
+            #calculate the difference from the average first does time
+            (get_eff_disease(days_from_vacc, ve_d_s) -
+               get_eff_disease(days_from_mean_vacc, ve_d_f))*
+              delay_func(days_from_mean_vacc)*second_dose,
+            na.rm = TRUE #this deals with the case where there are no second doses
+          )/head(cum_first_in_comp_max, 1), #divide by people with first dose to get
+          #dose ratio adjusted addition
+          f_ve_i = sum(
+            get_eff_disease(days_from_vacc, ve_i_f) *
+              delay_func(days_from_vacc) *
+              first_dose,
+            na.rm = TRUE
+          )/head(cum_first_in_comp_max, 1), #this maximum gets the cumulative value at the current time
+          s_ve_i_diff = sum(
+            #calculate the difference from the average first does time
+            (get_eff_disease(days_from_vacc, ve_i_s) -
+               get_eff_disease(days_from_mean_vacc, ve_i_f))*
+              delay_func(days_from_mean_vacc)*second_dose,
+            na.rm = TRUE #this deals with the case where there are no second doses
+          )/head(cum_first_in_comp_max, 1), #divide by people with first dose to get
+          #dose ratio adjusted addition
+        ) %>%
+        mutate(#get final efficacy
+          vaccine_efficacy_disease = if_else(
+            !is.nan(s_ve_d_diff) | !is.na(s_ve_d_diff),
+            f_ve_d + s_ve_d_diff,
+            f_ve_d
+          ),
+          vaccine_efficacy_infection = if_else(
+            !is.nan(s_ve_i_diff) | !is.na(s_ve_i_diff),
+            f_ve_i + s_ve_i_diff,
+            f_ve_i
+          )
+        ) %>%
+        #rowwise() %>%
+        mutate(
+          #merge to extract later
+          out = list(cbind(vaccine_efficacy_disease, vaccine_efficacy_infection))
+        ) %>% head(1) %>% pull(out),
+      vaccine_efficacy_disease = value[[1]][,"vaccine_efficacy_disease"],
+      vaccine_efficacy_infection = value[[1]][,"vaccine_efficacy_infection"],
+      value = NULL
     )
-}
-estimate_increase_in_efficacy_from_second_doses <- function(first_doses,
-                                                            second_doses){
-  #assume mean first dose date
-  weighted.mean(unlist(lapply(1:length(second_doses), function(x){
-    #get the first doses that could be the one it is
-    mean_time_of_first_dose <- mean(first_doses[first_doses > x])
-    210/x - 200/mean_time_of_first_dose
-  })), table(second_doses)) * percentage_second_dose + mean(200/first_doses)
-
+  if(!diagnostic){
+    data %>%
+      select(!contains("INTERNAL"))
+  }
+  return(data)
 }
