@@ -11,6 +11,7 @@ script: script.R
 parameters:
   date: ~
   adjust_delta: TRUE
+  waning: FALSE
 
 sources:
   - R/import_data.R
@@ -19,6 +20,7 @@ sources:
   - R/get_single_dose_data.R
   - R/waning.R
   - R/get_delta.R
+  - R/plotting.R
 
 # You must list at least one artefact that your report will generate.
 # Each artefact consists of one or more files.  The format is to list
