@@ -70,6 +70,14 @@ packages:
 
 depends:
   covariants:
-    id: latest(parameter:date == date)
+    id: latest
     use:
       delta_characteristics.rds: delta_characteristics.rds
+  ecdc:
+    id: latest
+    use:
+      vaccine_agreements.rds: vaccine_agreements.rds
+      vaccine_doses_by_manufacturer.rds: vaccine_doses_by_manufacturer.rds
+      who_vacc.rds: who_vacc.rds
+      who_vacc_meta.rds: who_vacc_meta.rds
+      owid.rds: owid.rds

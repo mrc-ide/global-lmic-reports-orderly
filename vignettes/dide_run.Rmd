@@ -38,7 +38,7 @@ All tasks for running the model fits are conducted using orderly. This includes:
 1. *ecdc*
 
 This task grabs input data from various online databases, that are then fed into
-downstream processes. 
+downstream processes.
 
 2. *oxford_grt*
 
@@ -51,14 +51,30 @@ Grabs and formats Google mobility data. For countries without mobility data, we
 use a Boosted regression tree model to infer mobility based on timing of govt. 
 policies. 
 
-These 3 tasks form the initial tasks that ensure all the correct data is ready
+4. *covariants*
+
+Gets/calculates the information of when the delta variant becomes dominant, as
+well as any other parameters to do with this change. This must be run even if
+delta adjustments are not made as it is an input to the other tasks.
+
+5. *vaccine_inputs*
+
+Calculates the vaccine efficacies over time, can include delta adjustments and 
+waning immunity.
+
+6. *economist*
+
+Gets the excess mortality data if we are doing excess death fitting.
+
+
+These 6 tasks form the initial tasks that ensure all the correct data is ready
 before running the actual model fits. To run these tasks, we simply need to provide
 what the `date` is that we are conducting model fits for, i.e. up to what date are
 we running, and also whether we are doing a `short_run`. The `short_run` argument
 dictates whether a small number of trees are used in the BRT.
 
 ```{r, eval = FALSE}
-date <- "2021-09-24"
+date <- "2021-10-06"
 
 # are we doing just a short run. If so only 20 mcmc iterations are used
 # and only 2 draws from the posterior. Set this to TRUE to do a quick test 
@@ -69,24 +85,43 @@ short_run <- FALSE
 # if yes we call the economist models from github and use the excess_mortality task
 # to fit to the data
 excess_mortality <- FALSE
+
+# will we adjust for the delta variant?
+adjust_delta <- FALSE
+
+# will we allow vaccine efficacy to wane?
+waning <- FALSE
+
+#for now we cannot adjust for delta/waning in standard fit
+if(!excess_mortality){
+  adjust_delta <- FALSE
+  waning <- FALSE
+}
 ```
 
-These arguments are then passed to our 3 tasks:
+These arguments are then passed to our 4/5 tasks:
 
 ```{r eval=FALSE, message=FALSE, warning=FALSE}
 message("*** ECDC data")
 ecdc_id <- orderly::orderly_run("ecdc", parameters = list(date=date), echo = FALSE)
 orderly::orderly_commit(ecdc_id)
 
+message("*** Covid Variants data")
+covar_id <- orderly::orderly_run("covariants", parameters = list(date=date), echo = FALSE)
+orderly::orderly_commit(covar_id)
+#ideally check the calibration pdf
+
+message("*** Calculate Vaccine Inputs")
+vaccine_inputs_id <- orderly::orderly_run("vaccine_inputs", parameters = list(date=date,
+                                                                              adjust_delta = adjust_delta,
+                                                                              waning = waning), echo = FALSE)
+orderly::orderly_commit(vaccine_inputs_id)
+#ideally check the calibration pdf
+
 if(excess_mortality){
   message("*** Economist Model data")
   econ_id <- orderly::orderly_run("economist", parameters = list(date=date), echo = FALSE)
   orderly::orderly_commit(econ_id)
-  #ideally check the calibration pdf
-  
-  message("*** Covid Variants data")
-  covar_id <- orderly::orderly_run("covariants", parameters = list(date=date), echo = FALSE)
-  orderly::orderly_commit(covar_id)
   #ideally check the calibration pdf
 } else{
   #these are not used in the excess_mortality fitting
@@ -129,15 +164,28 @@ n_mcmc <- 20000
 n_chains <- 3
 
 if(!excess_mortality){
-  # should tasks be run in parallel and use multiple chains. 
-  # leave this as FALSE and see FAQs for more info on this
-  parallel <- FALSE
-  # not needed input parameters - leave as FALSE. See FAQ for more info on these
-  full_scenarios <- FALSE
-  gibbs_sampling <- FALSE
+  task <- "lmic_reports_vaccine_waning"
+  parameters <- list(
+    date = date,
+    short_run = short_run,
+    # should tasks be run in parallel and use multiple chains. 
+    # leave this as FALSE and see FAQs for more info on this
+    parallel = FALSE,
+    # not needed input parameters - leave as FALSE. See FAQ for more info on these
+    full_scenarios = FALSE,
+    gibbs_sampling = FALSE,
+    n_mcmc = n_mcmc
+  )
 } else{
-  adjust_delta <- TRUE
-  model <- "NIMUE"
+  task <- "excess_mortality"
+  parameters <- list(
+    replicates = 20,
+    model = "SQUIRE",
+    n_mcmc = n_mcmc,
+    n_chains = n_chains,
+    date = date,
+    adjust_delta = adjust_delta
+  )
 }
 
 # get the isos
@@ -156,47 +204,20 @@ path_bundles <- file.path(
 dir.create(path_bundles, showWarnings = FALSE, recursive = TRUE)
 
 # bundle these up - this will take like 10 mins to create all the zips. 
-if(excess_mortality){
-  bundles <- lapply(
+bundles <- lapply(
   iso3cs, function(x) {
+    parameters$iso3c = x
     orderly::orderly_bundle_pack(
       path = path_bundles,
-      name = "excess_mortality",
-      parameters = list(
-        iso3c = x,
-        date=date,
-        n_mcmc=n_mcmc,
-        n_chains=n_chains,
-        adjust_delta = adjust_delta,
-        model = model
-      )
+      name = task,
+      parameters = parameters
     )
   }
  )
-} else{
-bundles <- lapply(
-  iso3cs, function(x) {
-    orderly::orderly_bundle_pack(
-      path = path_bundles,
-      name = "lmic_reports_vaccine",
-      parameters = list(
-        iso3c = x,
-        date=date,
-        short_run=short_run,
-        parallel=parallel,
-        full_scenarios=full_scenarios,
-        gibbs_sampling=gibbs_sampling,
-        n_mcmc=n_mcmc
-      )
-    )
-  }
-)
-}
 
 # now label these with the iso3cs and save the file paths
 names(bundles) <- iso3cs
 saveRDS(bundles, file.path(path_bundles, "bundles.rds"))
-
 ```
 
 This will create an orderly task for each country that is then saved in the 
@@ -253,71 +274,55 @@ which countries require rerunning and rebundle those to be run again:
 
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
 # bundle the countries we need to rerun
-iso3cs_to_rerun <- c("BRN") 
-if(excess_mortality){
+iso3cs_to_rerun <- c() 
 bundles_to_rerun <- lapply(
   iso3cs_to_rerun, 
   function(x) {
+    parameters$iso3c <- x
     orderly::orderly_bundle_pack(
       path = path_bundles,
-      name = "excess_mortality",
-      parameters = list(
-        iso3c = x,
-        date=date,
-        n_mcmc=n_mcmc,
-        n_chains=n_chains,
-        adjust_delta = adjust_delta,
-        model = model
-      )
+      name = task,
+      parameters = parameters
     )
   }
 )
-} else {
-  bundles_to_rerun <- lapply(
-  iso3cs_to_rerun, function(x) {
-    orderly::orderly_bundle_pack(
-      path = path_bundles,
-      name = "lmic_reports_vaccine",
-      parameters = list(
-        iso3c = x,
-        date=date,
-        short_run=short_run,
-        parallel=parallel,
-        full_scenarios=full_scenarios,
-        gibbs_sampling=gibbs_sampling,
-        n_mcmc=n_mcmc
-      )
-    )
-  }
-)
-}
 
 names(bundles_to_rerun) <- iso3cs_to_rerun
 saveRDS(bundles_to_rerun, file.path(path_bundles, "bundles_to_rerun.rds"))
 
-iso3cs_to_rerun_2 <- c("PRY", "SGP", "SVK", "HKG") 
-bundles_to_rerun_2 <- lapply(
-  iso3cs_to_rerun_2, 
+
+
+iso3cs_90_uptake <- c("ESP", "THA", "AUS", "COL")
+bundles_90_uptake <- lapply(
+  iso3cs_90_uptake, 
   function(x) {
+    parameters$iso3c <- x
     orderly::orderly_bundle_pack(
       path = path_bundles,
-      name = "excess_mortality",
-      parameters = list(
-        iso3c = x,
-        date=date,
-        n_mcmc=n_mcmc,
-        adjust_delta = adjust_delta,
-        model = model,
-        n_chains = 1
-      )
+      name = task,
+      parameters = parameters
     )
   }
 )
 
-names(bundles_to_rerun_2) <- iso3cs_to_rerun_2
-saveRDS(bundles_to_rerun_2, file.path(path_bundles, "bundles_to_rerun_2.rds"))
+names(bundles_90_uptake) <- iso3cs_90_uptake
+saveRDS(bundles_90_uptake, file.path(path_bundles, "bundles_90_uptake.rds"))
 
+iso3cs_95_uptake <- c("ESP", "THA", "AUS", "COL")
+bundles_95_uptake <- lapply(
+  iso3cs_95_uptake, 
+  function(x) {
+    parameters$iso3c <- x
+    orderly::orderly_bundle_pack(
+      path = path_bundles,
+      name = task,
+      parameters = parameters
+    )
+  }
+)
 
+names(bundles_95_uptake) <- iso3cs_95_uptake
+saveRDS(bundles_95_uptake, file.path(path_bundles, "bundles_95_uptake.rds"))
 ```
 
 Then go to `glodide` and resubmit these and repeat above to see the fits. If they
@@ -370,7 +375,7 @@ all(unlist(import))
 
 # For Excess fits
 
-Update par_inits.rds and do not push to github until this has been prepared
+Update par_inits.rds and do not push to github.
 
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
 if(excess_mortality){
@@ -453,18 +458,18 @@ If gh-pages is not in the repo, i.e. you have just clones `global-lmic-reports-o
 Next we run the collation step, where the necessary outputs from the model fits are copied to gh-pages. It conducts the following steps:
 
 1. Fetches the latest run model fit for each country for the date argument provided. 
-2. Updates `pars_init.rds` in `lmic_reports_vaccine` with parameters from best model fit for each country.
+2. Updates `pars_init.rds` in `lmic_reports_vaccine_waning` with parameters from best model fit for each country.
 3. Copies the pdfs/html files over to `gh-pages`
 4. Copies the projections from each model fit over and combines these into a combined data zip
 5. Copies model projections to the `index_page` and `regional_page` tasks
 6. Runs the remaining tasks needed to create the website (index, FAQ, regional pages)
 7. Copies the output from these remaining tasks to gh-pages. 
 
-Things to note before running. In step 2, we overwrite the `pars_init.rds` object in `lmic_reports_vaccine`. This is so that next time this task is run, we are using the best initial conditions for the next time you run `lmic_reports_vaccine`. As a result of this overwrite, be careful to make sure you are only calling this collation once you are happy you have the right model fits (and if not make sure `pars_init.rds` is backed up/committed).
+Things to note before running. In step 2, we overwrite the `pars_init.rds` object in `lmic_reports_vaccine_waning`. This is so that next time this task is run, we are using the best initial conditions for the next time you run `lmic_reports_vaccine_waning`. As a result of this overwrite, be careful to make sure you are only calling this collation once you are happy you have the right model fits (and if not make sure `pars_init.rds` is backed up/committed).
 
 Either execute this from the terminal or you can run it using the bash code chunk below (though it doesn't produce output until after it has finished at the moment, which may be annoying so you can see the output). 
 ```{bash}
-# ./run/run_collate_vaccine.sh 2021-08-19
+ ./run/run_collate_vaccine_waning.sh 2021-10-06
 ```
 
 ## 3. Push the results to the repository 

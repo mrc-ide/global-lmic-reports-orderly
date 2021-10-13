@@ -3,6 +3,7 @@ fit_spline_rt <- function(data,
                           country,
                           pop,
                           delta_characteristics,
+                          vaccine_inputs,
                           model = "NIMUE",
                           n_mcmc = 10000,
                           replicates = 20,
@@ -101,7 +102,7 @@ fit_spline_rt <- function(data,
   pars_max = list('start_date' = last_start_date,
                   'R0' = R0_max)
   pars_discrete = list('start_date' = TRUE, 'R0' = FALSE)
-  pars_obs = list(phi_cases = 1, k_cases = 2, phi_death = 1, k_death = 2, exp_noise = 1.25)
+  pars_obs = list(phi_cases = 1, k_cases = 2, phi_death = 1, k_death = 2, exp_noise = 1e07)
   #assing this way so they keep NULL if NULL
   pars_obs$dur_R <- delta_characteristics$required_dur_R
   pars_obs$prob_hosp_multiplier <- delta_characteristics$prob_hosp_multiplier
@@ -146,23 +147,17 @@ fit_spline_rt <- function(data,
       strategy = strategy,
       vaccine_uptake = vaccine_uptake
     )
-
-    # read in the vaccine inputs from the ecdc tasks
-    vdm <- readRDS("vaccine_doses_by_manufacturer.rds")
-    vacc_types <- readRDS("vaccine_agreements.rds")
-    who_vacc <- readRDS("who_vacc.rds")
-    who_vacc_meta <- readRDS("who_vacc_meta.rds")
-    owid <- readRDS("owid.rds")
-    owid <- owid %>% filter(countryterritoryCode == iso3c) %>%
-      select(date, contains("vacc"))
-
-    vacc_inputs <- get_vaccine_inputs(iso3c, vdm, vacc_types, owid, date_0, who_vacc, who_vacc_meta,
-                                      delta_characteristics = delta_characteristics)
-    dur_V <- 5000
+    #get the pre-calculate efficacies and durations/delays
+    vacc_inputs <- vaccine_inputs
+    dur_V <- vaccine_inputs$dur_V
+    dur_vaccine_delay <- vaccine_inputs$dur_vaccine_delay
+    vaccine_inputs$dur_V <- NULL
+    vaccine_inputs$dur_vaccine_delay <- NULL
   } else {
     vacc_inputs <- NULL
     vaccine_coverage_mat <- NULL
     dur_V <- NULL
+    dur_vaccine_delay <- NULL
   }
 
   # mixing matrix - assume is same as country as whole
@@ -296,7 +291,8 @@ fit_spline_rt <- function(data,
                       rel_infectiousness_vaccinated = vacc_inputs$rel_infectiousness_vaccinated,
                       vaccine_coverage_mat = vaccine_coverage_mat,
                       dur_R = 365,
-                      dur_V = dur_V)
+                      dur_V = dur_V,
+                      dur_vaccine_delay = dur_vaccine_delay)
 
 
   ## remove things so they don't atke up so much memory when you save them :)
@@ -459,7 +455,7 @@ run_deterministic_comparison_excess <- function(data, squire_model, model_params
                                                   k_cases = 2,
                                                   phi_death = 1,
                                                   k_death = 2,
-                                                  exp_noise = 1e02
+                                                  exp_noise = 1e+07
                                                 ), forecast_days = 0, save_history = FALSE,
                                                 return = "ll") {
 
@@ -599,7 +595,7 @@ pmcmc_excess <- function(data,
                                          k_cases = 2,
                                          phi_death = 1,
                                          k_death = 2,
-                                         exp_noise = 1e2),
+                                         exp_noise = 1e7),
                          pars_init = list('start_date'     = as.Date("2020-02-07"),
                                           'R0'             = 2.5,
                                           'Meff'           = 2,

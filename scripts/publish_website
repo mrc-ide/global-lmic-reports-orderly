@@ -23,11 +23,11 @@ fi
 
 
 if [ -z $(git -C ${DOCS_DIR} config --get user.email) ]; then
-    git -C ${DOCS_DIR} config user.email "oj.watson@hotmail.co.uk"
-    git -C ${DOCS_DIR} config user.name "OJWatson"
+    git -C ${DOCS_DIR} config user.email "gregbarnsley@hotmail.co.uk"
+    git -C ${DOCS_DIR} config user.name "GBarnsley"
 fi
 
-git -C ${DOCS_DIR} add data
+git -C ${DOCS_DIR} add data/
 git -C ${DOCS_DIR} commit --no-verify -m "Add data for version ${VERSION}"
 git -C ${DOCS_DIR} push --force -u origin master
 git -C ${DOCS_DIR} add .

@@ -76,6 +76,12 @@ if(nrow(df) == 0 | sum(df$deaths) == 0){
     )
   }
 
+  if(model == "NIMUE"){
+    vaccine_inputs <- readRDS("vacc_inputs.Rds")[[iso3c]]
+  } else {
+    vaccine_inputs <- NULL
+  }
+
   ## -----------------------------------------------------------------------------
   ## 2. Fit Model
   ## -----------------------------------------------------------------------------
@@ -88,7 +94,8 @@ if(nrow(df) == 0 | sum(df$deaths) == 0){
     n_mcmc = as.numeric(n_mcmc),
     replicates = as.numeric(replicates),
     model = model,
-    delta_characteristics = delta_characteristics
+    delta_characteristics = delta_characteristics,
+    vaccine_inputs = vaccine_inputs
   )
 
   ## -----------------------------------------------------------------------------
