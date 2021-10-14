@@ -158,4 +158,5 @@ depends:
       ecdc_all.rds: ecdc_all.rds
       jhu_all.rds: jhu_all.rds
       worldometers_all.rds: worldometers_all.rds
+      combined_data.Rds: combined_data.Rds
 

@@ -144,6 +144,29 @@ if(sum(jhu_data$deaths)>0){
   jhu_data$deaths[jhu_data$deaths < 0] <- 0
 }
 
+#spread out tanzania spike
+if(jhu_data %>%
+   filter(countryterritoryCode == "TZA", dateRep == "2021-10-01") %>%
+   pull(deaths) == 669){
+  #split up over previous and have it linearly increase
+  new_values <- round(seq(0, 2/14, length.out = 14)*669)
+  jhu_data <- jhu_data %>%
+    mutate(
+      deaths = if_else(
+        countryterritoryCode == "TZA" & dateRep == "2021-10-01",
+        0,
+        deaths
+      )
+    )
+  jhu_data[jhu_data$countryterritoryCode == "TZA" & (jhu_data$dateRep %in%
+             (as.Date("2021-10-01") - 0:13)) &
+             !is.na(jhu_data$countryterritoryCode),
+           "deaths"] <-jhu_data[jhu_data$countryterritoryCode == "TZA" &
+                                  (jhu_data$dateRep %in% (as.Date("2021-10-01") - 0:13)) &
+                                  !is.na(jhu_data$countryterritoryCode),"deaths"] +
+    new_values
+}
+
 # save
 saveRDS(jhu_data, "jhu_all.rds")
 
@@ -326,6 +349,23 @@ df$deaths[df$dateRep == as.Date("2020-09-03") & df$countryterritoryCode == "COG"
 # worldometers is a day ahead of ECDC - so to keep it all aligned
 df$dateRep <- as.Date(df$dateRep) - 1
 saveRDS(df, "worldometers_all.rds")
+
+## Create a merged data set using WO for certain countries, this way it is easier
+#to keep consistent across tasks
+combined_data <- rbind(
+  jhu_data %>% filter(!(countryterritoryCode %in% c("BOL", "ITA", "FRA", "ECU", "CHL", "COD", "ESP", "IRN",
+                                                "JPN", "GUF","KGZ", "PER", "HKG", "MAC", "TWN",
+                                                "SDN", "IRL", "TUR", "NPL"))) %>%
+    select(!date),
+  df %>% filter(countryterritoryCode %in% c("BOL", "ITA", "FRA", "ECU", "CHL", "COD", "ESP", "IRN",
+                                            "JPN", "GUF","KGZ", "PER", "HKG", "MAC", "TWN",
+                                            "SDN", "IRL", "TUR", "NPL")) %>%
+    mutate(
+      dateRep = as.Date(dateRep)
+    )
+)
+
+saveRDS(combined_data, "combined_data.Rds")
 
 ## -----------------------------------------------------------------------------
 ## OWID
