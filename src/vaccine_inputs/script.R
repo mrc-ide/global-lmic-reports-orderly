@@ -209,8 +209,10 @@ dose_df <- dose_df %>%
 #dose ratio will continue to change at its current rate, until hit 0 or 1
 dose_df <- dose_df %>% #add indicator for plotting later
   #extend values to date_0
-  mutate(imputed = FALSE) %>%
-  left_join( #add averages for max_vaccine and dose_ratio
+  mutate(imputed = FALSE)%>%
+  #add dates up to current date
+  complete(date_vaccine_change = seq(min(date_vaccine_change), date_0, by = 1)) %>%
+  left_join( #add averages for max_vaccine
     dose_df %>%
       group_by(iso3c) %>%
       filter(date_vaccine_change >= max(date_vaccine_change) - 7) %>%
@@ -218,8 +220,6 @@ dose_df <- dose_df %>% #add indicator for plotting later
         max_vaccine_week_ave = mean(max_vaccine)
       )
   ) %>%
-  #add dates up to current date
-  complete(date_vaccine_change = seq(min(date_vaccine_change), date_0, by = 1)) %>%
   mutate(
     dose_ratio = if_else(
       is.na(dose_ratio),
