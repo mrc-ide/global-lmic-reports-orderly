@@ -74,7 +74,7 @@ we running, and also whether we are doing a `short_run`. The `short_run` argumen
 dictates whether a small number of trees are used in the BRT.
 
 ```{r, eval = FALSE}
-date <- "2021-10-06"
+date <- "2021-10-16"
 
 # are we doing just a short run. If so only 20 mcmc iterations are used
 # and only 2 draws from the posterior. Set this to TRUE to do a quick test 
@@ -84,10 +84,10 @@ short_run <- FALSE
 # Are we fitting to excess mortality data?
 # if yes we call the economist models from github and use the excess_mortality task
 # to fit to the data
-excess_mortality <- FALSE
+excess_mortality <- TRUE
 
 # will we adjust for the delta variant?
-adjust_delta <- FALSE
+adjust_delta <- TRUE
 
 # will we allow vaccine efficacy to wane?
 waning <- FALSE
@@ -160,7 +160,7 @@ message("*** Creating country task bundles")
 # main input parameters
 
 # how long is the mcmc for
-n_mcmc <- 20000
+n_mcmc <- 150000
 n_chains <- 3
 
 if(!excess_mortality){
@@ -274,7 +274,7 @@ which countries require rerunning and rebundle those to be run again:
 
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
 # bundle the countries we need to rerun
-iso3cs_to_rerun <- c() 
+iso3cs_to_rerun <- c("DZA") 
 bundles_to_rerun <- lapply(
   iso3cs_to_rerun, 
   function(x) {
@@ -351,7 +351,7 @@ I will use to replace their corresponding countries with in `bundles`:
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
 
 # any that we had to rerun
-rerun <- readRDS(file.path(path_bundles, "BRN_to_rerun.rds"))
+rerun <- readRDS(file.path(path_bundles, "bundles_to_rerun.rds"))
 
 # replace the ones we rerun within bundles
 nms_ch <- c(names(rerun))

@@ -258,7 +258,7 @@ if(adjust_delta){
 
 if(!waning){
   #use the standard method of waning
-  dur_V <- 5000
+  dur_V <- 446
   #calculate efficacies for extended data
   dose_df <- dose_df %>%
     mutate(

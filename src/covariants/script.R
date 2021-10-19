@@ -119,10 +119,10 @@ delta_characteristics <- delta_characteristics %>%
     mutate(shift_duration = as.numeric(end_date - start_date)) %>%
     select(!end_date)
 
-#assume 25%
+#assume 60%
 delta_characteristics <- delta_characteristics %>%
   mutate(
-    immune_escape = 0.25
+    immune_escape = 0.27
   )
 
 #calculate require dur_R for the shift period
@@ -240,10 +240,10 @@ delta_characteristics <- delta_characteristics %>%
 #decreased vaccine efficacy
 delta_characteristics <- delta_characteristics %>%
   mutate(
-    ve_i_low_d = 0.33,
-    ve_i_high_d = 0.58,
-    ve_d_low_d = 0.8,
-    ve_d_high_d = 0.90,
+    ve_i_low_d = 0.224,
+    ve_i_high_d = 0.646,
+    ve_d_low_d = 0.75,
+    ve_d_high_d = 0.94,
   )
 
 #print a plot to check our results

@@ -552,6 +552,8 @@ run_deterministic_comparison_excess <- function(data, squire_model, model_params
   #  geom_line(aes(x = seq_along(Ds), y = Ds), colour = "red")
   #)
 
+  #ll <- dpois(deaths, Ds, log = TRUE)
+
   ll <- squire:::ll_nbinom(deaths, Ds, obs_params$phi_death, obs_params$k_death,
                            obs_params$exp_noise)
 
