@@ -180,7 +180,7 @@ if(!excess_mortality){
   task <- "excess_mortality"
   parameters <- list(
     replicates = 20,
-    model = "SQUIRE",
+    model = "NIMUE",
     n_mcmc = n_mcmc,
     n_chains = n_chains,
     date = date,

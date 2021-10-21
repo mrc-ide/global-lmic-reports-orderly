@@ -70,7 +70,7 @@ calculate_waning_eff <- function(
   }
   data <-  group_by(data, {{ countries }})
   #calculate effective vaccine efficacy for each time and country
-  data <- data %>%mutate(
+  data <- data %>% mutate(
     #calculate for disease
     INTERNAL = #get all combinations of dates
       expand.grid({{ dates }},

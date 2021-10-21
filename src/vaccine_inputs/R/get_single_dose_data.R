@@ -30,7 +30,8 @@ get_single_dose_data <- function(
             as.numeric(NA)
           )
         ) %>%
-        select(iso3c, single_dose_percentage)
+        select(iso3c, single_dose_percentage),
+      by = "iso3c"
     ) %>%
     full_join(
       who_vacc %>%
@@ -43,7 +44,8 @@ get_single_dose_data <- function(
             as.numeric(NA)
           )
         ) %>%
-        select(iso3c, single_dose_percentage_1)
+        select(iso3c, single_dose_percentage_1),
+      by = "iso3c"
     ) %>%
     mutate(
       single_dose_percentage = if_else(
@@ -54,4 +56,84 @@ get_single_dose_data <- function(
       recieved_single_dose_vaccines = TRUE #indicator for checking later
     ) %>%
     select(iso3c, single_doses, single_dose_percentage, recieved_single_dose_vaccines)
+}
+
+single_dose_adjust_owid <- function(owid, single_dose_df){
+  owid %>%
+    left_join(single_dose_df,
+              by = "iso3c") %>%
+    group_by(iso3c) %>%
+    mutate(
+      people_fully_vaccinated = if_else(
+        (!is.na(people_fully_vaccinated)) & (!is.na(single_doses)),
+        people_fully_vaccinated*(1-single_doses/max(people_fully_vaccinated, na.rm = TRUE)),
+        people_fully_vaccinated
+      ),
+      people_fully_vaccinated_per_hundred = if_else(
+        !is.na(people_fully_vaccinated) & !is.na(single_doses),
+        people_fully_vaccinated_per_hundred*(1-single_doses/max(people_fully_vaccinated, na.rm = TRUE)),
+        people_fully_vaccinated_per_hundred
+      )) %>% #now to do countries that only had single dose vaccines
+    mutate(
+      people_fully_vaccinated = if_else(
+        identical(single_dose_percentage, 1) & (!is.na(people_fully_vaccinated)),
+        0,
+        people_fully_vaccinated
+      ),
+      people_fully_vaccinated_per_hundred = if_else(
+        identical(single_dose_percentage, 1) & (!is.na(people_fully_vaccinated_per_hundred)),
+        0,
+        people_fully_vaccinated_per_hundred
+      ),
+      total_vaccinations = if_else(
+        identical(single_dose_percentage, 1) & (!is.na(total_vaccinations)),
+        people_vaccinated,
+        total_vaccinations
+      ),
+      total_vaccinations_per_hundred = if_else(
+        identical(single_dose_percentage, 1) & (!is.na(total_vaccinations)),
+        people_vaccinated_per_hundred,
+        total_vaccinations_per_hundred
+      )
+    ) %>%
+    select(!c(single_dose_percentage, single_doses)) %>%
+    ungroup()
+}
+
+single_dose_adjust_who_vacc <- function(who_vacc, single_dose_df){
+  who_vacc %>%
+    left_join(single_dose_df,
+              by = "iso3c") %>%
+    mutate(PERSONS_FULLY_VACCINATED = if_else(
+      (!is.na(PERSONS_FULLY_VACCINATED)) & (!is.na(single_doses)),
+      PERSONS_FULLY_VACCINATED*(1-single_doses/TOTAL_VACCINATIONS),
+      as.numeric(PERSONS_FULLY_VACCINATED)
+    ),
+    PERSONS_FULLY_VACCINATED_PER100 = if_else(
+      (!is.na(PERSONS_FULLY_VACCINATED_PER100)) & (!is.na(single_doses)),
+      PERSONS_FULLY_VACCINATED_PER100*(1-single_doses/TOTAL_VACCINATIONS),
+      as.numeric(PERSONS_FULLY_VACCINATED_PER100)
+    )) %>%
+    mutate(
+      PERSONS_VACCINATED_1PLUS_DOSE = if_else(
+        identical(single_dose_percentage, 1) & (!is.na(PERSONS_VACCINATED_1PLUS_DOSE)),
+        TOTAL_VACCINATIONS,
+        as.numeric(PERSONS_VACCINATED_1PLUS_DOSE)
+      ),
+      PERSONS_VACCINATED_1PLUS_DOSE_PER100 = if_else(
+        identical(single_dose_percentage, 1) & (!is.na(PERSONS_VACCINATED_1PLUS_DOSE_PER100)),
+        TOTAL_VACCINATIONS_PER100,
+        PERSONS_VACCINATED_1PLUS_DOSE_PER100
+      ),
+      PERSONS_FULLY_VACCINATED = if_else(
+        identical(single_dose_percentage, 1) & (!is.na(PERSONS_FULLY_VACCINATED)),
+        0,
+        PERSONS_FULLY_VACCINATED
+      ),
+      PERSONS_FULLY_VACCINATED_PER100 = if_else(
+        identical(single_dose_percentage, 1) & (!is.na(PERSONS_FULLY_VACCINATED_PER100)),
+        0,
+        PERSONS_FULLY_VACCINATED_PER100
+      )
+    )
 }

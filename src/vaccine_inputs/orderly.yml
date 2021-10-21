@@ -15,8 +15,7 @@ parameters:
 
 sources:
   - R/import_data.R
-  - R/clean_data.R
-  - R/impute_efficacies.R
+  - R/get_dose_data.R
   - R/get_single_dose_data.R
   - R/waning.R
   - R/get_delta.R
