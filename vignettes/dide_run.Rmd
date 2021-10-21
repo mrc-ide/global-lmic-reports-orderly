@@ -160,7 +160,7 @@ message("*** Creating country task bundles")
 # main input parameters
 
 # how long is the mcmc for
-n_mcmc <- 150000
+n_mcmc <- 20000
 n_chains <- 3
 
 if(!excess_mortality){
@@ -274,7 +274,7 @@ which countries require rerunning and rebundle those to be run again:
 
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
 # bundle the countries we need to rerun
-iso3cs_to_rerun <- c("DZA") 
+iso3cs_to_rerun <- c() 
 bundles_to_rerun <- lapply(
   iso3cs_to_rerun, 
   function(x) {
@@ -289,40 +289,6 @@ bundles_to_rerun <- lapply(
 
 names(bundles_to_rerun) <- iso3cs_to_rerun
 saveRDS(bundles_to_rerun, file.path(path_bundles, "bundles_to_rerun.rds"))
-
-
-
-iso3cs_90_uptake <- c("ESP", "THA", "AUS", "COL")
-bundles_90_uptake <- lapply(
-  iso3cs_90_uptake, 
-  function(x) {
-    parameters$iso3c <- x
-    orderly::orderly_bundle_pack(
-      path = path_bundles,
-      name = task,
-      parameters = parameters
-    )
-  }
-)
-
-names(bundles_90_uptake) <- iso3cs_90_uptake
-saveRDS(bundles_90_uptake, file.path(path_bundles, "bundles_90_uptake.rds"))
-
-iso3cs_95_uptake <- c("ESP", "THA", "AUS", "COL")
-bundles_95_uptake <- lapply(
-  iso3cs_95_uptake, 
-  function(x) {
-    parameters$iso3c <- x
-    orderly::orderly_bundle_pack(
-      path = path_bundles,
-      name = task,
-      parameters = parameters
-    )
-  }
-)
-
-names(bundles_95_uptake) <- iso3cs_95_uptake
-saveRDS(bundles_95_uptake, file.path(path_bundles, "bundles_95_uptake.rds"))
 ```
 
 Then go to `glodide` and resubmit these and repeat above to see the fits. If they

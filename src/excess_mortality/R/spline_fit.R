@@ -7,7 +7,8 @@ fit_spline_rt <- function(data,
                           model = "NIMUE",
                           n_mcmc = 10000,
                           replicates = 20,
-                          rw_duration = 14
+                          rw_duration = 14,
+                          likelihood_version = "Negative Binomial"
 ) {
 
 
@@ -103,11 +104,27 @@ fit_spline_rt <- function(data,
                   'R0' = R0_max)
   pars_discrete = list('start_date' = TRUE, 'R0' = FALSE)
   pars_obs = list(phi_cases = 1, k_cases = 2, phi_death = 1, k_death = 2, exp_noise = 1e07)
-  #assing this way so they keep NULL if NULL
+  #assign this way so they keep NULL if NULL
   pars_obs$dur_R <- delta_characteristics$required_dur_R
   pars_obs$prob_hosp_multiplier <- delta_characteristics$prob_hosp_multiplier
   pars_obs$delta_start_date <- delta_characteristics$start_date
   pars_obs$shift_duration <- delta_characteristics$shift_duration
+
+  #set up likelihood function
+  if(likelihood_version == "Negative Binomial"){
+    pars_obs$likelihood <- function(model_deaths, data_deaths){
+      squire:::ll_nbinom(data_deaths, model_deaths, pars_obs$phi_death,
+                         pars_obs$k_death,
+                         pars_obs$exp_noise)
+    }
+  } else if(likelihood_version == "Poisson"){
+    pars_obs$likelihood <- function(model_deaths, data_deaths){
+      dpois(data_deaths, model_deaths + rexp(length(model_deaths), rate = pars_obs$exp_noise),
+            log = TRUE)
+    }
+  } else {
+    stop("likelihood_version, must be one of Poisson & Negative Binomial")
+  }
 
   # add in the spline list
   pars_init <- append(pars_init, pars_init_rw)
@@ -455,7 +472,12 @@ run_deterministic_comparison_excess <- function(data, squire_model, model_params
                                                   k_cases = 2,
                                                   phi_death = 1,
                                                   k_death = 2,
-                                                  exp_noise = 1e+07
+                                                  exp_noise = 1e+07,
+                                                  likelihood = function(model_deaths, data_deaths){
+                                                    squire:::ll_nbinom(data_deaths, model_deaths, obs_params$phi_death,
+                                                                       obs_params$k_death,
+                                                                       obs_params$exp_noise)
+                                                  }
                                                 ), forecast_days = 0, save_history = FALSE,
                                                 return = "ll") {
 
@@ -544,18 +566,8 @@ run_deterministic_comparison_excess <- function(data, squire_model, model_params
   Ds[Ds < 0] <- 0
   deaths <- data$deaths[-1]
 
-  #print(cbind(
-  #  deaths, as.integer(Ds)
-  #))
-  #print(ggplot() +
-  #  geom_line(aes(x = seq_along(deaths), y = deaths)) +
-  #  geom_line(aes(x = seq_along(Ds), y = Ds), colour = "red")
-  #)
+  ll <- obs_params$likelihood(Ds, deaths)
 
-  #ll <- dpois(deaths, Ds, log = TRUE)
-
-  ll <- squire:::ll_nbinom(deaths, Ds, obs_params$phi_death, obs_params$k_death,
-                           obs_params$exp_noise)
 
   # and wrap up as normal
   date <- data$date[[1]] + seq_len(nrow(out)) - 1L
@@ -597,7 +609,13 @@ pmcmc_excess <- function(data,
                                          k_cases = 2,
                                          phi_death = 1,
                                          k_death = 2,
-                                         exp_noise = 1e7),
+                                         exp_noise = 1e7,
+                                         likelihood = function(model_deaths, data_deaths){
+                                           squire:::ll_nbinom(data_deaths, model_deaths, pars_obs$phi_death,
+                                                              pars_obs$k_death,
+                                                              pars_obs$exp_noise)
+                                           }
+                                         ),
                          pars_init = list('start_date'     = as.Date("2020-02-07"),
                                           'R0'             = 2.5,
                                           'Meff'           = 2,

@@ -82,6 +82,15 @@ if(nrow(df) == 0 | sum(df$deaths) == 0){
     vaccine_inputs <- NULL
   }
 
+  #use the poisson distribution if we need to close in more quickly,
+  #should not be used for final fits
+  if(iso3c %in% c("COL", "TZA", "TCD", "UGA", "CAN", "SWE", "AFG", "KEN", "ZAF",
+                  "GIN", "MOZ")){
+    version <- "Poisson"
+  } else {
+    version <- "Negative Binomial"
+  }
+
   ## -----------------------------------------------------------------------------
   ## 2. Fit Model
   ## -----------------------------------------------------------------------------
@@ -95,7 +104,8 @@ if(nrow(df) == 0 | sum(df$deaths) == 0){
     replicates = as.numeric(replicates),
     model = model,
     delta_characteristics = delta_characteristics,
-    vaccine_inputs = vaccine_inputs
+    vaccine_inputs = vaccine_inputs,
+    likelihood_version = version
   )
 
   ## -----------------------------------------------------------------------------
