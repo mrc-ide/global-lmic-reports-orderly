@@ -146,15 +146,16 @@ pdf_line_break <- function() {
 
 # get the ecdc data
 # df <- readRDS("ecdc_all.rds")
-df <- readRDS("jhu_all.rds")
+df <- readRDS("combined_data.Rds")
 data <- df[,c("dateRep", "deaths", "cases","Region", "countryterritoryCode")]
 names(data)[c(1,4,5)] <- c("date","country","iso3c")
 data$date <- as.Date(data$date)
 date <- date_0 <- as.Date(date)
 
 # group for cumulative deaths
-data <- group_by(data, country) %>% mutate(cum_deaths = cumsum(deaths),
-                                          cum_cases = cumsum(cases))
+data <- group_by(data, country) %>% arrange(date) %>% 
+  mutate(cum_deaths = cumsum(deaths),
+         cum_cases = cumsum(cases))
 
 
 
@@ -171,7 +172,7 @@ d$Continent[d$country=="Netherlands_Antilles"] <- "Americas"
 d$Continent[d$country=="Saint_Lucia"] <- "Americas"             
 d$Continent[d$country=="South_Korea"] <- "Asia"             
 d$Continent[d$country=="United_States_of_America"] <- "Americas"
-d$Continent[d$country=="Kosovo"] <- "Europe"
+d$Continent[d$country=="Micronesia"] <- "Oceania"
 
 cont_sums <- d[d$Continent == continent & d$date == date_0,]
 

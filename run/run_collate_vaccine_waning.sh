@@ -22,6 +22,8 @@ echo "*** Americas page"
 ./orderly run regional_page date=$DATE continent=Americas
 echo "*** Europe page"
 ./orderly run regional_page date=$DATE continent=Europe
+echo "*** Oceania page"
+./orderly run regional_page date=$DATE continent=Oceania
 
 echo "*** Parameters page"
 ./orderly run parameters date=$DATE
