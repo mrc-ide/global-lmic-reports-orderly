@@ -27,7 +27,9 @@ if(packageVersion("nimue") < version_min) {
 ## Step 1: Incoming Date
 ## -----------------------------------------------------------------------------
 system(paste0("echo Vaccine Reports for  ",iso3c, ". Short Run = ", short_run, ". Parallel = ", parallel))
-set.seed(123)
+if(!identical(seed, FALSE)){
+  set.seed(seed)
+}
 
 # format user provided arguments correctly
 date <- as.Date(date)

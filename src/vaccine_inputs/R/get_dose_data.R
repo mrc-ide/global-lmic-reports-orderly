@@ -67,7 +67,10 @@ get_dose_ts <- function(owid, who_vacc, who_vacc_meta, iso3cs, date_0){
         filter(!is.na(second_dose_per_day)) %>%
         filter(date >= max(date) - 7) %>%
         summarise(
-          percentage_second_dose_week_ave = mean(second_dose_per_day/vacc_per_day)
+          percentage_second_dose_week_ave = mean(
+            if_else(vacc_per_day > 0, second_dose_per_day/vacc_per_day, as.numeric(NA)),
+            na.rm = TRUE
+            )
         ),
       by = "iso3c"
     ) %>%
@@ -83,6 +86,7 @@ get_dose_ts <- function(owid, who_vacc, who_vacc_meta, iso3cs, date_0){
   missing_df <- combined_df %>% summarise(
     missing = sum(is.na(dose_ratio))
   )
+
   while(sum(missing_df$missing) > 0){
     combined_df <- mutate(combined_df,
                           percentage_second_dose =
@@ -128,6 +132,19 @@ get_dose_ts <- function(owid, who_vacc, who_vacc_meta, iso3cs, date_0){
       )
     ) %>%
     select(!c(vacc_per_day_week_ave, percentage_second_dose_week_ave))
+
+  #some might be less than zero (but close to)
+  combined_df <- mutate(combined_df,
+                        second_dose_per_day = if_else(
+                          second_dose_per_day < 0 & second_dose_per_day > -1,
+                          0,
+                          second_dose_per_day
+                        ),
+                        first_dose_per_day = if_else(
+                          first_dose_per_day < 0 & first_dose_per_day > -1,
+                          0,
+                          first_dose_per_day
+                        ))
 
   #any other potential cleaning
 

@@ -119,7 +119,8 @@ fit_spline_rt <- function(data,
     }
   } else if(likelihood_version == "Poisson"){
     pars_obs$likelihood <- function(model_deaths, data_deaths){
-      dpois(data_deaths, model_deaths + rexp(length(model_deaths), rate = pars_obs$exp_noise),
+      dpois(data_deaths, model_deaths,
+            #+ rexp(length(model_deaths), rate = pars_obs$exp_noise),
             log = TRUE)
     }
   } else {

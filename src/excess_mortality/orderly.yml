@@ -168,18 +168,18 @@ global_resources:
 #
 depends:
   ecdc:
-    id: latest
+    id: latest(parameter:date == date)
     use:
       owid.rds: owid.rds
   vaccine_inputs:
-    id: latest
+    id: latest(parameter:date == date)
     use:
       vacc_inputs.Rds: vacc_inputs.Rds
   economist:
-    id: latest
+    id: latest(parameter:date == date)
     use:
       excess_deaths.rds: excess_deaths.rds
   covariants:
-    id: latest
+    id: latest(parameter:date == date)
     use:
       delta_characteristics.rds: delta_characteristics.rds

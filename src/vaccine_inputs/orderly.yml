@@ -69,11 +69,11 @@ packages:
 
 depends:
   covariants:
-    id: latest
+    id: latest(parameter:date == date)
     use:
       delta_characteristics.rds: delta_characteristics.rds
   ecdc:
-    id: latest
+    id: latest(parameter:date == date)
     use:
       vaccine_agreements.rds: vaccine_agreements.rds
       vaccine_doses_by_manufacturer.rds: vaccine_doses_by_manufacturer.rds
