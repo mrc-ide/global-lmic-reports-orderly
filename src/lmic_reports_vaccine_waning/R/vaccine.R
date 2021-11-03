@@ -497,6 +497,61 @@ generate_draws_pmcmc_nimue_case_fitted <- function(out, n_particles = 10, grad_d
 
 }
 
+compare_adjustment_plot <- function(out, out_old, grad_dur, date_0, extend_past = 10){
+  ggplot(
+    data = nimue_format(out_old, var_select = "infections") %>%
+      filter(t >= (max(t, na.rm = TRUE) - grad_dur - extend_past)) %>%
+      group_by(t) %>%
+      summarise(infections_med = median(y, na.rm = TRUE),
+                infections_025 = quantile(y, 0.025, na.rm = TRUE),
+                infections_095 = quantile(y, 0.975, na.rm = TRUE)) %>%
+      mutate(
+        `Adjusted:` = FALSE,
+
+      ) %>%
+      full_join(
+        nimue_format(out, var_select = "infections") %>%
+          filter(t >= (max(t, na.rm = TRUE) - grad_dur - extend_past)) %>%
+          group_by(t) %>%
+          summarise(infections_med = median(y, na.rm = TRUE),
+                    infections_025 = quantile(y, 0.025, na.rm = TRUE),
+                    infections_095 = quantile(y, 0.975, na.rm = TRUE)) %>%
+          mutate(
+            `Adjusted:` = TRUE
+          )
+      ) %>%
+      mutate(
+        date = date_0 + t
+      ),
+    aes(x = date,
+        y = infections_med,
+        ymin = infections_025,
+        ymax = infections_095,
+        colour = `Adjusted:`,
+        fill = `Adjusted:`)
+  )  +
+    geom_vline(aes(xintercept = date_0-grad_dur), linetype = "dashed")+
+    geom_line() +
+    geom_ribbon(aes(colour = NULL), alpha = 0.5) +
+    geom_point(
+      inherit.aes = FALSE,
+      data = out$pmcmc_results$inputs$data %>%
+        filter(date >= (max(date, na.rm = TRUE) - grad_dur - extend_past)),
+      aes(x = date, y = cases)
+    ) +
+    ggplot2::theme_bw() +
+    labs(x = "Date", y = "Infections") +
+    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, colour = "black"),
+                   axis.title.x = ggplot2::element_blank(),
+                   panel.grid.major.x = ggplot2::element_blank(),
+                   panel.grid.minor.x = ggplot2::element_blank(),
+                   panel.border = ggplot2::element_blank(),
+                   panel.background = ggplot2::element_blank(),
+                   axis.line = ggplot2::element_line(colour = "black")
+    ) + ggplot2::theme(legend.position = "top",
+                       legend.justification = c(0,1),
+                       legend.direction = "horizontal")
+}
 
 ammend_df_covidsim_for_vaccs <- function(df, out, strategy, available_doses_proportion) {
 

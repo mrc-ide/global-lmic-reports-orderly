@@ -594,16 +594,22 @@ if(sum(ecdc_df$deaths) > 0) {
   }
 
 
-   if (vaccine_fitting_flag) {
+  if (vaccine_fitting_flag) {
+    out_unadjusted <- out
     out <- generate_draws_pmcmc_nimue_case_fitted(out = out,
                                                   n_particles = n_particles,
                                                   grad_dur = number_of_last_rw_days)
+    #create a plot so we can check this
+    infection_adujustment_plot <-
+      compare_adjustment_plot(out, out_unadjusted, number_of_last_rw_days,
+                              date_0,
+                              out$pmcmc_results$inputs$Rt_args$Rt_rw_duration)
+    remove(out_unadjusted)
   }  else {
     out <- generate_draws_pmcmc_case_fitted(out = out,
                                             n_particles = n_particles,
                                             grad_dur = number_of_last_rw_days)
   }
-
 
   # Add the prior
   out$pmcmc_results$inputs$prior <- as.function(c(formals(logprior),
@@ -800,8 +806,9 @@ if(sum(ecdc_df$deaths) > 0) {
       d + scale_x_date(date_breaks = "1 month", date_labels = "%b" ,limits = date_range),
       cas_plot  + scale_x_date(date_breaks = "1 month", date_labels = "%b" ,limits = date_range),
       rtp$plot + scale_x_date(date_breaks = "1 month", date_labels = "%b" ,limits = date_range),
+      infection_adujustment_plot,
       ncol=1,
-      rel_heights = c(0.4,0.6,0.6, 0.4))
+      rel_heights = c(0.4,0.6,0.6, 0.4, 0.4))
   ))
 
   combined <- cowplot::plot_grid(header,
