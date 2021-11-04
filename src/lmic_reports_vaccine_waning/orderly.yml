@@ -135,6 +135,7 @@ sources:
   - R/report_grab.R
   - R/esft.R
   - R/vaccine.R
+  - R/scenario_funcs.R
 
 # Resources that the script needs to run; this is an array of strings
 # representing filenames *relative to, and below, this directory*.

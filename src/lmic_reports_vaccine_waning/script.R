@@ -899,25 +899,34 @@ if(sum(ecdc_df$deaths) > 0) {
 
   rm(maintain_scenario)
 
-  # Enhancing movement restrictions for 3 months (50% further reduction in contacts) (Mitigation)
-  mitigation_scenario <- squire::projections(out,
-                                             R0_change = c(0.5),
+  # Get the optimistic/pessimistic scenarios
+  Rt_futures <- get_future_Rt(out, forcast_days = 28)
+
+  #update the model object (slightly hacked in, we just set the final Rt to our new value and
+  #project with no R0_change)
+  out_optim <- update_Rt(out, Rt_futures %>% pull(optimistic))
+  mitigation_scenario <- squire::projections(out_optim,
+                                             R0_change = c(1),
                                              tt_R0 = c(0),
                                              time_period = time_period,
                                              model_user_args = model_user_args)
   r_mitigation_scenario <- r_list_format(mitigation_scenario, date_0)
   rt_mitigation_scenario <- rt_creation_vaccine(mitigation_scenario, date_0, date_0+89)
+
   rm(mitigation_scenario)
+  rm(out_optim)
 
   # Relax by 50% for 3 months
-  reverse_scenario <- squire::projections(out,
-                                          R0_change = 1.5,
+  out_pess <- update_Rt(out, Rt_futures %>% pull(pessimistic))
+  reverse_scenario <- squire::projections(out_pess,
+                                          R0_change = c(1),
                                           tt_R0 = c(0),
                                           time_period = time_period,
                                           model_user_args = model_user_args)
   r_reverse_scenario <- r_list_format(reverse_scenario, date_0)
   rt_reverse_scenario <- rt_creation_vaccine(reverse_scenario, date_0, date_0+89)
   rm(reverse_scenario)
+  rm(out_pess)
 
   ## now let's trim the out for saving really small
   pmcmc <- out$pmcmc_results
@@ -966,17 +975,24 @@ if(sum(ecdc_df$deaths) > 0) {
   rt_maintain_scenario_surged <- rt_creation_vaccine(maintain_scenario_surged, date_0, date_0+89)
   rm(maintain_scenario_surged)
 
-  mitigation_scenario_surged <- squire::projections(out_surged,
-                                                    R0_change = c(0.5),
+  Rt_futures_surged <- get_future_Rt(out_surged, forcast_days = 28)
+
+  out_optim <- update_Rt(out_surged, Rt_futures_surged %>% pull(optimistic))
+
+  mitigation_scenario_surged <- squire::projections(out_optim,
+                                                    R0_change = c(1),
                                                     tt_R0 = c(0),
                                                     time_period = time_period,
                                                     model_user_args = model_user_args)
   r_mitigation_scenario_surged <- r_list_format(mitigation_scenario_surged, date_0)
   rt_mitigation_scenario_surged <- rt_creation_vaccine(mitigation_scenario_surged, date_0, date_0+89)
   rm(mitigation_scenario_surged)
+  rm(out_optim)
 
-  reverse_scenario_surged <- squire::projections(out_surged,
-                                                 R0_change = c(1.5),
+  out_pess <- update_Rt(out_surged, Rt_futures_surged %>% pull(pessimistic))
+
+  reverse_scenario_surged <- squire::projections(out_pess,
+                                                 R0_change = c(1),
                                                  tt_R0 = c(0),
                                                  time_period = time_period,
                                                  model_user_args = model_user_args)
@@ -984,6 +1000,7 @@ if(sum(ecdc_df$deaths) > 0) {
   rt_reverse_scenario_surged <- rt_creation_vaccine(reverse_scenario_surged, date_0, date_0+89)
   rm(reverse_scenario_surged)
   rm(out_surged)
+  rm(out_pess)
 
   o_list <- named_list(
         r_maintain_scenario,
@@ -1002,6 +1019,22 @@ if(sum(ecdc_df$deaths) > 0) {
     rt_mitigation_scenario_surged,
     rt_reverse_scenario_surged
   )
+
+  rt_futures_df <- rbind(
+    Rt_futures %>%
+      mutate(surged = FALSE),
+    Rt_futures_surged %>%
+      mutate(surged = TRUE)
+  ) %>%
+    group_by(surged) %>%
+    summarise(
+      pessimistic_med = median(pessimistic),
+      pessimistic_025 = quantile(pessimistic, 0.025),
+      pessimistic_975 = quantile(pessimistic, 0.975),
+      optimistic_med = median(optimistic),
+      optimistic_025 = quantile(optimistic, 0.025),
+      optimistic_975 = quantile(optimistic, 0.975)
+    )
 
 
   ## -----------------------------------------------------------------------------
@@ -1033,7 +1066,8 @@ if(sum(ecdc_df$deaths) > 0) {
                                   "date_0" = date_0,
                                   "country" = country,
                                   "surging" = surging,
-                                  "rt" = rtp2),
+                                  "rt" = rtp2,
+                                  "rt_futures" = rt_futures_df),
                     output_options = list(pandoc_args = c(paste0("--metadata=title:",country," COVID-19 report "))))
 
 
@@ -1232,18 +1266,18 @@ data_sum <- lapply(o_list, function(pd){
 })
 
 data_sum[[1]]$scenario <- "Maintain Status Quo"
-data_sum[[2]]$scenario <- "Additional 50% Reduction"
-data_sum[[3]]$scenario <- "Relax Interventions 50%"
+data_sum[[2]]$scenario <- "Optimistic"
+data_sum[[3]]$scenario <- "Pessimistic"
 data_sum[[4]]$scenario <- "Surged Maintain Status Quo"
-data_sum[[5]]$scenario <- "Surged Additional 50% Reduction"
-data_sum[[6]]$scenario <- "Surged Relax Interventions 50%"
+data_sum[[5]]$scenario <- "Surged Optimistic"
+data_sum[[6]]$scenario <- "Surged Pessimistic"
 
 rt_list[[1]]$scenario <- "Maintain Status Quo"
-rt_list[[2]]$scenario <- "Additional 50% Reduction"
-rt_list[[3]]$scenario <- "Relax Interventions 50%"
+rt_list[[2]]$scenario <- "Optimistic"
+rt_list[[3]]$scenario <- "Pessimistic"
 rt_list[[4]]$scenario <- "Surged Maintain Status Quo"
-rt_list[[5]]$scenario <- "Surged Additional 50% Reduction"
-rt_list[[6]]$scenario <- "Surged Relax Interventions 50%"
+rt_list[[5]]$scenario <- "Surged Optimistic"
+rt_list[[6]]$scenario <- "Surged Pessimistic"
 
 # combine and annotate
 data_sum <- do.call(rbind, data_sum)

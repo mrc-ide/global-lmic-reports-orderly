@@ -1123,7 +1123,7 @@ cases_contrast_triple_bars <- function(o1, o2, o3, data, date_0, date = Sys.Date
       ggplot2::theme_bw()  +
       ggplot2::ylab("Daily Infections") +
       ggplot2::scale_y_continuous(expand = c(0,0), limits = c(0, ymax)) +
-      ggplot2::scale_fill_manual(name = "", labels = (c( "Maintain Status Quo","Relax Interventions 50%","Additional 50% Reduction")),
+      ggplot2::scale_fill_manual(name = "", labels = (c( "Maintain Status Quo","Pessimistic","Optimistic")),
                                  values = (c("#9eeccd","#c59e96","#3f8ea7"))) +
       ggplot2::scale_x_date(date_breaks = "2 weeks", date_labels = "%b %d",
                             expand = c(0, 0)) +
@@ -1343,7 +1343,7 @@ healthcare_plot_contrast_triple <- function(o1, o2, o3, data, date_0, date = Sys
       ggplot2::ylab(title) +
       ggplot2::theme_bw()  +
       ggplot2::scale_y_continuous(expand = c(0,0)) +
-      ggplot2::scale_fill_manual(name = "", labels = (c( "Maintain Status Quo","Relax Interventions 50%","Additional 50% Reduction")),
+      ggplot2::scale_fill_manual(name = "", labels = (c( "Maintain Status Quo","Pessimistic","Optimistic")),
                                  values = (c("#9eeccd","#c59e96","#3f8ea7"))) +
       ggplot2::scale_x_date(date_breaks = "2 weeks", date_labels = "%b %d",
                             expand = c(0, 0)) +
