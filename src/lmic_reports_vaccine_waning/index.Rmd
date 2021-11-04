@@ -33,6 +33,7 @@ params:
    country: NA
    surging: FALSE
    rt: NA
+   adjust_delta: FALSE
 ---
 
 ```{r rm_title_page, echo=FALSE}
@@ -418,13 +419,27 @@ if (iso3c == "BRA") {
 
 ```
 
+```{r set up delta, echo = FALSE, collapse = TRUE, warning = FALSE}
+if(identical(params$adjust_delta, FALSE)){
+  delta_text <- ""
+} else {
+  delta_text <- paste0(
+    "This report adjusts for the Delta variant, with the variant become dominant over the period: ",
+    params$adjust_delta$start_date,
+    " to ",
+    params$adjust_delta$start_date + params$adjust_delta$shift_duration, 
+    "."
+  )
+}
+```
+
 ## Situation Report for COVID-19: `r country`, `r base::format(date, "%Y-%m-%d")`
 
 `r latex_omit("---")`
 
 #### **[Download the report for `r country`, `r base::format(date, "%Y-%m-%d")` here](`r url`).**
 
-This report uses data from COVID-19 Data Repository by the Center for Systems Science and Engineering (CSSE) at Johns Hopkins University. These data are updated daily and whilst there may be a short delay, they are generally consistent with Ministry reports. These data are then used to back-calculate an ‘inferred number of COVID-19 infections’ using mathematical modelling techniques (see [Report 12](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-12-global-impact-covid-19/) for further details) to estimate the number of people that have been infected and to make short-term projections for future healthcare needs.
+This report uses data from COVID-19 Data Repository by the Center for Systems Science and Engineering (CSSE) at Johns Hopkins University. These data are updated daily and whilst there may be a short delay, they are generally consistent with Ministry reports. These data are then used to back-calculate an ‘inferred number of COVID-19 infections’ using mathematical modelling techniques (see [Report 12](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-12-global-impact-covid-19/) for further details) to estimate the number of people that have been infected and to make short-term projections for future healthcare needs. `r delta_text`
 
 <br> 
 

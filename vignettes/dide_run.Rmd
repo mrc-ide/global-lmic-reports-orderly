@@ -91,12 +91,6 @@ adjust_delta <- TRUE
 
 # will we allow vaccine efficacy to wane?
 waning <- FALSE
-
-#for now we cannot adjust for delta/waning in standard fit
-if(!excess_mortality){
-  adjust_delta <- FALSE
-  waning <- FALSE
-}
 ```
 
 These arguments are then passed to our 4/5 tasks:
@@ -132,6 +126,16 @@ if(excess_mortality){
   message("*** Google BRT data")
   google_id <- orderly::orderly_run("brt_google_mobility", parameters = list(date=date, short_run = short_run), echo = FALSE)
   orderly::orderly_commit(google_id)
+  
+  #if adjusting for delta in lmic fits
+  if(adjust_delta){
+    #also need vaccine inputs with the no delta adjustment as not all countries will have it
+    message("*** Calculate Vaccine Inputs again")
+    vaccine_inputs_2_id <- orderly::orderly_run("vaccine_inputs", parameters = list(date=date,
+                                                                              adjust_delta = FALSE,
+                                                                              waning = waning), echo = FALSE)
+    orderly::orderly_commit(vaccine_inputs_2_id)
+  }
 }
 ```
 
@@ -174,7 +178,8 @@ if(!excess_mortality){
     # not needed input parameters - leave as FALSE. See FAQ for more info on these
     full_scenarios = FALSE,
     gibbs_sampling = FALSE,
-    n_mcmc = n_mcmc
+    n_mcmc = n_mcmc,
+    adjust_delta = adjust_delta
   )
 } else{
   task <- "excess_mortality"
@@ -190,6 +195,8 @@ if(!excess_mortality){
 
 # get the isos
 iso3cs <- grep('^[A-Z]{3}\\s*', readLines(file.path(here::here(), "countries")), value = TRUE)
+#get the countries with delta (countries with more than 100 delta sequence in November 2021)
+iso3cs_delta <- grep('^[A-Z]{3}\\s*', readLines(file.path(here::here(), "countries_delta")), value = TRUE)
 
 # make the orderly bundles to be run on the cluster
 path_bundles <- file.path(
@@ -206,7 +213,13 @@ dir.create(path_bundles, showWarnings = FALSE, recursive = TRUE)
 # bundle these up - this will take like 10 mins to create all the zips. 
 bundles <- lapply(
   iso3cs, function(x) {
+    #set country in parameters
     parameters$iso3c = x
+    #if not excess fitting, check if we should apply the delta adjustment
+    if((!excess_mortality) & adjust_delta){
+      parameters$adjust_delta <- x %in% iso3cs_delta
+    }
+    #pack bundle
     orderly::orderly_bundle_pack(
       path = path_bundles,
       name = task,

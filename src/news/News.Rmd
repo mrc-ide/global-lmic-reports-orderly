@@ -162,6 +162,11 @@ Lastly, as we switch from one version to the next, there is likely to be a small
 
 ---
 
+### Version 9: 2021-11-04
+
+* For certain countries the impact of the Delta variant is now included in the model. Timings for the delta variant are derived from [CoVariants](https://covariants.org/). For more information see updates to the model [parameters and methods page](https://mrc-ide.github.io/global-lmic-reports/parameters.html)
+
+
 #### Version 8: 2021-05-10
 
 * Roll out of vaccines globally is modelled. This is included both in model fitting and scenario projections based on continued roll out speed and current understanding of global vaccine supply. For more information see updates to the model [parameters and methods page](https://mrc-ide.github.io/global-lmic-reports/parameters.html)

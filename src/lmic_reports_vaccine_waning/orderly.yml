@@ -49,6 +49,8 @@ parameters:
       default: 20000
     seed:
       default: FALSE
+    adjust_delta:
+      default: FALSE
 
 # You must list at least one artefact that your report will generate.
 # Each artefact consists of one or more files.  The format is to list
@@ -135,6 +137,7 @@ sources:
   - R/report_grab.R
   - R/esft.R
   - R/vaccine.R
+  - R/custom_likelihood.R
 
 # Resources that the script needs to run; this is an array of strings
 # representing filenames *relative to, and below, this directory*.
@@ -196,7 +199,7 @@ depends:
       combined_data.Rds: combined_data.Rds
       owid.rds: owid.rds
   vaccine_inputs:
-    id: latest(parameter:date == date)
+    id: latest(parameter:date == date && adjust_delta == adjust_delta)
     use:
       vacc_inputs.Rds: vacc_inputs.Rds
   oxford_grt:
@@ -207,3 +210,7 @@ depends:
     id: latest(parameter:date == date)
     use:
       google_brt.rds: google_brt.rds
+  covariants:
+    id: latest(parameter:date == date)
+    use:
+      delta_characteristics.rds: delta_characteristics.rds

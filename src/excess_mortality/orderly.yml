@@ -172,7 +172,7 @@ depends:
     use:
       owid.rds: owid.rds
   vaccine_inputs:
-    id: latest(parameter:date == date)
+    id: latest(parameter:date == date && adjust_delta == adjust_delta)
     use:
       vacc_inputs.Rds: vacc_inputs.Rds
   economist:

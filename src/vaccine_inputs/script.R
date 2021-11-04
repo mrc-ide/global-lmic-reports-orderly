@@ -39,7 +39,6 @@ ve_i_low <- 0.6
 ve_i_high <- 0.8
 ve_d_low <- 0.8
 ve_d_high <- 0.98
-days_between_doses <- 14
 
 ### Derive effective vaccine efficacies over time
 
@@ -99,35 +98,54 @@ if(!waning){
     select(iso3c, date_vaccine_change, first_dose_per_day, second_dose_per_day)
 
   #make an estimate of the average days between doses for each country
-  delays_df <-
-    data.frame(
-      iso3c = iso3cs
-    ) %>%
+  #here we assume that doses go to the person vaccinated the earliest
+  delays_df <- data.frame(iso3c = iso3cs) %>%
+    rowwise() %>%
     mutate(
-      delay = unlist(lapply(iso3cs, function(country){
-        country_df <- filter(fitting_df, iso3c == country)
-        if(nrow(country_df) > 1){
-          values <- ccf(country_df$first_dose_per_day, country_df$second_dose_per_day, na.action = na.pass,
-                        lag.max = nrow(country_df), plot = FALSE)
-          lags <- values$lag[values$lag > 0]
-          acfs <- values$acf[values$lag > 0]
-          lags[which.max(-acfs)]
-        } else {
+      days_between_doses = {
+        country_df <- dose_df %>%
+          rename(country = iso3c) %>%
+          filter(country == iso3c)
+        if(nrow(country_df) == 1 | sum(country_df$second_dose_per_day) == 0){
           NA
+        } else {
+          #set up parameters
+          delays_df <- data.frame(
+            days_between_doses = 1:nrow(country_df),
+            frequency = 0
+          )
+          first_doses_available <- country_df$first_dose_per_day
+          #now work though for each day
+          for(t in 1:nrow(country_df)){
+            second_doses_to_assign <- country_df$second_dose_per_day[t]
+            if(second_doses_to_assign>0){
+              assigning <- TRUE
+              i <- min(which(first_doses_available>0))
+              while(assigning){
+                assigned <- max(
+                  (second_doses_to_assign - first_doses_available[i]),
+                  second_doses_to_assign
+                )
+                #update the delay df
+                delays_df[delays_df$days_between_doses == (t - i), "frequency"] <-
+                  assigned
+                #update parameters
+                first_doses_available[i] <- first_doses_available[i] - assigned
+                second_doses_to_assign <- second_doses_to_assign - assigned
+                i <- i+1
+                #check if we have used up all doses to assign
+                if(second_doses_to_assign == 0){
+                  assigning <- FALSE
+                }
+              }
+            }
+          }
+          #calculate the median delay
+          middle_delay <- (sum(delays_df$frequency)+1)/2
+          delays_df$days_between_doses[min(which((cumsum(delays_df$frequency)>middle_delay)))]
         }
-      }))
-    ) %>%
-    filter(!is.na(delay)) %>%
-    ungroup() %>%
-    transmute(
-      iso3c = iso3c,
-      days_between_doses = if_else(
-        delay < 21,
-        mean(delay, na.rm = TRUE),
-        delay
-      )
+      }
     )
-
   #add to data
   dose_df <- left_join(
     dose_df,
@@ -156,7 +174,7 @@ pdf("calibration/plot.pdf", paper = "a4r")
 if(waning){
   #plot efficacy curves for our first and second doses
   print(plot_waning(adjust_delta = adjust_delta, days_between_doses = mean(
-    delays_df$days_between_doses
+    delays_df$days_between_doses, na.rm = TRUE
   )))
 }
 

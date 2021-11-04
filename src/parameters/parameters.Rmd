@@ -118,6 +118,28 @@ In more recent model fitting and scenario projections, we model the roll out of 
 
 ## Interventions
 
+### Version 9
+
+Adjustments for the Delta Variant are adjusted for. This Variant of Concern has
+become the dominant strain of COVID-19 for many countries across the globe, see
+[WHO weekly update](https://www.who.int/publications/m/item/weekly-epidemiological-update-on-covid-19---2-november-2021). The Delta Variant has been associated with immune escape from natural 
+immunity for previous variants, worse clinical outcomes, and reduced vaccine efficacy.
+
+For countries with more than 100 reported cases sequences, we model these effects as follows:
+* Immune escape: we increase the rate of loss of natural immunity for a two 
+month period such that 27% ([Genomic characterization and epidemiology of an emerging SARS-CoV-2 variant in Delhi, India](https://www.science.org/doi/10.1126/science.abj9932)) of those that would not have been susceptible, now are.
+* Worse Outcomes: The probability of hospitalisation increases over that period
+so that it is 45% higher than for the non-delta variants ([Hospital admission and emergency care attendance risk for SARS-CoV-2 delta (B.1.617.2) compared with alpha (B.1.1.7) variants of concern: a cohort study](https://www.thelancet.com/journals/laninf/article/PIIS1473-3099(21)00475-8/fulltext)).
+* Reduced Vaccine Efficacy: Vaccines efficacy against infection reduces to 22.4%,
+first dose, and 64.6%, second dose. Efficacy against disease reduces to 75%, first dose,
+and 94%, second dose. These are roughly taken from [here](https://www.eurosurveillance.org/content/10.2807/1560-7917.ES.2021.26.35.2100793)
+and [round 14](http://hdl.handle.net/10044/1/91999) of the REACT study.
+
+The timing of when the Delta variant becomes dominant is estimated using data 
+available from [CoVariants](https://covariants.org/). If a countries fit takes
+into account the Delta Adjustments, this will be indicated on its page.
+
+
 ### Version 8
 
 Roll out of global vaccination efforts is modelled. Model fitting uses the extended transmission model, with full model details and parameters used available in [Report 33](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-33-vaccine/) and the related [publication](https://www.sciencedirect.com/science/article/pii/S0264410X21004278). However, to model the specific vaccination roll out in each country, we have had to introduce a number of assumptions about vaccine efficacy, roll-out speed to date, dosing strategy, vaccine hesitancy, vaccine prioritisation and future roll out speed and uptake. 

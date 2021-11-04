@@ -92,7 +92,7 @@ get_dose_ts <- function(owid, who_vacc, who_vacc_meta, iso3cs, date_0){
                           percentage_second_dose =
                             pmin(
                               percentage_second_dose_week_ave,
-                              (vacc_per_day + lag(cumsum(first_dose_per_day)
+                              (vacc_per_day + dplyr::lag(cumsum(first_dose_per_day)
                                                   - cumsum(second_dose_per_day), 1))/(2*vacc_per_day)
                             ),
                           second_dose_per_day = if_else(
@@ -353,8 +353,8 @@ get_dose_ts_owid <- function(owid, iso3cs){
   while(sum(missing_df$missing) > 0){
     owid_merge <- mutate(owid_merge,
       prev_dose_ratio =
-        lag(cumsum(second_dose_per_day), 1)/
-        lag(cumsum(first_dose_per_day), 1),
+        dplyr::lag(cumsum(second_dose_per_day), 1)/
+        dplyr::lag(cumsum(first_dose_per_day), 1),
       first_dose_per_day = if_else(
         is.na(first_dose_per_day),
         vacc_per_day/(1 + prev_dose_ratio),

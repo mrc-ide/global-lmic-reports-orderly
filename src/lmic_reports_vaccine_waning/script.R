@@ -517,6 +517,36 @@ if(sum(ecdc_df$deaths) > 0) {
   init <- init_state_nimue(deaths_removed, iso3c)
 
   ## -----------------------------------------------------------------------------
+  ## Add delta adjustments
+  ## -----------------------------------------------------------------------------
+
+  if(adjust_delta){
+    #open data from covariants
+    delta_characteristics <- readRDS("delta_characteristics.Rds") %>%
+      ungroup() %>%
+      rename(iso3c_ = iso3c) %>%
+      filter(iso3c_ == iso3c) %>%
+      select(where(~is.numeric(.x) | is.Date(.x)))
+    dur_R <- c(365, delta_characteristics$required_dur_R, 365)
+    date_dur_R_change <- c(delta_characteristics$start_date,
+                           delta_characteristics$start_date + delta_characteristics$shift_duration)
+    date_prob_hosp_multiplier_change <- seq(
+      delta_characteristics$start_date,
+      delta_characteristics$start_date + delta_characteristics$shift_duration,
+      by = 1
+    )
+    prob_hosp_multiplier <- c(seq(1, delta_characteristics$prob_hosp_multiplier,
+                                length.out = length(date_prob_hosp_multiplier_change)+1))
+    pars_obs$delta_adjust <- list(
+      dur_R = dur_R,
+      date_dur_R_change = date_dur_R_change,
+      prob_hosp_multiplier = prob_hosp_multiplier,
+      date_prob_hosp_multiplier_change = date_prob_hosp_multiplier_change
+    )
+  }
+
+
+  ## -----------------------------------------------------------------------------
   ## Step 2g: PMCMC run
   ## -----------------------------------------------------------------------------
 
@@ -530,7 +560,7 @@ if(sum(ecdc_df$deaths) > 0) {
                        log_prior = logprior,
                        n_particles = 1,
                        steps_per_day = 1,
-                       log_likelihood = NULL,
+                       log_likelihood = calc_loglikelihood_delta,
                        squire_model = squire_model,
                        output_proposals = FALSE,
                        n_chains = n_chains,
@@ -1016,6 +1046,13 @@ if(sum(ecdc_df$deaths) > 0) {
   data <- data[order(data$date, decreasing = TRUE),]
   data <- data[data$date <= as.Date(date_0), ]
 
+  #delta stuff
+  if(adjust_delta){
+    adjust_delta_index <- delta_characteristics
+  } else {
+    adjust_delta_index <- FALSE
+  }
+
   # prepare reports
   options(tinytex.verbose = TRUE)
   rmarkdown::render("index.Rmd",
@@ -1026,7 +1063,8 @@ if(sum(ecdc_df$deaths) > 0) {
                                   "date_0" = date_0,
                                   "country" = country,
                                   "surging" = surging,
-                                  "rt" = rtp2),
+                                  "rt" = rtp2,
+                                  "adjust_delta" = adjust_delta_index),
                     output_options = list(pandoc_args = c(paste0("--metadata=title:",country," COVID-19 report "))))
 
 
