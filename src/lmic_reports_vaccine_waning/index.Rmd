@@ -33,6 +33,7 @@ params:
    country: NA
    surging: FALSE
    rt: NA
+   rt_futures: NA
    adjust_delta: FALSE
 ---
 
@@ -94,6 +95,7 @@ country <- params$country
 date_0 <- params$date_0
 surging <- params$surging
 rt <- params$rt
+rt_futures <- params$rt_futures
 url <- paste0("https://github.com/mrc-ide/global-lmic-reports/raw/master/",iso3c,"/index.pdf")
 
 format_type <- knitr::opts_knit$get("rmarkdown.pandoc.to")
@@ -497,7 +499,7 @@ suppressWarnings(suppressMessages(print(rt$plot)))
 
 `r pagebreak()`
 
-Using the model fit, we can forecast the expected trajectory for cumulative deaths assuming the transmission level, represented by the final Rt value stays the same over the next 28 days. `r show_capacity_sentence`
+Using the model fit, we can forecast the expected trajectory for cumulative deaths assuming the transmission level, represented by the final $R_{t}$ value stays the same over the next 28 days. `r show_capacity_sentence`
 
 <br>
 
@@ -524,19 +526,41 @@ if (surging) {
 
 ### Short-term Epidemic Scenarios
 
+```{r, include=FALSE, echo=FALSE}
+rt_futures <- rt_futures %>% 
+  filter(!surged)
+optimisitic <- paste0(signif(rt_futures$optimistic_med, 3), " (", 
+                      signif(rt_futures$optimistic_025, 3), ", ",
+                      signif(rt_futures$optimistic_975, 3), ")")
+
+pessimistic <- paste0(signif(rt_futures$pessimistic_med, 3), " (", 
+                      signif(rt_futures$pessimistic_025, 3), ", ",
+                      signif(rt_futures$pessimistic_975, 3), ")")
+```
+
+
 We make the following short-term projections of healthcare demand and new infections under the following three scenarios:
 
 * **Scenario 1.** The epidemic continues to grow at the current rate. 
-* **Scenario 2.** Countries will further scale up interventions (either increasing current strategies or implementing new interventions) leading to a further 50% reduction in transmission.
-* **Scenario 3.** Countries will relax current interventions by 50%
+* **Scenario 2.** The $R_{t}$ value will decrease to `r optimisitic`, representing
+either the implementation of new interventions, scaling up of interventions, or
+a reduction in mobility.
+* **Scenario 3.** The $R_{t}$ value will increase to `r pessimistic`, representing
+either the relaxation of interventions, or an increase in mobility.
 
-**N.B. These scenarios currently assume that the impact of mobility on transmission will remain the same in the future as it has in the past. We are working to extend methods to estimate the impact of increases in mobility on transmission as lockdown and interventions are reversed. Consequently, projection are likely to represent an upper estimate of the healthcare demand and case load for each scenario**
+The $R_{t}$ values for scenarios 2 and 3 are calculated by estimating the linear 
+trends in $R_{t}$ post-lockdown across 14-day periods, for each replicate from the MCMC, 
+and then finding the 90% percentile of the positive and negative gradients.
+These are then applied to the final fitted $R_{t}$ value, for each replicate.
+Hence the optimistic and and pessimistic scenarios represent if the upper limit of historic 
+negative or positive trends in $R_{t}$ are applied from this time on wards, including both
+changes in $R_{t}$ due to mobility and non-mobility based interventions.
 
 We estimate that over the next 4 weeks demand for hospital beds will change from `r form(hosp_today)` patients requiring treatment with high-pressure oxygen at the current date to `r form(hosp_28)` hospital beds being required on `r base::format(date + 28, "%Y-%m-%d")` if no further interventions are introduced (Scenario 1). Similarly, we estimate that over the next 4 weeks demand for critical care (ICU) beds will change from `r form(icu_today)` patients requiring treatment with mechanical ventilation at the current date to `r form(icu_28)` by `r base::format(date + 28, "%Y-%m-%d")`. These projections assume that approximately 5% of all infections will require treatment with high-pressure oxygen and that approximately 30% of hospitalised cases will require treatment with mechanical ventilation (based on analysis of ongoing epidemics in Europe). **N.B. These scenarios are unlikely to show significant differences for the first week since there is a delay of approximately 10 days between infection and hospital admission. Consequently, the effectiveness of a change in policy is likely to be better captured by hospital admission data approximately 2 weeks after the policy change is implemented.**
 
 <br>
 
-```{r healthcare plots, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 5: Healthcare demands in the next 28 days.** Individuals needing an ICU bed are assumed to need mechanical ventilation. Projected demand for Scenario 1 (the epidemic continues to grow at the current rate) are shown in green (Maintain status quo). Projections for Scenario 2 (a further 50% reduction in transmission) are shown in blue. Projections for Scenario 3 (relaxing interventions by 50%) are shown in red. Current date shown with dashed line."), fig.width=fig_height(8,10), fig.height=fig_height(3.5,4.5), fig.align=fig_center()}
+```{r healthcare plots, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 5: Healthcare demands in the next 28 days.** Individuals needing an ICU bed are assumed to need mechanical ventilation. Projected demand for Scenario 1 (the epidemic continues to grow at the current rate) are shown in green (Maintain status quo). Projections for Scenario 2 (optimistic) are shown in blue. Projections for Scenario 3 (pessimistic) are shown in red. Current date shown with dashed line."), fig.width=fig_height(8,10), fig.height=fig_height(3.5,4.5), fig.align=fig_center()}
 
 # suppressWarnings(suppressMessages(cowplot::plot_grid(
 #   healthcare_plot_contrast(o1 = params$o_list[[1]], o2 = params$o_list[[2]], 
@@ -572,11 +596,11 @@ suppressWarnings(suppressMessages(print(grid)))
 <br>
 `r pagebreak()`
 
-The impact of each scenario has a more immediate effect on the daily number of infections. The figure below shows the impact of each scenario on the estimated daily incidence of new infections. If interventions are scaled up (Scenario 2), the daily number of infections will change from `r form(infs_today)` at the current date to `r form(infs_28_mit)` by `r base::format(date + 28, "%Y-%m-%d")`. If current interventions were relaxed by 50%, we estimate the daily number of infections will change from `r form(infs_today)` at the current date to `r form(infs_28_rev)` by `r base::format(date + 28, "%Y-%m-%d")`.
+The impact of each scenario has a more immediate effect on the daily number of infections. The figure below shows the impact of each scenario on the estimated daily incidence of new infections. If interventions are scaled up (Scenario 2), the daily number of infections will change from `r form(infs_today)` at the current date to `r form(infs_28_mit)` by `r base::format(date + 28, "%Y-%m-%d")`. Under the pessimistic scenario, we estimate the daily number of infections will change from `r form(infs_today)` at the current date to `r form(infs_28_rev)` by `r base::format(date + 28, "%Y-%m-%d")`.
 
 <br>
 
-```{r infections forecast plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap=figRef("**Figure 6: Daily number of infections estimated by fitting to deaths.** Projected infections for Scenario 1 (the epidemic continues to grow at the current rate) are shown in green (Maintain status quo). Projections for Scenario 2 (a further 50% reduction in transmission) are shown in blue. Projections for Scenario 3 (relaxing interventions by 50%) are shown in red. Current date shown with dashed line."), fig.width=7, fig.height=fig_height(4,4.5), fig.align=fig_center()}
+```{r infections forecast plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap=figRef("**Figure 6: Daily number of infections estimated by fitting to deaths.** Projected infections for Scenario 1 (the epidemic continues to grow at the current rate) are shown in green (Maintain status quo). Projections for Scenario 2 (optimistic) are shown in blue. Projections for Scenario 3 (pessimistic) are shown in red. Current date shown with dashed line."), fig.width=7, fig.height=fig_height(4,4.5), fig.align=fig_center()}
 
 
 suppressWarnings(suppressMessages(print(cases_contrast_triple_bars(
@@ -586,6 +610,53 @@ suppressWarnings(suppressMessages(print(cases_contrast_triple_bars(
   forecast = 28,
   data = data, date_0 = date_0, date = date))))
 
+```
+
+### Legacy Short Term Scenarios
+
+Whilst the scenarios are moved over to the new method, the previous 50% increase/decrease
+scenarios will be presented here.
+
+```{r healthcare plots legacy, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 7: Healthcare demands in the next 28 days.** Individuals needing an ICU bed are assumed to need mechanical ventilation. Projected demand for Scenario 1 (the epidemic continues to grow at the current rate) are shown in green (Maintain status quo). Projections for Scenario 2 (a further 50% reduction in transmission) are shown in blue. Projections for Scenario 3 (relaxing interventions by 50%) are shown in red. Current date shown with dashed line."), fig.width=fig_height(8,10), fig.height=fig_height(3.5,4.5), fig.align=fig_center()}
+# suppressWarnings(suppressMessages(cowplot::plot_grid(
+#   healthcare_plot_contrast(o1 = params$o_list[[1]], o2 = params$o_list[[2]], 
+#                            data = data, date_0 = date_0, date = date, 
+#                            forecast = 28, what = "hospital_demand"),
+#   healthcare_plot_contrast(o1 = params$o_list[[1]], o2 = params$o_list[[2]], 
+#                            data = data, date_0 = date_0, date = date, 
+#                            forecast = 28, what = "ICU_demand"),
+#                    ncol=2)))
+suppressWarnings(suppressMessages(gg_hosp <- healthcare_plot_contrast_triple(o1 = params$o_list[[1]], 
+                                           o2 = params$o_list[[7]], 
+                                           o3 = params$o_list[[8]], 
+                                           data = data, date_0 = date_0, date = date, 
+                                           forecast = 28, what = "hospital_demand",
+                                           version = "legacy")))
+suppressWarnings(suppressMessages(gg_icu <- healthcare_plot_contrast_triple(o1 = params$o_list[[1]], 
+                                          o2 = params$o_list[[7]], 
+                                          o3 = params$o_list[[8]], 
+                                          data = data, date_0 = date_0, date = date, 
+                                          forecast = 28, what = "ICU_demand",
+                                           version = "legacy")))
+leg <- suppressWarnings(suppressMessages(
+  cowplot::get_legend(gg_hosp + theme(legend.justification = c(0.5,1)))
+))
+bottom <- suppressWarnings(suppressMessages(
+  cowplot::plot_grid(gg_hosp + theme(legend.position = "none"), 
+                     gg_icu + theme(legend.position = "none"), ncol = 2)
+))
+suppressWarnings(suppressMessages(grid <- cowplot::plot_grid(leg,bottom,nrow=2,rel_heights = c(0.1,1))))
+suppressWarnings(suppressMessages(print(grid)))
+```
+
+```{r infections forecast plots legacy, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap=figRef("**Figure 8: Daily number of infections estimated by fitting to deaths.** Projected infections for Scenario 1 (the epidemic continues to grow at the current rate) are shown in green (Maintain status quo). Projections for Scenario 2 (a further 50% reduction in transmission) are shown in blue. Projections for Scenario 3 (relaxing interventions by 50%) are shown in red. Current date shown with dashed line."), fig.width=7, fig.height=fig_height(4,4.5), fig.align=fig_center()}
+suppressWarnings(suppressMessages(print(cases_contrast_triple_bars(
+  o1 = params$o_list[[1]], 
+  o2 = params$o_list[[7]], 
+  o3 = params$o_list[[8]], 
+  forecast = 28,
+  data = data, date_0 = date_0, date = date,
+                                           version = "legacy"))))
 ```
 
 ---
