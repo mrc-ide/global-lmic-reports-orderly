@@ -928,6 +928,26 @@ if(sum(ecdc_df$deaths) > 0) {
   rm(reverse_scenario)
   rm(out_pess)
 
+  #legacy scenarios
+  mitigation_scenario_leg <- squire::projections(out,
+                                             R0_change = c(0.5),
+                                             tt_R0 = c(0),
+                                             time_period = time_period,
+                                             model_user_args = model_user_args)
+  r_mitigation_scenario_leg <- r_list_format(mitigation_scenario_leg, date_0)
+  rt_mitigation_scenario_leg <- rt_creation_vaccine(mitigation_scenario_leg, date_0, date_0+89)
+  rm(mitigation_scenario_leg)
+
+
+  reverse_scenario_leg <- squire::projections(out,
+                                                 R0_change = c(1.5),
+                                                 tt_R0 = c(0),
+                                                 time_period = time_period,
+                                                 model_user_args = model_user_args)
+  r_reverse_scenario_leg <- r_list_format(reverse_scenario_leg, date_0)
+  rt_reverse_scenario_leg <- rt_creation_vaccine(reverse_scenario_leg, date_0, date_0+89)
+  rm(reverse_scenario_leg)
+
   ## now let's trim the out for saving really small
   pmcmc <- out$pmcmc_results
   out_interventions <- out$interventions
@@ -999,8 +1019,29 @@ if(sum(ecdc_df$deaths) > 0) {
   r_reverse_scenario_surged <- r_list_format(reverse_scenario_surged, date_0)
   rt_reverse_scenario_surged <- rt_creation_vaccine(reverse_scenario_surged, date_0, date_0+89)
   rm(reverse_scenario_surged)
-  rm(out_surged)
   rm(out_pess)
+
+  #legacy scenarios
+  mitigation_scenario_surged_leg <- squire::projections(out_surged,
+                                                 R0_change = c(0.5),
+                                                 tt_R0 = c(0),
+                                                 time_period = time_period,
+                                                 model_user_args = model_user_args)
+  r_mitigation_scenario_surged_leg <- r_list_format(mitigation_scenario_surged_leg, date_0)
+  rt_mitigation_scenario_surged_leg <- rt_creation_vaccine(mitigation_scenario_surged_leg, date_0, date_0+89)
+  rm(mitigation_scenario_surged_leg)
+
+
+  reverse_scenario_surged_leg <- squire::projections(out_surged,
+                                              R0_change = c(1.5),
+                                              tt_R0 = c(0),
+                                              time_period = time_period,
+                                              model_user_args = model_user_args)
+  r_reverse_scenario_surged_leg <- r_list_format(reverse_scenario_surged_leg, date_0)
+  rt_reverse_scenario_surged_leg <- rt_creation_vaccine(reverse_scenario_surged_leg, date_0, date_0+89)
+  rm(reverse_scenario_surged_leg)
+
+  rm(out_surged)
 
   o_list <- named_list(
         r_maintain_scenario,
@@ -1008,7 +1049,11 @@ if(sum(ecdc_df$deaths) > 0) {
         r_reverse_scenario,
         r_maintain_scenario_surged,
         r_mitigation_scenario_surged,
-        r_reverse_scenario_surged
+        r_reverse_scenario_surged,
+        r_mitigation_scenario_leg,
+        r_reverse_scenario_leg,
+        r_mitigation_scenario_surged_leg,
+        r_reverse_scenario_surged_leg
       )
 
   rt_list <- named_list(
@@ -1017,7 +1062,11 @@ if(sum(ecdc_df$deaths) > 0) {
     rt_reverse_scenario,
     rt_maintain_scenario_surged,
     rt_mitigation_scenario_surged,
-    rt_reverse_scenario_surged
+    rt_reverse_scenario_surged,
+    rt_mitigation_scenario_leg,
+    rt_reverse_scenario_leg,
+    rt_mitigation_scenario_surged_leg,
+    rt_reverse_scenario_surged_leg
   )
 
   rt_futures_df <- rbind(
@@ -1271,6 +1320,22 @@ data_sum[[3]]$scenario <- "Pessimistic"
 data_sum[[4]]$scenario <- "Surged Maintain Status Quo"
 data_sum[[5]]$scenario <- "Surged Optimistic"
 data_sum[[6]]$scenario <- "Surged Pessimistic"
+if(sum(ecdc_df$deaths) >= 0){
+  #these won't be present for the non-fitting countries
+  data_sum[[7]]$scenario <- "Additional 50% Reduction"
+  data_sum[[8]]$scenario <- "Relax Interventions 50%"
+  data_sum[[9]]$scenario <- "Surged Additional 50% Reduction"
+  data_sum[[10]]$scenario <- "Surged Relax Interventions 50%"
+} else {
+  data_sum[[7]] <- data_sum[[2]]
+  data_sum[[7]]$scenario <- "Additional 50% Reduction"
+  data_sum[[8]] <- data_sum[[3]]
+  data_sum[[8]]$scenario <- "Relax Interventions 50%"
+  data_sum[[9]] <- data_sum[[5]]
+  data_sum[[9]]$scenario <- "Surged Additional 50% Reduction"
+  data_sum[[10]] <- data_sum[[6]]
+  data_sum[[10]]$scenario <- "Surged Relax Interventions 50%"
+}
 
 rt_list[[1]]$scenario <- "Maintain Status Quo"
 rt_list[[2]]$scenario <- "Optimistic"
@@ -1278,6 +1343,22 @@ rt_list[[3]]$scenario <- "Pessimistic"
 rt_list[[4]]$scenario <- "Surged Maintain Status Quo"
 rt_list[[5]]$scenario <- "Surged Optimistic"
 rt_list[[6]]$scenario <- "Surged Pessimistic"
+if(sum(ecdc_df$deaths) >= 0){
+  #these won't be present for the non-fitting countries
+  rt_list[[7]]$scenario <- "Additional 50% Reduction"
+  rt_list[[8]]$scenario <- "Relax Interventions 50%"
+  rt_list[[9]]$scenario <- "Surged Additional 50% Reduction"
+  rt_list[[10]]$scenario <- "Surged Relax Interventions 50%"
+} else {
+  rt_list[[7]] <- rt_list[[2]]
+  rt_list[[7]]$scenario <- "Additional 50% Reduction"
+  rt_list[[8]] <- rt_list[[3]]
+  rt_list[[8]]$scenario <- "Relax Interventions 50%"
+  rt_list[[9]] <- rt_list[[5]]
+  rt_list[[9]]$scenario <- "Surged Additional 50% Reduction"
+  rt_list[[10]] <- rt_list[[6]]
+  rt_list[[10]]$scenario <- "Surged Relax Interventions 50%"
+}
 
 # combine and annotate
 data_sum <- do.call(rbind, data_sum)

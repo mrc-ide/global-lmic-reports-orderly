@@ -597,6 +597,53 @@ suppressWarnings(suppressMessages(print(cases_contrast_triple_bars(
 
 ```
 
+### Legacy Short Term Scenarios
+
+Whilst the scenarios are moved over to the new method, the previous 50% increase/decrease
+scenarios will be presented here.
+
+```{r healthcare plots legacy, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 7: Healthcare demands in the next 28 days.** Individuals needing an ICU bed are assumed to need mechanical ventilation. Projected demand for Scenario 1 (the epidemic continues to grow at the current rate) are shown in green (Maintain status quo). Projections for Scenario 2 (a further 50% reduction in transmission) are shown in blue. Projections for Scenario 3 (relaxing interventions by 50%) are shown in red. Current date shown with dashed line."), fig.width=fig_height(8,10), fig.height=fig_height(3.5,4.5), fig.align=fig_center()}
+# suppressWarnings(suppressMessages(cowplot::plot_grid(
+#   healthcare_plot_contrast(o1 = params$o_list[[1]], o2 = params$o_list[[2]], 
+#                            data = data, date_0 = date_0, date = date, 
+#                            forecast = 28, what = "hospital_demand"),
+#   healthcare_plot_contrast(o1 = params$o_list[[1]], o2 = params$o_list[[2]], 
+#                            data = data, date_0 = date_0, date = date, 
+#                            forecast = 28, what = "ICU_demand"),
+#                    ncol=2)))
+suppressWarnings(suppressMessages(gg_hosp <- healthcare_plot_contrast_triple(o1 = params$o_list[[1]], 
+                                           o2 = params$o_list[[7]], 
+                                           o3 = params$o_list[[8]], 
+                                           data = data, date_0 = date_0, date = date, 
+                                           forecast = 28, what = "hospital_demand",
+                                           version = "legacy")))
+suppressWarnings(suppressMessages(gg_icu <- healthcare_plot_contrast_triple(o1 = params$o_list[[1]], 
+                                          o2 = params$o_list[[7]], 
+                                          o3 = params$o_list[[8]], 
+                                          data = data, date_0 = date_0, date = date, 
+                                          forecast = 28, what = "ICU_demand",
+                                           version = "legacy")))
+leg <- suppressWarnings(suppressMessages(
+  cowplot::get_legend(gg_hosp + theme(legend.justification = c(0.5,1)))
+))
+bottom <- suppressWarnings(suppressMessages(
+  cowplot::plot_grid(gg_hosp + theme(legend.position = "none"), 
+                     gg_icu + theme(legend.position = "none"), ncol = 2)
+))
+suppressWarnings(suppressMessages(grid <- cowplot::plot_grid(leg,bottom,nrow=2,rel_heights = c(0.1,1))))
+suppressWarnings(suppressMessages(print(grid)))
+```
+
+```{r infections forecast plots legacy, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap=figRef("**Figure 8: Daily number of infections estimated by fitting to deaths.** Projected infections for Scenario 1 (the epidemic continues to grow at the current rate) are shown in green (Maintain status quo). Projections for Scenario 2 (a further 50% reduction in transmission) are shown in blue. Projections for Scenario 3 (relaxing interventions by 50%) are shown in red. Current date shown with dashed line."), fig.width=7, fig.height=fig_height(4,4.5), fig.align=fig_center()}
+suppressWarnings(suppressMessages(print(cases_contrast_triple_bars(
+  o1 = params$o_list[[1]], 
+  o2 = params$o_list[[7]], 
+  o3 = params$o_list[[8]], 
+  forecast = 28,
+  data = data, date_0 = date_0, date = date,
+                                           version = "legacy"))))
+```
+
 ---
 
 To explore different scenarios, we recommend using our [COVID-19 Scenario Analysis Tool - https://covidsim.org/](https://covidsim.org/), which can be used to simulate different intervention scenarios and explore the long term impact on healthcare demand. 

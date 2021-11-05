@@ -989,7 +989,8 @@ deaths_plot_contrast_triple <- function(o1, o2, o3, data, date_0, date = Sys.Dat
 }
 
 cases_contrast_triple <- function(o1, o2, o3, data, date_0, date = Sys.Date(),
-                                  forecast = 14) {
+                                  forecast = 14,
+                                  version = "new") {
 
   o1$Scenario <- "No"
   o2$Scenario <- "Yes"
@@ -1008,6 +1009,7 @@ cases_contrast_triple <- function(o1, o2, o3, data, date_0, date = Sys.Date(),
     dplyr::filter(!is.na(.data$y))
 
   title <- "Daily Cases"
+
 
 
   pd_group <- dplyr::group_by(sub, .data$day, .data$Scenario) %>%
@@ -1070,7 +1072,8 @@ cases_contrast_triple <- function(o1, o2, o3, data, date_0, date = Sys.Date(),
 
 }
 
-cases_contrast_triple_bars <- function(o1, o2, o3, data, date_0, date = Sys.Date(), forecast = 14, what = "ICU_demand") {
+cases_contrast_triple_bars <- function(o1, o2, o3, data, date_0, date = Sys.Date(), forecast = 14, what = "ICU_demand",
+                                       version = "new") {
 
   o1$Scenario <- "No"
   o2$Scenario <- "Yes"
@@ -1096,6 +1099,12 @@ cases_contrast_triple_bars <- function(o1, o2, o3, data, date_0, date = Sys.Date
                      y = mean(.data$y),
                      ymax = .data$quants[[1]][3])
   ymax <- max(pd_group$y[pd_group$day<=(date+forecast) & pd_group$day>(date-forecast)])
+
+  if(version == "legacy"){
+    scen_names <- c("Maintain Status Quo","Relax Interventions 50%","Additional 50% Reduction")
+  } else {
+    scen_names <- c("Maintain Status Quo","Pessimistic","Optimistic")
+  }
 
   # Plot
   suppressMessages(suppressWarnings(
@@ -1123,7 +1132,7 @@ cases_contrast_triple_bars <- function(o1, o2, o3, data, date_0, date = Sys.Date
       ggplot2::theme_bw()  +
       ggplot2::ylab("Daily Infections") +
       ggplot2::scale_y_continuous(expand = c(0,0), limits = c(0, ymax)) +
-      ggplot2::scale_fill_manual(name = "", labels = (c( "Maintain Status Quo","Pessimistic","Optimistic")),
+      ggplot2::scale_fill_manual(name = "", labels = (scen_names),
                                  values = (c("#9eeccd","#c59e96","#3f8ea7"))) +
       ggplot2::scale_x_date(date_breaks = "2 weeks", date_labels = "%b %d",
                             expand = c(0, 0)) +
@@ -1283,7 +1292,8 @@ healthcare_plot_contrast_lines <- function(o1, o2, data, date_0, date = Sys.Date
 
 }
 
-healthcare_plot_contrast_triple <- function(o1, o2, o3, data, date_0, date = Sys.Date(), forecast = 14, what = "ICU_demand") {
+healthcare_plot_contrast_triple <- function(o1, o2, o3, data, date_0, date = Sys.Date(), forecast = 14, what = "ICU_demand",
+                                            version = "new") {
 
   o1$Scenario <- "No"
   o2$Scenario <- "Yes"
@@ -1317,6 +1327,11 @@ healthcare_plot_contrast_triple <- function(o1, o2, o3, data, date_0, date = Sys
     title <- "Hospital Bed Demand"
   }
 
+  if(version == "legacy"){
+    scen_names <- c("Maintain Status Quo","Relax Interventions 50%","Additional 50% Reduction")
+  } else {
+    scen_names <- c("Maintain Status Quo","Pessimistic","Optimistic")
+  }
   # Plot
   suppressMessages(suppressWarnings(
     gg_healthcare <- ggplot2::ggplot(sub, ggplot2::aes(x = .data$day,
@@ -1343,7 +1358,7 @@ healthcare_plot_contrast_triple <- function(o1, o2, o3, data, date_0, date = Sys
       ggplot2::ylab(title) +
       ggplot2::theme_bw()  +
       ggplot2::scale_y_continuous(expand = c(0,0)) +
-      ggplot2::scale_fill_manual(name = "", labels = (c( "Maintain Status Quo","Pessimistic","Optimistic")),
+      ggplot2::scale_fill_manual(name = "", labels = (scen_names),
                                  values = (c("#9eeccd","#c59e96","#3f8ea7"))) +
       ggplot2::scale_x_date(date_breaks = "2 weeks", date_labels = "%b %d",
                             expand = c(0, 0)) +
