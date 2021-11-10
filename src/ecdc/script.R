@@ -346,6 +346,16 @@ df$deaths[df$dateRep == as.Date("2020-09-08") & df$countryterritoryCode == "COG"
 df$deaths[df$dateRep == as.Date("2020-09-04") & df$countryterritoryCode == "COG"] <- 0
 df$deaths[df$dateRep == as.Date("2020-09-03") & df$countryterritoryCode == "COG"] <- 4
 
+#adjust the strange 0 deaths issue with Azerbaijan
+if(df$deaths[df$dateRep == as.Date("2021-09-28") & df$countryterritoryCode == "AZE"] == 0){
+  #check if its actually an issue
+  df$deaths[df$dateRep == as.Date("2021-09-28") & df$countryterritoryCode == "AZE"] <-
+    ceiling((df$deaths[df$dateRep == as.Date("2021-09-29") & df$countryterritoryCode == "AZE"])/2)
+  df$deaths[df$dateRep == as.Date("2021-09-29") & df$countryterritoryCode == "AZE"] <-
+    df$deaths[df$dateRep == as.Date("2021-09-29") & df$countryterritoryCode == "AZE"] -
+    df$deaths[df$dateRep == as.Date("2021-09-28") & df$countryterritoryCode == "AZE"]
+}
+
 # worldometers is a day ahead of ECDC - so to keep it all aligned
 df$dateRep <- as.Date(df$dateRep) - 1
 saveRDS(df, "worldometers_all.rds")
@@ -355,11 +365,15 @@ saveRDS(df, "worldometers_all.rds")
 combined_data <- rbind(
   jhu_data %>% filter(!(countryterritoryCode %in% c("BOL", "ITA", "FRA", "ECU", "CHL", "COD", "ESP", "IRN",
                                                 "JPN", "GUF","KGZ", "PER", "HKG", "MAC", "TWN",
-                                                "SDN", "IRL", "TUR", "NPL"))) %>%
+                                                "SDN", "IRL", "TUR", "NPL", "AZE", "BIH", "CRI", "HND",
+                                                "HTI", "MEX", "SOM", "VEN", "MNG", "LUX", "SAU",
+                                                "SWE", "USA"))) %>%
     select(!date),
   df %>% filter(countryterritoryCode %in% c("BOL", "ITA", "FRA", "ECU", "CHL", "COD", "ESP", "IRN",
                                             "JPN", "GUF","KGZ", "PER", "HKG", "MAC", "TWN",
-                                            "SDN", "IRL", "TUR", "NPL")) %>%
+                                            "SDN", "IRL", "TUR", "NPL", "AZE", "BIH", "CRI", "HND",
+                                            "HTI", "MEX", "SOM", "VEN", "MNG",  "LUX", "SAU",
+                                            "SWE", "USA")) %>%
     mutate(
       dateRep = as.Date(dateRep)
     )

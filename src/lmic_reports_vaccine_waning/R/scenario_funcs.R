@@ -51,12 +51,12 @@ get_future_Rt = function(model_out, forcast_days){
                                       y = Rt_effects_period))$coefficients[2]
           }))
           #4. get the median postive (Rt increases) and negative trends (Rt decreases)
-          positive_trend <- median(gradients[gradients > 0])
-          negative_trend <- median(gradients[gradients < 0])
           #return NA if we don't have one or the other
-          if(length(positive_trend) == 0 | length(negative_trend) == 0){
+          if(sum(gradients > 0) == 0 | sum(gradients < 0) == 0){
             c(NA, NA)
           }
+          positive_trend <- quantile(gradients[gradients > 0], 0.90)
+          negative_trend <- quantile(gradients[gradients < 0], 0.10)
           #5. project total effect over projection period
           positive_effects <- final_Rt_effect + positive_trend*seq(1, forcast_days)
           negative_effects <- final_Rt_effect + negative_trend*seq(1, forcast_days)
@@ -64,8 +64,8 @@ get_future_Rt = function(model_out, forcast_days){
           positive_Rts <- f_rt(positive_effects, replicate)
           negative_Rts <- f_rt(negative_effects, replicate)
           #7. for simplicity we'll use the mean value
-          positive_Rt <- quantile(positive_Rts, 0.90)
-          negative_Rt <- quantile(negative_Rts, 0.10)
+          positive_Rt <- mean(positive_Rts)
+          negative_Rt <- mean(negative_Rts)
           #6. return as vector
           c(
             positive_Rt,
@@ -82,7 +82,7 @@ get_future_Rt = function(model_out, forcast_days){
     if(any(is.na(trends$pessimistic))|any(is.na(trends$optimistic))){
       #reduce RW by half
       Rw_duration <- Rw_duration/2
-      if(Rw_duration < 1){
+      if(Rw_duration < 3){
         warning("Unable to estimate scenario effects correctly for some replicates,
                 removing the problematic replicates")
         #just use the trends without the nas

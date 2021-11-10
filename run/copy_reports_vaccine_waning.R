@@ -193,13 +193,17 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
 
   projections <- do.call(rbind,
                          lapply(file.path(src, "projections.csv"), read.csv))
+
+
   dir.create("gh-pages/data", FALSE, TRUE)
-  projections$version <- "v8"
-  write.csv(projections, paste0("gh-pages/data/",date,"_v8.csv"), row.names = FALSE, quote = FALSE)
   cwd <- getwd()
   setwd("gh-pages/data/")
-  zip(paste0(date,"_v8.csv.zip"),paste0(date,"_v8.csv"))
-  file.remove(paste0(date,"_v8.csv"))
+
+  projections$version <- "v9"
+  write.csv(projections, paste0(date,"_v9.csv"), row.names = FALSE, quote = FALSE)
+  zip(paste0(date,"_v9.csv.zip"),paste0(date,"_v9.csv"))
+  file.remove(paste0(date,"_v9.csv"))
+
   setwd(cwd)
 
   non_hic_pos_projections <- which(!(projections$iso3c %in% to_remove))

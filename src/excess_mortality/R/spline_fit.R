@@ -103,7 +103,7 @@ fit_spline_rt <- function(data,
   pars_max = list('start_date' = last_start_date,
                   'R0' = R0_max)
   pars_discrete = list('start_date' = TRUE, 'R0' = FALSE)
-  pars_obs = list(phi_cases = 1, k_cases = 2, phi_death = 1, k_death = 2, exp_noise = 1e07)
+  pars_obs = list(phi_cases = 1, k_cases = 2, phi_death = 1, k_death = 7, exp_noise = 1e07)
   #assign this way so they keep NULL if NULL
   pars_obs$dur_R <- delta_characteristics$required_dur_R
   pars_obs$prob_hosp_multiplier <- delta_characteristics$prob_hosp_multiplier
@@ -119,7 +119,7 @@ fit_spline_rt <- function(data,
     }
   } else if(likelihood_version == "Poisson"){
     pars_obs$likelihood <- function(model_deaths, data_deaths){
-      dpois(data_deaths, model_deaths,
+      dpois(data_deaths, pars_obs$phi_death*model_deaths,
             #+ rexp(length(model_deaths), rate = pars_obs$exp_noise),
             log = TRUE)
     }
