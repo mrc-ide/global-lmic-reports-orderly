@@ -193,23 +193,47 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
 
   projections <- do.call(rbind,
                          lapply(file.path(src, "projections.csv"), read.csv))
-
-
+  #split into two csv files
+  #file with old scenarios
+  projections_1 <- dplyr::filter(projections,
+                                 scenario %in% c(
+                                   "Maintain Status Quo",
+                                   "Relax Interventions 50%",
+                                   "Additional 50% Reduction",
+                                   "Surged Maintain Status Quo",
+                                   "Surged Additional 50% Reduction",
+                                   "Surged Relax Interventions 50%"
+                                 ))
+  #new scenarios
+  projections_2 <- dplyr::filter(projections,
+                                 scenario %in% c(
+                                   "Maintain Status Quo",
+                                   "Optimistic",
+                                   "Pessimistic",
+                                   "Surged Maintain Status Quo",
+                                   "Surged Optimistic",
+                                   "Surged Pessimistic"
+                                 ))
   dir.create("gh-pages/data", FALSE, TRUE)
   cwd <- getwd()
   setwd("gh-pages/data/")
 
-  projections$version <- "v9"
-  write.csv(projections, paste0(date,"_v9.csv"), row.names = FALSE, quote = FALSE)
+  projections_1$version <- "v8"
+  write.csv(projections_1, paste0(date,"_v8.csv"), row.names = FALSE, quote = FALSE)
+  zip(paste0(date,"_v8.csv.zip"),paste0(date,"_v8.csv"))
+  file.remove(paste0(date,"_v8.csv"))
+
+  projections_2$version <- "v9"
+  write.csv(projections_2, paste0(date,"_v9.csv"), row.names = FALSE, quote = FALSE)
   zip(paste0(date,"_v9.csv.zip"),paste0(date,"_v9.csv"))
   file.remove(paste0(date,"_v9.csv"))
 
   setwd(cwd)
 
-  non_hic_pos_projections <- which(!(projections$iso3c %in% to_remove))
+  non_hic_pos_projections <- which(!(projections_2$iso3c %in% to_remove))
 
-  saveRDS(projections[non_hic_pos_projections,], paste0("src/index_page/all_data.rds"))
-  saveRDS(projections[non_hic_pos_projections,], paste0("src/regional_page/all_data.rds"))
+  saveRDS(projections_2[non_hic_pos_projections,], paste0("src/index_page/all_data.rds"))
+  saveRDS(projections_2[non_hic_pos_projections,], paste0("src/regional_page/all_data.rds"))
 
 
 }
