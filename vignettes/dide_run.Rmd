@@ -87,7 +87,7 @@ short_run <- FALSE
 excess_mortality <- FALSE
 
 # will we adjust for the delta variant?
-adjust_delta <- FALSE
+adjust_delta <- TRUE
 
 # will we allow vaccine efficacy to wane?
 waning <- FALSE
@@ -165,21 +165,17 @@ message("*** Creating country task bundles")
 
 # how long is the mcmc for
 n_mcmc <- 20000
-n_chains <- 3
 
 if(!excess_mortality){
   task <- "lmic_reports_vaccine_waning"
   parameters <- list(
     date = date,
     short_run = short_run,
-    # should tasks be run in parallel and use multiple chains. 
-    # leave this as FALSE and see FAQs for more info on this
-    parallel = FALSE,
-    # not needed input parameters - leave as FALSE. See FAQ for more info on these
-    full_scenarios = FALSE,
-    gibbs_sampling = FALSE,
     n_mcmc = n_mcmc,
-    adjust_delta = adjust_delta
+    adjust_delta = adjust_delta,
+    #Should we build the require documentation+data for the fit,
+    #useful if just running to hone in chains (still builds fitting.pdf+grid_out.Rds)
+    document = TRUE
   )
 } else{
   task <- "excess_mortality"
@@ -187,7 +183,7 @@ if(!excess_mortality){
     replicates = 20,
     model = "NIMUE",
     n_mcmc = n_mcmc,
-    n_chains = n_chains,
+    n_chains = 3,
     date = date,
     adjust_delta = adjust_delta
   )
@@ -357,12 +353,21 @@ all(unlist(import))
 
 \
 
-# For Excess fits
+# For Excess fits and LMIC with no documentation
 
 Update par_inits.rds and do not push to github.
 
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
-if(excess_mortality){
+if(
+  ifelse(
+    excess_mortality,
+    TRUE,
+    !parameters$document
+  )
+){
+  #set up task dependant variables
+  object_name <- ifelse(excess_mortality, "res.rds", "grid_out.rds")
+  date_name <- ifelse(excess_mortality, "week_start", "date")
   #get ids
   ids <- rep(NA, length(tasks))
   for(i in seq_along(tasks)){
@@ -376,27 +381,27 @@ if(excess_mortality){
   }
   
   # get old conditions
-  pars_init <- readRDS("src/excess_mortality/pars_init.rds")
+  pars_init <- readRDS(file.path("src", task, "pars_init.rds"))
   for(x in seq_along(ids)) {
-
-    out <- readRDS(file.path("archive/excess_mortality", ids[x], "res.rds"))
+    out <- readRDS(file.path("archive", task, ids[x], object_name)
+    )
     if(!is.null(out)){
       if("pmcmc_results" %in% names(out)) {
-      if("chains" %in% names(out$pmcmc_results)) {
-        mc <- do.call(rbind, lapply(out$pmcmc_results$chains, "[[", "results"))
-      } else {
-        mc <- out$pmcmc_results$results
-      }
-      best <- mc[which.max(mc$log_posterior),]
-      best <- best[,seq_len(ncol(best)-3)]
-      rownames(best) <- NULL
-      best$start_date <- as.character(
-        squire:::offset_to_start_date(
-          out$pmcmc_results$inputs$data$week_start[1],
-          round(best$start_date)
+        if("chains" %in% names(out$pmcmc_results)) {
+          mc <- do.call(rbind, lapply(out$pmcmc_results$chains, "[[", "results"))
+        } else {
+          mc <- out$pmcmc_results$results
+        }
+        best <- mc[which.max(mc$log_posterior),]
+        best <- best[,seq_len(ncol(best)-3)]
+        rownames(best) <- NULL
+        best$start_date <- as.character(
+          squire:::offset_to_start_date(
+            out$pmcmc_results$inputs$data[[date_name]][1],
+            round(best$start_date)
+            )
           )
-        )
-    }
+      }
       best$iso3c <- countrycode::countrycode(
         out$parameters$country, origin = "country.name", destination = "iso3c"
         )
@@ -418,7 +423,7 @@ if(excess_mortality){
       pars_init[[best$iso3c]] <- best
     } 
   }
-  saveRDS(pars_init, "src/excess_mortality/pars_init.rds")
+  saveRDS(pars_init, file.path("src", task, "pars_init.rds"))
 }
 ```
 

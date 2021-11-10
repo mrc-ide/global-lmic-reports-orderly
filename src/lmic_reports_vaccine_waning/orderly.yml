@@ -39,18 +39,14 @@ parameters:
     date: ~
     short_run:
       default: FALSE
-    parallel:
-      default: FALSE
-    full_scenarios:
-      default: FALSE
-    gibbs_sampling:
-      default: FALSE
     n_mcmc:
       default: 20000
     seed:
       default: FALSE
     adjust_delta:
       default: FALSE
+    document:
+      default: TRUE
 
 # You must list at least one artefact that your report will generate.
 # Each artefact consists of one or more files.  The format is to list
@@ -86,7 +82,6 @@ artefacts:
         - grid_out.rds
         - fitting.pdf
         - projections.csv
-        - pre_grad_out.rds
 
 # An optional name to describe the report in more detail than its
 # directory name (which must be short) but less detail than
