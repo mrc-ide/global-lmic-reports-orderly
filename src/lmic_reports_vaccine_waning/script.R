@@ -527,6 +527,12 @@ if(sum(ecdc_df$deaths) > 0) {
     )
   }
 
+  ## -----------------------------------------------------------------------------
+  ## Case Fitting
+  ## -----------------------------------------------------------------------------
+
+  pars_obs$cases_fitting <- TRUE
+  pars_obs$cases_days <- number_of_last_rw_days
 
   ## -----------------------------------------------------------------------------
   ## Step 2g: PMCMC run
@@ -584,22 +590,14 @@ if(sum(ecdc_df$deaths) > 0) {
                        dur_V = vacc_inputs$dur_V,
                        dur_vaccine_delay = vacc_inputs$dur_vaccine_delay)
 
-  if (vaccine_fitting_flag) {
-    out_unadjusted <- out
-    out <- generate_draws_pmcmc_nimue_case_fitted(out = out,
-                                                  n_particles = n_particles,
-                                                  grad_dur = number_of_last_rw_days)
-    #create a plot so we can check this
-    infection_adujustment_plot <-
-      compare_adjustment_plot(out, out_unadjusted, number_of_last_rw_days,
-                              date_0,
+
+  if(pars_obs$cases_fitting){
+    #create a tail cases fitting plot so we can check later
+    infection_adjustment_plot <-
+      compare_adjustment_plot(out, number_of_last_rw_days,
                               out$pmcmc_results$inputs$Rt_args$Rt_rw_duration)
-    remove(out_unadjusted)
-  }  else {
-    out <- generate_draws_pmcmc_case_fitted(out = out,
-                                            n_particles = n_particles,
-                                            grad_dur = number_of_last_rw_days)
   }
+
 
   # Add the prior
   out$pmcmc_results$inputs$prior <- as.function(c(formals(logprior),
@@ -791,16 +789,29 @@ if(sum(ecdc_df$deaths) > 0) {
   rtp2 <- rt_plot_immunity_vaccine(out, R0_plot = FALSE)
 
   date_range <- as.Date(c(min(as.Date(out$replicate_parameters$start_date)),date_0))
-  suppressMessages(suppressWarnings(
-    bottom <- cowplot::plot_grid(
-      intervention + scale_x_date(date_breaks = "1 month", date_labels = "%b" ,limits = date_range),
-      d + scale_x_date(date_breaks = "1 month", date_labels = "%b" ,limits = date_range),
-      cas_plot  + scale_x_date(date_breaks = "1 month", date_labels = "%b" ,limits = date_range),
-      rtp$plot + scale_x_date(date_breaks = "1 month", date_labels = "%b" ,limits = date_range),
-      infection_adujustment_plot,
-      ncol=1,
-      rel_heights = c(0.4,0.6,0.6, 0.4, 0.4))
-  ))
+  if(pars_obs$cases_fitting){
+    suppressMessages(suppressWarnings(
+      bottom <- cowplot::plot_grid(
+        intervention + scale_x_date(date_breaks = "1 month", date_labels = "%b" ,limits = date_range),
+        d + scale_x_date(date_breaks = "1 month", date_labels = "%b" ,limits = date_range),
+        cas_plot  + scale_x_date(date_breaks = "1 month", date_labels = "%b" ,limits = date_range),
+        rtp$plot + scale_x_date(date_breaks = "1 month", date_labels = "%b" ,limits = date_range),
+        infection_adjustment_plot,
+        ncol=1,
+        rel_heights = c(0.4,0.6,0.6, 0.4, 0.4))
+    ))
+  } else {
+    suppressMessages(suppressWarnings(
+      bottom <- cowplot::plot_grid(
+        intervention + scale_x_date(date_breaks = "1 month", date_labels = "%b" ,limits = date_range),
+        d + scale_x_date(date_breaks = "1 month", date_labels = "%b" ,limits = date_range),
+        cas_plot  + scale_x_date(date_breaks = "1 month", date_labels = "%b" ,limits = date_range),
+        rtp$plot + scale_x_date(date_breaks = "1 month", date_labels = "%b" ,limits = date_range),
+        ncol=1,
+        rel_heights = c(0.4,0.6,0.6, 0.4))
+    ))
+
+  }
 
   combined <- cowplot::plot_grid(header,
                                  cowplot::plot_grid(g1, line_v, bottom, ncol = 3, rel_widths = c(3,0.1,1)),
