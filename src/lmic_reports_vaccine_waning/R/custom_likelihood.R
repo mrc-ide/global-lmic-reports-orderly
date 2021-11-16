@@ -40,7 +40,7 @@ calc_loglikelihood_delta <- function(pars, data, squire_model, model_params,
 
   # reporting fraction par if in pars list
   if("rf" %in% names(pars)) {
-    assert_numeric(pars[["rf"]])
+    squire:::assert_numeric(pars[["rf"]])
     pars_obs$phi_death <- pars[["rf"]]
   }
 
@@ -327,9 +327,9 @@ run_deterministic_comparison_cases <- function(data,
 
   # model run
   if("atol" %in% names(obs_params) && "rtol" %in% names(obs_params)) {
-    assert_numeric(obs_params$atol)
+    squire:::assert_numeric(obs_params$atol)
     atol <- obs_params$atol
-    assert_numeric(obs_params$rtol)
+    squire:::assert_numeric(obs_params$rtol)
     rtol <- obs_params$rtol
   } else {
     atol <- 1e-6
@@ -457,18 +457,31 @@ run_deterministic_comparison_cases <- function(data,
     data_reporting <- data %>%
       dplyr::filter(
         date >= cases_reporting_start_date & date < cases_fitting_start_date
+      ) %>%
+      dplyr::mutate(
+        cases = if_else(
+          cases < 0,
+          0,
+          cases
+        )
       )
     data_fitting <- data %>%
       dplyr::filter(
         date >= cases_fitting_start_date
+      ) %>%
+      dplyr::mutate(
+        cases = if_else(
+          cases < 0,
+          0,
+          cases
+        )
       )
     #get infections
     model_infections <- rowSums(out[,index$E2]) * model_params$gamma_E
     #check that cases are formatted correctly and exists
     if(all(is.na(data_reporting$cases)) |
-       all(is.na(data_fitting$cases)) |
-       any(c(data_reporting$cases, data_fitting$cases) < 0)){
-      stop("Data for cases not formatted correctly or negative, please fix or disable fitting to cases")
+       all(is.na(data_fitting$cases))){
+      stop("Data for cases not formatted correctly, please fix or disable fitting to cases")
     }
     #estimate reporting fraction
     est_reporting_fraction <- mean(

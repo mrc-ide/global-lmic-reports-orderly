@@ -401,26 +401,26 @@ if(
             round(best$start_date)
             )
           )
+        best$iso3c <- countrycode::countrycode(
+          out$parameters$country, origin = "country.name", destination = "iso3c"
+          )
+        best$Rt_rw_duration <- out$pmcmc_results$inputs$Rt_args$Rt_rw_duration
+  
+        if("chains" %in% names(out$pmcmc_results)) {
+          best$covariance_matrix <- out$pmcmc_results$chains$chain1$covariance_matrix[1]
+          best$scaling_factor <- mean(
+            c(tail(na.omit(out$pmcmc_results$chains$chain1$scaling_factor),1),
+              tail(na.omit(out$pmcmc_results$chains$chain2$scaling_factor),1),
+              tail(na.omit(out$pmcmc_results$chains$chain3$scaling_factor),1))
+              )
+        } else {
+          best$covariance_matrix <- out$pmcmc_results$covariance_matrix[1]
+          best$scaling_factor <- tail(na.omit(out$pmcmc_results$scaling_factor),1)
+        }
+  
+        # now replace par inits for the relevant country
+        pars_init[[best$iso3c]] <- best
       }
-      best$iso3c <- countrycode::countrycode(
-        out$parameters$country, origin = "country.name", destination = "iso3c"
-        )
-      best$Rt_rw_duration <- out$pmcmc_results$inputs$Rt_args$Rt_rw_duration
-
-      if("chains" %in% names(out$pmcmc_results)) {
-        best$covariance_matrix <- out$pmcmc_results$chains$chain1$covariance_matrix[1]
-        best$scaling_factor <- mean(
-          c(tail(na.omit(out$pmcmc_results$chains$chain1$scaling_factor),1),
-            tail(na.omit(out$pmcmc_results$chains$chain2$scaling_factor),1),
-            tail(na.omit(out$pmcmc_results$chains$chain3$scaling_factor),1))
-            )
-      } else {
-        best$covariance_matrix <- out$pmcmc_results$covariance_matrix[1]
-        best$scaling_factor <- tail(na.omit(out$pmcmc_results$scaling_factor),1)
-      }
-
-      # now replace par inits for the relevant country
-      pars_init[[best$iso3c]] <- best
     } 
   }
   saveRDS(pars_init, file.path("src", task, "pars_init.rds"))
