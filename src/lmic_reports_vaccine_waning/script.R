@@ -479,21 +479,6 @@ if(sum(ecdc_df$deaths) > 0) {
   #load vaccine inputs
   vacc_inputs <- get_vaccine_inputs(iso3c)
 
-  # Defaults for now.
-  strategy <- "HCW, Elderly and High-Risk"
-  if(iso3c %in% get_covax_iso3c()) {
-    available_doses_proportion <- 0.2
-  } else {
-    available_doses_proportion <- 0.95
-  }
-  vaccine_uptake <- 0.8
-  vaccine_coverage_mat <- get_coverage_mat(
-    iso3c,
-    available_doses_proportion = available_doses_proportion,
-    strategy = strategy,
-    vaccine_uptake = vaccine_uptake
-  )
-
   vaccine_fitting_flag <- TRUE
   squire_model <- nimue:::nimue_deterministic_model()
   init <- init_state_nimue(deaths_removed, iso3c)
@@ -585,8 +570,8 @@ if(sum(ecdc_df$deaths) > 0) {
                        vaccine_efficacy_disease = vacc_inputs$vaccine_efficacy_disease,
                        baseline_vaccine_efficacy_disease = vacc_inputs$vaccine_efficacy_disease[[1]],
                        rel_infectiousness_vaccinated = vacc_inputs$rel_infectiousness_vaccinated,
-                       vaccine_coverage_mat = vaccine_coverage_mat,
-                       dur_R = 365,
+                       vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat,
+                       dur_R = 365*2,
                        dur_V = vacc_inputs$dur_V,
                        dur_vaccine_delay = vacc_inputs$dur_vaccine_delay)
 
@@ -725,7 +710,13 @@ if(sum(ecdc_df$deaths) > 0) {
   df_new_covidsim$iso3c <- iso3c
 
   # and add in the vaccine args
-  df_new_covidsim <- ammend_df_covidsim_for_vaccs(df_new_covidsim, out, strategy = strategy, available_doses_proportion = available_doses_proportion)
+  #set up available doses, not used in vaccine inputs atm,
+  if(iso3c %in% get_covax_iso3c()){
+    available_doses_proportion <- 0.2
+  } else {
+    available_doses_proportion <- 0.95
+  }
+  df_new_covidsim <- ammend_df_covidsim_for_vaccs(df_new_covidsim, out, strategy = vacc_inputs$strategy, available_doses_proportion = available_doses_proportion)
   if(document){
     writeLines(jsonlite::toJSON(df_new_covidsim, pretty = TRUE), "input_params.json")
   }
@@ -1168,21 +1159,6 @@ if (sum(ecdc_df$deaths) == 0) {
 
   vacc_inputs <- get_vaccine_inputs(iso3c)
 
-  # Defaults for now.
-  strategy <- "HCW, Elderly and High-Risk"
-  if(iso3c %in% get_covax_iso3c()) {
-    available_doses_proportion <- 0.2
-  } else {
-    available_doses_proportion <- 0.98
-  }
-  vaccine_uptake <- 0.8
-  vaccine_coverage_mat <- get_coverage_mat(
-    iso3c,
-    available_doses_proportion = available_doses_proportion,
-    strategy = strategy,
-    vaccine_uptake = vaccine_uptake
-  )
-
   # set up vaccine inits
   vaccine_fitting_flag <- TRUE
   squire_model <- nimue:::nimue_deterministic_model()
@@ -1199,7 +1175,7 @@ if (sum(ecdc_df$deaths) == 0) {
     seeding_cases = seeding_cases_esft,
     init = init,
     max_vaccine = as.integer(mean(tail(vacc_inputs$max_vaccine,7))),
-    vaccine_coverage_mat = vaccine_coverage_mat
+    vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat
   )
 
   mitigation_scenario <- nimue::run(
@@ -1209,7 +1185,7 @@ if (sum(ecdc_df$deaths) == 0) {
     seeding_cases = seeding_cases_esft,
     init = init,
     max_vaccine = as.integer(mean(tail(vacc_inputs$max_vaccine,7))),
-    vaccine_coverage_mat = vaccine_coverage_mat
+    vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat
   )
 
   maintain_scenario <- nimue::run(
@@ -1219,7 +1195,7 @@ if (sum(ecdc_df$deaths) == 0) {
     seeding_cases = seeding_cases_esft,
     init = init,
     max_vaccine = as.integer(mean(tail(vacc_inputs$max_vaccine,7))),
-    vaccine_coverage_mat = vaccine_coverage_mat
+    vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat
   )
   saveRDS(maintain_scenario, "grid_out.rds")
 
@@ -1232,7 +1208,7 @@ if (sum(ecdc_df$deaths) == 0) {
     seeding_cases = seeding_cases_esft,
     init = init,
     max_vaccine = as.integer(mean(tail(vacc_inputs$max_vaccine,7))),
-    vaccine_coverage_mat = vaccine_coverage_mat,
+    vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat,
     hosp_bed_capacity = 1e10,
     ICU_bed_capacity = 1e10
   )
@@ -1244,7 +1220,7 @@ if (sum(ecdc_df$deaths) == 0) {
     seeding_cases = seeding_cases_esft,
     init = init,
     max_vaccine = as.integer(mean(tail(vacc_inputs$max_vaccine,7))),
-    vaccine_coverage_mat = vaccine_coverage_mat,
+    vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat,
     hosp_bed_capacity = 1e10,
     ICU_bed_capacity = 1e10
   )
@@ -1256,7 +1232,7 @@ if (sum(ecdc_df$deaths) == 0) {
     seeding_cases = seeding_cases_esft,
     init = init,
     max_vaccine = as.integer(mean(tail(vacc_inputs$max_vaccine,7))),
-    vaccine_coverage_mat = vaccine_coverage_mat,
+    vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat,
     hosp_bed_capacity = 1e10,
     ICU_bed_capacity = 1e10
   )

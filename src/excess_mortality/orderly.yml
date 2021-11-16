@@ -137,7 +137,6 @@ sources:
 #
 resources:
   - pars_init.rds
-  - coverage_strategies.rds
 
 global_resources:
 

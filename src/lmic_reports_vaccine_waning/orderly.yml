@@ -148,7 +148,6 @@ resources:
   - index.Rmd
   - pars_init.rds
   - gdp_income_group.csv
-  - coverage_strategies.rds
 
 global_resources:
   _navbar.html: _navbar.html

@@ -61,6 +61,23 @@ if(adjust_delta){
   dose_df <- add_delta_characteristics(dose_df)
 }
 
+#set prioritization + coverage matrix
+#standard strategy, might make particular later
+strategy <- "HCW, Elderly and High-Risk"
+#set vaccine uptake to be 80% or higher if it is in the data
+vaccine_uptake <- get_vaccine_uptake(
+  iso3cs = iso3cs,
+  dose_df = dose_df,
+  default_uptake = 0.8
+  )
+#get the matrices
+vaccine_coverage_mats <- get_coverage_mats(
+  iso3c = iso3cs,
+  strategy = strategy,
+  vaccine_uptake = vaccine_uptake
+)
+
+
 if(!waning){
   #use the standard method of waning
   dur_V <- 446
@@ -263,7 +280,9 @@ dose_list <-
                                                  rep,
                                                  17),
              rel_infectiousness_vaccinated = rep(rel_infectiousness_vaccinated, 17),
-             max_vaccine = country_df$max_vaccine
+             max_vaccine = country_df$max_vaccine,
+             vaccine_coverage_mat = vaccine_coverage_mats[[country]],
+             strategy = strategy
            )
          }
 )

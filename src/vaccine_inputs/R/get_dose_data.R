@@ -68,7 +68,13 @@ get_dose_ts <- function(owid, who_vacc, who_vacc_meta, iso3cs, date_0){
         filter(date >= max(date) - 7) %>%
         summarise(
           percentage_second_dose_week_ave = mean(
-            if_else(vacc_per_day > 0, second_dose_per_day/vacc_per_day, as.numeric(NA)),
+            case_when(
+              #if there are vaccinations then get the percentage
+              vacc_per_day > 0 ~ second_dose_per_day/vacc_per_day,
+              #if there are none at all set to 0 so the aveage is 0
+              all(vacc_per_day == 0) ~ 0,
+              #otherwise, if only some are 0 then set these to NA so they don't count
+              TRUE ~ as.numeric(NA)),
             na.rm = TRUE
             )
         ),
@@ -373,7 +379,7 @@ get_dose_ts_owid <- function(owid, iso3cs){
       missing = sum(is.na(first_dose_per_day))
     )
 
-    #message(sum(missing_df$missing))
+   #message(sum(missing_df$missing))
   }
   owid_merge <- owid_merge %>%
     mutate(
@@ -397,7 +403,6 @@ get_dose_ts_owid <- function(owid, iso3cs){
   select(
     iso3c, date, vacc_per_day, first_dose_per_day, second_dose_per_day, imputed
   )
-
   #now get the dose ratio
   owid_merge <- owid_merge %>%
     mutate(dose_ratio = if_else(
@@ -408,7 +413,7 @@ get_dose_ts_owid <- function(owid, iso3cs){
     )
 
   #checl that final dose ratio is not 0.1 off from the final dose ratio in owid
-  owid_rescaled <- owid_merge %>%
+  owid_rescaled <- suppressWarnings(owid_merge %>%
     arrange(iso3c, date) %>%
     summarise(
       dose_ratio = tail(na.omit(dose_ratio),1)
@@ -425,14 +430,14 @@ get_dose_ts_owid <- function(owid, iso3cs){
     mutate(
       diff = abs(dose_ratio - final_dose_ratio)
     ) %>%
-    filter(diff > 0.15)
+    filter(diff > 0.15))
   #slight issue but there is not much we can do
 
   #final adjustments where change in dose ratio is impossible for given number
   #of doses, can occur because we favour the smoothed vaccinations
   problem <- test_for_errors_in_dose_ratio(owid_merge, dose_ratio)
   if(length(problem) > 1){
-    stop(paste0("Drop with calculating dose ratios in the following countires: ",
+    stop(paste0("Problem with calculating dose ratios in the following countries: ",
                 paste0(problem, collapse = ", ")
     ))
   }
@@ -444,10 +449,27 @@ get_dose_ts_who <- function(who_vacc, who_vacc_meta, iso3cs){
   meta_df <- who_vacc_meta %>%
     filter(iso3c %in% iso3cs) %>%
     group_by(iso3c) %>%
+    mutate(
+      START_DATE = as.Date(START_DATE),
+      END_DATE = as.Date(END_DATE),
+      AUTHORIZATION_DATE = as.Date(AUTHORIZATION_DATE)
+    ) %>%
     summarise(
-      start_date = min(as.Date(START_DATE), na.rm = TRUE),
-      end_date = max(as.Date(END_DATE), na.rm = TRUE),
-      aut = min(as.Date(AUTHORIZATION_DATE), na.rm = TRUE)
+      start_date = as.Date(ifelse(
+        any(!is.na(START_DATE)),
+        min(START_DATE, na.rm = TRUE),
+        NA
+      ), origin = "1970-01-01"),
+      end_date = as.Date(ifelse(
+        any(!is.na(END_DATE)),
+        max(END_DATE, na.rm = TRUE),
+        NA
+      ), origin = "1970-01-01"),
+      aut = as.Date(ifelse(
+        any(!is.na(AUTHORIZATION_DATE)),
+        min(AUTHORIZATION_DATE, na.rm = TRUE),
+        NA
+      ), origin = "1970-01-01")
     ) %>%
     mutate(
       start_date = if_else(

@@ -73,85 +73,6 @@ extend_vaccine_inputs <- function(vacc_inputs, time_period, out) {
 
 }
 
-get_coverage_mat <- function(iso3c,
-                             available_doses_proportion = 0.98,
-                             strategy = "HCW, Elderly and High-Risk",
-                             vaccine_uptake = 0.8) {
-
-  strategies <- readRDS("coverage_strategies.rds")
-
-  # get cov_mat for strategy
-  if(strategy == "HCW and Elderly") {
-    cov_mat <- strategies[[iso3c]]$whoPriority * vaccine_uptake
-  } else if (strategy == "HCW, Elderly and High-Risk") {
-    cov_mat <- strategies[[iso3c]]$etagePriority * vaccine_uptake
-  } else if (strategy == "Elderly") {
-    cov_mat <- nimue::strategy_matrix("Elderly", max_coverage = vaccine_uptake, 0)
-  } else if (strategy == "All") {
-    cov_mat <- nimue::strategy_matrix("All", max_coverage = vaccine_uptake, 0)
-  } else {
-    stop('Incorrect strategy. Must be one of "HCW and Elderly", "HCW, Elderly and High-Risk", "Elderly", "All"')
-  }
-
-  # scale vaccine coverage for availability function
-  scale_cov_mat <- function(cov_mat, vaccine_available, pop) {
-
-    # total vaccs available
-    tot_vaccines <- sum(pop*vaccine_available)
-
-    # step 1, find when max allocation exceeds capacity
-    step <- 1
-    step_found <- FALSE
-    tot_vaccs_steps <- 0
-    cov_mat_dup_ex <- rbind(0, cov_mat)
-
-    while(!step_found && step <= nrow(cov_mat)) {
-
-      if(nrow(cov_mat) == 1) {
-        step_found <- TRUE
-      }
-
-      vaccs_in_step <- sum((cov_mat_dup_ex[step+1, ] - cov_mat_dup_ex[step, ]) * pop)
-      tot_vaccs_steps <- tot_vaccs_steps + vaccs_in_step
-      if(tot_vaccs_steps > tot_vaccines) {
-        step_found <- TRUE
-      } else {
-        step <- step+1
-      }
-    }
-
-    # if we have enough vaccine return now
-    if(step > nrow(cov_mat)) {
-      return(cov_mat)
-    }
-
-    # set steps after max available reached to 0
-    if(step < nrow(cov_mat)) {
-      cov_mat[(step+1):nrow(cov_mat),] <- 0
-    }
-
-    # now set this step to be correct for available
-    tots_given <- sum(cov_mat[step-1,] %*% pop)
-    tots_tried <- sum(cov_mat[step,] %*% pop)
-    remaining <- tot_vaccines - tots_given
-
-    # next_group
-    next_group <- cov_mat[step,]-cov_mat[step-1,]
-    poss_to_vacc <- (next_group[which(next_group > 0)] * pop[which(next_group > 0)])
-    new_cov <- (remaining/sum(poss_to_vacc)) * cov_mat[step, which(next_group > 0)]
-    cov_mat[step, which(next_group > 0)] <- new_cov
-    cov_mat <- cov_mat[rowSums(cov_mat) != 0,]
-    return(cov_mat)
-  }
-
-  pop <- squire::get_population(iso3c = iso3c)$n
-
-  cov_mat <- scale_cov_mat(cov_mat, available_doses_proportion, pop)
-  return(cov_mat)
-
-}
-
-
 nimue_format <- function(out,
                          var_select = NULL,
                          reduce_age = TRUE,
@@ -678,7 +599,7 @@ get_immunity_ratios_vaccine <- function(out, max_date = NULL) {
 
 
 
-rt_plot_immunity_vaccine <- function(out, R0_plot = FALSE) {
+rt_plot_immunity_vaccine <- function(out, R0_plot = FALSE, Rt_plot = FALSE) {
 
   iso3c <- squire::get_population(out$parameters$country)$iso3c[1]
 
@@ -763,7 +684,7 @@ rt_plot_immunity_vaccine <- function(out, R0_plot = FALSE) {
 
   min_date <- min(as.Date(out$replicate_parameters$start_date))
 
-  country_plot <- function(vjust = -1.2, R0 = FALSE) {
+  country_plot <- function(vjust = -1.2, R0 = FALSE, Rt = FALSE) {
     g1 <- ggplot(sum_rt %>% filter(
       date > min_date & date <= as.Date(as.character(date_0+as.numeric(lubridate::wday(date_0)))))) +
       geom_ribbon(mapping = aes(x=date, ymin=Reff_min, ymax = Reff_max, group = iso), fill = "#96c4aa") +
@@ -793,11 +714,17 @@ rt_plot_immunity_vaccine <- function(out, R0_plot = FALSE) {
         geom_ribbon(mapping = aes(x = date, ymin = R0_q25, ymax = R0_q75, group = iso), fill = "#3f8da7") +
         geom_hline(yintercept = sum_rt$R0_median[1], linetype = "dashed")
     }
+    if(Rt) {
+      g1 <- g1 +
+        geom_ribbon(mapping = aes(x=date, ymin=Rt_min, ymax = Rt_max, group = iso), fill = "grey71", alpha = 0.25) +
+        geom_ribbon(mapping = aes(x = date, ymin = Rt_q25, ymax = Rt_q75, group = iso), fill = "grey71", alpha = 0.55) +
+        geom_line(mapping = aes(x = date, y = Rt_median), colour = "grey71", alpha = 0.55)
+    }
     g1
   }
 
 
-  res <- list("plot" = suppressWarnings(country_plot(R0 = R0_plot)), "rts" = sum_rt)
+  res <- list("plot" = suppressWarnings(country_plot(R0 = R0_plot, Rt = Rt_plot)), "rts" = sum_rt)
   return(res)
 }
 

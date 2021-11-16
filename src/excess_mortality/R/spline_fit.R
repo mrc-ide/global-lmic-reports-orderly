@@ -154,17 +154,6 @@ fit_spline_rt <- function(data,
   }
 
   if(model == "NIMUE"){
-    # Defaults for now for vaccines
-    strategy <- "HCW, Elderly and High-Risk"
-    available_doses_proportion <- 0.95
-    vaccine_uptake <- 0.8
-    vaccine_coverage_mat <- get_coverage_mat(
-      iso3c = iso3c,
-      pop = pop,
-      available_doses_proportion = available_doses_proportion,
-      strategy = strategy,
-      vaccine_uptake = vaccine_uptake
-    )
     #get the pre-calculate efficacies and durations/delays
     vacc_inputs <- vaccine_inputs
     dur_V <- vaccine_inputs$dur_V
@@ -173,7 +162,6 @@ fit_spline_rt <- function(data,
     vaccine_inputs$dur_vaccine_delay <- NULL
   } else {
     vacc_inputs <- NULL
-    vaccine_coverage_mat <- NULL
     dur_V <- NULL
     dur_vaccine_delay <- NULL
   }
@@ -307,7 +295,7 @@ fit_spline_rt <- function(data,
                       vaccine_efficacy_disease = vacc_inputs$vaccine_efficacy_disease,
                       baseline_vaccine_efficacy_disease = vacc_inputs$vaccine_efficacy_disease[[1]],
                       rel_infectiousness_vaccinated = vacc_inputs$rel_infectiousness_vaccinated,
-                      vaccine_coverage_mat = vaccine_coverage_mat,
+                      vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat,
                       dur_R = 365,
                       dur_V = dur_V,
                       dur_vaccine_delay = dur_vaccine_delay)

@@ -20,6 +20,10 @@ sources:
   - R/waning.R
   - R/get_delta.R
   - R/plotting.R
+  - R/get_coverage_matrix.R
+
+resources:
+  - coverage_strategies.Rds
 
 # You must list at least one artefact that your report will generate.
 # Each artefact consists of one or more files.  The format is to list

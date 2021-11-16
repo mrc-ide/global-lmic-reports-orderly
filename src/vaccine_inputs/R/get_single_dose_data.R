@@ -59,10 +59,17 @@ get_single_dose_data <- function(
 }
 
 single_dose_adjust_owid <- function(owid, single_dose_df){
-  owid %>%
+  #only do those with single doses
+  modified <- owid %>%
+    group_by(iso3c) %>%
+    filter(iso3c %in% single_dose_df$iso3c & ( #also only those with vaccine data, so it doesn't throw errors
+      any(!is.na(people_fully_vaccinated)) |
+        any(!is.na(people_fully_vaccinated_per_hundred)) |
+        any(!is.na(total_vaccinations)) |
+        any(!is.na(total_vaccinations_per_hundred))
+    )) %>%
     left_join(single_dose_df,
               by = "iso3c") %>%
-    group_by(iso3c) %>%
     mutate(
       people_fully_vaccinated = if_else(
         (!is.na(people_fully_vaccinated)) & (!is.na(single_doses)),
@@ -98,6 +105,22 @@ single_dose_adjust_owid <- function(owid, single_dose_df){
     ) %>%
     select(!c(single_dose_percentage, single_doses)) %>%
     ungroup()
+  #add back in data
+  new <- rbind(
+      owid %>%
+        filter(!(iso3c %in% modified$iso3c)) %>%
+        mutate(
+          recieved_single_dose_vaccines = if_else(
+            iso3c %in% single_dose_df$iso3c,
+            TRUE,
+            as.logical(NA)
+          )
+        ),
+      modified
+    ) %>%
+    arrange(
+      iso3c, date
+    )
 }
 
 single_dose_adjust_who_vacc <- function(who_vacc, single_dose_df){
