@@ -112,6 +112,7 @@ packages:
   - cowplot
   - RhpcBLASctl
   - lubridate
+  - squire.page
 
 # Source files, in addition to the script.  Typically these will
 # contain function definitions.  These will be sourced after loading
@@ -121,9 +122,6 @@ packages:
 #
 # sources:
 sources:
-  - R/vaccine.R
-  - R/plotting.R
-  - R/spline_fit.R
   - R/preprocessing.R
 
 # Resources that the script needs to run; this is an array of strings

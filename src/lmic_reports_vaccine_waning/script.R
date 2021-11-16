@@ -709,14 +709,7 @@ if(sum(ecdc_df$deaths) > 0) {
   df_new_covidsim <- extend_df_for_covidsim(df = df, out = out, ext = 240)
   df_new_covidsim$iso3c <- iso3c
 
-  # and add in the vaccine args
-  #set up available doses, not used in vaccine inputs atm,
-  if(iso3c %in% get_covax_iso3c()){
-    available_doses_proportion <- 0.2
-  } else {
-    available_doses_proportion <- 0.95
-  }
-  df_new_covidsim <- ammend_df_covidsim_for_vaccs(df_new_covidsim, out, strategy = vacc_inputs$strategy, available_doses_proportion = available_doses_proportion)
+  df_new_covidsim <- ammend_df_covidsim_for_vaccs(df_new_covidsim, out, strategy = vacc_inputs$strategy, iso3c = iso3c)
   if(document){
     writeLines(jsonlite::toJSON(df_new_covidsim, pretty = TRUE), "input_params.json")
   }

@@ -104,6 +104,7 @@ if(nrow(df) == 0 | sum(df$deaths) == 0){
     country = country,
     pop = pop,
     n_mcmc = as.numeric(n_mcmc),
+    n_chains = as.numeric(n_chains),
     replicates = as.numeric(replicates),
     model = model,
     delta_characteristics = delta_characteristics,
@@ -133,14 +134,9 @@ if(nrow(df) == 0 | sum(df$deaths) == 0){
     rtp <- rt_plot_immunity_vaccine(res)
   }
 
-  #just for this
-  res$pmcmc_results$inputs$data$date <- res$pmcmc_results$inputs$data$week_start
-
   dp <- dp_plot(res)
   cdp <- cdp_plot(res)
   ar <- ar_plot(res)
-
-  res$pmcmc_results$inputs$data$date <- NULL
 
   ggsave("fitting.pdf",width=12, height=12,
          cowplot::plot_grid(rtp$plot + ggtitle(country),
