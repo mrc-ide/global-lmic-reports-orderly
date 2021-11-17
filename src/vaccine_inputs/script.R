@@ -68,7 +68,8 @@ strategy <- "HCW, Elderly and High-Risk"
 vaccine_uptake <- get_vaccine_uptake(
   iso3cs = iso3cs,
   dose_df = dose_df,
-  default_uptake = 0.8
+  default_uptake = 0.8,
+  strategy = strategy
   )
 #get the matrices
 vaccine_coverage_mats <- get_coverage_mats(

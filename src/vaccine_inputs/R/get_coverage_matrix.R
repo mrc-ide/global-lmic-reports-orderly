@@ -35,7 +35,7 @@ get_coverage_mats <- function(iso3c, strategy, vaccine_uptake) {
 }
 #A function to calculate the vaccine uptakes for each country
 get_vaccine_uptake <- function(iso3cs, dose_df, default_uptake, strategy){
-  if(length(strategy) != length(iso3c)){
+  if(length(strategy) != length(iso3cs) & length(strategy) != 1){
     stop("Error: iso3c and strategy must be the same length or have a length of 1.")
   }
   #set up defaults
@@ -54,13 +54,13 @@ get_vaccine_uptake <- function(iso3cs, dose_df, default_uptake, strategy){
       pop = if_else(
         strat %in% c("All", "Elderly"),
         #use all pop for these strategies
-        sum(n),
+        as.double(sum(n)),
         #else remove non-adults
-        sum(if_else(
+        as.double(sum(if_else(
           age_group %in% c("0-4", "5-9", "10-14", "15-19"),
-          0,
-          n
-        ))
+          as.double(0),
+          as.double(n)
+        )))
       )
     ) %>%
     ungroup()
