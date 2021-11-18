@@ -73,7 +73,7 @@ sero_det <- sero_det/max(sero_det)
 ## -----------------------------------------------------------------------------
 
 # get death data
-subnat_df <- read.csv("https://api.covid19india.org/csv/latest/states.csv") %>%
+subnat_df <- read.csv("https://data.incovid19.org/csv/latest/states.csv") %>%
   filter(!(State %in% c("India", "State Unassigned"))) %>%
   mutate(Date = as.Date(Date)) %>%
   group_by(State) %>%
@@ -209,8 +209,11 @@ ar <- ar_plot(res)
 
 rf_over <- paste0(round(quantile(res$replicate_parameters$rf)[c(2,4)], digits = 2)*100, "%", collapse = " - ")
 ggsave("fitting.pdf",width=12, height=15,
-       cowplot::plot_grid(rtp$plot + ggtitle(paste0(state, ". Death Reporting at ", rf_over)),
-                          dp, cdp, sero, ar, ncol = 1))
+       cowplot::plot_grid(
+         rtp$plot +
+           ggtitle(paste0(state, ". Death Reporting at ", rf_over)) +
+           scale_x_date(date_labels = "%b %Y", date_breaks = "3 months"),
+         dp, cdp, sero, ar, ncol = 1, align = "v"))
 
 projs <- get_projections(res)
 saveRDS(projs, "proj.rds")
