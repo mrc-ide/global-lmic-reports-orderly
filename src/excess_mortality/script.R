@@ -128,12 +128,7 @@ if(nrow(df) == 0 | sum(df$deaths) == 0){
   res$output <- output
 
   # make a series of quick plots so we can check fits easily afterwards
-  if (model == "SQUIRE") {
-    rtp <- rt_plot_immunity(res)
-  } else {
-    rtp <- rt_plot_immunity_vaccine(res)
-  }
-
+  rtp <- rt_plot_immunity(res, vaccine = !(model == "SQUIRE"), Rt_plot = TRUE)
   dp <- dp_plot(res)
   cdp <- cdp_plot(res)
   ar <- ar_plot(res)
