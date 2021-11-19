@@ -153,10 +153,10 @@ if(sum(ecdc_df$deaths) > 0) {
 
   # Currently not using parallel
   # can't figure out why it subthreads now...
-  # if (parallel) {
-  #   options("future.rng.onMisuse" = "ignore")
-  #   suppressWarnings(future::plan(future::multisession()))
-  # }
+  if (n_chains > 1) {
+    options("future.rng.onMisuse" = "ignore")
+    suppressWarnings(future::plan(future::multisession()))
+  }
 
   # Defualt edges
   R0_min <- 1.6
