@@ -68,17 +68,9 @@ delta_characteristics <-
     by = "iso3c"
   )
 
-#only keep countries with start dates, and add un region/sub region for data
-#imputation for countries with no data later on
+#only keep countries with start dates
 delta_characteristics <- delta_characteristics %>%
-  filter(!is.na(start_date)) %>%
-  mutate(
-    sub_region = countrycode(
-      if_else(iso3c == "TWN", "CHN", iso3c),
-      origin = "iso3c",
-      destination = "un.regionsub.name"),
-    continent = countrycode(iso3c, origin = "iso3c", destination = "continent")
-  )
+  filter(!is.na(start_date))
 
 #check if any end dates are before the start dates
 if (length(filter(delta_characteristics, start_date > end_date) %>%
@@ -127,14 +119,10 @@ delta_characteristics <- delta_characteristics %>%
     mutate(shift_duration = as.numeric(end_date - start_date)) %>%
     select(!end_date)
 
-#assume 46% immune escape
-#(https://assets.publishing.service.gov.uk/government/uploads/system/uploads/
-#attachment_data/file/1005517/Technical_Briefing_19.pdf)
-#lack of effect <180 days means we can use this as a stand in for
-#alpha/non-delta to delta re-infection increase
+#assume 60%
 delta_characteristics <- delta_characteristics %>%
   mutate(
-    immune_escape = 0.46
+    immune_escape = 0.27
   )
 
 #calculate require dur_R for the shift period
@@ -144,8 +132,102 @@ delta_characteristics <- delta_characteristics %>%
     required_dur_R = 1 / (
       (shift_duration / 365 - log(1 - immune_escape)) / shift_duration
     )
+  )
+
+##now expand over all iso3cs in squire using means across sub region, contient
+#and world if not there
+all_iso3cs <- data.frame(
+  iso3c = unique(squire::population$iso3c)
   ) %>%
-  select(!immune_escape)
+  mutate(
+  sub_region = countrycode(
+    case_when(iso3c == "TWN" ~ "CHN",
+              iso3c == "CHI" ~ "GBR",
+              TRUE ~ iso3c),
+    origin = "iso3c",
+    destination = "un.regionsub.name"),
+  continent = countrycode(
+    case_when(iso3c == "TWN" ~ "CHN",
+              iso3c == "CHI" ~ "GBR",
+              TRUE ~ iso3c),
+    origin = "iso3c",
+    destination = "continent")
+)
+
+parameters <- c("start_date", "shift_duration", "immune_escape", "required_dur_R")
+
+#function to add the median of the parameters by some measure
+add_median <- function(data, join_on){
+  if(join_on=="" & nrow(data %>% filter(
+    if_any(
+      all_of(parameters),
+      ~is.na(.x)
+    )
+  ) ) > 0){
+    data %>% filter(
+      if_all(
+        all_of(parameters),
+        ~!is.na(.x)
+      )
+    ) %>%
+      rbind(
+        data %>% filter(
+          if_any(
+            all_of(parameters),
+            ~is.na(.x)
+          )
+        ) %>%
+          select(!all_of(parameters)) %>%
+          cbind(
+            data %>%
+              summarise(across(
+                all_of(parameters),
+                ~median(.x, na.rm = T)
+              ))
+          )
+      )
+  } else if(nrow(data %>% filter(
+    if_any(
+      all_of(parameters),
+      ~is.na(.x)
+    )
+  ) ) > 0){
+    data %>% filter(
+      if_all(
+        all_of(parameters),
+        ~!is.na(.x)
+      )
+    ) %>%
+      rbind(
+        data %>% filter(
+          if_any(
+            all_of(parameters),
+            ~is.na(.x)
+          )
+        ) %>%
+          select(!all_of(parameters)) %>%
+          left_join(
+            data %>%
+              group_by(across(all_of(join_on))) %>%
+              summarise(across(
+                all_of(parameters),
+                ~median(.x, na.rm = T)
+              )),
+            by = join_on
+          )
+      )
+  } else{
+    data
+  }
+}
+
+#for data that is missing add sub_region medians
+delta_characteristics <- all_iso3cs %>% #add countries with data
+  left_join(delta_characteristics, by = "iso3c") %>% #add sub_region median
+  add_median("sub_region") %>% #add contient median
+  add_median("continent") %>% #add world median
+  add_median("") %>%
+  select(!c(continent, sub_region))
 
 #add increased hospitalization
 #(https://www.thelancet.com/journals/laninf/article/PIIS1473-3099(21)00475-8/
@@ -153,6 +235,15 @@ delta_characteristics <- delta_characteristics %>%
 delta_characteristics <- delta_characteristics %>%
   mutate(
     prob_hosp_multiplier = 1.45
+  )
+
+#decreased vaccine efficacy
+delta_characteristics <- delta_characteristics %>%
+  mutate(
+    ve_i_low_d = 0.224,
+    ve_i_high_d = 0.646,
+    ve_d_low_d = 0.75,
+    ve_d_high_d = 0.94,
   )
 
 #print a plot to check our results

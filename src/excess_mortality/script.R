@@ -23,7 +23,13 @@ if(packageVersion("nimue") < version_min) {
 
 # get data from file
 data <- readRDS("excess_deaths.Rds")
-data2 <- data[data$iso3c == iso3c, ]
+df <- data[data$iso3c == iso3c, ]
+
+#this step removes deaths that were likely due to importations that lead nowhere
+#or small contained epidemics simply to help the model fit better
+df <- preprocess_for_fitting(df)
+removed_deaths <- df[[2]] #save to store later
+df <- df[[1]]
 
 ## b. Sort out what is to be our death time series
 ## -----------------------------------------------------------------------------
@@ -35,115 +41,100 @@ data2 <- data[data$iso3c == iso3c, ]
 # covid deaths then we are essentially using reported deaths (an under-estimate)
 # Only case I can think of for over-estimate is when excess deaths spikes due to
 # lack of treatment etc, whilst covid deaths are well reported and tested for.
-df <- data2
-df$deaths <- as.integer(df$deaths)
 
-## c. Any other parameters needed to be worked out
-## -----------------------------------------------------------------------------
+#if we have no deaths then we do not proceed
 
-# check that we have this iso3c in squire
-if(!(iso3c %in% squire::population$iso3c)) {
-  stop("iso3c not found in squire")
-}
-country <- squire::population$country[match(iso3c, squire::population$iso3c)]
-pop <- squire::get_population(country)$n
-
-if(adjust_delta){
-  #open data from covariants
-  delta_characteristics <- readRDS("delta_characteristics.Rds") %>% ungroup()
-
-  #get data or impute if not there
-  if (iso3c %in% delta_characteristics$iso3c) {
-    this_iso3c <- iso3c
-    delta_characteristics <- delta_characteristics %>%
-      filter(iso3c == this_iso3c) %>%
-      select(where(~is.numeric(.x) | is.Date(.x)))
-  } else if (
-    countrycode::countrycode(iso3c, origin = "iso3c",
-                             destination = "un.regionsub.name") %in%
-    delta_characteristics$sub_region
-  ) {
-    this_sub_region <- countrycode::countrycode(iso3c,
-                                                origin = "iso3c", destination = "un.regionsub.name")
-    #we then use the median values of all countries in that sub region
-    delta_characteristics <- delta_characteristics %>%
-      filter(
-        sub_region == this_sub_region
-      ) %>%
-      summarise(across(
-        where(~is.numeric(.x) | is.Date(.x)),
-        ~median(.x, na.rm = T)
-      ))
-  } else if (
-    countrycode::countrycode(iso3c, origin = "iso3c",
-                             destination = "continent") %in%
-    delta_characteristics$continent
-  ) {
-    this_continent <- countrycode::countrycode(iso3c, origin = "iso3c",
-                                               destination = "continent")
-    #we then use the median values of all countries in that contient
-    delta_characteristics <- delta_characteristics %>%
-      filter(
-        continent == this_continent
-      ) %>%
-      summarise(across(
-        where(~is.numeric(.x) | is.Date(.x)),
-        ~median(.x, na.rm = T)
-      ))
-  } else{
-    #else we use the median values for the world
-    delta_characteristics <- delta_characteristics %>%
-      summarise(across(
-        where(~is.numeric(.x) | is.Date(.x)),
-        ~median(.x, na.rm = T)
-      ))
-  }
+if(nrow(df) == 0 | sum(df$deaths) == 0){
+  saveRDS(NULL, "res.rds")
+  ggsave("fitting.pdf",width=12, height=12,
+         NULL)
 } else{
-  #these settings should lead to no adjustment
-  delta_characteristics <- data.frame(
-    required_dur_R = 365,
-    prob_hosp_multiplier = 1
+  ## c. Any other parameters needed to be worked out
+  ## -----------------------------------------------------------------------------
+
+  # check that we have this iso3c in squire
+  if(!(iso3c %in% squire::population$iso3c)) {
+    stop("iso3c not found in squire")
+  }
+  country <- squire::population$country[match(iso3c, squire::population$iso3c)]
+  pop <- squire::get_population(country)$n
+
+  if(model == "SQUIRE"){
+    adjust_delta <- FALSE
+  }
+
+  if(adjust_delta){
+    #open data from covariants
+    delta_characteristics <- readRDS("delta_characteristics.Rds") %>%
+      ungroup() %>%
+      rename(iso3c_ = iso3c) %>%
+      filter(iso3c_ == iso3c) %>%
+      select(where(~is.numeric(.x) | is.Date(.x)))
+  } else{
+    #these settings should lead to no adjustment
+    delta_characteristics <- data.frame(
+    )
+  }
+
+  if(model == "NIMUE"){
+    vaccine_inputs <- readRDS("vacc_inputs.Rds")[[iso3c]]
+  } else {
+    vaccine_inputs <- NULL
+  }
+
+  #use the poisson distribution if we need to close in more quickly,
+  #should not be used for final fits
+  if(iso3c %in% c(
+    # "COL", "TZA", "TCD", "UGA", "CAN", "SWE", "AFG", "KEN", "ZAF",
+    # "GIN", "MOZ", "NER", "SAU",
+    # "CUB", "NGA", "SDN"
+                  )){
+    version <- "Poisson"
+  } else {
+    version <- "Negative Binomial"
+  }
+
+  ## -----------------------------------------------------------------------------
+  ## 2. Fit Model
+  ## -----------------------------------------------------------------------------
+
+  # fit model
+  res <- fit_spline_rt(
+    data = df,
+    country = country,
+    pop = pop,
+    n_mcmc = as.numeric(n_mcmc),
+    n_chains = as.numeric(n_chains),
+    replicates = as.numeric(replicates),
+    model = model,
+    delta_characteristics = delta_characteristics,
+    vaccine_inputs = vaccine_inputs,
+    likelihood_version = version
   )
+
+  ## -----------------------------------------------------------------------------
+  ## 3. Summarise model for ease of viewing outputs and goodness of fit
+  ## -----------------------------------------------------------------------------
+
+  # remove the output for memory and ease
+  output <- res$output
+  res$output <- NULL
+
+  #add removed deaths to interventions list
+  res$interventions$pre_epidemic_isolated_deaths <- removed_deaths
+
+  # save output without output for memory
+  saveRDS(res, "res.rds")
+  res$output <- output
+
+  # make a series of quick plots so we can check fits easily afterwards
+  rtp <- rt_plot_immunity(res, vaccine = !(model == "SQUIRE"), Rt_plot = TRUE)
+  dp <- dp_plot(res)
+  cdp <- cdp_plot(res)
+  ar <- ar_plot(res)
+
+  ggsave("fitting.pdf",width=12, height=12,
+         cowplot::plot_grid(rtp$plot + ggtitle(country),
+                            dp, cdp, ar, ncol = 1))
+
 }
-
-## -----------------------------------------------------------------------------
-## 2. Fit Model
-## -----------------------------------------------------------------------------
-
-# fit model
-res <- fit_spline_rt(
-  data = df,
-  country = country,
-  pop = pop,
-  n_mcmc = as.numeric(n_mcmc),
-  replicates = as.numeric(replicates),
-  model = model,
-  delta_characteristics = delta_characteristics
-)
-
-## -----------------------------------------------------------------------------
-## 3. Summarise model for ease of viewing outputs and goodness of fit
-## -----------------------------------------------------------------------------
-
-# remove the output for memory and ease
-output <- res$output
-res$output <- NULL
-
-# save output without output for memory
-saveRDS(res, "res.rds")
-res$output <- output
-
-# make a series of quick plots so we can check fits easily afterwards
-if (model == "SQUIRE") {
-  rtp <- rt_plot_immunity(res)
-} else {
-  rtp <- rt_plot_immunity_vaccine(res)
-}
-
-dp <- dp_plot(res)
-cdp <- cdp_plot(res)
-ar <- ar_plot(res)
-
-ggsave("fitting.pdf",width=12, height=12,
-       cowplot::plot_grid(rtp$plot + ggtitle(country),
-                          dp, cdp, ar, ncol = 1))

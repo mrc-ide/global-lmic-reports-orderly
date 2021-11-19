@@ -54,3 +54,4 @@ packages:
   - countrycode
   - ggplot2
   - forcats
+  - squire

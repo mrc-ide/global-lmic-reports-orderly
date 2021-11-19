@@ -38,7 +38,7 @@ All tasks for running the model fits are conducted using orderly. This includes:
 1. *ecdc*
 
 This task grabs input data from various online databases, that are then fed into
-downstream processes. 
+downstream processes.
 
 2. *oxford_grt*
 
@@ -51,14 +51,30 @@ Grabs and formats Google mobility data. For countries without mobility data, we
 use a Boosted regression tree model to infer mobility based on timing of govt. 
 policies. 
 
-These 3 tasks form the initial tasks that ensure all the correct data is ready
+4. *covariants*
+
+Gets/calculates the information of when the delta variant becomes dominant, as
+well as any other parameters to do with this change. This must be run even if
+delta adjustments are not made as it is an input to the other tasks.
+
+5. *vaccine_inputs*
+
+Calculates the vaccine efficacies over time, can include delta adjustments and 
+waning immunity.
+
+6. *economist*
+
+Gets the excess mortality data if we are doing excess death fitting.
+
+
+These 6 tasks form the initial tasks that ensure all the correct data is ready
 before running the actual model fits. To run these tasks, we simply need to provide
 what the `date` is that we are conducting model fits for, i.e. up to what date are
 we running, and also whether we are doing a `short_run`. The `short_run` argument
 dictates whether a small number of trees are used in the BRT.
 
 ```{r, eval = FALSE}
-date <- "2021-09-09"
+date <- "2021-11-16"
 
 # are we doing just a short run. If so only 20 mcmc iterations are used
 # and only 2 draws from the posterior. Set this to TRUE to do a quick test 
@@ -69,24 +85,37 @@ short_run <- FALSE
 # if yes we call the economist models from github and use the excess_mortality task
 # to fit to the data
 excess_mortality <- TRUE
+
+# will we adjust for the delta variant?
+adjust_delta <- TRUE
+
+# will we allow vaccine efficacy to wane?
+waning <- FALSE
 ```
 
-These arguments are then passed to our 3 tasks:
+These arguments are then passed to our 4/5 tasks:
 
 ```{r eval=FALSE, message=FALSE, warning=FALSE}
 message("*** ECDC data")
 ecdc_id <- orderly::orderly_run("ecdc", parameters = list(date=date), echo = FALSE)
 orderly::orderly_commit(ecdc_id)
 
+message("*** Covid Variants data")
+covar_id <- orderly::orderly_run("covariants", parameters = list(date=date), echo = FALSE)
+orderly::orderly_commit(covar_id)
+#ideally check the calibration pdf
+
+message("*** Calculate Vaccine Inputs")
+vaccine_inputs_id <- orderly::orderly_run("vaccine_inputs", parameters = list(date=date,
+                                                                              adjust_delta = adjust_delta,
+                                                                              waning = waning), echo = FALSE)
+orderly::orderly_commit(vaccine_inputs_id)
+#ideally check the calibration pdf
+
 if(excess_mortality){
   message("*** Economist Model data")
   econ_id <- orderly::orderly_run("economist", parameters = list(date=date), echo = FALSE)
   orderly::orderly_commit(econ_id)
-  #ideally check the calibration pdf
-  
-  message("*** Covid Variants data")
-  covar_id <- orderly::orderly_run("covariants", parameters = list(date=date), echo = FALSE)
-  orderly::orderly_commit(covar_id)
   #ideally check the calibration pdf
 } else{
   #these are not used in the excess_mortality fitting
@@ -97,6 +126,16 @@ if(excess_mortality){
   message("*** Google BRT data")
   google_id <- orderly::orderly_run("brt_google_mobility", parameters = list(date=date, short_run = short_run), echo = FALSE)
   orderly::orderly_commit(google_id)
+  
+  #if adjusting for delta in lmic fits
+  if(adjust_delta){
+    #also need vaccine inputs with the no delta adjustment as not all countries will have it
+    message("*** Calculate Vaccine Inputs again")
+    vaccine_inputs_2_id <- orderly::orderly_run("vaccine_inputs", parameters = list(date=date,
+                                                                              adjust_delta = FALSE,
+                                                                              waning = waning), echo = FALSE)
+    orderly::orderly_commit(vaccine_inputs_2_id)
+  }
 }
 ```
 
@@ -122,25 +161,38 @@ submit these tasks.
 
 message("*** Creating country task bundles")
 
-  google_id <- orderly::orderly_run("excess_mortality", parameters = list(iso3c = "GBR", date=date, n_mcmc = 1000, adjust_delta = FALSE), echo = FALSE)
 # main input parameters
 
 # how long is the mcmc for
-n_mcmc <- 20000
+n_mcmc <- 40000
 
 if(!excess_mortality){
-  # should tasks be run in parallel and use multiple chains. 
-  # leave this as FALSE and see FAQs for more info on this
-  parallel <- FALSE
-  # not needed input parameters - leave as FALSE. See FAQ for more info on these
-  full_scenarios <- FALSE
-  gibbs_sampling <- FALSE
+  task <- "lmic_reports_vaccine_waning"
+  parameters <- list(
+    date = date,
+    short_run = short_run,
+    n_mcmc = n_mcmc,
+    adjust_delta = adjust_delta,
+    #Should we build the require documentation+data for the fit,
+    #useful if just running to hone in chains (still builds fitting.pdf+grid_out.Rds)
+    document = TRUE
+  )
 } else{
-  adjust_delta <- TRUE
+  task <- "excess_mortality"
+  parameters <- list(
+    replicates = 20,
+    model = "NIMUE",
+    n_mcmc = n_mcmc,
+    n_chains = 3,
+    date = date,
+    adjust_delta = adjust_delta
+  )
 }
 
 # get the isos
 iso3cs <- grep('^[A-Z]{3}\\s*', readLines(file.path(here::here(), "countries")), value = TRUE)
+#get the countries with delta (countries with more than 100 delta sequence in November 2021)
+iso3cs_delta <- grep('^[A-Z]{3}\\s*', readLines(file.path(here::here(), "countries_delta")), value = TRUE)
 
 # make the orderly bundles to be run on the cluster
 path_bundles <- file.path(
@@ -155,46 +207,26 @@ path_bundles <- file.path(
 dir.create(path_bundles, showWarnings = FALSE, recursive = TRUE)
 
 # bundle these up - this will take like 10 mins to create all the zips. 
-if(excess_mortality){
-  bundles <- lapply(
+bundles <- lapply(
   iso3cs, function(x) {
+    #set country in parameters
+    parameters$iso3c = x
+    #if not excess fitting, check if we should apply the delta adjustment
+    if((!excess_mortality) & adjust_delta){
+      parameters$adjust_delta <- x %in% iso3cs_delta
+    }
+    #pack bundle
     orderly::orderly_bundle_pack(
       path = path_bundles,
-      name = "excess_mortality",
-      parameters = list(
-        iso3c = x,
-        date=date,
-        short_run=short_run,
-        n_mcmc=n_mcmc,
-        adjust_delta = adjust_delta
-      )
+      name = task,
+      parameters = parameters
     )
   }
  )
-} else{
-bundles <- lapply(
-  iso3cs, function(x) {
-    orderly::orderly_bundle_pack(
-      path = path_bundles,
-      name = "lmic_reports_vaccine",
-      parameters = list(
-        iso3c = x,
-        date=date,
-        short_run=short_run,
-        parallel=parallel,
-        full_scenarios=full_scenarios,
-        gibbs_sampling=gibbs_sampling,
-        n_mcmc=n_mcmc
-      )
-    )
-  }
-)
-}
 
 # now label these with the iso3cs and save the file paths
 names(bundles) <- iso3cs
 saveRDS(bundles, file.path(path_bundles, "bundles.rds"))
-
 ```
 
 This will create an orderly task for each country that is then saved in the 
@@ -241,7 +273,7 @@ pdfs <- grep("fitting", list.files(td, full.names = TRUE, recursive = TRUE), val
 # created because it needs to be for orderly to finish the task
 qpdf::pdf_combine(
   input = pdfs[file.size(pdfs) > 0], 
-  output = file.path("fits", paste0("lmic_reports_vaccine_", date, ".pdf"))
+  output = file.path("fits", paste0(ifelse(excess_mortality, "excess_mortality_", "lmic_reports_vaccine_"), date, ".pdf"))
 )
 ```
 
@@ -251,53 +283,26 @@ which countries require rerunning and rebundle those to be run again:
 
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
 # bundle the countries we need to rerun
-iso3cs_to_rerun <- c("BGD", "BRN", "ITA") 
+iso3cs_to_rerun <- c("AZE") 
 bundles_to_rerun <- lapply(
   iso3cs_to_rerun, 
   function(x) {
+    #set country in parameters
+    parameters$iso3c = x
+    #if not excess fitting, check if we should apply the delta adjustment
+    if((!excess_mortality) & adjust_delta){
+      parameters$adjust_delta <- x %in% iso3cs_delta
+    }
     orderly::orderly_bundle_pack(
       path = path_bundles,
-      name = "lmic_reports_vaccine",
-      parameters = list(
-        iso3c = x,
-        date=date,
-        short_run=short_run,
-        parallel=parallel,
-        full_scenarios=full_scenarios,
-        gibbs_sampling=gibbs_sampling,
-        n_mcmc=n_mcmc
-      )
+      name = task,
+      parameters = parameters
     )
   }
 )
 
 names(bundles_to_rerun) <- iso3cs_to_rerun
 saveRDS(bundles_to_rerun, file.path(path_bundles, "bundles_to_rerun.rds"))
-
-
-iso3cs_to_rerun <- c("BRN") 
-bundles_to_rerun <- lapply(
-  iso3cs_to_rerun, 
-  function(x) {
-    orderly::orderly_bundle_pack(
-      path = path_bundles,
-      name = "lmic_reports_vaccine",
-      parameters = list(
-        iso3c = x,
-        date=date,
-        short_run=short_run,
-        parallel=parallel,
-        full_scenarios=full_scenarios,
-        gibbs_sampling=gibbs_sampling,
-        n_mcmc=n_mcmc
-      )
-    )
-  }
-)
-
-names(bundles_to_rerun) <- iso3cs_to_rerun
-saveRDS(bundles_to_rerun, file.path(path_bundles, "BRN_to_rerun.rds"))
-
 ```
 
 Then go to `glodide` and resubmit these and repeat above to see the fits. If they
@@ -326,7 +331,7 @@ I will use to replace their corresponding countries with in `bundles`:
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
 
 # any that we had to rerun
-rerun <- readRDS(file.path(path_bundles, "BRN_to_rerun.rds"))
+rerun <- readRDS(file.path(path_bundles, "bundles_to_rerun.rds"))
 
 # replace the ones we rerun within bundles
 nms_ch <- c(names(rerun))
@@ -348,12 +353,21 @@ all(unlist(import))
 
 \
 
-# For Excess fits
+# For Excess fits and LMIC with no documentation
 
-Update par_inits.rds and do not push to github until this has been prepared
+Update par_inits.rds and do not push to github.
 
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
-if(excess_mortality){
+if(
+  ifelse(
+    excess_mortality,
+    TRUE,
+    !parameters$document
+  )
+){
+  #set up task dependant variables
+  object_name <- ifelse(excess_mortality, "res.rds", "grid_out.rds")
+  date_name <- ifelse(excess_mortality, "week_start", "date")
   #get ids
   ids <- rep(NA, length(tasks))
   for(i in seq_along(tasks)){
@@ -367,49 +381,49 @@ if(excess_mortality){
   }
   
   # get old conditions
-  pars_init <- readRDS("src/lmic_reports_vaccine/pars_init.rds")
+  pars_init <- readRDS(file.path("src", task, "pars_init.rds"))
   for(x in seq_along(ids)) {
-
-    out <- readRDS(file.path("archive/excess_mortality", ids[x], "res.rds"))
-    if("pmcmc_results" %in% names(out)) {
-      if("chains" %in% names(out$pmcmc_results)) {
-        mc <- do.call(rbind, lapply(out$pmcmc_results$chains, "[[", "results"))
-      } else {
-        mc <- out$pmcmc_results$results
-      }
-      best <- mc[which.max(mc$log_posterior),]
-      best <- best[,seq_len(ncol(best)-3)]
-      rownames(best) <- NULL
-      best$start_date <- as.character(
-        squire:::offset_to_start_date(
-          out$pmcmc_results$inputs$data$date[1],
-          round(best$start_date)
-          )
-        )
-      best$iso3c <- countrycode::countrycode(
-        out$parameters$country, origin = "country.name", destination = "iso3c"
-        )
-      best$date_Meff_change <- out$pmcmc_results$inputs$Rt_args$date_Meff_change
-      best$Rt_shift_duration <- out$pmcmc_results$inputs$Rt_args$Rt_shift_duration
-      best$Rt_rw_duration <- out$pmcmc_results$inputs$Rt_args$Rt_rw_duration
-
-      if("chains" %in% names(out$pmcmc_results)) {
-        best$covariance_matrix <- out$pmcmc_results$chains$chain1$covariance_matrix[1]
-        best$scaling_factor <- mean(
-          c(tail(na.omit(out$pmcmc_results$chains$chain1$scaling_factor),1),
-            tail(na.omit(out$pmcmc_results$chains$chain2$scaling_factor),1),
-            tail(na.omit(out$pmcmc_results$chains$chain3$scaling_factor),1))
+    out <- readRDS(file.path("archive", task, ids[x], object_name)
+    )
+    if(!is.null(out)){
+      if("pmcmc_results" %in% names(out)) {
+        if("chains" %in% names(out$pmcmc_results)) {
+          mc <- do.call(rbind, lapply(out$pmcmc_results$chains, "[[", "results"))
+        } else {
+          mc <- out$pmcmc_results$results
+        }
+        best <- mc[which.max(mc$log_posterior),]
+        best <- best[,seq_len(ncol(best)-3)]
+        rownames(best) <- NULL
+        best$start_date <- as.character(
+          squire:::offset_to_start_date(
+            out$pmcmc_results$inputs$data[[date_name]][1],
+            round(best$start_date)
             )
-      } else {
-        best$covariance_matrix <- out$pmcmc_results$covariance_matrix[1]
-        best$scaling_factor <- tail(na.omit(out$pmcmc_results$scaling_factor),1)
+          )
+        best$iso3c <- countrycode::countrycode(
+          out$parameters$country, origin = "country.name", destination = "iso3c"
+          )
+        best$Rt_rw_duration <- out$pmcmc_results$inputs$Rt_args$Rt_rw_duration
+  
+        if("chains" %in% names(out$pmcmc_results)) {
+          best$covariance_matrix <- out$pmcmc_results$chains$chain1$covariance_matrix[1]
+          best$scaling_factor <- mean(
+            c(tail(na.omit(out$pmcmc_results$chains$chain1$scaling_factor),1),
+              tail(na.omit(out$pmcmc_results$chains$chain2$scaling_factor),1),
+              tail(na.omit(out$pmcmc_results$chains$chain3$scaling_factor),1))
+              )
+        } else {
+          best$covariance_matrix <- out$pmcmc_results$covariance_matrix[1]
+          best$scaling_factor <- tail(na.omit(out$pmcmc_results$scaling_factor),1)
+        }
+  
+        # now replace par inits for the relevant country
+        pars_init[[best$iso3c]] <- best
       }
-
-      # now replace par inits for the relevant country
-      pars_init[[best$iso3c]] <- best
     } 
   }
-  saveRDS(pars_init, "src/excess_mortality/pars_init.rds")
+  saveRDS(pars_init, file.path("src", task, "pars_init.rds"))
 }
 ```
 
@@ -433,18 +447,18 @@ If gh-pages is not in the repo, i.e. you have just clones `global-lmic-reports-o
 Next we run the collation step, where the necessary outputs from the model fits are copied to gh-pages. It conducts the following steps:
 
 1. Fetches the latest run model fit for each country for the date argument provided. 
-2. Updates `pars_init.rds` in `lmic_reports_vaccine` with parameters from best model fit for each country.
+2. Updates `pars_init.rds` in `lmic_reports_vaccine_waning` with parameters from best model fit for each country.
 3. Copies the pdfs/html files over to `gh-pages`
 4. Copies the projections from each model fit over and combines these into a combined data zip
 5. Copies model projections to the `index_page` and `regional_page` tasks
 6. Runs the remaining tasks needed to create the website (index, FAQ, regional pages)
 7. Copies the output from these remaining tasks to gh-pages. 
 
-Things to note before running. In step 2, we overwrite the `pars_init.rds` object in `lmic_reports_vaccine`. This is so that next time this task is run, we are using the best initial conditions for the next time you run `lmic_reports_vaccine`. As a result of this overwrite, be careful to make sure you are only calling this collation once you are happy you have the right model fits (and if not make sure `pars_init.rds` is backed up/committed).
+Things to note before running. In step 2, we overwrite the `pars_init.rds` object in `lmic_reports_vaccine_waning`. This is so that next time this task is run, we are using the best initial conditions for the next time you run `lmic_reports_vaccine_waning`. As a result of this overwrite, be careful to make sure you are only calling this collation once you are happy you have the right model fits (and if not make sure `pars_init.rds` is backed up/committed).
 
 Either execute this from the terminal or you can run it using the bash code chunk below (though it doesn't produce output until after it has finished at the moment, which may be annoying so you can see the output). 
 ```{bash}
-# ./run/run_collate_vaccine.sh 2021-08-19
+ ./run/run_collate_vaccine_waning.sh 2021-11-15
 ```
 
 ## 3. Push the results to the repository 
