@@ -675,7 +675,7 @@ if(sum(ecdc_df$deaths) > 0) {
   ## -----------------------------------------------------------------------------
 
   # add in uncertainty
-  rts <- rt_plot_immunity_vaccine(out)
+  rts <- rt_plot_immunity(out)
 
   # bind these in
   df <- dplyr::left_join(df, rts$rts[, c("date","Rt_min", "Rt_max")], by = "date")
@@ -709,14 +709,7 @@ if(sum(ecdc_df$deaths) > 0) {
   df_new_covidsim <- extend_df_for_covidsim(df = df, out = out, ext = 240)
   df_new_covidsim$iso3c <- iso3c
 
-  # and add in the vaccine args
-  #set up available doses, not used in vaccine inputs atm,
-  if(iso3c %in% get_covax_iso3c()){
-    available_doses_proportion <- 0.2
-  } else {
-    available_doses_proportion <- 0.95
-  }
-  df_new_covidsim <- ammend_df_covidsim_for_vaccs(df_new_covidsim, out, strategy = vacc_inputs$strategy, available_doses_proportion = available_doses_proportion)
+  df_new_covidsim <- ammend_df_covidsim_for_vaccs(df_new_covidsim, out, strategy = vacc_inputs$strategy, iso3c = iso3c)
   if(document){
     writeLines(jsonlite::toJSON(df_new_covidsim, pretty = TRUE), "input_params.json")
   }
@@ -776,8 +769,8 @@ if(sum(ecdc_df$deaths) > 0) {
     geom_vline(xintercept = as.Date(last_shift_date) + seq(Rt_rw_duration, Rt_rw_duration*rw_needed, by = Rt_rw_duration),
                linetype = "dashed") + xlab("") + theme(axis.text.x = element_text(angle=45, vjust = 0.5))
 
-  rtp <- rt_plot_immunity_vaccine(out, R0_plot = TRUE)
-  rtp2 <- rt_plot_immunity_vaccine(out, R0_plot = FALSE)
+  rtp <- rt_plot_immunity(out, R0_plot = TRUE)
+  rtp2 <- rt_plot_immunity(out, R0_plot = FALSE)
 
   date_range <- as.Date(c(min(as.Date(out$replicate_parameters$start_date)),date_0))
   if(pars_obs$cases_fitting){
@@ -908,31 +901,32 @@ if(sum(ecdc_df$deaths) > 0) {
     # Get the optimistic/pessimistic scenarios
     Rt_futures <- get_future_Rt(out, forcast_days = 28)
 
-    #update the model object (slightly hacked in, we just set the final Rt to our new value and
-    #project with no R0_change)
-    out_optim <- update_Rt(out, Rt_futures %>% pull(optimistic))
-    mitigation_scenario <- squire::projections(out_optim,
+    #update the model_user_args to set next Rt to our values
+    model_user_args_optim <- update_Rt(model_user_args, Rt_futures$optimistic, out)
+
+    mitigation_scenario <- squire::projections(out,
                                                R0_change = c(1),
                                                tt_R0 = c(0),
                                                time_period = time_period,
-                                               model_user_args = model_user_args)
+                                               model_user_args = model_user_args_optim)
+
     r_mitigation_scenario <- r_list_format(mitigation_scenario, date_0)
     rt_mitigation_scenario <- rt_creation_vaccine(mitigation_scenario, date_0, date_0+89)
 
     rm(mitigation_scenario)
-    rm(out_optim)
+    rm(model_user_args_optim)
 
     # Relax by 50% for 3 months
-    out_pess <- update_Rt(out, Rt_futures %>% pull(pessimistic))
-    reverse_scenario <- squire::projections(out_pess,
+    model_user_args_pess <- update_Rt(model_user_args, Rt_futures$pessimistic, out)
+    reverse_scenario <- squire::projections(out,
                                             R0_change = c(1),
                                             tt_R0 = c(0),
                                             time_period = time_period,
-                                            model_user_args = model_user_args)
+                                            model_user_args = model_user_args_pess)
     r_reverse_scenario <- r_list_format(reverse_scenario, date_0)
     rt_reverse_scenario <- rt_creation_vaccine(reverse_scenario, date_0, date_0+89)
     rm(reverse_scenario)
-    rm(out_pess)
+    rm(model_user_args_pess)
 
     #legacy scenarios
     mitigation_scenario_leg <- squire::projections(out,
@@ -997,29 +991,29 @@ if(sum(ecdc_df$deaths) > 0) {
 
     Rt_futures_surged <- get_future_Rt(out_surged, forcast_days = 28)
 
-    out_optim <- update_Rt(out_surged, Rt_futures_surged %>% pull(optimistic))
+    model_user_args_optim <- update_Rt(model_user_args, Rt_futures_surged$optimistic, out_surged)
 
-    mitigation_scenario_surged <- squire::projections(out_optim,
+    mitigation_scenario_surged <- squire::projections(out_surged,
                                                       R0_change = c(1),
                                                       tt_R0 = c(0),
                                                       time_period = time_period,
-                                                      model_user_args = model_user_args)
+                                                      model_user_args = model_user_args_optim)
     r_mitigation_scenario_surged <- r_list_format(mitigation_scenario_surged, date_0)
     rt_mitigation_scenario_surged <- rt_creation_vaccine(mitigation_scenario_surged, date_0, date_0+89)
     rm(mitigation_scenario_surged)
-    rm(out_optim)
+    rm(model_user_args_optim)
 
-    out_pess <- update_Rt(out_surged, Rt_futures_surged %>% pull(pessimistic))
+    model_user_args_pess <- update_Rt(model_user_args, Rt_futures_surged$pessimistic, out_surged)
 
-    reverse_scenario_surged <- squire::projections(out_pess,
+    reverse_scenario_surged <- squire::projections(out_surged,
                                                    R0_change = c(1),
                                                    tt_R0 = c(0),
                                                    time_period = time_period,
-                                                   model_user_args = model_user_args)
+                                                   model_user_args = model_user_args_pess)
     r_reverse_scenario_surged <- r_list_format(reverse_scenario_surged, date_0)
     rt_reverse_scenario_surged <- rt_creation_vaccine(reverse_scenario_surged, date_0, date_0+89)
     rm(reverse_scenario_surged)
-    rm(out_pess)
+    rm(model_user_args_pess)
 
     #legacy scenarios
     mitigation_scenario_surged_leg <- squire::projections(out_surged,
@@ -1070,21 +1064,11 @@ if(sum(ecdc_df$deaths) > 0) {
     )
 
     rt_futures_df <- rbind(
-      Rt_futures %>%
+      summarise_rt_futures(Rt_futures) %>%
         mutate(surged = FALSE),
-      Rt_futures_surged %>%
+      summarise_rt_futures(Rt_futures_surged) %>%
         mutate(surged = TRUE)
-    ) %>%
-      group_by(surged) %>%
-      summarise(
-        pessimistic_med = median(pessimistic),
-        pessimistic_025 = quantile(pessimistic, 0.025),
-        pessimistic_975 = quantile(pessimistic, 0.975),
-        optimistic_med = median(optimistic),
-        optimistic_025 = quantile(optimistic, 0.025),
-        optimistic_975 = quantile(optimistic, 0.975)
-      )
-
+    )
 
     ## -----------------------------------------------------------------------------
     ## Step 5: Report
