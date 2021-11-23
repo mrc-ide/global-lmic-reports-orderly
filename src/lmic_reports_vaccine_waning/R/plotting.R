@@ -1805,7 +1805,7 @@ nim_sq_simulation_plot_prep <- function(x,
                                         x_var = "t",
                                         ...) {
 
-  pd <- nim_sq_format(x, var_select = var_select, ...)
+  pd <- nimue_format(x, var_select = var_select, ...)
 
   pd <- pd %>%
     dplyr::mutate(x = .data[[x_var]])
