@@ -623,93 +623,10 @@ if(sum(ecdc_df$deaths) > 0) {
   ## Step 2d: Summarise Fits for Interface
   ## -----------------------------------------------------------------------------
 
-  ## and save the info for the interface
-  all_chains <- do.call(rbind,lapply(out$pmcmc_results$chains, "[[", "results"))
-  if(is.null(all_chains)) {
-    all_chains <- out$pmcmc_results$results
-  }
-  best <- all_chains[which.max(all_chains$log_posterior), ]
+  #add vaccination strategy to interventions
+  out$interventions$vaccine_strategy <- vacc_inputs$strategy
 
-  ## BEST
-  ## -----------------------------------------------------------------------------
-
-  # get the R0, betas and times into a data frame
-  R0 <- best$R0
-  start_date <- squire:::offset_to_start_date(data$date[1],round(best$start_date))
-  Meff <- best$Meff
-  Meff_pl <- best$Meff_pl
-  Rt_shift <- best$Rt_shift
-  Rt_shift_scale <- best$Rt_shift_scale
-
-  if(!is.null(out$pmcmc_results$inputs$interventions$date_R0_change)) {
-    tt_beta <- squire:::intervention_dates_for_odin(dates = out$pmcmc_results$inputs$interventions$date_R0_change,
-                                                    change = out$pmcmc_results$inputs$interventions$R0_change,
-                                                    start_date = start_date,
-                                                    steps_per_day = 1)
-  } else {
-    tt_beta <- 0
-  }
-
-  if(!is.null(out$pmcmc_results$inputs$interventions$R0_change)) {
-    R0 <- squire:::evaluate_Rt_pmcmc(R0_change = tt_beta$change,
-                                     date_R0_change = tt_beta$dates,
-                                     R0 = best$R0,
-                                     pars = as.list(best[1,-(1:2)]),
-                                     Rt_args = out$pmcmc_results$inputs$Rt_args)
-  } else {
-    R0 <- R0
-  }
-  beta_set <- squire:::beta_est(squire_model = squire_model,
-                                model_params = out$pmcmc_results$inputs$model_params,
-                                R0 = R0)
-
-
-  ## -----------------------------------------------------------------------------
-
-
-  df <- data.frame(tt_beta = tt_beta$tt, beta_set = beta_set,
-                   date = start_date + tt_beta$tt, Rt = R0,
-                   grey_bar_start = FALSE)
-
-
-  ## -----------------------------------------------------------------------------
-
-  # add in uncertainty
-  rts <- rt_plot_immunity(out)
-
-  # bind these in
-  df <- dplyr::left_join(df, rts$rts[, c("date","Rt_min", "Rt_max")], by = "date")
-  df <- fill(df, all_of(c("Rt_min", "Rt_max")), .direction = c("down"))
-  df <- fill(df, all_of(c("Rt_min", "Rt_max")), .direction = c("up"))
-
-
-  df$beta_set_min <- squire:::beta_est(squire_model = squire_model,
-                                       model_params = out$pmcmc_results$inputs$model_params,
-                                       R0 = df$Rt_min)
-
-  df$beta_set_max <- squire:::beta_est(squire_model = squire_model,
-                                       model_params = out$pmcmc_results$inputs$model_params,
-                                       R0 = df$Rt_max)
-
-  ## -----------------------------------------------------------------------------
-
-  # add in grey bar start for interface
-  ox_interventions <- readRDS("oxford_grt.rds")
-  ox_interventions_unique <- squire:::interventions_unique(ox_interventions[[iso3c]], "C")
-  df$grey_bar_start[which.min(abs(as.numeric(df$date - ox_interventions_unique$dates_change[1])))] <- TRUE
-
-  # mark as unlikely fit because of death issues:
-  df$recent_deaths <- TRUE
-  if(sum(tail(out$pmcmc_results$inputs$data$deaths, 20)) == 0) {
-    df$recent_deaths <- FALSE
-  }
-
-  # add in the deaths to the json fits themselves
-  df$deaths <- out$pmcmc_results$inputs$data$deaths[match(df$date, out$pmcmc_results$inputs$data$date)]
-  df_new_covidsim <- extend_df_for_covidsim(df = df, out = out, ext = 240)
-  df_new_covidsim$iso3c <- iso3c
-
-  df_new_covidsim <- ammend_df_covidsim_for_vaccs(df_new_covidsim, out, strategy = vacc_inputs$strategy, iso3c = iso3c)
+  df_new_covidsim <- prepare_input_json_df(out, ox_interventions = readRDS("oxford_grt.rds"))
   if(document){
     writeLines(jsonlite::toJSON(df_new_covidsim, pretty = TRUE), "input_params.json")
   }
