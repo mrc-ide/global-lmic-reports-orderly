@@ -123,6 +123,7 @@ packages:
 # sources:
 sources:
   - R/preprocessing.R
+  - R/fitting.R
 
 # Resources that the script needs to run; this is an array of strings
 # representing filenames *relative to, and below, this directory*.

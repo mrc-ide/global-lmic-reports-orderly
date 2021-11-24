@@ -575,6 +575,8 @@ if(sum(ecdc_df$deaths) > 0) {
                        dur_V = vacc_inputs$dur_V,
                        dur_vaccine_delay = vacc_inputs$dur_vaccine_delay)
 
+  #set the class to be lmic_nimue_simulation and inherit from nimue_simulation
+  class(out) <- c("lmic_nimue_simulation", "nimue_simulation")
 
   if(pars_obs$cases_fitting){
     #create a tail cases fitting plot so we can check later
@@ -738,8 +740,6 @@ if(sum(ecdc_df$deaths) > 0) {
   }
 
   ## now let's trim the out for saving really small
-  pmcmc <- out$pmcmc_results
-  out_interventions <- out$interventions
   output_temp <- out$output
   out$output <- NULL
   saveRDS(out, "grid_out.rds")
@@ -789,14 +789,14 @@ if(sum(ecdc_df$deaths) > 0) {
     }
 
     # has surging been required
-    icu <- nim_sq_format(maintain_scenario, "ICU_demand", date_0 = date_0)
+    icu <- nimue_format(maintain_scenario, "ICU_demand", date_0 = date_0)
     icu <- icu[icu$compartment == "ICU_demand",]
     icu_28 <- group_by(icu, t) %>%
       summarise(i_tot = mean(y, na.rm = TRUE),
                 i_min = t_test_safe(y)$conf.int[1],
                 i_max = t_test_safe(y)$conf.int[2])
 
-    hosp <- nim_sq_format(maintain_scenario, "hospital_demand", date_0 = date_0)
+    hosp <- nimue_format(maintain_scenario, "hospital_demand", date_0 = date_0)
     hosp <- hosp[hosp$compartment == "hospital_demand",]
     hosp_28 <- group_by(hosp, t) %>%
       summarise(i_tot = mean(y, na.rm = TRUE),
@@ -864,27 +864,33 @@ if(sum(ecdc_df$deaths) > 0) {
     r_reverse_scenario_leg <- r_list_format(reverse_scenario_leg, date_0)
     rt_reverse_scenario_leg <- rt_creation_vaccine(reverse_scenario_leg, date_0, date_0+89)
     rm(reverse_scenario_leg)
-    rm(out)
 
     ## -----------------------------------------------------------------------------
     ## 4.2. Investigating a capacity surge
     ## -----------------------------------------------------------------------------
 
     # update for surged healthcare
-    pmcmc$inputs$model_params$hosp_beds <- 1e10
-    pmcmc$inputs$model_params$ICU_beds <- 1e10
+    out_surged <- out
+    rm(out)
 
-    out_surged <- generate_draws_pmcmc(pmcmc = pmcmc,
-                                       burnin = ceiling(n_mcmc/10),
-                                       n_chains = n_chains,
-                                       squire_model = pmcmc$inputs$squire_model,
-                                       replicates = replicates,
-                                       n_particles = n_particles,
-                                       forecast = 0,
-                                       country = country,
-                                       population = squire::get_population(iso3c = iso3c)$n,
-                                       interventions = out_interventions,
-                                       data = pmcmc$inputs$data)
+    out_surged$pmcmc_results$inputs$model_params$hosp_beds <- 1e10
+    out_surged$pmcmc_results$inputs$model_params$ICU_beds <- 1e10
+
+    # out_surged <- generate_draws_pmcmc(pmcmc = pmcmc,
+    #                                    burnin = ceiling(n_mcmc/10),
+    #                                    n_chains = n_chains,
+    #                                    squire_model = pmcmc$inputs$squire_model,
+    #                                    replicates = replicates,
+    #                                    n_particles = n_particles,
+    #                                    forecast = 0,
+    #                                    country = country,
+    #                                    population = squire::get_population(iso3c = iso3c)$n,
+    #                                    interventions = out_interventions,
+    #                                    data = pmcmc$inputs$data)
+    out_surged <- generate_draws(out_surged,
+                                 draws = replicates,
+                                 pars.list = NULL,
+                                 parallel = TRUE)
 
     out_surged$model$set_user(ICU_beds = 1e10)
     out_surged$model$set_user(hosp_beds = 1e10)
