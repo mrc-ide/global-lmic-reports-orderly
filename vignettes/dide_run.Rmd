@@ -74,7 +74,7 @@ we running, and also whether we are doing a `short_run`. The `short_run` argumen
 dictates whether a small number of trees are used in the BRT.
 
 ```{r, eval = FALSE}
-date <- "2021-11-16"
+date <- "2021-11-29"
 
 # are we doing just a short run. If so only 20 mcmc iterations are used
 # and only 2 draws from the posterior. Set this to TRUE to do a quick test 
@@ -164,7 +164,7 @@ message("*** Creating country task bundles")
 # main input parameters
 
 # how long is the mcmc for
-n_mcmc <- 40000
+n_mcmc <- 20000
 
 if(!excess_mortality){
   task <- "lmic_reports_vaccine_waning"
@@ -283,7 +283,7 @@ which countries require rerunning and rebundle those to be run again:
 
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
 # bundle the countries we need to rerun
-iso3cs_to_rerun <- c("AZE") 
+iso3cs_to_rerun <- c() 
 bundles_to_rerun <- lapply(
   iso3cs_to_rerun, 
   function(x) {
@@ -458,7 +458,7 @@ Things to note before running. In step 2, we overwrite the `pars_init.rds` objec
 
 Either execute this from the terminal or you can run it using the bash code chunk below (though it doesn't produce output until after it has finished at the moment, which may be annoying so you can see the output). 
 ```{bash}
- ./run/run_collate_vaccine_waning.sh 2021-11-15
+ ./run/run_collate_vaccine_waning.sh 2021-11-21
 ```
 
 ## 3. Push the results to the repository 

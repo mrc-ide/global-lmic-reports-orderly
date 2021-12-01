@@ -487,6 +487,8 @@ if(sum(ecdc_df$deaths) > 0) {
   ## Add delta adjustments
   ## -----------------------------------------------------------------------------
 
+  dur_R <- 365*(3/2)
+
   if(adjust_delta){
     #open data from covariants
     delta_characteristics <- readRDS("delta_characteristics.Rds") %>%
@@ -494,7 +496,7 @@ if(sum(ecdc_df$deaths) > 0) {
       rename(iso3c_ = iso3c) %>%
       filter(iso3c_ == iso3c) %>%
       select(where(~is.numeric(.x) | is.Date(.x)))
-    dur_R <- c(365, delta_characteristics$required_dur_R, 365)
+    dur_R_d <- c(dur_R, delta_characteristics$required_dur_R, dur_R)
     date_dur_R_change <- c(delta_characteristics$start_date,
                            delta_characteristics$start_date + delta_characteristics$shift_duration)
     date_prob_hosp_multiplier_change <- seq(
@@ -505,7 +507,7 @@ if(sum(ecdc_df$deaths) > 0) {
     prob_hosp_multiplier <- c(seq(1, delta_characteristics$prob_hosp_multiplier,
                                 length.out = length(date_prob_hosp_multiplier_change)+1))
     pars_obs$delta_adjust <- list(
-      dur_R = dur_R,
+      dur_R = dur_R_d,
       date_dur_R_change = date_dur_R_change,
       prob_hosp_multiplier = prob_hosp_multiplier,
       date_prob_hosp_multiplier_change = date_prob_hosp_multiplier_change
@@ -571,7 +573,7 @@ if(sum(ecdc_df$deaths) > 0) {
                        baseline_vaccine_efficacy_disease = vacc_inputs$vaccine_efficacy_disease[[1]],
                        rel_infectiousness_vaccinated = vacc_inputs$rel_infectiousness_vaccinated,
                        vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat,
-                       dur_R = 365*2,
+                       dur_R = dur_R,
                        dur_V = vacc_inputs$dur_V,
                        dur_vaccine_delay = vacc_inputs$dur_vaccine_delay)
 

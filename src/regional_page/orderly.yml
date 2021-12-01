@@ -152,7 +152,7 @@ global_resources:
 #
 depends:
   ecdc:
-    id: latest
+    id: latest(parameter:date == date)
     use:
       ecdc_all.rds: ecdc_all.rds
       jhu_all.rds: jhu_all.rds
