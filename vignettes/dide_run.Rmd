@@ -84,10 +84,10 @@ short_run <- FALSE
 # Are we fitting to excess mortality data?
 # if yes we call the economist models from github and use the excess_mortality task
 # to fit to the data
-excess_mortality <- TRUE
+excess_mortality <- FALSE
 
 # will we adjust for the delta variant?
-adjust_delta <- TRUE
+adjust_delta <- FALSE
 
 # will we allow vaccine efficacy to wane?
 waning <- FALSE
@@ -351,7 +351,39 @@ import <- lapply(tasks, orderly::orderly_bundle_import)
 all(unlist(import))
 ```
 
-\
+# Save on One-Drive
+
+```{r eval=FALSE, message=FALSE, warning = FALSE}
+save_one_drive <- function(){
+  #this repo
+  repo <- "C:\\Users\\gbarnsle\\Documents\\Covid Vaccine Impact\\global-lmic-reports-orderly"
+  #my one drive folder
+  destination <- file.path(
+    "C:\\Users\\gbarnsle\\OneDrive - Imperial College London\\nimue_model_fits",
+    ifelse(excess_mortality, "excess", "standard")
+  )
+  #get the fits
+  fits <- squire.page::get_fits(repo = repo, date = date, iso3cs = NULL, excess = excess_mortality)
+  #upload to folder replacing existing files
+  dir.create(destination, recursive = TRUE, showWarnings = FALSE)
+  for (iso in names(fits)) {
+    saveRDS(fits[[iso]],
+            file.path(
+              destination,
+              paste0(iso, ".Rds")
+            ))
+  }
+  #create zip file of these fits
+  zip::zip(
+    root = destination,
+    zipfile = paste0(date, ".zip"),
+    files = paste0(names(fits), ".Rds")
+  )
+}
+save_one_drive()
+```
+
+Actual model fits get saved to a one-drive folder for easy sharing, not likely to useful to anybody outside Imperial.
 
 # For Excess fits and LMIC with no documentation
 
