@@ -107,7 +107,8 @@ fit_spline_rt <- function(data,
   pars_max = list('start_date' = last_start_date,
                   'R0' = R0_max)
   pars_discrete = list('start_date' = TRUE, 'R0' = FALSE)
-  pars_obs = list(phi_cases = 1, k_cases = 2, phi_death = 1, k_death = 7, exp_noise = 1e07)
+  pars_obs = list(phi_cases = 1, k_cases = 2, phi_death = 1, k_death = 7, exp_noise = 1e07,
+                  k_death_cumulative = 40)
   #assign this way so they keep NULL if NULL
   pars_obs$dur_R <- delta_characteristics$required_dur_R
   pars_obs$prob_hosp_multiplier <- delta_characteristics$prob_hosp_multiplier
@@ -127,8 +128,18 @@ fit_spline_rt <- function(data,
                    #+ rexp(length(model_deaths), rate = pars_obs$exp_noise),
                    log = TRUE)
     }
-  } else {
-    stop("likelihood_version, must be one of Poisson & Negative Binomial")
+  } else if(likelihood_version == "Negative Binomial-Cumulative"){
+    pars_obs$likelihood <- function(model_deaths, data_deaths){
+      #also add a term for cumulative deaths
+      c(squire:::ll_nbinom(data_deaths, model_deaths, pars_obs$phi_death,
+                         pars_obs$k_death,
+                         pars_obs$exp_noise),
+        squire:::ll_nbinom(sum(data_deaths), sum(model_deaths), pars_obs$phi_death,
+                           pars_obs$k_death_cumulative,
+                           pars_obs$exp_noise))
+    }
+  } else{
+    stop("likelihood_version, must be one of 'Poisson', 'Negative Binomial', 'Negative Binomial-Cumulative")
   }
 
   # add in the spline list

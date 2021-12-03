@@ -91,7 +91,7 @@ if(nrow(df) == 0 | sum(df$deaths) == 0){
                   )){
     version <- "Poisson"
   } else {
-    version <- "Negative Binomial"
+    version <- "Negative Binomial-Cumulative"
   }
 
   ## -----------------------------------------------------------------------------
