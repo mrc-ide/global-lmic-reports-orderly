@@ -6,17 +6,21 @@ covariants_raw <- fromJSON(
          "/master/cluster_tables/EUClusters_data.json")
 )
 
-start <- TRUE
+start = TRUE
 #only interested in Delta so we need dates, total sequences and delta sequences
+delta_names <- c("21A (Delta)", "21I (Delta)", "21J (Delta)")
 for (country in names(covariants_raw$countries)) {
   country_df <- covariants_raw$countries[[country]]
-  if ("21A (Delta)" %in% names(country_df)) {
-    country_df <- as.data.frame(
-      covariants_raw$countries[[country]][c(
-        "week", "21A (Delta)", "total_sequences"
-      )]
-    )
-    country_df$delta_prop <- country_df[, 2] / country_df[, 3]
+  if (any(delta_names %in% names(country_df))) {
+    delta_names_in_df <- intersect(delta_names, names(covariants_raw$countries[[country]]))
+    country_df <- tibble(
+      week = covariants_raw$countries[[country]][["week"]],
+      delta_seq = colSums(do.call(rbind, covariants_raw$countries[[country]][delta_names])),
+      total_seq = covariants_raw$countries[[country]][["total_sequences"]]
+    ) %>%
+      mutate(
+        delta_prop = delta_seq/total_seq
+      )
   } else {
     country_df <- as.data.frame(covariants_raw$countries[[country]][c("week")])
     country_df$delta_prop <- 0
@@ -46,7 +50,7 @@ delta_characteristics <-
   group_by(iso3c) %>%
   arrange(week) %>%
   #only keep values where delta > 10% of sequences
-  filter(delta_prop > 0.10) %>%
+  filter(delta_prop > 0.05) %>%
   filter(week == min(week)) %>%
   rename(start_date = week) %>%
   select(iso3c, start_date) %>%
