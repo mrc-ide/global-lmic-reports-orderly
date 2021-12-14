@@ -74,7 +74,7 @@ we running, and also whether we are doing a `short_run`. The `short_run` argumen
 dictates whether a small number of trees are used in the BRT.
 
 ```{r, eval = FALSE}
-date <- "2021-11-29"
+date <- "2021-12-05"
 
 # are we doing just a short run. If so only 20 mcmc iterations are used
 # and only 2 draws from the posterior. Set this to TRUE to do a quick test 
@@ -87,7 +87,7 @@ short_run <- FALSE
 excess_mortality <- FALSE
 
 # will we adjust for the delta variant?
-adjust_delta <- FALSE
+adjust_delta <- TRUE
 
 # will we allow vaccine efficacy to wane?
 waning <- FALSE
@@ -164,7 +164,7 @@ message("*** Creating country task bundles")
 # main input parameters
 
 # how long is the mcmc for
-n_mcmc <- 20000
+n_mcmc <- 40000
 
 if(!excess_mortality){
   task <- "lmic_reports_vaccine_waning"
@@ -183,7 +183,7 @@ if(!excess_mortality){
     replicates = 20,
     model = "NIMUE",
     n_mcmc = n_mcmc,
-    n_chains = 3,
+    n_chains = 1,
     date = date,
     adjust_delta = adjust_delta
   )

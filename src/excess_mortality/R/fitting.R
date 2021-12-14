@@ -270,6 +270,18 @@ fit_spline_rt <- function(data,
     squire_model = nimue::nimue_deterministic_model(use_dde = TRUE)
   }
 
+  #adjust healthcare capacities to bring in line with ESFT
+  if(iso3c == "KWT"){
+    hosp_beds <- 8300
+    icu_beds <-  307
+  } else if(iso3c == "PER"){
+    hosp_beds <- 51500
+    icu_beds <-  1770
+  } else{
+    hosp_beds <- NULL
+    icu_beds <- NULL
+  }
+
   # run the pmcmc
   res <- pmcmc_excess(country = country,
                       data = data,
@@ -313,7 +325,9 @@ fit_spline_rt <- function(data,
                       vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat,
                       dur_R = 365,
                       dur_V = dur_V,
-                      dur_vaccine_delay = dur_vaccine_delay)
+                      dur_vaccine_delay = dur_vaccine_delay,
+                      baseline_ICU_bed_capacity = icu_beds,
+                      baseline_hosp_bed_capacity = hosp_beds)
 
   #set the class to be excess_nimue_simulation and inherit from nimue_simulation
   class(res) <- c("excess_nimue_simulation", "nimue_simulation")

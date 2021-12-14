@@ -99,7 +99,6 @@ if(!waning){
            vaccine_efficacy_infection, vaccine_efficacy_disease,
            imputed, any_of(c("shift_start", "shift_end")))
 } else {
-
   fitting_df <- dose_df %>%
     mutate(
       first_dose_per_day = if_else(

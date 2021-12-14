@@ -891,8 +891,7 @@ if(sum(ecdc_df$deaths) > 0) {
     #                                    data = pmcmc$inputs$data)
     out_surged <- generate_draws(out_surged,
                                  draws = replicates,
-                                 pars.list = NULL,
-                                 parallel = TRUE)
+                                 pars.list = NULL)
 
     out_surged$model$set_user(ICU_beds = 1e10)
     out_surged$model$set_user(hosp_beds = 1e10)
