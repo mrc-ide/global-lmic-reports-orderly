@@ -496,7 +496,9 @@ if(sum(ecdc_df$deaths) > 0) {
       rename(iso3c_ = iso3c) %>%
       filter(iso3c_ == iso3c) %>%
       select(where(~is.numeric(.x) | is.Date(.x)))
-    dur_R_d <- c(dur_R, delta_characteristics$required_dur_R, dur_R)
+    dur_R_d <- c(dur_R, 1 / (
+      (delta_characteristics$shift_duration / dur_R - log(1 - delta_characteristics$immune_escape)) / delta_characteristics$shift_duration
+    ), dur_R)
     date_dur_R_change <- c(delta_characteristics$start_date,
                            delta_characteristics$start_date + delta_characteristics$shift_duration)
     date_prob_hosp_multiplier_change <- seq(
@@ -519,7 +521,8 @@ if(sum(ecdc_df$deaths) > 0) {
   ## -----------------------------------------------------------------------------
 
   pars_obs$cases_fitting <- TRUE
-  pars_obs$cases_days <- number_of_last_rw_days
+  pars_obs$cases_days <- 21
+  pars_obs$cases_reporting <- 21
 
   ## -----------------------------------------------------------------------------
   ## Step 2g: PMCMC run
@@ -583,8 +586,8 @@ if(sum(ecdc_df$deaths) > 0) {
   if(pars_obs$cases_fitting){
     #create a tail cases fitting plot so we can check later
     infection_adjustment_plot <-
-      compare_adjustment_plot(out, number_of_last_rw_days,
-                              out$pmcmc_results$inputs$Rt_args$Rt_rw_duration)
+      compare_adjustment_plot(out, pars_obs$cases_days,
+                              pars_obs$cases_reporting)
   }
 
 

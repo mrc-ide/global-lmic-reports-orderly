@@ -184,44 +184,12 @@ get_country_data <- function(link, iso3c, name) {
 
   text <- scrs[hcs]
 
-  # 2021 fix func
   date_func <- function(dates_d){
 
-    jans <- grep("Jan", dates_d)
-
-  if (length(jans) == 0) {
-    dates_d <- as.Date(paste(dates_d, "2020"),  "%b %d %Y")
-  } else if (all(diff(jans)==1) && as.Date(date) < as.Date("2021-01-01")) {
-    dates_d <- as.Date(paste(dates_d, "2020"),  "%b %d %Y")
-  } else {
-    jan_diffs <- diff(jans)
-    new_years <- jans[which(jan_diffs != 1) + 1]
-    if(length(new_years) == 0) {
-      new_years <- jans[1]
-    }
-    dates_d_l <- vector("list", length(new_years)+1)
-    years <- seq(2020, 2020 + length(new_years), 1)
-    for (i in seq_along(dates_d_l)) {
-
-      # starts
-      if(i == 1) {
-        i_1 <- 1
-      } else {
-        i_1 <- new_years[i-1]
-      }
-
-      # ends
-      if(i == length(dates_d_l)) {
-        i_end <- length(dates_d)
-      } else {
-        i_end <- new_years[i]-1
-      }
-
-      dates_d_l[[i]] <- as.character(as.Date(paste(dates_d[seq(i_1, i_end)], years[i]),  "%b %d %Y"))
-
-    }
-    dates_d <- unlist(dates_d_l)
-  }
+    #simplify things by using stringr to reformat dates
+    dates_d <- gsub(",", "", str_match_all(dates_d, '\\"\\s*(.*?)\\s*\\"')[[1]][,2])
+    #standardise date format
+    dates_d <- as.character(mdy(dates_d))
 
     return(dates_d)
 
@@ -239,7 +207,6 @@ get_country_data <- function(link, iso3c, name) {
     spl <- strsplit(txt, "\n")[[1]]
 
     dates_d <- spl[grep("categories", spl)][1]
-    dates_d <- strsplit(dates_d, "\"|,")[[1]][which(nchar(strsplit(dates_d, "\"|,")[[1]])==6)]
     dates_d <- date_func(dates_d)
     deaths <- spl[grep("data", spl)[1]]
     deaths <- tail(head(strsplit(deaths, ",|\\[|\\]")[[1]],-1),-1)
@@ -252,7 +219,6 @@ get_country_data <- function(link, iso3c, name) {
   spl <- strsplit(txt, "\n")[[1]]
 
   dates_c <- spl[grep("categories", spl)]
-  dates_c <- strsplit(dates_c, "\"|,")[[1]][which(nchar(strsplit(dates_c, "\"|,")[[1]])==6)]
   dates_c <- date_func(dates_c)
 
   cases <- spl[grep("data", spl)[1]]

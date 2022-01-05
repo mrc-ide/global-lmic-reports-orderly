@@ -55,6 +55,7 @@ artefacts:
 # reports.
 packages:
   - lubridate
+  - stringr
   - readxl
   - tidyr
   - countrycode

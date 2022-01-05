@@ -82,7 +82,7 @@ fit_spline_rt <- function(data,
   ## -----------------------------------------------------------------------------
 
   #calculate how many times our Rt spline changes and at what date
-  date_Rt_change <- seq(date_spline_start, as.Date(date_0) - rw_duration, by = rw_duration)
+  date_Rt_change <- seq(date_spline_start, as.Date(date_0) - rw_duration - 7, by = rw_duration)
 
   # how many spline pars do we need
   Rt_rw_duration <- rw_duration # i.e. we fit with a 2 week duration for our random walks.
