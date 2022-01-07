@@ -64,12 +64,13 @@ if(nrow(df) == 0 | sum(df$deaths) == 0){
   }
 
   if(adjust_delta){
-    #open data from covariants
-    delta_characteristics <- readRDS("delta_characteristics.Rds") %>%
+    #open data from covariants, we won't use omicron adjustments
+    delta_characteristics <- readRDS("variant_characteristics.Rds") %>%
       ungroup() %>%
       rename(iso3c_ = iso3c) %>%
       filter(iso3c_ == iso3c) %>%
-      select(where(~is.numeric(.x) | is.Date(.x)))
+      select(where(~is.numeric(.x) | is.Date(.x))) %>%
+      select(!contains("omicron"))
   } else{
     #these settings should lead to no adjustment
     delta_characteristics <- data.frame(

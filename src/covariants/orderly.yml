@@ -36,11 +36,11 @@ parameters:
 # would be the same as the .Rmd, with the extension changed to .docx)
 artefacts:
   - data:
-      description: Start dates and length of times for delta to become the dominant strain
+      description: Start dates and length of times for selected variants to become the dominant strain
       filenames:
-        - delta_characteristics.rds
+        - variant_characteristics.rds
   - staticgraph:
-      description: A graph of calculate start dates
+      description: A graph of calculated start dates
       filenames:
         - calibration/plot.pdf
 

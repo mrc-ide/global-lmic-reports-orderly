@@ -491,22 +491,21 @@ if(sum(ecdc_df$deaths) > 0) {
 
   if(adjust_delta){
     #open data from covariants
-    delta_characteristics <- readRDS("delta_characteristics.Rds") %>%
+    variant_characteristics <- readRDS("variant_characteristics.rds") %>%
       ungroup() %>%
       rename(iso3c_ = iso3c) %>%
-      filter(iso3c_ == iso3c) %>%
-      select(where(~is.numeric(.x) | is.Date(.x)))
+      filter(iso3c_ == iso3c)
     dur_R_d <- c(dur_R, 1 / (
-      (delta_characteristics$shift_duration / dur_R - log(1 - delta_characteristics$immune_escape)) / delta_characteristics$shift_duration
+      (variant_characteristics$delta_shift_duration / dur_R - log(1 - variant_characteristics$delta_immune_escape)) / variant_characteristics$delta_shift_duration
     ), dur_R)
-    date_dur_R_change <- c(delta_characteristics$start_date,
-                           delta_characteristics$start_date + delta_characteristics$shift_duration)
+    date_dur_R_change <- c(variant_characteristics$delta_start_date,
+                           variant_characteristics$delta_start_date + variant_characteristics$delta_shift_duration)
     date_prob_hosp_multiplier_change <- seq(
-      delta_characteristics$start_date,
-      delta_characteristics$start_date + delta_characteristics$shift_duration,
+      variant_characteristics$delta_start_date,
+      variant_characteristics$delta_start_date + variant_characteristics$delta_shift_duration,
       by = 1
     )
-    prob_hosp_multiplier <- c(seq(1, delta_characteristics$prob_hosp_multiplier,
+    prob_hosp_multiplier <- c(seq(1, variant_characteristics$delta_prob_hosp_multiplier,
                                 length.out = length(date_prob_hosp_multiplier_change)+1))
     pars_obs$delta_adjust <- list(
       dur_R = dur_R_d,
@@ -514,6 +513,29 @@ if(sum(ecdc_df$deaths) > 0) {
       prob_hosp_multiplier = prob_hosp_multiplier,
       date_prob_hosp_multiplier_change = date_prob_hosp_multiplier_change
     )
+    #omicron adjustment if needed
+    if(!variant_characteristics$omicron_imputed){
+      #for now we just append these to the delta adjustments, I'll rewrite to be better when WHO excess data is available
+      dur_R_o <- c(dur_R, 1 / (
+        (variant_characteristics$omicron_shift_duration / dur_R - log(1 - variant_characteristics$omicron_immune_escape)) / variant_characteristics$omicron_shift_duration
+      ), dur_R)[-1]
+      date_dur_R_change <- c(variant_characteristics$omicron_start_date,
+                             variant_characteristics$omicron_start_date + variant_characteristics$omicron_shift_duration)
+      #add to existing delta changes
+      pars_obs$delta_adjust$dur_R <- c(pars_obs$delta_adjust$dur_R, dur_R_o)
+      pars_obs$delta_adjust$date_dur_R_change <- c(pars_obs$delta_adjust$date_dur_R_change, date_dur_R_change)
+      #now hospitalisations
+      date_prob_hosp_multiplier_change <- seq(
+        variant_characteristics$omicron_start_date,
+        variant_characteristics$omicron_start_date + variant_characteristics$omicron_shift_duration,
+        by = 1
+      )
+      prob_hosp_multiplier <- seq(tail(pars_obs$delta_adjust$prob_hosp_multiplier,1), variant_characteristics$omicron_prob_hosp_multiplier,
+                                    length.out = length(date_prob_hosp_multiplier_change)+1)[-1]
+      #add to delta adjustments
+      pars_obs$delta_adjust$date_prob_hosp_multiplier_change <- c(pars_obs$delta_adjust$date_prob_hosp_multiplier_change, date_prob_hosp_multiplier_change)
+      pars_obs$delta_adjust$prob_hosp_multiplier <- c(pars_obs$delta_adjust$prob_hosp_multiplier, prob_hosp_multiplier)
+    }
   }
 
   ## -----------------------------------------------------------------------------
@@ -1018,7 +1040,7 @@ if(sum(ecdc_df$deaths) > 0) {
 
     #delta stuff
     if(adjust_delta){
-      adjust_delta_index <- delta_characteristics
+      adjust_delta_index <- variant_characteristics
     } else {
       adjust_delta_index <- FALSE
     }

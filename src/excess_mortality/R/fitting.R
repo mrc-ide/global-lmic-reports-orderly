@@ -110,10 +110,10 @@ fit_spline_rt <- function(data,
   pars_obs = list(phi_cases = 1, k_cases = 2, phi_death = 1, k_death = 7, exp_noise = 1e07,
                   k_death_cumulative = 40)
   #assign this way so they keep NULL if NULL
-  pars_obs$dur_R <- delta_characteristics$required_dur_R
-  pars_obs$prob_hosp_multiplier <- delta_characteristics$prob_hosp_multiplier
-  pars_obs$delta_start_date <- delta_characteristics$start_date
-  pars_obs$shift_duration <- delta_characteristics$shift_duration
+  pars_obs$dur_R <- delta_characteristics$delta_required_dur_R
+  pars_obs$prob_hosp_multiplier <- delta_characteristics$delta_prob_hosp_multiplier
+  pars_obs$delta_start_date <- delta_characteristics$delta_start_date
+  pars_obs$shift_duration <- delta_characteristics$delta_shift_duration
 
   #set up likelihood function
   if(likelihood_version == "Negative Binomial"){

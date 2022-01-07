@@ -58,7 +58,7 @@ dose_df <- dose_df %>% mutate(
   rename(date_vaccine_change = date)
 
 if(adjust_delta){
-  dose_df <- add_delta_characteristics(dose_df)
+  dose_df <- add_delta_characteristics(dose_df, adjust_omicron)
 }
 
 #set prioritization + coverage matrix
@@ -97,7 +97,7 @@ if(!waning){
     ) %>%
     select(iso3c, date_vaccine_change, max_vaccine, dose_ratio,
            vaccine_efficacy_infection, vaccine_efficacy_disease,
-           imputed, any_of(c("shift_start", "shift_end")))
+           imputed, contains("shift"))
 } else {
   fitting_df <- dose_df %>%
     mutate(
@@ -289,6 +289,6 @@ dose_list <-
 names(dose_list) <- iso3cs
 
 saveRDS(dose_list,
-        "vacc_inputs.Rds"
+        "vacc_inputs.rds"
         )
 

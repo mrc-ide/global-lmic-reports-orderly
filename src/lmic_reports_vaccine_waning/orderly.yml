@@ -196,7 +196,7 @@ depends:
   vaccine_inputs:
     id: latest(parameter:date == date && parameter:adjust_delta == adjust_delta)
     use:
-      vacc_inputs.Rds: vacc_inputs.Rds
+      vacc_inputs.rds: vacc_inputs.rds
   oxford_grt:
     id: latest(parameter:date == date)
     use:
@@ -208,4 +208,4 @@ depends:
   covariants:
     id: latest(parameter:date == date)
     use:
-      delta_characteristics.rds: delta_characteristics.rds
+      variant_characteristics.rds: variant_characteristics.rds

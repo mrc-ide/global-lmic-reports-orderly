@@ -105,19 +105,28 @@ covar_id <- orderly::orderly_run("covariants", parameters = list(date=date), ech
 orderly::orderly_commit(covar_id)
 #ideally check the calibration pdf
 
-message("*** Calculate Vaccine Inputs")
-vaccine_inputs_id <- orderly::orderly_run("vaccine_inputs", parameters = list(date=date,
-                                                                              adjust_delta = adjust_delta,
-                                                                              waning = waning), echo = FALSE)
-orderly::orderly_commit(vaccine_inputs_id)
-#ideally check the calibration pdf
-
 if(excess_mortality){
+  message("*** Calculate Vaccine Inputs")
+  vaccine_inputs_id <- orderly::orderly_run("vaccine_inputs", parameters = list(date=date,
+                                                                              adjust_delta = adjust_delta,
+                                                                              adjust_omicron = FALSE,
+                                                                              waning = waning), echo = FALSE)
+  orderly::orderly_commit(vaccine_inputs_id)
+  #ideally check the calibration pdf
+
   message("*** Economist Model data")
   econ_id <- orderly::orderly_run("economist", parameters = list(date=date), echo = FALSE)
   orderly::orderly_commit(econ_id)
   #ideally check the calibration pdf
 } else{
+  message("*** Calculate Vaccine Inputs")
+  vaccine_inputs_id <- orderly::orderly_run("vaccine_inputs", parameters = list(date=date,
+                                                                              adjust_delta = adjust_delta,
+                                                                              adjust_omicron = adjust_delta,
+                                                                              waning = waning), echo = FALSE)
+  orderly::orderly_commit(vaccine_inputs_id)
+  #ideally check the calibration pdf
+  
   #these are not used in the excess_mortality fitting
   message("*** Oxford GRT data")
   oxford_id <- orderly::orderly_run("oxford_grt", parameters = list(date=date), echo = FALSE)
@@ -133,6 +142,7 @@ if(excess_mortality){
     message("*** Calculate Vaccine Inputs again")
     vaccine_inputs_2_id <- orderly::orderly_run("vaccine_inputs", parameters = list(date=date,
                                                                               adjust_delta = FALSE,
+                                                                               adjust_omicron = FALSE
                                                                               waning = waning), echo = FALSE)
     orderly::orderly_commit(vaccine_inputs_2_id)
   }

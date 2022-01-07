@@ -105,9 +105,9 @@ plot_efficacy <- function(data, adjust_delta){
   if(adjust_delta){
     delta_values <- data %>%
       ungroup() %>%
-      select(shift_start, shift_end) %>%
+      select(delta_shift_start, delta_shift_end) %>%
       unique() %>%
-      pivot_longer(c(shift_start, shift_end), values_to = "x")
+      pivot_longer(c(delta_shift_start, delta_shift_end), values_to = "x")
     delta_values <- delta_values %>%
       rbind(delta_values) %>%
       arrange(x) %>%

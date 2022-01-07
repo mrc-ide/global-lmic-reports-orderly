@@ -11,6 +11,7 @@ script: script.R
 parameters:
   date: ~
   adjust_delta: TRUE
+  adjust_omicron: FALSE
   waning: FALSE
 
 sources:
@@ -51,7 +52,7 @@ artefacts:
   - data:
       description: The effective vaccine efficacy, max_vaccine and relative infectiousness for all countries in SQUIRE.
       filenames:
-        - vacc_inputs.Rds
+        - vacc_inputs.rds
   - staticgraph:
       description: A plot of doses and infered efficacies for each country
       filenames:
@@ -75,7 +76,7 @@ depends:
   covariants:
     id: latest(parameter:date == date)
     use:
-      delta_characteristics.rds: delta_characteristics.rds
+      variant_characteristics.rds: variant_characteristics.rds
   ecdc:
     id: latest(parameter:date == date)
     use:
