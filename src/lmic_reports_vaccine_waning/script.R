@@ -33,6 +33,12 @@ if(!identical(seed, FALSE)){
   set.seed(seed)
 }
 
+#mex
+# date <- "2021-07-30"#
+# date <- "2021-05-01"
+#Brazil
+#date <- "2021-08-27"
+
 # format user provided arguments correctly
 date <- as.Date(date)
 date_0 <- date
@@ -479,6 +485,12 @@ if(sum(ecdc_df$deaths) > 0) {
   #load vaccine inputs
   vacc_inputs <- get_vaccine_inputs(iso3c)
 
+  # keep <- vacc_inputs$date_vaccine_change <= date_0
+  # vacc_inputs$date_vaccine_change <- vacc_inputs$date_vaccine_change[keep]
+  # vacc_inputs$vaccine_efficacy_disease <- vacc_inputs$vaccine_efficacy_disease[keep]
+  # vacc_inputs$vaccine_efficacy_infection <- vacc_inputs$vaccine_efficacy_infection[keep]
+  # vacc_inputs$max_vaccine <- vacc_inputs$max_vaccine[keep]
+
   vaccine_fitting_flag <- TRUE
   squire_model <- nimue:::nimue_deterministic_model()
   init <- init_state_nimue(deaths_removed, iso3c)
@@ -516,9 +528,9 @@ if(sum(ecdc_df$deaths) > 0) {
     #omicron adjustment if needed
     if(!variant_characteristics$omicron_imputed){
       #for now we just append these to the delta adjustments, I'll rewrite to be better when WHO excess data is available
-      dur_R_o <- c(dur_R, 1 / (
+      dur_R_o <- c( 1 / (
         (variant_characteristics$omicron_shift_duration / dur_R - log(1 - variant_characteristics$omicron_immune_escape)) / variant_characteristics$omicron_shift_duration
-      ), dur_R)[-1]
+      ), dur_R)
       date_dur_R_change <- c(variant_characteristics$omicron_start_date,
                              variant_characteristics$omicron_start_date + variant_characteristics$omicron_shift_duration)
       #add to existing delta changes

@@ -500,7 +500,7 @@ Things to note before running. In step 2, we overwrite the `pars_init.rds` objec
 
 Either execute this from the terminal or you can run it using the bash code chunk below (though it doesn't produce output until after it has finished at the moment, which may be annoying so you can see the output). 
 ```{bash}
- ./run/run_collate_vaccine_waning.sh 2021-11-21
+ ./run/run_collate_vaccine_waning.sh 2021-12-13
 ```
 
 ## 3. Push the results to the repository 
