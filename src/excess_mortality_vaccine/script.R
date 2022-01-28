@@ -127,11 +127,3 @@ if(nrow(df) == 0 | sum(df$deaths) == 0){
 
 }
 
-plot(res$pmcmc_results$results$ves, type = "l")
-plot(res$pmcmc_results$results$delta_dur_R, type = "l")
-cov2cor(res$pmcmc_results$covariance_matrix[[1]])
-
-plot(res$pmcmc_results$chains$chain2$results$ves, type = "l")
-plot(res$pmcmc_results$chains$chain2$results$delta_dur_R, type = "l")
-res$pmcmc_results$chains$chain1$covariance_matrix
-
