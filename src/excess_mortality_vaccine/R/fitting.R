@@ -89,10 +89,10 @@ fit_spline_rt <- function(data,
 
   # set up rw pars
   pars_init_rw <- as.list(rep(0, rw_needed))
-  pars_min_rw <- as.list(rep(-5, rw_needed))
-  pars_max_rw <- as.list(rep(5, rw_needed))
+  pars_min_rw <- as.list(rep(0, rw_needed))
+  pars_max_rw <- as.list(rep(10, rw_needed))
   pars_discrete_rw <- as.list(rep(FALSE, rw_needed))
-  names(pars_init_rw) <- names(pars_min_rw) <- names(pars_max_rw) <- names(pars_discrete_rw) <- paste0("Rt_rw_", seq_len(rw_needed))
+  names(pars_init_rw) <- names(pars_min_rw) <- names(pars_max_rw) <- names(pars_discrete_rw) <- paste0("Rt_", seq_len(rw_needed))
 
   ## -----------------------------------------------------------------------------
   ## Step 2d: PMCMC initial parameter set up
@@ -194,12 +194,30 @@ fit_spline_rt <- function(data,
 
     # ret <- ret + stats::dnorm(x = pars[["delta_dur_R"]], mean = 125.2363, sd = 15)
 
-    # get rw spline parameters
-    if(any(grepl("Rt_rw", names(pars)))) {
-      Rt_rws <- pars[grepl("Rt_rw", names(pars))]
-      for (i in seq_along(Rt_rws)) {
-        ret <- ret + stats::dnorm(x = Rt_rws[[i]], mean = 0, sd = 0.2, log = TRUE)
-      }
+    # # get rw spline parameters
+    # if(any(grepl("Rt_rw", names(pars)))) {
+    #   Rt_rws <- pars[grepl("Rt_rw", names(pars))]
+    #   for (i in seq_along(Rt_rws)) {
+    #     ret <- ret + stats::dnorm(x = Rt_rws[[i]], mean = 0, sd = 0.2, log = TRUE)
+    #   }
+    # }#
+    #changes for direct Rt estimation
+    #assume that changes to Rt are penalised and should occur slowy
+    if(any(grepl("Rt_", names(pars)))) {
+      Rts <- c(pars[["R0"]], unlist(pars[grepl("Rt_", names(pars))]))
+      ratio_R <- Rts[-1]/lag(Rts, 1)[-1]
+      #stats::dchisq(c(1/2, 2), df = 3)
+      #chi::dchi(ratio_R, df= 2, log = TRUE)
+      #sum(extraDistr::pbetapr(c(1/2, 2), shape1 = 10, shape2 = 11))
+      # extraDistr::pinvchisq(1, nu = 1.597)
+      # extraDistr::dinvchisq(c(1/2, 2), nu = 1.597)
+      # VGAM::pfoldnorm(1, sd = sqrt(2.199))
+      # VGAM::dfoldnorm(c(1/2, 2), sd = sqrt(2.199))
+      # diff(actuar::pllogis(c(1/2, 2), scale = 1, shape = 5))
+      # actuar::dllogis(c(1), scale = 1, shape = 3)
+      # diff(stats::pf(c(1/2, 2), 50, 50)) #these ones for best, alight bias positive is fine
+      # mean(rf(1000, 50, 50)) #mean is 1.04
+      ret <- ret + sum(stats::df(x = ratio_R, 40, 40, log = TRUE))
     }
     return(ret)
   }
@@ -227,11 +245,6 @@ fit_spline_rt <- function(data,
   pars_init[which(!is.na(pos_mat))] <- as.list(pf[stats::na.omit(pos_mat)])
   pars_init$start_date <- as.Date(pars_init$start_date)
 
-  #temp
-  #pars_init$R0 <- 3
-  #pars_init[grepl("Rt_rw", names(pars_init))] <- 0
-  #pars_init[grepl("Rt_rw", names(pars_init))][[1]] <- c(1.609)
-
   # grab old scaling factor
   scaling_factor <- 1
   if("scaling_factor" %in% names(pf)) {
@@ -252,16 +265,16 @@ fit_spline_rt <- function(data,
     ]
 
     # check if it needs to be expanded
-    if(length(grep("Rt_rw", colnames(proposal_kernel_proposed))) == rw_needed) {
+    if(length(grep("Rt_", colnames(proposal_kernel_proposed))) == rw_needed) {
 
       proposal_kernel <- proposal_kernel_proposed
 
-    } else if(length(grep("Rt_rw", colnames(proposal_kernel_proposed))) < rw_needed) {
+    } else if(length(grep("Rt_", colnames(proposal_kernel_proposed))) < rw_needed) {
 
       add_similar_cr <- function(x) {
         x <- cbind(rbind(x, 0), 0)
         rw_num <- colnames(x)[nrow(x)-1]
-        new_rw <- paste0("Rt_rw_", as.numeric(gsub("(.*_)(\\d*)$", "\\2", rw_num)) + 1)
+        new_rw <- paste0("Rt_", as.numeric(gsub("(.*_)(\\d*)$", "\\2", rw_num)) + 1)
         colnames(x)[ncol(x)] <- rownames(x)[nrow(x)] <- new_rw
         x[nrow(x),] <- x[nrow(x) - 1,]
         x[,ncol(x)] <- x[,ncol(x) - 1]
@@ -269,14 +282,14 @@ fit_spline_rt <- function(data,
       }
 
       # add as needed
-      for(i in seq_len(rw_needed - length(grep("Rt_rw", colnames(proposal_kernel_proposed))))) {
+      for(i in seq_len(rw_needed - length(grep("Rt_", colnames(proposal_kernel_proposed))))) {
         proposal_kernel_proposed <- add_similar_cr(proposal_kernel_proposed)
       }
       proposal_kernel <- proposal_kernel_proposed
     } else {
 
       # remove as needed
-      for(i in seq_len(length(grep("Rt_rw", colnames(proposal_kernel_proposed))) - rw_needed)) {
+      for(i in seq_len(length(grep("Rt_", colnames(proposal_kernel_proposed))) - rw_needed)) {
         proposal_kernel_proposed <- proposal_kernel_proposed[-nrow(proposal_kernel_proposed),-ncol(proposal_kernel_proposed)]
       }
       proposal_kernel <- proposal_kernel_proposed
