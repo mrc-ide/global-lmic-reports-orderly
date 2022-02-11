@@ -322,7 +322,7 @@ get_dose_ts_owid <- function(owid, iso3cs){
                 filter(!is.na(first_dose_cum) | !is.na(second_dose_cum)),
               by = c("iso3c", "date")
     ) %>% #linearly interpolate assuming that both start at 0 and second
-    #dose stays at 0 until 18 days
+    #dose stays at 0 until 30 days
     group_by(iso3c) %>%
     mutate(
       first_dose_cum = if_else(
@@ -331,7 +331,7 @@ get_dose_ts_owid <- function(owid, iso3cs){
         first_dose_cum
       ),
       second_dose_cum = if_else(
-        1:length(second_dose_cum) <= 18,
+        1:length(second_dose_cum) <= 30,
         0,
         second_dose_cum
       ),
@@ -412,6 +412,10 @@ get_dose_ts_owid <- function(owid, iso3cs){
       )
     )
 
+  #limit to 8th of decemember start
+  owid_merge <- owid_merge %>%
+    filter(date >= as.Date("2020-12-08"))
+
   #checl that final dose ratio is not 0.1 off from the final dose ratio in owid
   owid_rescaled <- suppressWarnings(owid_merge %>%
     arrange(iso3c, date) %>%
@@ -478,7 +482,13 @@ get_dose_ts_who <- function(who_vacc, who_vacc_meta, iso3cs){
         start_date
       )
     ) %>%
-    select(iso3c, start_date, end_date)
+    select(iso3c, start_date, end_date) %>%
+    #start date can't be before 8th december
+    mutate(
+      start_date = if_else(start_date < as.Date("2020-12-08"),
+                           as.Date("2020-12-08"),
+                           start_date)
+    )
 
   who_comb <- full_join(
     who_vacc %>% filter(iso3c %in% iso3cs),
@@ -592,7 +602,7 @@ get_dose_ts_who <- function(who_vacc, who_vacc_meta, iso3cs){
   #generate TS
   #assume that first 21 days are a build up period (if possible), then vaccinations
   #per day remain steady across that period
-  #assume dose ratio is 0 for the first 18 days and then build up to the value
+  #assume dose ratio is 0 for the first 30 days and then build up to the value
   #for the next 21 days then remain at the same rate
   ts_df <- do.call(
     rbind,
@@ -608,13 +618,13 @@ get_dose_ts_who <- function(who_vacc, who_vacc_meta, iso3cs){
       vacc_per_day <- c(v_r_b*seq(1, 21), rep(v_r_pb, length(dates)-21))
     }
     #calculate dose ratio over time
-    if(length(dates) <= 18){
+    if(length(dates) <= 30){
       dr_r_0 <- who_comb$dose_ratio_final[x]/length(dates)
       dose_ratio <- c(
         dr_r_0*seq(1, length(dates))
       )
-    } else if (length(dates) <= 18 + 21){
-      end_0 <- floor((18/(18+21)) * length(dates))
+    } else if (length(dates) <= 30 + 21){
+      end_0 <- floor((30/(30+21)) * length(dates))
       dr_r_0 <- 0
       dr_r_b <- who_comb$dose_ratio_final[x]/(length(dates) - end_0)
       dose_ratio <- c(
@@ -626,9 +636,9 @@ get_dose_ts_who <- function(who_vacc, who_vacc_meta, iso3cs){
       dr_r_b <- who_comb$dose_ratio_final[x]/21
       dr_r_pb <- who_comb$dose_ratio_final[x]
       dose_ratio <- c(
-        rep(dr_r_0, 18),
+        rep(dr_r_0, 30),
         dr_r_b * seq(1, 21),
-        rep(dr_r_pb, length(dates) - 21 - 18)
+        rep(dr_r_pb, length(dates) - 21 - 30)
       )
     }
     data.frame(
