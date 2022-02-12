@@ -43,8 +43,6 @@ parameters:
       default: 20000
     seed:
       default: FALSE
-    adjust_delta:
-      default: FALSE
     document:
       default: TRUE
 
@@ -193,8 +191,8 @@ depends:
       worldometers_all.rds: worldometers_all.rds
       combined_data.Rds: combined_data.Rds
       owid.rds: owid.rds
-  vaccine_inputs:
-    id: latest(parameter:date == date && parameter:adjust_delta == adjust_delta)
+  vaccine_inputs_2:
+    id: latest(parameter:date == date)
     use:
       vacc_inputs.rds: vacc_inputs.rds
   oxford_grt:
@@ -205,7 +203,7 @@ depends:
     id: latest(parameter:date == date)
     use:
       google_brt.rds: google_brt.rds
-  covariants:
+  variant_adjustments:
     id: latest(parameter:date == date)
     use:
       variant_characteristics.rds: variant_characteristics.rds

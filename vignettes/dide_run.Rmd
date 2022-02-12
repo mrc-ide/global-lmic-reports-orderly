@@ -74,7 +74,7 @@ we running, and also whether we are doing a `short_run`. The `short_run` argumen
 dictates whether a small number of trees are used in the BRT.
 
 ```{r, eval = FALSE}
-date <- "2021-12-05"
+date <- "2022-01-20"
 
 # are we doing just a short run. If so only 20 mcmc iterations are used
 # and only 2 draws from the posterior. Set this to TRUE to do a quick test 
@@ -101,8 +101,8 @@ ecdc_id <- orderly::orderly_run("ecdc", parameters = list(date=date), echo = FAL
 orderly::orderly_commit(ecdc_id)
 
 message("*** Covid Variants data")
-covar_id <- orderly::orderly_run("covariants", parameters = list(date=date), echo = FALSE)
-orderly::orderly_commit(covar_id)
+variant_adjustments_id <- orderly::orderly_run("variant_adjustments", parameters = list(date=date), echo = FALSE)
+orderly::orderly_commit(variant_adjustments_id)
 #ideally check the calibration pdf
 
 if(excess_mortality){
@@ -120,10 +120,7 @@ if(excess_mortality){
   #ideally check the calibration pdf
 } else{
   message("*** Calculate Vaccine Inputs")
-  vaccine_inputs_id <- orderly::orderly_run("vaccine_inputs", parameters = list(date=date,
-                                                                              adjust_delta = adjust_delta,
-                                                                              adjust_omicron = adjust_delta,
-                                                                              waning = waning), echo = FALSE)
+  vaccine_inputs_id <- orderly::orderly_run("vaccine_inputs_2", parameters = list(date=date), echo = FALSE)
   orderly::orderly_commit(vaccine_inputs_id)
   #ideally check the calibration pdf
   
@@ -135,17 +132,6 @@ if(excess_mortality){
   message("*** Google BRT data")
   google_id <- orderly::orderly_run("brt_google_mobility", parameters = list(date=date, short_run = short_run), echo = FALSE)
   orderly::orderly_commit(google_id)
-  
-  #if adjusting for delta in lmic fits
-  if(adjust_delta){
-    #also need vaccine inputs with the no delta adjustment as not all countries will have it
-    message("*** Calculate Vaccine Inputs again")
-    vaccine_inputs_2_id <- orderly::orderly_run("vaccine_inputs", parameters = list(date=date,
-                                                                              adjust_delta = FALSE,
-                                                                               adjust_omicron = FALSE
-                                                                              waning = waning), echo = FALSE)
-    orderly::orderly_commit(vaccine_inputs_2_id)
-  }
 }
 ```
 
@@ -174,7 +160,7 @@ message("*** Creating country task bundles")
 # main input parameters
 
 # how long is the mcmc for
-n_mcmc <- 40000
+n_mcmc <- 20000
 
 if(!excess_mortality){
   task <- "lmic_reports_vaccine_waning"
@@ -182,7 +168,6 @@ if(!excess_mortality){
     date = date,
     short_run = short_run,
     n_mcmc = n_mcmc,
-    adjust_delta = adjust_delta,
     #Should we build the require documentation+data for the fit,
     #useful if just running to hone in chains (still builds fitting.pdf+grid_out.Rds)
     document = TRUE
@@ -190,7 +175,7 @@ if(!excess_mortality){
 } else{
   task <- "excess_mortality"
   parameters <- list(
-    replicates = 20,
+    replicates = 50,
     model = "NIMUE",
     n_mcmc = n_mcmc,
     n_chains = 1,
@@ -201,8 +186,6 @@ if(!excess_mortality){
 
 # get the isos
 iso3cs <- grep('^[A-Z]{3}\\s*', readLines(file.path(here::here(), "countries")), value = TRUE)
-#get the countries with delta (countries with more than 100 delta sequence in November 2021)
-iso3cs_delta <- grep('^[A-Z]{3}\\s*', readLines(file.path(here::here(), "countries_delta")), value = TRUE)
 
 # make the orderly bundles to be run on the cluster
 path_bundles <- file.path(
@@ -221,10 +204,6 @@ bundles <- lapply(
   iso3cs, function(x) {
     #set country in parameters
     parameters$iso3c = x
-    #if not excess fitting, check if we should apply the delta adjustment
-    if((!excess_mortality) & adjust_delta){
-      parameters$adjust_delta <- x %in% iso3cs_delta
-    }
     #pack bundle
     orderly::orderly_bundle_pack(
       path = path_bundles,
@@ -283,7 +262,7 @@ pdfs <- grep("fitting", list.files(td, full.names = TRUE, recursive = TRUE), val
 # created because it needs to be for orderly to finish the task
 qpdf::pdf_combine(
   input = pdfs[file.size(pdfs) > 0], 
-  output = file.path("fits", paste0(ifelse(excess_mortality, "excess_mortality_", "lmic_reports_vaccine_"), date, ".pdf"))
+  output = file.path("fits", paste0(ifelse(excess_mortality, "excess_mortality_", "lmic_reports_vaccine_rerun_"), date, ".pdf"))
 )
 ```
 
@@ -293,16 +272,13 @@ which countries require rerunning and rebundle those to be run again:
 
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
 # bundle the countries we need to rerun
-iso3cs_to_rerun <- c() 
+iso3cs_to_rerun <- c("UKR", "BRA", "MEX", "MKD", "ROU", "TUR", "SRB") 
+#change start date
 bundles_to_rerun <- lapply(
   iso3cs_to_rerun, 
   function(x) {
     #set country in parameters
     parameters$iso3c = x
-    #if not excess fitting, check if we should apply the delta adjustment
-    if((!excess_mortality) & adjust_delta){
-      parameters$adjust_delta <- x %in% iso3cs_delta
-    }
     orderly::orderly_bundle_pack(
       path = path_bundles,
       name = task,
@@ -341,11 +317,15 @@ I will use to replace their corresponding countries with in `bundles`:
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
 
 # any that we had to rerun
-rerun <- readRDS(file.path(path_bundles, "bundles_to_rerun.rds"))
+rerun <-  readRDS(file.path(path_bundles, "bundles_to_rerun.rds"))
 
 # replace the ones we rerun within bundles
 nms_ch <- c(names(rerun))
 bundles[nms_ch] <- c(rerun)
+
+keep <- c()
+library(purrr)
+bundles <- map(keep, ~bundles[[.x]])
 
 # now get the filepaths of the tasks to import back
 tasks <- gsub("raw", "derived", as.character(vapply(bundles, "[[", character(1), "path")))
@@ -500,7 +480,7 @@ Things to note before running. In step 2, we overwrite the `pars_init.rds` objec
 
 Either execute this from the terminal or you can run it using the bash code chunk below (though it doesn't produce output until after it has finished at the moment, which may be annoying so you can see the output). 
 ```{bash}
- ./run/run_collate_vaccine_waning.sh 2021-12-13
+ ./run/run_collate_vaccine_waning.sh 2022-01-02
 ```
 
 ## 3. Push the results to the repository 

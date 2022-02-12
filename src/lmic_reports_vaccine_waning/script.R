@@ -496,59 +496,65 @@ if(sum(ecdc_df$deaths) > 0) {
   init <- init_state_nimue(deaths_removed, iso3c)
 
   ## -----------------------------------------------------------------------------
-  ## Add delta adjustments
+  ## Add variant adjustments
   ## -----------------------------------------------------------------------------
 
   dur_R <- 365*(3/2)
 
-  if(adjust_delta){
-    #open data from covariants
-    variant_characteristics <- readRDS("variant_characteristics.rds") %>%
-      ungroup() %>%
-      rename(iso3c_ = iso3c) %>%
-      filter(iso3c_ == iso3c)
-    dur_R_d <- c(dur_R, 1 / (
-      (variant_characteristics$delta_shift_duration / dur_R - log(1 - variant_characteristics$delta_immune_escape)) / variant_characteristics$delta_shift_duration
-    ), dur_R)
-    date_dur_R_change <- c(variant_characteristics$delta_start_date,
-                           variant_characteristics$delta_start_date + variant_characteristics$delta_shift_duration)
-    date_prob_hosp_multiplier_change <- seq(
-      variant_characteristics$delta_start_date,
-      variant_characteristics$delta_start_date + variant_characteristics$delta_shift_duration,
-      by = 1
-    )
-    prob_hosp_multiplier <- c(seq(1, variant_characteristics$delta_prob_hosp_multiplier,
-                                length.out = length(date_prob_hosp_multiplier_change)+1))
-    pars_obs$delta_adjust <- list(
-      dur_R = dur_R_d,
-      date_dur_R_change = date_dur_R_change,
-      prob_hosp_multiplier = prob_hosp_multiplier,
-      date_prob_hosp_multiplier_change = date_prob_hosp_multiplier_change
-    )
-    #omicron adjustment if needed
-    if(!variant_characteristics$omicron_imputed){
-      #for now we just append these to the delta adjustments, I'll rewrite to be better when WHO excess data is available
-      dur_R_o <- c( 1 / (
-        (variant_characteristics$omicron_shift_duration / dur_R - log(1 - variant_characteristics$omicron_immune_escape)) / variant_characteristics$omicron_shift_duration
-      ), dur_R)
-      date_dur_R_change <- c(variant_characteristics$omicron_start_date,
-                             variant_characteristics$omicron_start_date + variant_characteristics$omicron_shift_duration)
-      #add to existing delta changes
-      pars_obs$delta_adjust$dur_R <- c(pars_obs$delta_adjust$dur_R, dur_R_o)
-      pars_obs$delta_adjust$date_dur_R_change <- c(pars_obs$delta_adjust$date_dur_R_change, date_dur_R_change)
-      #now hospitalisations
-      date_prob_hosp_multiplier_change <- seq(
-        variant_characteristics$omicron_start_date,
-        variant_characteristics$omicron_start_date + variant_characteristics$omicron_shift_duration,
-        by = 1
-      )
-      prob_hosp_multiplier <- seq(tail(pars_obs$delta_adjust$prob_hosp_multiplier,1), variant_characteristics$omicron_prob_hosp_multiplier,
-                                    length.out = length(date_prob_hosp_multiplier_change)+1)[-1]
-      #add to delta adjustments
-      pars_obs$delta_adjust$date_prob_hosp_multiplier_change <- c(pars_obs$delta_adjust$date_prob_hosp_multiplier_change, date_prob_hosp_multiplier_change)
-      pars_obs$delta_adjust$prob_hosp_multiplier <- c(pars_obs$delta_adjust$prob_hosp_multiplier, prob_hosp_multiplier)
-    }
+
+  #open data from covariants
+  variant_characteristics <- readRDS("variant_characteristics.rds")[[iso3c]]
+  #check if omicron starts during delta
+  if(variant_characteristics$Omicron$start_date <
+     variant_characteristics$Delta$start_date +
+     variant_characteristics$Delta$shift_duration){
+    variant_characteristics$Omicron$shift_duration <-
+      as.numeric(
+        variant_characteristics$Omicron$start_date + variant_characteristics$Omicron$shift_duration
+      ) -
+      as.numeric(
+        variant_characteristics$Delta$start_date + variant_characteristics$Delta$shift_duration
+      ) - 1
+    variant_characteristics$Omicron$start_date <- variant_characteristics$Delta$start_date +
+      variant_characteristics$Delta$shift_duration + 1
   }
+  #calculate changes
+  dur_R_change <- variant_immune_escape(variant_characteristics,
+                                        dur_R)
+  prob_hosp_multiplier <- variant_changes_over_time(variant_characteristics,
+                                                    "prob_hosp_multiplier")
+  prob_severe_multiplier <- variant_changes_over_time(variant_characteristics,
+                                                    "prob_severe_multiplier")
+  dur_ICU <- variant_changes_over_time(variant_characteristics,
+                                                      "dur_ICU")
+  dur_ICU_death <- variant_changes_over_time(variant_characteristics,
+                                                      "dur_ICU_death")
+  dur_hosp <- variant_changes_over_time(variant_characteristics,
+                                                      "dur_hosp")
+  dur_hosp_death <- variant_changes_over_time(variant_characteristics,
+                                                      "dur_hosp_death")
+  pars_obs$variant_adjust <- list(
+    gamma_R = dur_R_change$var,
+    date_dur_R_change = dur_R_change$dates,
+    prob_hosp_multiplier = prob_hosp_multiplier$var,
+    date_prob_hosp_multiplier_change = prob_hosp_multiplier$dates,
+    prob_severe_multiplier = prob_severe_multiplier$var,
+    date_prob_severe_multiplier_change = prob_severe_multiplier$dates,
+    gamma_get_mv_survive =  2 * 1/dur_ICU$var,
+    date_dur_get_mv_survive_change = dur_ICU$dates,
+    gamma_get_mv_die =  2 * 1/dur_ICU_death$var,
+    date_dur_get_mv_die_change = dur_ICU_death$dates,
+    gamma_get_ox_survive =  2 * 1/dur_hosp$var,
+    date_dur_get_ox_survive_change = dur_hosp$dates,
+    gamma_get_ox_die =  2 * 1/dur_hosp_death$var,
+    date_dur_get_ox_die_change = dur_hosp_death$dates
+  )
+
+  ## -----------------------------------------------------------------------------
+  ## Calculate Vaccine Efficacies
+  ## -----------------------------------------------------------------------------
+
+  vacc_inputs <- vaccine_eff_over_time(vacc_inputs, variant_characteristics)
 
   ## -----------------------------------------------------------------------------
   ## Case Fitting
@@ -572,7 +578,7 @@ if(sum(ecdc_df$deaths) > 0) {
                        log_prior = logprior,
                        n_particles = 1,
                        steps_per_day = 1,
-                       log_likelihood = calc_loglikelihood_delta,
+                       log_likelihood = calc_loglikelihood_variant,
                        squire_model = squire_model,
                        output_proposals = FALSE,
                        n_chains = n_chains,
@@ -1051,11 +1057,7 @@ if(sum(ecdc_df$deaths) > 0) {
     data <- data[data$date <= as.Date(date_0), ]
 
     #delta stuff
-    if(adjust_delta){
-      adjust_delta_index <- variant_characteristics
-    } else {
-      adjust_delta_index <- FALSE
-    }
+    adjust_delta_index <- variant_characteristics
 
     # prepare reports
     options(tinytex.verbose = TRUE)

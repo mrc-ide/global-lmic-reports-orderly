@@ -427,20 +427,16 @@ if(identical(params$adjust_delta, FALSE)){
 } else {
   delta_text <- paste0(
     "This report adjusts for the Delta variant, with the variant become dominant over the period: ",
-    params$adjust_delta$delta_start_date,
+    params$adjust_delta$Delta$start_date,
     " to ",
-    params$adjust_delta$delta_start_date + params$adjust_delta$delta_shift_duration, 
+    params$adjust_delta$Delta$start_date + params$adjust_delta$Delta$shift_duration, 
+    ".",
+     " Additionally this report adjusts for the oOmicron variant, with the variant become dominant over the period: ",
+    params$adjust_delta$Omicron$start_date,
+    " to ",
+    params$adjust_delta$Omicron$start_date + params$adjust_delta$Omicron$shift_duration, 
     "."
   )
-  if(!params$adjust_delta$omicron_imputed){
-    delta_text <- paste0(delta_text,
-    " Additionally this report adjusts for the oOmicron variant, with the variant become dominant over the period: ",
-    params$adjust_delta$omicron_start_date,
-    " to ",
-    params$adjust_delta$omicron_start_date + params$adjust_delta$omicron_shift_duration, 
-    "."
-  )
-  }
 }
 ```
 
