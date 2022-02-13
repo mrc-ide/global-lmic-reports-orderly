@@ -174,11 +174,6 @@ fit_spline_rt <- function(data,
   pars_max <- append(pars_max, pars_max_rw)
   pars_discrete <- append(pars_discrete, pars_discrete_rw)
 
-  # Covriance Matrix
-  proposal_kernel <- diag(length(names(pars_init))) * 0.3
-  rownames(proposal_kernel) <- colnames(proposal_kernel) <- names(pars_init)
-  proposal_kernel["start_date", "start_date"] <- 1.5
-
   # MCMC Functions - Prior and Likelihood Calculation
   logprior <- function(pars){
     ret <- stats::dunif(x = pars[["start_date"]], min = -55, max = -10, log = TRUE) +
@@ -208,7 +203,8 @@ fit_spline_rt <- function(data,
       ratio_R <- Rts[-1]/lag(Rts, 1)[-1]
       #stats::dchisq(c(1/2, 2), df = 3)
       #chi::dchi(ratio_R, df= 2, log = TRUE)
-      #sum(extraDistr::pbetapr(c(1/2, 2), shape1 = 10, shape2 = 11))
+      # sum(extraDistr::pbetapr(c(1/2, 2), shape1 = 10, shape2 = 11))
+      # extraDistr::pbetapr(c(1/2, 2), shape1 = 1, shape2 = 2)
       # extraDistr::pinvchisq(1, nu = 1.597)
       # extraDistr::dinvchisq(c(1/2, 2), nu = 1.597)
       # VGAM::pfoldnorm(1, sd = sqrt(2.199))
@@ -218,6 +214,7 @@ fit_spline_rt <- function(data,
       # diff(stats::pf(c(1/2, 2), 50, 50)) #these ones for best, alight bias positive is fine
       # mean(rf(1000, 50, 50)) #mean is 1.04
       ret <- ret + sum(stats::df(x = ratio_R, 40, 40, log = TRUE))
+      #experiemental beta prime would make more sense
     }
     return(ret)
   }
@@ -245,84 +242,6 @@ fit_spline_rt <- function(data,
   pars_init[which(!is.na(pos_mat))] <- as.list(pf[stats::na.omit(pos_mat)])
   pars_init$start_date <- as.Date(pars_init$start_date)
 
-  # grab old scaling factor
-  scaling_factor <- 1
-  if("scaling_factor" %in% names(pf)) {
-    scaling_factor <- as.numeric(pf$scaling_factor)
-  }
-
-  # grab old covariance matrix
-  # use the old covar matrix if available
-  if("covariance_matrix" %in% names(pf)) {
-
-    # old proposal kernel
-    proposal_kernel_proposed <- pf$covariance_matrix[[1]]
-
-    #reduce to required variables
-    proposal_kernel_proposed <- proposal_kernel_proposed[
-      rownames(proposal_kernel_proposed) %in% rownames(proposal_kernel),
-      colnames(proposal_kernel_proposed) %in% colnames(proposal_kernel)
-    ]
-
-    # check if it needs to be expanded
-    if(length(grep("Rt_", colnames(proposal_kernel_proposed))) == rw_needed) {
-
-      proposal_kernel <- proposal_kernel_proposed
-
-    } else if(length(grep("Rt_", colnames(proposal_kernel_proposed))) < rw_needed) {
-
-      add_similar_cr <- function(x) {
-        x <- cbind(rbind(x, 0), 0)
-        rw_num <- colnames(x)[nrow(x)-1]
-        new_rw <- paste0("Rt_", as.numeric(gsub("(.*_)(\\d*)$", "\\2", rw_num)) + 1)
-        colnames(x)[ncol(x)] <- rownames(x)[nrow(x)] <- new_rw
-        x[nrow(x),] <- x[nrow(x) - 1,]
-        x[,ncol(x)] <- x[,ncol(x) - 1]
-        return(x)
-      }
-
-      # add as needed
-      for(i in seq_len(rw_needed - length(grep("Rt_", colnames(proposal_kernel_proposed))))) {
-        proposal_kernel_proposed <- add_similar_cr(proposal_kernel_proposed)
-      }
-      proposal_kernel <- proposal_kernel_proposed
-    } else {
-
-      # remove as needed
-      for(i in seq_len(length(grep("Rt_", colnames(proposal_kernel_proposed))) - rw_needed)) {
-        proposal_kernel_proposed <- proposal_kernel_proposed[-nrow(proposal_kernel_proposed),-ncol(proposal_kernel_proposed)]
-      }
-      proposal_kernel <- proposal_kernel_proposed
-
-    }
-
-  }
-  #addmissing variables
-  if(!all(names(pars_init) %in% names(proposal_kernel))){
-    proposal_kernel_proposed <- matrix(0.3, nrow = length(pars_init),
-                                       ncol = length(pars_init))
-    colnames(proposal_kernel_proposed) <- names(pars_init)
-    rownames(proposal_kernel_proposed) <- names(pars_init)
-
-    proposal_kernel_proposed[rownames(proposal_kernel), colnames(proposal_kernel)] <-
-      proposal_kernel
-
-    proposal_kernel <- proposal_kernel_proposed
-
-    #temp
-    #ves copy R0
-    #delta dur R copy R0
-    proposal_kernel["ves",] <- proposal_kernel["R0",]
-    proposal_kernel[,"ves"] <- proposal_kernel["R0",]
-    proposal_kernel["delta_dur_R",] <- proposal_kernel["R0",]
-    proposal_kernel[,"delta_dur_R"] <- proposal_kernel["R0",]
-    proposal_kernel["ves", "delta_dur_R"] <- 1
-    proposal_kernel["delta_dur_R", "ves"] <- 1
-    proposal_kernel["delta_dur_R", "delta_dur_R"] <- 1.5
-    proposal_kernel["ves", "ves"] <- 1
-
-  }
-
   ## -----------------------------------------------------------------------------
   ## Step 3: Run PMCMC
   ## -----------------------------------------------------------------------------
@@ -332,7 +251,7 @@ fit_spline_rt <- function(data,
 
   squire_model <- nimue::nimue_deterministic_model(use_dde = TRUE)
 
-  #adjust healthcare capacities to bring in line with ESFT
+  #adjust healthcare capacities to bring in line with ESFT (UPDATE THIS!!!)
   if(iso3c == "KWT"){
     hosp_beds <- 8300
     icu_beds <-  307
@@ -362,7 +281,6 @@ fit_spline_rt <- function(data,
                       pars_max = pars_max,
                       pars_discrete = pars_discrete,
                       pars_obs = pars_obs,
-                      proposal_kernel = proposal_kernel,
                       date_Rt_change = date_Rt_change,
                       Rt_args = list(
                         Rt_date_spline_start = date_spline_start,

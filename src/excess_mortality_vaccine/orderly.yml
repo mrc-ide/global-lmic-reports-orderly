@@ -37,9 +37,9 @@ parameters:
     iso3c:
       default: "ATG"
     replicates:
-      default: 20
+      default: 50
     n_mcmc:
-      default: 20000
+      default: 2000
     n_chains:
       default: 3
     date: ~
