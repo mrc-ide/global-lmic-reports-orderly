@@ -22,11 +22,11 @@ excess_deaths <- excess_deaths_raw %>%
       estimated_daily_excess_deaths,
       daily_excess_deaths
     ), #if less than reported covid deaths then replace with that
-    deaths = if_else(
-      !is.na(daily_covid_deaths) & deaths < daily_covid_deaths,
-      daily_covid_deaths,
-      deaths
-    ),#ensure date is first of week then move to mid week
+    # deaths = if_else(
+    #   !is.na(daily_covid_deaths) & deaths < daily_covid_deaths,
+    #   daily_covid_deaths,
+    #   deaths
+    # ),#ensure date is first of week then move to mid week
     week_start = lubridate::floor_date(date, unit = "week"),
     week_end = lubridate::ceiling_date(date, unit = "week")
   ) %>% #summarise incase multiple entries a week
