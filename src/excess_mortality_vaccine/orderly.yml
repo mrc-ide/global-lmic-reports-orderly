@@ -173,7 +173,7 @@ depends:
     id: latest(parameter:date == date)
     use:
       excess_deaths.rds: excess_deaths.rds
-  covariants:
+  variant_adjustments:
     id: latest(parameter:date == date)
     use:
       variant_characteristics.rds: variant_characteristics.rds

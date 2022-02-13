@@ -48,10 +48,6 @@ fit_spline_rt <- function(data,
   null_na <- function(x) {if(is.null(x)) {NA} else {x}}
   min_death_date <- data$week_start[which(data$deaths>0)][1]
 
-  # pmcmc args
-  n_particles <- 2 # we use the deterministic model now so this does nothing (makes your life quicker and easier too)
-  start_adaptation <- max(2, round(n_mcmc/10)) # how long before adapting
-
   # parallel call
   suppressWarnings(future::plan(future::multiprocess()))
 
@@ -88,7 +84,7 @@ fit_spline_rt <- function(data,
   rw_needed <- length(date_Rt_change)
 
   # set up rw pars
-  pars_init_rw <- as.list(rep(0, rw_needed))
+  pars_init_rw <- as.list(rep(3, rw_needed))
   pars_min_rw <- as.list(rep(0, rw_needed))
   pars_max_rw <- as.list(rep(10, rw_needed))
   pars_discrete_rw <- as.list(rep(FALSE, rw_needed))
@@ -107,9 +103,9 @@ fit_spline_rt <- function(data,
                    'ves' = 0.5,
                    'delta_dur_R' =
                      1 / (
-                       (delta_characteristics$delta_shift_duration / dur_R -
-                          log(1 - 0.27)) /
-                         delta_characteristics$delta_shift_duration
+                       (delta_characteristics$shift_duration / dur_R -
+                          log(1 - delta_characteristics$immune_escape)) /
+                         delta_characteristics$shift_duration
                      )
                      )
   pars_min = list('start_date' = first_start_date,
@@ -117,18 +113,18 @@ fit_spline_rt <- function(data,
                   'ves' = 0,
                   'delta_dur_R' =
                     1 / (
-                      (delta_characteristics$delta_shift_duration / dur_R -
+                      (delta_characteristics$shift_duration / dur_R -
                          log(1 - 0.50)) /
-                        delta_characteristics$delta_shift_duration
+                        delta_characteristics$shift_duration
                     )) #about 50%
   pars_max = list('start_date' = last_start_date,
                   'R0' = R0_max,
                   'ves' = 1,
                   'delta_dur_R' =
                     1 / (
-                      (delta_characteristics$delta_shift_duration / dur_R -
+                      (delta_characteristics$shift_duration / dur_R -
                          log(1 - 0.20)) /
-                        delta_characteristics$delta_shift_duration
+                        delta_characteristics$shift_duration
                     )
                     ) #about 20%
   pars_discrete = list('start_date' = TRUE, 'R0' = FALSE,
@@ -136,10 +132,9 @@ fit_spline_rt <- function(data,
   pars_obs = list(phi_cases = 1, k_cases = 2, phi_death = 1, k_death = 7, exp_noise = 1e07,
                   k_death_cumulative = 40)
   #assign this way so they keep NULL if NULL
-  pars_obs$dur_R <- delta_characteristics$delta_required_dur_R
-  pars_obs$prob_hosp_multiplier <- delta_characteristics$delta_prob_hosp_multiplier
-  pars_obs$delta_start_date <- delta_characteristics$delta_start_date
-  pars_obs$shift_duration <- delta_characteristics$delta_shift_duration
+  pars_obs$prob_hosp_multiplier <- delta_characteristics$prob_hosp_multiplier
+  pars_obs$delta_start_date <- delta_characteristics$start_date
+  pars_obs$shift_duration <- delta_characteristics$shift_duration
 
   #set up likelihood function
   if(likelihood_version == "Negative Binomial"){
@@ -183,7 +178,7 @@ fit_spline_rt <- function(data,
     #convert immune esacpe into percentage #taken from delhi paper median:0.42 50% interval:(0.21-0.64)
     ret <- ret + stats::dbeta(x =
                                1 - exp(
-                                 delta_characteristics$delta_shift_duration *
+                                 delta_characteristics$shift_duration *
                                    (1/dur_R - 1/pars[["delta_dur_R"]])
                                ), shape1 = 1.117363, shape2 = 1.46649, log = TRUE)
 
@@ -219,7 +214,6 @@ fit_spline_rt <- function(data,
     return(ret)
   }
 
-  vacc_inputs <- vaccine_inputs
   dur_V <- vaccine_inputs$dur_V
   dur_vaccine_delay <- vaccine_inputs$dur_vaccine_delay
 
@@ -263,8 +257,14 @@ fit_spline_rt <- function(data,
     icu_beds <- NULL
   }
 
+  prop <- matrix(1, nrow = length(pars_init), ncol = length(pars_init))
+  colnames(prop) <- names(pars_init)
+  rownames(prop) <- names(pars_init)
+
   # run the pmcmc
-  res <- pmcmc_excess(country = country,
+  res <- pmcmc_excess(proposal_kernel = prop,
+                      scaling_factor = 1,
+                      country = country,
                       data = data,
                       gibbs_days = NULL,
                       gibbs_sampling = FALSE,
@@ -290,16 +290,15 @@ fit_spline_rt <- function(data,
                       seeding_cases = 5,
                       replicates = replicates,
                       required_acceptance_ratio = 0.20,
-                      start_adaptation = start_adaptation,
-                      scaling_factor = scaling_factor,
-                      date_vaccine_change = vacc_inputs$date_vaccine_change,
-                      max_vaccine = vacc_inputs$max_vaccine,
+                      start_adaptation =  max(2, round(n_mcmc/10)),
+                      date_vaccine_change = vaccine_inputs$date_vaccine_change,
+                      max_vaccine = vaccine_inputs$max_vaccine,
                       baseline_max_vaccine = 0,
-                      date_vaccine_efficacy = vacc_inputs$date_vaccine_efficacy,
-                      dose_ratio = vacc_inputs$dose_ratio,
-                      vaccine_efficacies = vacc_inputs$vaccine_efficacies,
-                      rel_infectiousness_vaccinated = vacc_inputs$rel_infectiousness_vaccinated,
-                      vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat,
+                      date_vaccine_efficacy = vaccine_inputs$date_vaccine_efficacy,
+                      dose_ratio = vaccine_inputs$dose_ratio,
+                      vaccine_efficacies = vaccine_inputs$vaccine_efficacies,
+                      rel_infectiousness_vaccinated = vaccine_inputs$rel_infectiousness_vaccinated,
+                      vaccine_coverage_mat = vaccine_inputs$vaccine_coverage_mat,
                       date_vaccine_efficacy_infection_change = NULL,
                       baseline_vaccine_efficacy_infection = 0,
                       vaccine_efficacy_infection = NULL,

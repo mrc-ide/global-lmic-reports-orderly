@@ -59,29 +59,12 @@ if(nrow(df) == 0 | sum(df$deaths) == 0){
   country <- squire::population$country[match(iso3c, squire::population$iso3c)]
   pop <- squire::get_population(country)$n
 
+  #open data from covariants, we won't use omicron adjustments
+  delta_characteristics <- readRDS("variant_characteristics.Rds")[[iso3c]]$Delta
 
-    #open data from covariants, we won't use omicron adjustments
-    delta_characteristics <- readRDS("variant_characteristics.Rds") %>%
-      ungroup() %>%
-      rename(iso3c_ = iso3c) %>%
-      filter(iso3c_ == iso3c) %>%
-      select(where(~is.numeric(.x) | is.Date(.x))) %>%
-      select(!contains("omicron"))
+  vaccine_inputs <- readRDS("vacc_inputs.Rds")[[iso3c]]
 
-    vaccine_inputs <- readRDS("vacc_inputs.Rds")[[iso3c]]
-
-
-  #use the poisson distribution if we need to close in more quickly,
-  #should not be used for final fits
-  if(iso3c %in% c(
-    # "COL", "TZA", "TCD", "UGA", "CAN", "SWE", "AFG", "KEN", "ZAF",
-    # "GIN", "MOZ", "NER", "SAU",
-    # "CUB", "NGA", "SDN"
-                  )){
-    version <- "Poisson"
-  } else {
-    version <- "Negative Binomial-Cumulative"
-  }
+  likelihood_version <- "Negative Binomial-Cumulative"
 
   ## -----------------------------------------------------------------------------
   ## 2. Fit Model
@@ -97,7 +80,7 @@ if(nrow(df) == 0 | sum(df$deaths) == 0){
     replicates = as.numeric(replicates),
     delta_characteristics = delta_characteristics,
     vaccine_inputs = vaccine_inputs,
-    likelihood_version = version
+    likelihood_version = likelihood_version
   )
 
   ## -----------------------------------------------------------------------------
