@@ -255,7 +255,7 @@ fit_spline_rt <- function(data,
                       use_drjacoby = TRUE,
                       drjacoby_list = list(
                         rungs = 5,
-                        alpha = 1,
+                        alpha = 5,
                         cluster = cl
                       ),
                       scaling_factor = NULL,

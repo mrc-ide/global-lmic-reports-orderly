@@ -97,6 +97,7 @@ if(nrow(data) == 0 | sum(data$deaths) == 0){
   #also remove drjacoby results, too large and we shouldn't need them
   drjacoby_out <- res$pmcmc_results$drjacoby_out
   res$pmcmc_results$drjacoby_out <- NULL
+  saveRDS(drjacoby_out, "drjacoby_out.Rds")
 
   #add removed deaths to interventions list
   res$interventions$pre_epidemic_isolated_deaths <- removed_deaths
@@ -106,14 +107,36 @@ if(nrow(data) == 0 | sum(data$deaths) == 0){
   res$output <- output
 
   # make a series of quick plots so we can check fits easily afterwards
-  rtp <- rt_plot_immunity(res, vaccine = TRUE, Rt_plot = TRUE)
+  #rtp <- rt_plot_immunity(res, vaccine = TRUE, Rt_plot = TRUE)
   dp <- dp_plot(res)
   cdp <- cdp_plot(res)
-  ar <- ar_plot(res)
+  #ar <- ar_plot(res)
+  coupling <- drjacoby::plot_mc_acceptance(drjacoby_out)
+  #multiplot
+  parameters <- setdiff(names(drjacoby_out$output),
+                        c("chain", "phase", "iteration", "logprior", "loglikelihood")
+  )
 
-  ggsave("fitting.pdf",width=12, height=12,
-         cowplot::plot_grid(rtp$plot + ggtitle(country),
-                            dp, cdp, ar, ncol = 1))
+  log_plots <- ggplot(data = drjacoby_out$output %>%
+           pivot_longer(cols = all_of(parameters),
+                        names_to = "parameter",
+                        values_to = "value") %>%
+             filter(loglikelihood != -.Machine$double.xmax), aes(x = value, y = logprior + loglikelihood,
+                                                  colour = as.character(chain))) +
+    geom_point(alpha = 0.25) +
+    facet_wrap(vars(parameter), scales = "free_x") +
+    theme_pubclean() +
+    theme(legend.position = "none") +
+    labs(x = "", y = "Log-Posterior") +
+    scale_y_continuous(labels = scales::scientific)
+
+  ggsave("fitting.pdf",width=18, height=12,
+         cowplot::plot_grid(
+           log_plots,
+           cowplot::plot_grid(dp + ggtitle(country),
+                            cdp, coupling, ncol = 1),
+           nrow = 1)
+  )
 
 }
 

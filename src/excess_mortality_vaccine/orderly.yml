@@ -112,6 +112,9 @@ packages:
   - lubridate
   - squire.page
   - parallel
+  - drjacoby
+  - purrr
+  - ggpubr
 
 # Source files, in addition to the script.  Typically these will
 # contain function definitions.  These will be sourced after loading
