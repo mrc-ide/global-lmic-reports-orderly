@@ -139,19 +139,19 @@ fit_spline_rt <- function(data,
 
   #set up likelihood function
   if(likelihood_version == "Negative Binomial"){
-    pars_obs$likelihood <- function(model_deaths, data_deaths){
+    pars_obs$likelihood <- function(model_deaths, data_deaths, pars_obs){
       squire:::ll_nbinom(data_deaths, model_deaths, pars_obs$phi_death,
                          pars_obs$k_death,
                          pars_obs$exp_noise)
     }
   } else if(likelihood_version == "Poisson"){
-    pars_obs$likelihood <- function(model_deaths, data_deaths){
+    pars_obs$likelihood <- function(model_deaths, data_deaths, pars_obs){
       stats::dpois(data_deaths, pars_obs$phi_death*model_deaths,
                    #+ rexp(length(model_deaths), rate = pars_obs$exp_noise),
                    log = TRUE)
     }
   } else if(likelihood_version == "Negative Binomial-Cumulative"){
-    pars_obs$likelihood <- function(model_deaths, data_deaths){
+    pars_obs$likelihood <- function(model_deaths, data_deaths, pars_obs){
       #also add a term for cumulative deaths
       c(squire:::ll_nbinom(data_deaths, model_deaths, pars_obs$phi_death,
                          pars_obs$k_death,
@@ -159,6 +159,7 @@ fit_spline_rt <- function(data,
         squire:::ll_nbinom(sum(data_deaths), sum(model_deaths), pars_obs$phi_death,
                            pars_obs$k_death_cumulative,
                            pars_obs$exp_noise))
+
     }
   } else{
     stop("likelihood_version, must be one of 'Poisson', 'Negative Binomial', 'Negative Binomial-Cumulative")
@@ -206,6 +207,10 @@ fit_spline_rt <- function(data,
     }
     return(ret)
   }
+  #add these values to the functions environment so they work with parallel
+  logprior <- as.function(c(formals(logprior), body(logprior)), envir = new.env(parent = environment(stats::acf)))
+  environment(logprior)$delta_characteristics <- eval(delta_characteristics)
+  environment(logprior)$dur_R <- eval(dur_R)
 
   dur_V <- vaccine_inputs$dur_V
   dur_vaccine_delay <- vaccine_inputs$dur_vaccine_delay
@@ -241,12 +246,17 @@ fit_spline_rt <- function(data,
   #adjust healthcare capacities to bring in line with ESFT etc.
   capacities <- readRDS("hospital_capacities.Rds")[[iso3c]]
 
+  #use parallel
+  cores <- parallel::detectCores()
+  cl <- parallel::makeCluster(cores)
+
   # run the pmcmc
   res <- pmcmc_excess(proposal_kernel = NULL,
                       use_drjacoby = TRUE,
                       drjacoby_list = list(
                         rungs = 5,
-                        alpha = 1
+                        alpha = 1,
+                        cluster = cl
                       ),
                       scaling_factor = NULL,
                       country = country,
@@ -295,6 +305,8 @@ fit_spline_rt <- function(data,
                       dur_vaccine_delay = dur_vaccine_delay,
                       baseline_ICU_bed_capacity = capacities$icu_beds,
                       baseline_hosp_bed_capacity = capacities$hosp_beds)
+  #switch off parallel•
+  parallel::stopCluster(cl)
 
   #set the class to be excess_nimue_simulation and inherit from nimue_simulation
   class(res) <- c("vacc_durR_nimue_simulation", "excess_nimue_simulation", "nimue_simulation")

@@ -23,15 +23,15 @@ if(packageVersion("nimue") < version_min) {
 
 # get data from file
 data <- readRDS("excess_deaths.Rds")
-df <- data[data$iso3c == iso3c, ]
+data <- data[data$iso3c == iso3c, ]
 
 #this step removes deaths that were likely due to importations that lead nowhere
 #or small contained epidemics simply to help the model fit better
-df <- preprocess_for_fitting(df)
-removed_deaths <- df[[2]] #save to store later
-df <- df[[1]]
+data <- preprocess_for_fitting(data)
+removed_deaths <- data[[2]] #save to store later
+data <- data[[1]]
 #drop iso3c code
-df$iso3c <- NULL
+data$iso3c <- NULL
 
 ## b. Sort out what is to be our death time series
 ## -----------------------------------------------------------------------------
@@ -46,7 +46,7 @@ df$iso3c <- NULL
 
 #if we have no deaths then we do not proceed
 
-if(nrow(df) == 0 | sum(df$deaths) == 0){
+if(nrow(data) == 0 | sum(data$deaths) == 0){
   saveRDS(NULL, "res.rds")
   ggsave("fitting.pdf",width=12, height=12,
          NULL)
@@ -74,7 +74,7 @@ if(nrow(df) == 0 | sum(df$deaths) == 0){
 
   # fit model
   res <- fit_spline_rt(
-    data = df,
+    data = data,
     country = country,
     pop = pop,
     n_mcmc = as.numeric(n_mcmc),
