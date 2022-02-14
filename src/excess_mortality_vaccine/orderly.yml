@@ -42,6 +42,8 @@ parameters:
       default: 2000
     n_chains:
       default: 3
+    n_burnin:
+      default: 1000
     date: ~
 
 

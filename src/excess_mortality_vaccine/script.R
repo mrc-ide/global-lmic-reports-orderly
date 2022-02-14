@@ -30,6 +30,8 @@ df <- data[data$iso3c == iso3c, ]
 df <- preprocess_for_fitting(df)
 removed_deaths <- df[[2]] #save to store later
 df <- df[[1]]
+#drop iso3c code
+df$iso3c <- NULL
 
 ## b. Sort out what is to be our death time series
 ## -----------------------------------------------------------------------------
@@ -77,6 +79,7 @@ if(nrow(df) == 0 | sum(df$deaths) == 0){
     pop = pop,
     n_mcmc = as.numeric(n_mcmc),
     n_chains = as.numeric(n_chains),
+    n_burnin = as.numeric(n_burnin),
     replicates = as.numeric(replicates),
     delta_characteristics = delta_characteristics,
     vaccine_inputs = vaccine_inputs,
@@ -90,6 +93,9 @@ if(nrow(df) == 0 | sum(df$deaths) == 0){
   # remove the output for memory and ease
   output <- res$output
   res$output <- NULL
+
+  #also remove drjacoby results, too large and we shouldn't need them
+  res$pmcmc_results$drjacoby_out <- NULL
 
   #add removed deaths to interventions list
   res$interventions$pre_epidemic_isolated_deaths <- removed_deaths

@@ -6,7 +6,8 @@ fit_spline_rt <- function(data,
                           pop,
                           delta_characteristics,
                           vaccine_inputs,
-                          n_mcmc = 10000,
+                          n_mcmc = 2000,
+                          n_burnin = 1000,
                           n_chains = 3,
                           replicates = 20,
                           rw_duration = 14,
@@ -257,13 +258,10 @@ fit_spline_rt <- function(data,
     icu_beds <- NULL
   }
 
-  prop <- matrix(1, nrow = length(pars_init), ncol = length(pars_init))
-  colnames(prop) <- names(pars_init)
-  rownames(prop) <- names(pars_init)
-
   # run the pmcmc
-  res <- pmcmc_excess(proposal_kernel = prop,
-                      scaling_factor = 1,
+  res <- pmcmc_excess(proposal_kernel = NULL,
+                      use_drjacoby = TRUE,
+                      scaling_factor = NULL,
                       country = country,
                       data = data,
                       gibbs_days = NULL,
@@ -286,7 +284,7 @@ fit_spline_rt <- function(data,
                         Rt_date_spline_start = date_spline_start,
                         Rt_rw_duration = Rt_rw_duration,
                         date_Rt_change = date_Rt_change),
-                      burnin = ceiling(n_mcmc/10),
+                      burnin = n_burnin,
                       seeding_cases = 5,
                       replicates = replicates,
                       required_acceptance_ratio = 0.20,
