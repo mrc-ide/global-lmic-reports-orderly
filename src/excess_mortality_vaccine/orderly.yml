@@ -134,6 +134,7 @@ sources:
 #
 resources:
   - pars_init.rds
+  - hospital_capacities.Rds
 
 global_resources:
 
