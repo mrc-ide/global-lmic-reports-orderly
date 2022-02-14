@@ -95,6 +95,7 @@ if(nrow(df) == 0 | sum(df$deaths) == 0){
   res$output <- NULL
 
   #also remove drjacoby results, too large and we shouldn't need them
+  drjacoby_out <- res$pmcmc_results$drjacoby_out
   res$pmcmc_results$drjacoby_out <- NULL
 
   #add removed deaths to interventions list

@@ -174,7 +174,7 @@ fit_spline_rt <- function(data,
   logprior <- function(pars){
     ret <- stats::dunif(x = pars[["start_date"]], min = -55, max = -10, log = TRUE) +
       stats::dunif(x = pars[["R0"]], min = 1, max = 10, log = TRUE) +
-      stats::dunif(x = pars[["ves"]], min = 0, max = 1, log = TRUE) #flat as data contained in scaled efficacy values
+      stats::dnorm(x = pars[["ves"]], mean = 0.5, sd = 0.5/1.95, log = TRUE) #normal so that 1,0 are the 95% CIs
 
     #convert immune esacpe into percentage #taken from delhi paper median:0.42 50% interval:(0.21-0.64)
     ret <- ret + stats::dbeta(x =
@@ -197,20 +197,12 @@ fit_spline_rt <- function(data,
     if(any(grepl("Rt_", names(pars)))) {
       Rts <- c(pars[["R0"]], unlist(pars[grepl("Rt_", names(pars))]))
       ratio_R <- Rts[-1]/lag(Rts, 1)[-1]
-      #stats::dchisq(c(1/2, 2), df = 3)
-      #chi::dchi(ratio_R, df= 2, log = TRUE)
       # sum(extraDistr::pbetapr(c(1/2, 2), shape1 = 10, shape2 = 11))
       # extraDistr::pbetapr(c(1/2, 2), shape1 = 1, shape2 = 2)
-      # extraDistr::pinvchisq(1, nu = 1.597)
-      # extraDistr::dinvchisq(c(1/2, 2), nu = 1.597)
-      # VGAM::pfoldnorm(1, sd = sqrt(2.199))
-      # VGAM::dfoldnorm(c(1/2, 2), sd = sqrt(2.199))
-      # diff(actuar::pllogis(c(1/2, 2), scale = 1, shape = 5))
-      # actuar::dllogis(c(1), scale = 1, shape = 3)
       # diff(stats::pf(c(1/2, 2), 50, 50)) #these ones for best, alight bias positive is fine
       # mean(rf(1000, 50, 50)) #mean is 1.04
       ret <- ret + sum(stats::df(x = ratio_R, 40, 40, log = TRUE))
-      #experiemental beta prime would make more sense
+      #EXPERIMENTAL: beta prime would make more sense
     }
     return(ret)
   }
@@ -242,7 +234,7 @@ fit_spline_rt <- function(data,
   ## -----------------------------------------------------------------------------
 
   # this is here if the model struggles to fit initially with nimue then we can use squire first
-  # to get a better fit firt which can then be used to update the pars_init
+  # to get a better fit which can then be used to update the pars_init
 
   squire_model <- nimue::nimue_deterministic_model(use_dde = TRUE)
 
@@ -261,6 +253,10 @@ fit_spline_rt <- function(data,
   # run the pmcmc
   res <- pmcmc_excess(proposal_kernel = NULL,
                       use_drjacoby = TRUE,
+                      drjacoby_list = list(
+                        rungs = 5,
+                        alpha = 1
+                      ),
                       scaling_factor = NULL,
                       country = country,
                       data = data,

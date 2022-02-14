@@ -70,10 +70,10 @@ vaccine_efficacies <- list(
   ve_i_high = c(0.8, 0.7, 0.85),
   ve_d_low = c(0.8, 0.7, 0.85),
   ve_d_high = c(0.98, 0.95, 0.99),
-  ve_i_low_d = c(0.224, 0.1, 0.3),
-  ve_i_high_d = c(0.646, 0.55, 0.75),
-  ve_d_low_d = c(0.75, 0.65, 0.8),
-  ve_d_high_d = c(0.94, 0.9, 0.98)
+  ve_i_low_d = c(0.224, 0.170, 0.274),
+  ve_i_high_d = c(0.646, 0.606, 0.682),
+  ve_d_low_d = c(0.75, 0.57, 0.85),
+  ve_d_high_d = c(0.94, 0.85, 0.98)
 )
 
 #into list format

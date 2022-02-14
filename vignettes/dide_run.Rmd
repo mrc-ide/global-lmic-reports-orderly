@@ -74,7 +74,7 @@ we running, and also whether we are doing a `short_run`. The `short_run` argumen
 dictates whether a small number of trees are used in the BRT.
 
 ```{r, eval = FALSE}
-date <- "2022-01-20"
+date <- "2022-01-20"# "2021-12-08"
 
 # are we doing just a short run. If so only 20 mcmc iterations are used
 # and only 2 draws from the posterior. Set this to TRUE to do a quick test 
@@ -86,11 +86,6 @@ short_run <- FALSE
 # to fit to the data
 excess_mortality <- FALSE
 
-# will we adjust for the delta variant?
-adjust_delta <- TRUE
-
-# will we allow vaccine efficacy to wane?
-waning <- FALSE
 ```
 
 These arguments are then passed to our 4/5 tasks:
@@ -105,25 +100,17 @@ variant_adjustments_id <- orderly::orderly_run("variant_adjustments", parameters
 orderly::orderly_commit(variant_adjustments_id)
 #ideally check the calibration pdf
 
-if(excess_mortality){
-  message("*** Calculate Vaccine Inputs")
-  vaccine_inputs_id <- orderly::orderly_run("vaccine_inputs", parameters = list(date=date,
-                                                                              adjust_delta = adjust_delta,
-                                                                              adjust_omicron = FALSE,
-                                                                              waning = waning), echo = FALSE)
-  orderly::orderly_commit(vaccine_inputs_id)
-  #ideally check the calibration pdf
+message("*** Calculate Vaccine Inputs")
+vaccine_inputs_id <- orderly::orderly_run("vaccine_inputs_2", parameters = list(date=date), echo = FALSE)
+orderly::orderly_commit(vaccine_inputs_id)
+#ideally check the calibration pdf
 
+if(excess_mortality){
   message("*** Economist Model data")
   econ_id <- orderly::orderly_run("economist", parameters = list(date=date), echo = FALSE)
   orderly::orderly_commit(econ_id)
   #ideally check the calibration pdf
 } else{
-  message("*** Calculate Vaccine Inputs")
-  vaccine_inputs_id <- orderly::orderly_run("vaccine_inputs_2", parameters = list(date=date), echo = FALSE)
-  orderly::orderly_commit(vaccine_inputs_id)
-  #ideally check the calibration pdf
-  
   #these are not used in the excess_mortality fitting
   message("*** Oxford GRT data")
   oxford_id <- orderly::orderly_run("oxford_grt", parameters = list(date=date), echo = FALSE)
@@ -160,27 +147,25 @@ message("*** Creating country task bundles")
 # main input parameters
 
 # how long is the mcmc for
-n_mcmc <- 20000
 
 if(!excess_mortality){
   task <- "lmic_reports_vaccine_waning"
   parameters <- list(
     date = date,
     short_run = short_run,
-    n_mcmc = n_mcmc,
+    n_mcmc =  20000,
     #Should we build the require documentation+data for the fit,
     #useful if just running to hone in chains (still builds fitting.pdf+grid_out.Rds)
     document = TRUE
   )
 } else{
-  task <- "excess_mortality"
+  task <- "excess_mortality_vaccine"
   parameters <- list(
     replicates = 50,
-    model = "NIMUE",
-    n_mcmc = n_mcmc,
-    n_chains = 1,
-    date = date,
-    adjust_delta = adjust_delta
+    n_mcmc = 2500,
+    n_chains = 3,
+    n_burnin = 2500,
+    date = date
   )
 }
 
@@ -272,7 +257,21 @@ which countries require rerunning and rebundle those to be run again:
 
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
 # bundle the countries we need to rerun
-iso3cs_to_rerun <- c("UKR", "BRA", "MEX", "MKD", "ROU", "TUR", "SRB") 
+iso3cs_to_rerun <- 
+  c("AFG", "AZE", "BFA", "BGD", "BIH", "BLR", "BOL", "BRA", "BWA", 
+"CIV", "CMR", "CRI", "CUB", "DOM", "ECU", "EGY", "ETH", "GHA", 
+"GTM", "HND", "IDN", "IND", "IRQ", "JOR", "KAZ", "KEN", "KGZ", 
+"LBN", "LBY", "MDA", "MEX", "MKD", "MLI", "MNE", "MRT", "MWI", 
+"MYS", "NER", "NGA", "NIC", "PAK", "PER", "PHL", "PRY", "PSE", 
+"ROU", "RUS", "SEN", "SLV", "SOM", "SRB", "SUR", "THA", "TUR", 
+"UKR", "VEN", "ZMB", "ZWE", "CAF", "FSM", "GIN", "KIR", "MDG", 
+"MDV", "MNG", "MOZ", "NPL", "PRK", "SLB", "STP", "SWZ", "TCD", 
+"TKM", "TON", "WSM", "YEM", "CHL", "PAN", "URY", "ARE", "AUS", 
+"AUT", "BEL", "BHR", "CAN", "CHE", "CYP", "CZE", "DEU", "DNK", 
+"ESP", "EST", "FIN", "FRA", "GBR", "GRC", "HRV", "HUN", "IRL", 
+"ISR", "ITA", "JPN", "KWT", "LTU", "LUX", "LVA", "NCL", "NLD", 
+"NOR", "NZL", "OMN", "POL", "PRT", "PYF", "QAT", "SGP", "SVK", 
+"SVN", "SWE", "USA", "ABW", "CUW", "GUM", "MAC")
 #change start date
 bundles_to_rerun <- lapply(
   iso3cs_to_rerun, 
@@ -323,7 +322,15 @@ rerun <-  readRDS(file.path(path_bundles, "bundles_to_rerun.rds"))
 nms_ch <- c(names(rerun))
 bundles[nms_ch] <- c(rerun)
 
-keep <- c()
+keep <- c("AGO", "ALB", "ARG", "ARM", "BDI", "BEN", "BGR", "BLZ",
+          "COD", "COG", "COL", "CPV", "DJI", "DZA", "GAB", "GEO",
+          "GMB", "GUY", "HTI", "JAM", "KOR", "LBR", "LKA",
+          "MAR", "MMR", "MUS", "SDN", "SYR", "TGO", "TUN", "TZA",
+          "UZB", "ZAF", "BTN", "COM", "ERI", "FJI", "GNB", "GNQ",
+          "GRD", "KHM", "LAO", "LCA", "LSO", "NAM", "PNG", "RWA",
+          "SLE", "SSD", "TJK", "TLS", "UGA", "VCT", "VNM", "VUT",
+          "CHN", "GUF", "ATG", "BHS", "BRB", "BRN", "IRN", "ISL",
+          "MLT", "SAU", "SYC", "TTO", "HKG", "TWN")
 library(purrr)
 bundles <- map(keep, ~bundles[[.x]])
 
