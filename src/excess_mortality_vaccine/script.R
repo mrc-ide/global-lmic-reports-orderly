@@ -97,7 +97,6 @@ if(nrow(data) == 0 | sum(data$deaths) == 0){
   #also remove drjacoby results, too large and we shouldn't need them
   drjacoby_out <- res$pmcmc_results$drjacoby_out
   res$pmcmc_results$drjacoby_out <- NULL
-  saveRDS(drjacoby_out, "drjacoby_out.Rds")
 
   #add removed deaths to interventions list
   res$interventions$pre_epidemic_isolated_deaths <- removed_deaths
