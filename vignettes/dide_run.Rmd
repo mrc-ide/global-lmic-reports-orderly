@@ -74,7 +74,7 @@ we running, and also whether we are doing a `short_run`. The `short_run` argumen
 dictates whether a small number of trees are used in the BRT.
 
 ```{r, eval = FALSE}
-date <- "2022-01-20"# "2021-12-08"
+date <- "2022-01-20" #"2021-12-08"
 
 # are we doing just a short run. If so only 20 mcmc iterations are used
 # and only 2 draws from the posterior. Set this to TRUE to do a quick test 
@@ -84,7 +84,7 @@ short_run <- FALSE
 # Are we fitting to excess mortality data?
 # if yes we call the economist models from github and use the excess_mortality task
 # to fit to the data
-excess_mortality <- FALSE
+excess_mortality <- FALSE#TRUE
 
 ```
 
@@ -162,9 +162,9 @@ if(!excess_mortality){
   task <- "excess_mortality_vaccine"
   parameters <- list(
     replicates = 50,
-    n_mcmc = 2500,
-    n_chains = 3,
-    n_burnin = 2500,
+    n_mcmc = 1000,
+    n_chains = 6,
+    n_burnin = 1000,
     date = date
   )
 }
@@ -247,7 +247,7 @@ pdfs <- grep("fitting", list.files(td, full.names = TRUE, recursive = TRUE), val
 # created because it needs to be for orderly to finish the task
 qpdf::pdf_combine(
   input = pdfs[file.size(pdfs) > 0], 
-  output = file.path("fits", paste0(ifelse(excess_mortality, "excess_mortality_", "lmic_reports_vaccine_rerun_"), date, ".pdf"))
+  output = file.path("fits", paste0(ifelse(excess_mortality, "excess_mortality_", "lmic_reports_vaccine_"), date, ".pdf"))
 )
 ```
 
@@ -258,20 +258,8 @@ which countries require rerunning and rebundle those to be run again:
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
 # bundle the countries we need to rerun
 iso3cs_to_rerun <- 
-  c("AFG", "AZE", "BFA", "BGD", "BIH", "BLR", "BOL", "BRA", "BWA", 
-"CIV", "CMR", "CRI", "CUB", "DOM", "ECU", "EGY", "ETH", "GHA", 
-"GTM", "HND", "IDN", "IND", "IRQ", "JOR", "KAZ", "KEN", "KGZ", 
-"LBN", "LBY", "MDA", "MEX", "MKD", "MLI", "MNE", "MRT", "MWI", 
-"MYS", "NER", "NGA", "NIC", "PAK", "PER", "PHL", "PRY", "PSE", 
-"ROU", "RUS", "SEN", "SLV", "SOM", "SRB", "SUR", "THA", "TUR", 
-"UKR", "VEN", "ZMB", "ZWE", "CAF", "FSM", "GIN", "KIR", "MDG", 
-"MDV", "MNG", "MOZ", "NPL", "PRK", "SLB", "STP", "SWZ", "TCD", 
-"TKM", "TON", "WSM", "YEM", "CHL", "PAN", "URY", "ARE", "AUS", 
-"AUT", "BEL", "BHR", "CAN", "CHE", "CYP", "CZE", "DEU", "DNK", 
-"ESP", "EST", "FIN", "FRA", "GBR", "GRC", "HRV", "HUN", "IRL", 
-"ISR", "ITA", "JPN", "KWT", "LTU", "LUX", "LVA", "NCL", "NLD", 
-"NOR", "NZL", "OMN", "POL", "PRT", "PYF", "QAT", "SGP", "SVK", 
-"SVN", "SWE", "USA", "ABW", "CUW", "GUM", "MAC")
+c()
+
 #change start date
 bundles_to_rerun <- lapply(
   iso3cs_to_rerun, 
@@ -322,18 +310,6 @@ rerun <-  readRDS(file.path(path_bundles, "bundles_to_rerun.rds"))
 nms_ch <- c(names(rerun))
 bundles[nms_ch] <- c(rerun)
 
-keep <- c("AGO", "ALB", "ARG", "ARM", "BDI", "BEN", "BGR", "BLZ",
-          "COD", "COG", "COL", "CPV", "DJI", "DZA", "GAB", "GEO",
-          "GMB", "GUY", "HTI", "JAM", "KOR", "LBR", "LKA",
-          "MAR", "MMR", "MUS", "SDN", "SYR", "TGO", "TUN", "TZA",
-          "UZB", "ZAF", "BTN", "COM", "ERI", "FJI", "GNB", "GNQ",
-          "GRD", "KHM", "LAO", "LCA", "LSO", "NAM", "PNG", "RWA",
-          "SLE", "SSD", "TJK", "TLS", "UGA", "VCT", "VNM", "VUT",
-          "CHN", "GUF", "ATG", "BHS", "BRB", "BRN", "IRN", "ISL",
-          "MLT", "SAU", "SYC", "TTO", "HKG", "TWN")
-library(purrr)
-bundles <- map(keep, ~bundles[[.x]])
-
 # now get the filepaths of the tasks to import back
 tasks <- gsub("raw", "derived", as.character(vapply(bundles, "[[", character(1), "path")))
 ```
@@ -348,155 +324,67 @@ import <- lapply(tasks, orderly::orderly_bundle_import)
 all(unlist(import))
 ```
 
-# Save on One-Drive
-
-```{r eval=FALSE, message=FALSE, warning = FALSE}
-save_one_drive <- function(){
-  #this repo
-  repo <- "C:\\Users\\gbarnsle\\Documents\\Covid Vaccine Impact\\global-lmic-reports-orderly"
-  #my one drive folder
-  destination <- file.path(
-    "C:\\Users\\gbarnsle\\OneDrive - Imperial College London\\nimue_model_fits",
-    ifelse(excess_mortality, "excess", "standard")
-  )
-  #get the fits
-  fits <- squire.page::get_fits(repo = repo, date = date, iso3cs = NULL, excess = excess_mortality)
-  #upload to folder replacing existing files
-  dir.create(destination, recursive = TRUE, showWarnings = FALSE)
-  for (iso in names(fits)) {
-    saveRDS(fits[[iso]],
-            file.path(
-              destination,
-              paste0(iso, ".Rds")
-            ))
-  }
-  #create zip file of these fits
-  zip::zip(
-    root = destination,
-    zipfile = paste0(date, ".zip"),
-    files = paste0(names(fits), ".Rds")
-  )
-}
-save_one_drive()
-```
-
-Actual model fits get saved to a one-drive folder for easy sharing, not likely to useful to anybody outside Imperial.
-
-# For Excess fits and LMIC with no documentation
-
-Update par_inits.rds and do not push to github.
-
-```{r eval=FALSE, message=FALSE, warning = FALSE}
-if(
-  ifelse(
-    excess_mortality,
-    TRUE,
-    !parameters$document
-  )
-){
-  #set up task dependant variables
-  object_name <- ifelse(excess_mortality, "res.rds", "grid_out.rds")
-  date_name <- ifelse(excess_mortality, "week_start", "date")
-  #get ids
-  ids <- rep(NA, length(tasks))
-  for(i in seq_along(tasks)){
-    ids[i] <- stringr::str_remove(
-      tail(
-        stringr::str_split(tasks[i], "\\\\")[[1]],
-        1
-        ),
-      ".zip"
-      )
-  }
-  
-  # get old conditions
-  pars_init <- readRDS(file.path("src", task, "pars_init.rds"))
-  for(x in seq_along(ids)) {
-    out <- readRDS(file.path("archive", task, ids[x], object_name)
-    )
-    if(!is.null(out)){
-      if("pmcmc_results" %in% names(out)) {
-        if("chains" %in% names(out$pmcmc_results)) {
-          mc <- do.call(rbind, lapply(out$pmcmc_results$chains, "[[", "results"))
-        } else {
-          mc <- out$pmcmc_results$results
-        }
-        best <- mc[which.max(mc$log_posterior),]
-        best <- best[,seq_len(ncol(best)-3)]
-        rownames(best) <- NULL
-        best$start_date <- as.character(
-          squire:::offset_to_start_date(
-            out$pmcmc_results$inputs$data[[date_name]][1],
-            round(best$start_date)
-            )
-          )
-        best$iso3c <- countrycode::countrycode(
-          out$parameters$country, origin = "country.name", destination = "iso3c"
-          )
-        best$Rt_rw_duration <- out$pmcmc_results$inputs$Rt_args$Rt_rw_duration
-  
-        if("chains" %in% names(out$pmcmc_results)) {
-          best$covariance_matrix <- out$pmcmc_results$chains$chain1$covariance_matrix[1]
-          best$scaling_factor <- mean(
-            c(tail(na.omit(out$pmcmc_results$chains$chain1$scaling_factor),1),
-              tail(na.omit(out$pmcmc_results$chains$chain2$scaling_factor),1),
-              tail(na.omit(out$pmcmc_results$chains$chain3$scaling_factor),1))
-              )
-        } else {
-          best$covariance_matrix <- out$pmcmc_results$covariance_matrix[1]
-          best$scaling_factor <- tail(na.omit(out$pmcmc_results$scaling_factor),1)
-        }
-  
-        # now replace par inits for the relevant country
-        pars_init[[best$iso3c]] <- best
-      }
-    } 
-  }
-  saveRDS(pars_init, file.path("src", task, "pars_init.rds"))
-}
-```
-
 # Create the changes to the github pages
 
-## 1. Get gh-pages
+## 1. Get gh-pages and gh-fits
 
 The Github pages repository is at [www.github.com:mrc-ide/global-lmic-reports](www.github.com:mrc-ide/global-lmic-reports) and
 contains all the outputs of model fits conducted to date and the web pages to describe the model fits for each country. It is
-cloned into `gh-pages`, which is where we collate the outputs of the model fits into. 
+cloned into `gh-pages`, which is where we collate the outputs of the model fits into.
 
-If gh-pages is not in the repo, i.e. you have just clones `global-lmic-reports-orderly` down for example, then you need to run following in terminal (or from within this repo if the bash chunk tag is working correctly).
+We also have a similar repo to collect the fit objects for other modelling work at, [https://github.com/mrc-ide/nimue_global_fits](https://github.com/mrc-ide/nimue_global_fits), which is stored in subdirectory `gh-fits`.
+
+If `gh-pages` or `gh-fits` is not in the repo, i.e. you have just clones `global-lmic-reports-orderly` down for example, then you need to run following in terminal (or from within this repo if the bash chunk tag is working correctly).
 
 ```{bash}
 # mkdir gh-pages
 # git clone git@github.com:mrc-ide/global-lmic-reports.git gh-pages
+# mkdir gh-fits
+# git clone git@github.com:mrc-ide/nimue_global_fits.git gh-fits
 ```
 
-## 2. The collation step for run_collate_vaccine
+## 2. Update the github fits
+
+These scripts update the fits in `gh-fits` and update the initial parameters (pars_init.Rds) in the relevant task.
+
+```{r eval=FALSE, message=FALSE, warning = FALSE}
+{source(file.path(here::here(), "run", "push_fits.R"))}
+```
+
+This script pushes the `gh-fits` changes to GitHub.
+
+Either execute this from the terminal or you can run it using the bash code chunk below (though it doesn't produce output until after it has finished at the moment, which may be annoying so you can see the output). 
+
+```{bash}
+./scripts/update_github_fits.sh 2022-01-20
+```
+
+The next steps should only be followed if producing documented LMIC reports and
+`gh-pages needs updating`.
+
+## 3. The collation step for run_collate_vaccine
 
 Next we run the collation step, where the necessary outputs from the model fits are copied to gh-pages. It conducts the following steps:
 
 1. Fetches the latest run model fit for each country for the date argument provided. 
-2. Updates `pars_init.rds` in `lmic_reports_vaccine_waning` with parameters from best model fit for each country.
-3. Copies the pdfs/html files over to `gh-pages`
-4. Copies the projections from each model fit over and combines these into a combined data zip
-5. Copies model projections to the `index_page` and `regional_page` tasks
-6. Runs the remaining tasks needed to create the website (index, FAQ, regional pages)
-7. Copies the output from these remaining tasks to gh-pages. 
-
-Things to note before running. In step 2, we overwrite the `pars_init.rds` object in `lmic_reports_vaccine_waning`. This is so that next time this task is run, we are using the best initial conditions for the next time you run `lmic_reports_vaccine_waning`. As a result of this overwrite, be careful to make sure you are only calling this collation once you are happy you have the right model fits (and if not make sure `pars_init.rds` is backed up/committed).
+2. Copies the pdfs/html files over to `gh-pages`
+3. Copies the projections from each model fit over and combines these into a combined data zip
+4. Copies model projections to the `index_page` and `regional_page` tasks
+5. Runs the remaining tasks needed to create the website (index, FAQ, regional pages)
+6. Copies the output from these remaining tasks to gh-pages. 
 
 Either execute this from the terminal or you can run it using the bash code chunk below (though it doesn't produce output until after it has finished at the moment, which may be annoying so you can see the output). 
 ```{bash}
- ./run/run_collate_vaccine_waning.sh 2022-01-02
+./run/run_collate_vaccine_waning.sh 2022-01-20
 ```
 
-## 3. Push the results to the repository 
+## 4. Push the results to the repository 
 
 Once we are happy that the collation has worked we need to push this to Github. We
 do this in two steps as the git pack size if all done at once is too big. This is all in 
 the following script:
 
 ```{bash}
-# ./scripts/publish_website production
+./scripts/publish_website production
 ```
 

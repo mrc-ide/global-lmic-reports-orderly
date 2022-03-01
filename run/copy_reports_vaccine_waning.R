@@ -61,6 +61,12 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   sql <- sprintf(sql, paste(sprintf('"%s"', id), collapse = ", "))
   reports <- DBI::dbGetQuery(db, sql)
 
+  #TEMP REMOVE NOT READY
+  reports <- reports[!reports$country %in%   c("BRA", "IRQ", "KEN", "MEX", "MWI", "MYS", "PER", "ROU", "RUS",
+                                   "SRB", "TUR", "UKR", "VEN", "URY", "ARE", "AUT", "BHR", "CHE",
+                                   "EST", "HUN", "ISR", "POL", "PRT", "SVN", "SWE", "USA", "TCD",
+                                   "DEU", "ITA", "MDV"), ]
+
   if (any(duplicated(reports$country))) {
     keep <- tapply(seq_len(nrow(reports)), reports$country, max)
     reports <- reports[keep, ]
@@ -74,59 +80,59 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   ## ---------------------------------------------------------------------------
 
   # get old conditions
-  pars_init <- readRDS("src/lmic_reports_vaccine_waning/pars_init.rds")
-  pars <- vector("list", length(reports$id))
-  also_to_go <- vector("list", length(reports$id))
-  for(x in seq_along(reports$id)) {
-
-    out <- readRDS(file.path("archive/lmic_reports_vaccine_waning",reports$id[x],"grid_out.rds"))
-    if("pmcmc_results" %in% names(out)) {
-    if("chains" %in% names(out$pmcmc_results)) {
-    mc <- do.call(rbind, lapply(out$pmcmc_results$chains, "[[", "results"))
-    } else {
-      mc <- out$pmcmc_results$results
-    }
-    best <- mc[which.max(mc$log_posterior),]
-    best <- best[,seq_len(ncol(best)-3)]
-    rownames(best) <- NULL
-    best$start_date <- as.character(squire:::offset_to_start_date(out$pmcmc_results$inputs$data$date[1], round(best$start_date)))
-    best$iso3c <- reports$country[x]
-    best$date_Meff_change <- out$pmcmc_results$inputs$Rt_args$date_Meff_change
-    best$Rt_shift_duration <- out$pmcmc_results$inputs$Rt_args$Rt_shift_duration
-    best$Rt_rw_duration <- out$pmcmc_results$inputs$Rt_args$Rt_rw_duration
-
-    if("chains" %in% names(out$pmcmc_results)) {
-    best$covariance_matrix <- out$pmcmc_results$chains$chain1$covariance_matrix[1]
-    best$scaling_factor <- mean(
-      c(tail(na.omit(out$pmcmc_results$chains$chain1$scaling_factor),1),
-        tail(na.omit(out$pmcmc_results$chains$chain2$scaling_factor),1),
-        tail(na.omit(out$pmcmc_results$chains$chain3$scaling_factor),1))
-      )
-    } else {
-      best$covariance_matrix <- out$pmcmc_results$covariance_matrix[1]
-      best$scaling_factor <- tail(na.omit(out$pmcmc_results$scaling_factor),1)
-    }
-
-    # for now combine here
-    pars[[x]] <- best
-    also_to_go[[x]] <- NULL
-    } else {
-      pars[[x]] <- NULL
-      also_to_go[[x]] <- reports$country[[x]]
-    }
-
-  }
-
-  #names(pars)[unlist(lapply(lapply(pars,is.null), isFALSE))] <- reports$country[[unlist(lapply(lapply(pars,is.null), isFALSE))]]
-  names(pars) <- reports$country
-
-  # and now replace in pars_init with new ones where they exist
-  for(i in seq_along(pars)) {
-    if(!is.null(pars[[names(pars)[i]]])) {
-    pars_init[[names(pars)[i]]] <- pars[[names(pars)[i]]]
-    }
-  }
-  saveRDS(pars_init, "src/lmic_reports_vaccine_waning/pars_init.rds")
+  # pars_init <- readRDS("src/lmic_reports_vaccine_waning/pars_init.rds")
+  # pars <- vector("list", length(reports$id))
+  # also_to_go <- vector("list", length(reports$id))
+  # for(x in seq_along(reports$id)) {
+  #
+  #   out <- readRDS(file.path("archive/lmic_reports_vaccine_waning",reports$id[x],"grid_out.rds"))
+  #   if("pmcmc_results" %in% names(out)) {
+  #   if("chains" %in% names(out$pmcmc_results)) {
+  #   mc <- do.call(rbind, lapply(out$pmcmc_results$chains, "[[", "results"))
+  #   } else {
+  #     mc <- out$pmcmc_results$results
+  #   }
+  #   best <- mc[which.max(mc$log_posterior),]
+  #   best <- best[,seq_len(ncol(best)-3)]
+  #   rownames(best) <- NULL
+  #   best$start_date <- as.character(squire:::offset_to_start_date(out$pmcmc_results$inputs$data$date[1], round(best$start_date)))
+  #   best$iso3c <- reports$country[x]
+  #   best$date_Meff_change <- out$pmcmc_results$inputs$Rt_args$date_Meff_change
+  #   best$Rt_shift_duration <- out$pmcmc_results$inputs$Rt_args$Rt_shift_duration
+  #   best$Rt_rw_duration <- out$pmcmc_results$inputs$Rt_args$Rt_rw_duration
+  #
+  #   if("chains" %in% names(out$pmcmc_results)) {
+  #   best$covariance_matrix <- out$pmcmc_results$chains$chain1$covariance_matrix[1]
+  #   best$scaling_factor <- mean(
+  #     c(tail(na.omit(out$pmcmc_results$chains$chain1$scaling_factor),1),
+  #       tail(na.omit(out$pmcmc_results$chains$chain2$scaling_factor),1),
+  #       tail(na.omit(out$pmcmc_results$chains$chain3$scaling_factor),1))
+  #     )
+  #   } else {
+  #     best$covariance_matrix <- out$pmcmc_results$covariance_matrix[1]
+  #     best$scaling_factor <- tail(na.omit(out$pmcmc_results$scaling_factor),1)
+  #   }
+  #
+  #   # for now combine here
+  #   pars[[x]] <- best
+  #   also_to_go[[x]] <- NULL
+  #   } else {
+  #     pars[[x]] <- NULL
+  #     also_to_go[[x]] <- reports$country[[x]]
+  #   }
+  #
+  # }
+  #
+  # #names(pars)[unlist(lapply(lapply(pars,is.null), isFALSE))] <- reports$country[[unlist(lapply(lapply(pars,is.null), isFALSE))]]
+  # names(pars) <- reports$country
+  #
+  # # and now replace in pars_init with new ones where they exist
+  # for(i in seq_along(pars)) {
+  #   if(!is.null(pars[[names(pars)[i]]])) {
+  #   pars_init[[names(pars)[i]]] <- pars[[names(pars)[i]]]
+  #   }
+  # }
+  # saveRDS(pars_init, "src/lmic_reports_vaccine_waning/pars_init.rds")
 
   ## Remove HICs
   rl <- readLines(file.path(here::here(),"countries"))

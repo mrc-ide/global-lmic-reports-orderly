@@ -118,6 +118,27 @@ In more recent model fitting and scenario projections, we model the roll out of 
 
 ## Interventions
 
+### Version 10
+
+Adjustments have been made for both the Delta and Omicron Variants. The Delta
+adjust is now applied to all countries.
+For the Omicron variant, we model these effects as follows:
+
+* Immune escape: we increase the rate of loss of natural immunity for a two 
+month period such that 57.8% ([Report 49](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-49-omicron/)) of those that would not have been susceptible, now are.
+
+* Worse Outcomes: The probability of hospitalisation increases over that period
+so that it is 59% of that for the delta variant ([Report 50](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-50-severity-omicron/)) and risk severe disease 34% of what is was for the Delta variant..
+
+* Reduced Vaccine Efficacy: Vaccine efficacy against infection reduces to 0%,
+first dose, and 10%, second dose. Efficacy against disease reduces to 42%, first dose,
+and 53%, second dose. These are roughly taken from [Report 49](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-49-omicron/) and [Report 50](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-50-severity-omicron/) and consistent with [UHSA COVID-19 Vaccine Surveillance Report Week 4](https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/1050721/Vaccine-surveillance-report-week-4.pdf).
+
+When the Delta variant becomes dominant is estimated using data 
+available from [CoVariants](https://covariants.org/). Countries that take
+into account the Delta variant will be indicated on its specific page.
+
+
 ### Version 9
 
 Adjustments have been made for the Delta Variant. This Variant of Concern has

@@ -164,6 +164,8 @@ fit_spline_rt <- function(data,
   } else{
     stop("likelihood_version, must be one of 'Poisson', 'Negative Binomial', 'Negative Binomial-Cumulative")
   }
+  #remove environment
+  environment(pars_obs$likelihood) <- environment(stats::acf)
 
   # add in the spline list
   pars_init <- append(pars_init, pars_init_rw)
@@ -247,7 +249,7 @@ fit_spline_rt <- function(data,
   capacities <- readRDS("hospital_capacities.Rds")[[iso3c]]
 
   #use parallel
-  cores <- parallel::detectCores()
+  cores <- min(c(parallel::detectCores() - 1, n_chains))
   cl <- parallel::makeCluster(cores)
 
   # run the pmcmc
@@ -255,7 +257,7 @@ fit_spline_rt <- function(data,
                       use_drjacoby = TRUE,
                       drjacoby_list = list(
                         rungs = 5,
-                        alpha = 2.5,
+                        alpha = 5,
                         cluster = cl
                       ),
                       scaling_factor = NULL,

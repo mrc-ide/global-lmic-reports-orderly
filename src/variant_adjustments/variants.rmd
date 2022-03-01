@@ -35,8 +35,8 @@ print(
       `Probability of Developing Severe Symptoms` = prob_severe,
       `Probability of Death, non-severe` = prob_death,
       `Probability of Death, severe` = prob_death_severe,
-      `Probability of deaths, non-severe, no treatment` = death_notreat,
-      `Probability of deaths, severe, no treatment` = death_notreat_severe
+      `Probability of Death, non-severe, no treatment` = death_notreat,
+      `Probability of Death, severe, no treatment` = death_notreat_severe
     ) %>% 
     mutate(
       across(

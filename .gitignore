@@ -11,6 +11,7 @@ draft
 .rds
 gh-pages
 gh-results
+gh-fits
 orderly.sqlite
 index_files
 src/under_reporting_investigation
