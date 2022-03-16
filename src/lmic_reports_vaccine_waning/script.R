@@ -28,7 +28,7 @@ if(packageVersion("nimue") < version_min) {
 ## -----------------------------------------------------------------------------
 ## Step 1: Incoming Date
 ## -----------------------------------------------------------------------------
-system(paste0("echo Vaccine Reports for  ",iso3c, ". Short Run = ", short_run))
+system(paste0("echo Vaccine Reports for  ",iso3c))
 if(!identical(seed, FALSE)){
   set.seed(seed)
 }
@@ -42,7 +42,6 @@ if(!identical(seed, FALSE)){
 # format user provided arguments correctly
 date <- as.Date(date)
 date_0 <- date
-short_run <- as.logical(short_run)
 
 ## Get precombined data using worldometer if JHU is too erratic
 ecdc <- readRDS("combined_data.Rds") %>%
@@ -139,30 +138,12 @@ if(sum(ecdc_df$deaths) > 0) {
     R0 * (2 * plogis(-(R0_change-1) * -Meff))
   }
 
-  if(short_run) {
-    n_particles <- 2
-    replicates <- 2
-    n_mcmc <- 20
-    n_chains <- 1
-    grid_spread <- 2
-    sleep <- 2
-    start_adaptation <- 10
-  } else {
-    n_particles <- 50
-    replicates <- 50
-    n_mcmc <- as.integer(n_mcmc)
-    n_chains <- 1
-    grid_spread <- 11
-    sleep <- 120
-    start_adaptation <- 1000
-  }
-
-  # Currently not using parallel
-  # can't figure out why it subthreads now...
-  if (n_chains > 1) {
-    options("future.rng.onMisuse" = "ignore")
-    suppressWarnings(future::plan(future::multisession()))
-  }
+  replicates <- 50
+  n_mcmc <- as.integer(n_mcmc)
+  n_chains <- as.integer(n_chains)
+  n_burnin <- as.integer(n_burnin)
+  grid_spread <- 11
+  sleep <- 120
 
   # Defualt edges
   R0_min <- 1.6
@@ -171,10 +152,6 @@ if(sum(ecdc_df$deaths) > 0) {
   Meff_max <- 10
   Meff_pl_min <- 0
   Meff_pl_max <- 1
-  Rt_shift_min <- 0
-  Rt_shift_max <- 0.001
-  Rt_shift_scale_min <- 0.1
-  Rt_shift_scale_max <- 10
 
 
   last_start_date <- as.Date(null_na(min_death_date))-10
@@ -194,9 +171,6 @@ if(sum(ecdc_df$deaths) > 0) {
     date_start <- pars_former$start_date
     Meff_start <- pars_former$Meff
     Meff_pl_start <- pars_former$Meff_pl
-    Rt_shift_start <- pars_former$Rt_shift
-    Rt_shift_duration <- pars_former$Rt_shift_duration
-    Rt_shift_scale_start <- pars_former$Rt_shift_scale
     Rt_rw_duration <- pars_former$Rt_rw_duration
     date_Meff_change <- pars_former$date_Meff_change
 
@@ -246,8 +220,6 @@ if(sum(ecdc_df$deaths) > 0) {
     Meff_start <- out_det$scan_results$z[pos[3]]
     Meff_pl_start <- 0.2
     Rt_shift_start <- 0.5
-    Rt_shift_scale_start <- 2
-    Rt_shift_duration <- 30
     Rt_rw_duration <- 14
 
     if (is.null(interventions[[iso3c]]$C)) {
@@ -259,15 +231,10 @@ if(sum(ecdc_df$deaths) > 0) {
     }
   }
 
-
-
-
   R0_start <- min(max(R0_start, R0_min*1.02), R0_max*0.98)
   date_start <- min(max(as.Date(date_start), as.Date(first_start_date)+1), as.Date(last_start_date)-1)
   Meff_start <- min(max(Meff_start, Meff_min), Meff_max)
   Meff_pl_start <- min(max(Meff_pl_start, Meff_pl_min), Meff_pl_max)
-  Rt_shift_start <- min(max(Rt_shift_start, Rt_shift_min), Rt_shift_max)
-  Rt_shift_scale_start <- min(max(Rt_shift_scale_start, Rt_shift_scale_min), Rt_shift_scale_max)
 
   # either set to end if mobility dictates
   if(is.null(date_Meff_change) || is.na(date_Meff_change)) {
@@ -325,39 +292,22 @@ if(sum(ecdc_df$deaths) > 0) {
 
   # PMCMC Parameters
   pars_init <- list(
-    list('start_date' = date_start-1,
-         'R0' = R0_start*0.99,
-         'Meff' = Meff_start,
-         'Meff_pl' = Meff_pl_start,
-         "Rt_shift" = 0,
-         "Rt_shift_scale" = Rt_shift_scale_start),
-    list('start_date' = date_start,
-         'R0' = R0_start,
-         'Meff' = Meff_start,
-         'Meff_pl' = Meff_pl_start,
-         "Rt_shift" = 0,
-         "Rt_shift_scale" = Rt_shift_scale_start),
-    list('start_date' = date_start+1,
-         'R0' = R0_start*1.02,
-         'Meff' = Meff_start,
-         'Meff_pl' = Meff_pl_start,
-         "Rt_shift" = 0,
-         "Rt_shift_scale" = Rt_shift_scale_start))
+    'start_date' = date_start,
+    'R0' = R0_start,
+    'Meff' = Meff_start,
+    'Meff_pl' = Meff_pl_start)
   pars_min = list('start_date' = first_start_date,
                   'R0' = R0_min,
                   'Meff' = Meff_min,
-                  'Meff_pl' = Meff_pl_min,
-                  "Rt_shift" = Rt_shift_min,
-                  "Rt_shift_scale" = Rt_shift_scale_min)
+                  'Meff_pl' = Meff_pl_min)
   pars_max = list('start_date' = last_start_date,
                   'R0' = R0_max,
                   'Meff' = Meff_max,
-                  'Meff_pl' = Meff_pl_max,
-                  "Rt_shift" = Rt_shift_max,
-                  "Rt_shift_scale" = Rt_shift_scale_max)
+                  'Meff_pl' = Meff_pl_max)
   pars_discrete = list('start_date' = TRUE, 'R0' = FALSE, 'Meff' = FALSE,
-                       'Meff_pl' = FALSE, "Rt_shift" = FALSE, "Rt_shift_scale" = FALSE)
+                       'Meff_pl' = FALSE)
   pars_obs = list(phi_cases = 1, k_cases = 2, phi_death = 1, k_death = 2, exp_noise = 1e6)
+
 
   # here use lower tolerance for countries that have had a really long time without deaths
   if(iso3c %in% c("NZL", "BRN")) {
@@ -366,69 +316,17 @@ if(sum(ecdc_df$deaths) > 0) {
   }
 
   # add in the spline list
-  pars_init <- lapply(pars_init, append, pars_init_rw)
+  pars_init <- append(pars_init, pars_init_rw)
   pars_min <- append(pars_min, pars_min_rw)
   pars_max <- append(pars_max, pars_max_rw)
   pars_discrete <- append(pars_discrete, pars_discrete_rw)
-
-  # Covriance Matrix
-  proposal_kernel <- diag(length(names(pars_init[[1]]))) * 0.3
-  rownames(proposal_kernel) <- colnames(proposal_kernel) <- names(pars_init[[1]])
-  proposal_kernel["start_date", "start_date"] <- 1.5
-
-  # use the old covar matrix and scaling factor if available
-  if("covariance_matrix" %in% names(pars_former)) {
-
-    # old proposal kernel
-    proposal_kernel_proposed <- pars_former$covariance_matrix[[1]]
-
-    # check if it needs to be expanded
-    if(length(grep("Rt_rw", colnames(proposal_kernel_proposed))) == rw_needed) {
-
-      proposal_kernel <- proposal_kernel_proposed
-
-    } else if(length(grep("Rt_rw", colnames(proposal_kernel_proposed))) < rw_needed) {
-
-      add_similar_cr <- function(x) {
-        x <- cbind(rbind(x, 0), 0)
-        rw_num <- colnames(x)[nrow(x)-1]
-        new_rw <- paste0("Rt_rw_", as.numeric(gsub("(.*_)(\\d*)$", "\\2", rw_num)) + 1)
-        colnames(x)[ncol(x)] <- rownames(x)[nrow(x)] <- new_rw
-        x[nrow(x),] <- x[nrow(x) - 1,]
-        x[,ncol(x)] <- x[,ncol(x) - 1]
-        return(x)
-      }
-
-      # add as needed
-      for(i in seq_len(rw_needed - length(grep("Rt_rw", colnames(proposal_kernel_proposed))))) {
-        proposal_kernel_proposed <- add_similar_cr(proposal_kernel_proposed)
-      }
-      proposal_kernel <- proposal_kernel_proposed
-    } else {
-
-      # remove as needed
-      for(i in seq_len(length(grep("Rt_rw", colnames(proposal_kernel_proposed))) - rw_needed)) {
-        proposal_kernel_proposed <- proposal_kernel_proposed[-nrow(proposal_kernel_proposed),-ncol(proposal_kernel_proposed)]
-      }
-      proposal_kernel <- proposal_kernel_proposed
-
-    }
-  }
-
-  scaling_factor <- 1
-  if("scaling_factor" %in% names(pars_former)) {
-    scaling_factor <- pars_former$scaling_factor
-  }
-
 
   # MCMC Functions - Prior and Likelihood Calculation
   logprior <- function(pars){
     ret <- dunif(x = pars[["start_date"]], min = -55, max = -10, log = TRUE) +
       dnorm(x = pars[["R0"]], mean = 3, sd = 1, log = TRUE) +
       dnorm(x = pars[["Meff"]], mean = 3, sd = 3, log = TRUE) +
-      dunif(x = pars[["Meff_pl"]], min = 0, max = 1, log = TRUE) +
-      dnorm(x = pars[["Rt_shift"]], mean = 0, sd = 1, log = TRUE) +
-      dunif(x = pars[["Rt_shift_scale"]], min = 0.1, max = 10, log = TRUE)
+      dunif(x = pars[["Meff_pl"]], min = 0, max = 1, log = TRUE)
 
     # get rw spline parameters
     if(any(grepl("Rt_rw", names(pars)))) {
@@ -482,6 +380,10 @@ if(sum(ecdc_df$deaths) > 0) {
   ## Step 2f: Vacccine Inputs
   ## -----------------------------------------------------------------------------
 
+  ## -----------------------------------------------------------------------------
+  ## Step 2f: Vacccine Inputs
+  ## -----------------------------------------------------------------------------
+
   #load vaccine inputs
   vacc_inputs <- get_vaccine_inputs(iso3c)
 
@@ -500,7 +402,6 @@ if(sum(ecdc_df$deaths) > 0) {
   ## -----------------------------------------------------------------------------
 
   dur_R <- 365*(3/2)
-
 
   #open data from covariants
   variant_characteristics <- readRDS("variant_characteristics.rds")[[iso3c]]
@@ -524,15 +425,15 @@ if(sum(ecdc_df$deaths) > 0) {
   prob_hosp_multiplier <- variant_changes_over_time(variant_characteristics,
                                                     "prob_hosp_multiplier")
   prob_severe_multiplier <- variant_changes_over_time(variant_characteristics,
-                                                    "prob_severe_multiplier")
+                                                      "prob_severe_multiplier")
   dur_ICU <- variant_changes_over_time(variant_characteristics,
-                                                      "dur_ICU")
+                                       "dur_ICU")
   dur_ICU_death <- variant_changes_over_time(variant_characteristics,
-                                                      "dur_ICU_death")
+                                             "dur_ICU_death")
   dur_hosp <- variant_changes_over_time(variant_characteristics,
-                                                      "dur_hosp")
+                                        "dur_hosp")
   dur_hosp_death <- variant_changes_over_time(variant_characteristics,
-                                                      "dur_hosp_death")
+                                              "dur_hosp_death")
   pars_obs$variant_adjust <- list(
     gamma_R = dur_R_change$var,
     date_dur_R_change = dur_R_change$dates,
@@ -560,9 +461,17 @@ if(sum(ecdc_df$deaths) > 0) {
   ## Case Fitting
   ## -----------------------------------------------------------------------------
 
-  pars_obs$cases_fitting <- TRUE
+  pars_obs$cases_fitting <- FALSE#TRUE
   pars_obs$cases_days <- 21
   pars_obs$cases_reporting <- 21
+
+  #check if possible or if no cases for the reporting section
+  if(nrow(data) < pars_obs$cases_days + pars_obs$cases_reporting |
+      all(data[(nrow(data) -  pars_obs$cases_days):(nrow(data) -  pars_obs$cases_days - pars_obs$cases_reporting), "cases"] == 0)) {
+    pars_obs$cases_fitting <- FALSE
+    pars_obs$cases_days <- NULL
+    pars_obs$cases_reporting <- NULL
+  }
 
   ## -----------------------------------------------------------------------------
   ## Step 2g: PMCMC run
@@ -571,14 +480,28 @@ if(sum(ecdc_df$deaths) > 0) {
   # sleep so parallel is chill
   Sys.sleep(time = runif(1, 0, sleep))
 
-  out <- squire::pmcmc(data = data,
-                       gibbs_sampling = FALSE,
-                       gibbs_days = NULL,
+  #use parallel
+  cores <- parallel::detectCores()
+  cores <- min(parallel::detectCores(), n_chains)
+  cl <- parallel::makeCluster(cores)
+  drjacoby_list <- list(
+    rungs = 15,#10,#5,
+    alpha = 1,
+    cluster = cl
+  )
+
+  #low tolerance to make up for slow drjacoby
+  pars_obs$atol <- 1e-1
+  pars_obs$rtol <- 1e-1
+
+  ll <- squire:::convert_log_likelihood_func_for_drjacoby(squire.page::calc_loglikelihood_variant)
+
+  out <- squire::drjacoby_mcmc(data = data,
                        n_mcmc = n_mcmc,
-                       log_prior = logprior,
+                       log_prior = squire:::convert_log_prior_func_for_drjacoby(logprior),
                        n_particles = 1,
                        steps_per_day = 1,
-                       log_likelihood = calc_loglikelihood_variant,
+                       log_likelihood = ll,
                        squire_model = squire_model,
                        output_proposals = FALSE,
                        n_chains = n_chains,
@@ -587,8 +510,6 @@ if(sum(ecdc_df$deaths) > 0) {
                        pars_min = pars_min,
                        pars_max = pars_max,
                        pars_discrete = pars_discrete,
-                       proposal_kernel = proposal_kernel,
-                       scaling_factor = scaling_factor,
                        country = country,
                        R0_change = R0_change,
                        date_R0_change = date_R0_change,
@@ -597,11 +518,9 @@ if(sum(ecdc_df$deaths) > 0) {
                          scale_Meff_pl = TRUE,
                          Rt_shift_duration = 7,
                          Rt_rw_duration = Rt_rw_duration),
-                       burnin = ceiling(n_mcmc/10),
+                       burnin = n_burnin,
                        seeding_cases = 5,
                        replicates = replicates,
-                       required_acceptance_ratio = 0.20,
-                       start_adaptation = start_adaptation,
                        baseline_hosp_bed_capacity = hosp_beds,
                        baseline_ICU_bed_capacity = icu_beds,
                        init = init,
@@ -618,16 +537,24 @@ if(sum(ecdc_df$deaths) > 0) {
                        vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat,
                        dur_R = dur_R,
                        dur_V = vacc_inputs$dur_V,
-                       dur_vaccine_delay = vacc_inputs$dur_vaccine_delay)
+                       dur_vaccine_delay = vacc_inputs$dur_vaccine_delay,
+                       drjacoby_list = drjacoby_list
+                       )
+  #switch off parallel
+  parallel::stopCluster(cl)
 
   #set the class to be lmic_nimue_simulation and inherit from nimue_simulation
   class(out) <- c("lmic_nimue_simulation", "nimue_simulation")
+  #fix the replicate start date format
+  out$replicate_parameters$start_date <- squire:::numeric_to_start_date(
+    out$pmcmc_results$inputs$data$date[1], out$replicate_parameters$start_date,
+    FALSE
+    )
 
   if(pars_obs$cases_fitting){
     #create a tail cases fitting plot so we can check later
     infection_adjustment_plot <-
-      compare_adjustment_plot(out, pars_obs$cases_days,
-                              pars_obs$cases_reporting)
+      compare_adjustment_plot(out)
   }
 
 
@@ -673,8 +600,8 @@ if(sum(ecdc_df$deaths) > 0) {
   #add vaccination strategy to interventions
   out$interventions$vaccine_strategy <- vacc_inputs$strategy
 
-  df_new_covidsim <- prepare_input_json_df(out, ox_interventions = readRDS("oxford_grt.rds"))
   if(document){
+    df_new_covidsim <- prepare_input_json_df(out, ox_interventions = readRDS("oxford_grt.rds"))
     writeLines(jsonlite::toJSON(df_new_covidsim, pretty = TRUE), "input_params.json")
   }
 
@@ -742,21 +669,19 @@ if(sum(ecdc_df$deaths) > 0) {
       bottom <- cowplot::plot_grid(
         intervention + scale_x_date(date_breaks = "1 month", date_labels = "%b" ,limits = date_range),
         d + scale_x_date(date_breaks = "1 month", date_labels = "%b" ,limits = date_range),
-        cas_plot  + scale_x_date(date_breaks = "1 month", date_labels = "%b" ,limits = date_range),
-        rtp$plot + scale_x_date(date_breaks = "1 month", date_labels = "%b" ,limits = date_range),
+        drjacoby::plot_mc_acceptance(out$pmcmc_results$drjacoby_out),
         infection_adjustment_plot,
         ncol=1,
-        rel_heights = c(0.4,0.6,0.6, 0.4, 0.4))
+        rel_heights = c(0.4,0.6, 0.6, 0.4))
     ))
   } else {
     suppressMessages(suppressWarnings(
       bottom <- cowplot::plot_grid(
         intervention + scale_x_date(date_breaks = "1 month", date_labels = "%b" ,limits = date_range),
         d + scale_x_date(date_breaks = "1 month", date_labels = "%b" ,limits = date_range),
-        cas_plot  + scale_x_date(date_breaks = "1 month", date_labels = "%b" ,limits = date_range),
-        rtp$plot + scale_x_date(date_breaks = "1 month", date_labels = "%b" ,limits = date_range),
+        drjacoby::plot_mc_acceptance(out$pmcmc_results$drjacoby_out),
         ncol=1,
-        rel_heights = c(0.4,0.6,0.6, 0.4))
+        rel_heights = c(0.4,0.6,0.6))
     ))
 
   }
@@ -773,16 +698,9 @@ if(sum(ecdc_df$deaths) > 0) {
 
   ## Save the grid out object
 
-  # remove states to keep object memory save down
-  if("chains" %in% names(out$pmcmc_results)) {
-  for(i in seq_along(out$pmcmc_results$chains)) {
-    out$pmcmc_results$chains[[i]]$states <- NULL
-    out$pmcmc_results$chains[[i]]$covariance_matrix <- tail(out$pmcmc_results$chains$chain1$covariance_matrix,1)
-  }
-  } else {
-    out$pmcmc_results$states <- NULL
-    out$pmcmc_results$covariance_matrix <- tail(out$pmcmc_results$covariance_matrix, 1)
-  }
+  #remove all dr jacoby data, no reason we should need it
+
+  out$pmcmc_results$drjacoby_out <- NULL
 
   ## now let's trim the out for saving really small
   output_temp <- out$output
@@ -791,6 +709,7 @@ if(sum(ecdc_df$deaths) > 0) {
   #reattach output
   out$output <- output_temp
   rm(output_temp)
+
 
   if(document){
     #the following is only relevant if producing documentation

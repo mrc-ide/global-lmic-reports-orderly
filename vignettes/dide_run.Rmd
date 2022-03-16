@@ -74,7 +74,7 @@ we running, and also whether we are doing a `short_run`. The `short_run` argumen
 dictates whether a small number of trees are used in the BRT.
 
 ```{r, eval = FALSE}
-date <- "2022-01-20" #"2021-12-08"
+date <- "2022-01-31" #"2021-12-08"
 
 # are we doing just a short run. If so only 20 mcmc iterations are used
 # and only 2 draws from the posterior. Set this to TRUE to do a quick test 
@@ -152,8 +152,9 @@ if(!excess_mortality){
   task <- "lmic_reports_vaccine_waning"
   parameters <- list(
     date = date,
-    short_run = short_run,
-    n_mcmc =  20000,
+    n_mcmc =  100,
+    n_chains = 3,
+    n_burnin = 100,
     #Should we build the require documentation+data for the fit,
     #useful if just running to hone in chains (still builds fitting.pdf+grid_out.Rds)
     document = TRUE
@@ -163,7 +164,7 @@ if(!excess_mortality){
   parameters <- list(
     replicates = 50,
     n_mcmc = 1000,
-    n_chains = 6,
+    n_chains = 3,
     n_burnin = 1000,
     date = date
   )
@@ -174,7 +175,7 @@ iso3cs <- grep('^[A-Z]{3}\\s*', readLines(file.path(here::here(), "countries")),
 
 # make the orderly bundles to be run on the cluster
 path_bundles <- file.path(
-  "Q:/COVID-Fitting/glodide/analysis/data",
+  "Q:/COVID-Fitting/help/glodide/analysis/data",
           paste0(
             "raw",
             ifelse(excess_mortality, "_excess", ""),
@@ -356,7 +357,7 @@ This script pushes the `gh-fits` changes to GitHub.
 Either execute this from the terminal or you can run it using the bash code chunk below (though it doesn't produce output until after it has finished at the moment, which may be annoying so you can see the output). 
 
 ```{bash}
-./scripts/update_github_fits.sh 2022-01-20
+./scripts/update_github_fits.sh 2022-01-31
 ```
 
 The next steps should only be followed if producing documented LMIC reports and
@@ -375,7 +376,7 @@ Next we run the collation step, where the necessary outputs from the model fits 
 
 Either execute this from the terminal or you can run it using the bash code chunk below (though it doesn't produce output until after it has finished at the moment, which may be annoying so you can see the output). 
 ```{bash}
-./run/run_collate_vaccine_waning.sh 2022-01-20
+./run/run_collate_vaccine_waning.sh 2022-01-31
 ```
 
 ## 4. Push the results to the repository 

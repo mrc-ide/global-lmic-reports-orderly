@@ -49,6 +49,7 @@ summarise_rt_futures <- function(Rt_futures){
            select(!temp))
 }
 
+
 variant_changes_over_time <- function(variant_characteristics,
                                       var){
 
@@ -61,7 +62,7 @@ variant_changes_over_time <- function(variant_characteristics,
   )
   variable <- c(seq(variant_characteristics$Wild[[var]],
                     variant_characteristics$Delta[[var]],
-                                length.out = length(dates)+1))
+                    length.out = length(dates)+1))
   #omicron
   dates_omicron <- seq(
     variant_characteristics$Omicron$start_date,
@@ -92,16 +93,16 @@ variant_immune_escape <- function(variant_characteristics, dur_R){
       variant_characteristics$Delta$shift_duration
   ), dur_R)
   date_dur_R_change_d <- c(variant_characteristics$Delta$start_date,
-                         variant_characteristics$Delta$start_date +
-                           variant_characteristics$Delta$shift_duration)
+                           variant_characteristics$Delta$start_date +
+                             variant_characteristics$Delta$shift_duration)
   #omicron
   dur_R_o <- c( 1 / (
     (variant_characteristics$Omicron$shift_duration / dur_R - log(1 - variant_characteristics$Omicron$immune_escape)) /
       variant_characteristics$Omicron$shift_duration
   ), dur_R)
   date_dur_R_change_o <- c(variant_characteristics$Omicron$start_date,
-                         variant_characteristics$Omicron$start_date +
-                           variant_characteristics$Omicron$shift_duration)
+                           variant_characteristics$Omicron$start_date +
+                             variant_characteristics$Omicron$shift_duration)
 
   #check if we need to drop any due to overlap
   return(
@@ -135,8 +136,8 @@ vaccine_eff_over_time <- function(vacc_inputs, variant_characteristics){
       variant_characteristics$Delta$shift_duration~
       1,
     TRUE ~ as.numeric((vacc_inputs$date_vaccine_change -
-      variant_characteristics$Delta$start_date)/
-      variant_characteristics$Delta$shift_duration)
+                         variant_characteristics$Delta$start_date)/
+                        variant_characteristics$Delta$shift_duration)
   )
   omicron_shift <- case_when(
     vacc_inputs$date_vaccine_change < variant_characteristics$Omicron$start_date ~
@@ -150,9 +151,9 @@ vaccine_eff_over_time <- function(vacc_inputs, variant_characteristics){
   )
   #calculate variant adjusted effiacis over time
   vaccine_efficacy_infection <- ((variant_characteristics$Wild$ve_infection[1] * (1 - delta_shift) +
-    variant_characteristics$Delta$ve_infection[1] * delta_shift) *
-    (1 - omicron_shift) +
-    variant_characteristics$Omicron$ve_infection[1] * omicron_shift) *
+                                    variant_characteristics$Delta$ve_infection[1] * delta_shift) *
+                                   (1 - omicron_shift) +
+                                   variant_characteristics$Omicron$ve_infection[1] * omicron_shift) *
     (1 - vacc_inputs$dose_ratio) +
     ((variant_characteristics$Wild$ve_infection[2] * (1 - delta_shift) +
         variant_characteristics$Delta$ve_infection[2] * delta_shift) *
@@ -169,9 +170,9 @@ vaccine_eff_over_time <- function(vacc_inputs, variant_characteristics){
     (1- variant_characteristics$Omicron$ve_infection)
 
   vaccine_efficacy_disease <- ((variant_characteristics$Wild$ve_disease[1] * (1 - delta_shift) +
-                                    variant_characteristics$Delta$ve_disease[1] * delta_shift) *
-                                   (1 - omicron_shift) +
-                                   variant_characteristics$Omicron$ve_disease[1] * omicron_shift) *
+                                  variant_characteristics$Delta$ve_disease[1] * delta_shift) *
+                                 (1 - omicron_shift) +
+                                 variant_characteristics$Omicron$ve_disease[1] * omicron_shift) *
     (1 - vacc_inputs$dose_ratio) +
     ((variant_characteristics$Wild$ve_disease[2] * (1 - delta_shift) +
         variant_characteristics$Delta$ve_disease[2] * delta_shift) *
@@ -191,10 +192,11 @@ vaccine_eff_over_time <- function(vacc_inputs, variant_characteristics){
                                       17),
     rel_infectiousness_vaccinated = rep(
       variant_characteristics$Wild$ve_transmission, 17
-      ),
+    ),
     vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat,
     dur_V = vacc_inputs$dur_V,
     dur_vaccine_delay = vacc_inputs$dur_vaccine_delay,
     strategy = vacc_inputs$strategy
   ))
 }
+

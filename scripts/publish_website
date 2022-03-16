@@ -29,7 +29,7 @@ fi
 
 git -C ${DOCS_DIR} add data/
 git -C ${DOCS_DIR} commit --no-verify -m "Add data for version ${VERSION}"
-git -C ${DOCS_DIR} push --force -u origin master
+git -C ${DOCS_DIR} push --force -u origin main
 git -C ${DOCS_DIR} add .
 git -C ${DOCS_DIR} commit --no-verify -m "Update pages for version ${VERSION}"
-git -C ${DOCS_DIR} push --force -u origin master
+git -C ${DOCS_DIR} push --force -u origin main
