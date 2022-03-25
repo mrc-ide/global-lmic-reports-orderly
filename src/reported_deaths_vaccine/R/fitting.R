@@ -98,36 +98,16 @@ fit_spline_rt <- function(data,
   # PMCMC Parameters
   pars_init = list('start_date' = date_start,
                    'R0' = R0_start,
-                   'ves' = 0.5,
-                   'delta_dur_R' =
-                     1 / (
-                       (delta_characteristics$shift_duration / dur_R -
-                          log(1 - delta_characteristics$immune_escape)) /
-                         delta_characteristics$shift_duration
-                     )
-                     )
+                   'ves' = 0.5)
   pars_min = list('start_date' = first_start_date,
                   'R0' = R0_min,
-                  'ves' = 0,
-                  'delta_dur_R' =
-                    1 / (
-                      (delta_characteristics$shift_duration / dur_R -
-                         log(1 - 0.50)) /
-                        delta_characteristics$shift_duration
-                    )) #about 50%
+                  'ves' = 0) #about 50%
   pars_max = list('start_date' = last_start_date,
                   'R0' = R0_max,
-                  'ves' = 1,
-                  'delta_dur_R' =
-                    1 / (
-                      (delta_characteristics$shift_duration / dur_R -
-                         log(1 - 0.20)) /
-                        delta_characteristics$shift_duration
-                    )
-                    ) #about 20%
+                  'ves' = 1) #about 20%
   pars_discrete = list('start_date' = TRUE, 'R0' = FALSE,
                        ves = FALSE, delta_dur_R = FALSE)
-  pars_obs = list(phi_cases = 1, k_cases = 2, phi_death = 1, k_death = 7, exp_noise = 1e07,
+  pars_obs = list(phi_cases = 1, k_cases = 2, phi_death = 1, k_death = 2, exp_noise = 1e07,
                   k_death_cumulative = 40)
   #assign this way so they keep NULL if NULL
   pars_obs$prob_hosp_multiplier <- delta_characteristics$prob_hosp_multiplier
@@ -253,7 +233,7 @@ fit_spline_rt <- function(data,
   res <- pmcmc_excess(proposal_kernel = NULL,
                       use_drjacoby = TRUE,
                       drjacoby_list = list(
-                        rungs = 5,
+                        rungs = 15,
                         alpha = 5,
                         cluster = cl
                       ),

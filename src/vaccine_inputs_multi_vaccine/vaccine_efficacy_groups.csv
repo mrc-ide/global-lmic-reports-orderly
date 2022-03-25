@@ -1,0 +1,37 @@
+vaccine_type,dose,endpoint,variant,efficacy
+mRNA,Partial,Infection,Wild,0.63
+mRNA,Full,Infection,Wild,0.86
+mRNA,Partial,Hospitalisation,Wild,0.83
+mRNA,Full,Hospitalisation,Wild,0.95
+mRNA,Partial,Infection,Delta,0.36
+mRNA,Full,Infection,Delta,0.88
+mRNA,Partial,Hospitalisation,Delta,0.83
+mRNA,Full,Hospitalisation,Delta,0.93
+Johnson&Johnson,Full,Infection,Wild,0.66
+Johnson&Johnson,Full,Hospitalisation,Wild,0.83
+Johnson&Johnson,Full,Infection,Delta,0.5
+Johnson&Johnson,Full,Hospitalisation,Delta,0.74
+Adenovirus,Partial,Infection,Wild,0.64
+Adenovirus,Full,Infection,Wild,0.77
+Adenovirus,Partial,Hospitalisation,Wild,0.79
+Adenovirus,Full,Hospitalisation,Wild,0.94
+Adenovirus,Partial,Infection,Delta,0.3
+Adenovirus,Full,Infection,Delta,0.67
+Adenovirus,Partial,Hospitalisation,Delta,0.71
+Adenovirus,Full,Hospitalisation,Delta,0.92
+Whole Virus,Partial,Infection,Wild,0.5
+Whole Virus,Full,Infection,Wild,0.67
+Whole Virus,Partial,Hospitalisation,Wild,0.5
+Whole Virus,Full,Hospitalisation,Wild,0.79
+Whole Virus,Partial,Infection,Delta,0.1
+Whole Virus,Full,Infection,Delta,0.6
+Whole Virus,Partial,Hospitalisation,Delta,0.14
+Whole Virus,Full,Hospitalisation,Delta,0.7
+Subunit,Partial,Infection,Wild,0.54
+Subunit,Full,Infection,Wild,0.86
+Subunit,Partial,Hospitalisation,Wild,0.83
+Subunit,Full,Hospitalisation,Wild,0.96
+Subunit,Partial,Infection,Delta,0.3
+Subunit,Full,Infection,Delta,0.71
+Subunit,Partial,Hospitalisation,Delta,0.68
+Subunit,Full,Hospitalisation,Delta,0.86

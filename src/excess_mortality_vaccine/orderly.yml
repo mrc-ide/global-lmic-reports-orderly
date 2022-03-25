@@ -172,10 +172,10 @@ depends:
     id: latest(parameter:date == date)
     use:
       owid.rds: owid.rds
-  vaccine_inputs_2:
+  vaccine_inputs_multi_vaccine:
     id: latest(parameter:date == date)
     use:
-      vacc_inputs.rds: vacc_inputs.rds
+      vacc_inputs.rds: vacc_inputs_multi.rds
   economist:
     id: latest(parameter:date == date)
     use:

@@ -1,5 +1,6 @@
 #this repo
 repo <- here::here()
+excess_mortality <- FALSE
 #my one drive folder
 destination <- file.path(
   repo, "gh-fits",
@@ -8,6 +9,13 @@ destination <- file.path(
 #get the fits
 message("Gathering Fits")
 fits <- squire.page::get_fits(repo = repo, date = date, iso3cs = NULL, excess = excess_mortality)
+
+#optionally use task ids
+# library(stringr)
+# ids <- map_chr(str_split(tasks, "[\\\\.]"), ~tail(.x,2)[1])
+#fits <- map(ids, ~readRDS(file.path("archive", task, .x, "res.Rds")))
+# names(fits) <- names(bundles)
+
 
 #upload to folder replacing existing files
 dir.create(destination, recursive = TRUE, showWarnings = FALSE)

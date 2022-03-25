@@ -117,11 +117,12 @@ if(nrow(data) == 0 | sum(data$deaths) == 0){
   )
 
   log_plots <- ggplot(data = drjacoby_out$output %>%
-           pivot_longer(cols = all_of(parameters),
-                        names_to = "parameter",
-                        values_to = "value") %>%
-             filter(loglikelihood != -.Machine$double.xmax), aes(x = value, y = logprior + loglikelihood,
-                                                  colour = as.character(chain))) +
+                        pivot_longer(cols = all_of(parameters),
+                                     names_to = "parameter",
+                                     values_to = "value") %>%
+                        filter(loglikelihood != -.Machine$double.xmax) %>%
+                        filter(parameter %in% c("ves", "delta_dur_R")), aes(x = value, y = logprior + loglikelihood,
+                                                                            colour = as.character(chain))) +
     geom_point(alpha = 0.25) +
     facet_wrap(vars(parameter), scales = "free_x") +
     theme_pubclean() +

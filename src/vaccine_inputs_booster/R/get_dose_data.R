@@ -125,18 +125,34 @@ get_dose_ts_owid <- function(owid, iso3cs){
     select(iso3c, date, first_dose_cum, second_dose_cum, booster_dose_cum) %>%
     filter(!is.na(first_dose_cum) | !is.na(second_dose_cum) | !is.na(booster_dose_cum)) %>%
     mutate(imputed = FALSE) %>%
-    #extend datas into past
+    #add the first date based on the smoothed new vaccination rate
+    left_join(
+      owid %>%
+        select(iso3c, date, new_vaccinations_smoothed) %>%
+        arrange(date) %>%
+        filter(!is.na(new_vaccinations_smoothed)) %>%
+        filter(new_vaccinations_smoothed > 0) %>%
+        summarise(start_date = max(min(date), as_date("2020-12-08")))
+    ) %>%
+    #drop dates past this date
+    filter(date >= start_date) %>%
+    #extend datas into past using that start date
     complete(date = seq(
-      max(min(date) - min(30, suppressWarnings(min(first_dose_cum, na.rm = TRUE))), min(as_date("2020-12-08"), min(date))),
+      start_date[1],
       max(date),
       1
     )) %>%
+    select(!start_date) %>%
+    # complete(date = seq(
+    #   max(min(date) - min(30, suppressWarnings(min(first_dose_cum, na.rm = TRUE))), min(as_date("2020-12-08"), start_date)),
+    #   max(date),
+    #   1
+    # )) %>%
     arrange(iso3c, date) %>%
     mutate(
-      across(
-        c(first_dose_cum, second_dose_cum, booster_dose_cum),
-        ~fill_missing_doses(.x)
-      ),
+      first_dose_cum = fill_missing_doses(first_dose_cum, "first"),
+      second_dose_cum = fill_missing_doses(second_dose_cum, "second"),
+      booster_dose_cum = fill_missing_doses(booster_dose_cum, "booster"),
       #ensure there are atleast 30 days between doses then a 15 day buildup
       second_dose_cum = linearly_interpolate(case_when(
         seq_along(second_dose_cum) == length(second_dose_cum) ~ second_dose_cum, #catch so we keep the final value
@@ -173,16 +189,58 @@ get_dose_ts_owid <- function(owid, iso3cs){
     stop("Consistency adjustments have failed!")
   }
 
-  cumulative_data %>%
+  daily_data <- cumulative_data %>%
     mutate(
       first_dose_per_day  = diff(c(0, first_dose_cum)),
       second_dose_per_day  = diff(c(0, second_dose_cum)),
       booster_dose_per_day  = diff(c(0, booster_dose_cum)),
-      imputed = if_else(is.na(imputed), TRUE, FALSE)
+      imputed = if_else(is.na(imputed), TRUE, imputed)
     ) %>%
-    select(iso3c, date, first_dose_per_day, second_dose_per_day, booster_dose_per_day, imputed) %>%
-    #remove leading zeros
-    filter(cumsum(first_dose_per_day) > 0)
+    select(iso3c, date, first_dose_per_day, second_dose_per_day, booster_dose_per_day, imputed)
+
+  #now we use this data to split the smooth daily dose data into the dose levels
+  daily_data %>%
+    full_join(
+      owid %>%
+        select(date, iso3c, new_vaccinations_smoothed) %>%
+        filter(!is.na(new_vaccinations_smoothed))
+    ) %>%
+    arrange(iso3c, date) %>%
+    filter(date >= "2020-12-08") %>% #only keep countries with some non-na data
+    filter(any(!is.na(new_vaccinations_smoothed)) | any(!is.na(first_dose_per_day))) %>%
+    #interpolate the smoothed vaccination rate
+    mutate(
+      new_vaccinations_smoothed = if_else(
+        date == min(date),
+        0,
+        new_vaccinations_smoothed
+      ),
+      new_vaccinations_smoothed = linearly_interpolate(new_vaccinations_smoothed)
+    ) %>% #split up first/second/booster based on our calculated values
+  mutate(
+    temp_sum = first_dose_per_day + second_dose_per_day + booster_dose_per_day,
+    across(
+      c(first_dose_per_day, second_dose_per_day, booster_dose_per_day),
+      ~if_else(temp_sum == 0,
+               0,
+               new_vaccinations_smoothed * .x /(temp_sum)
+      )
+    ), #need to set values into the future, we'll just assume that the proportions remain the same
+    #assume all na are trailing na
+    across(
+      c(first_dose_per_day, second_dose_per_day, booster_dose_per_day),
+      ~if_else(is.na(.x),
+               new_vaccinations_smoothed * tail(na.omit(.x), 1)/tail(na.omit(temp_sum), 1),
+               .x
+      )
+    ),
+    imputed = if_else(is.na(imputed), TRUE, imputed)
+  ) %>%
+  select(iso3c, date, first_dose_per_day, second_dose_per_day, booster_dose_per_day, imputed) %>%
+  #remove leading zeros
+  filter(cumsum(first_dose_per_day) > 0)
+
+  #probably needs some smoothing at some point since we no longer use the OWID smoothed data
 }
 get_dose_ts_who <- function(who_vacc, who_vacc_meta, iso3cs){
   #have to impute a time series, only use if owid not available
@@ -432,7 +490,7 @@ test_for_errors_in_dose_ratio <- function(df, dose_ratio){
     pull(iso3c) %>%
     unique()
 }
-fill_missing_doses <- function(vector){
+fill_missing_doses <- function(vector, dose_type = "first"){
   #new method to fill missing, less need for consistency as this is handled in the model now
   vector <- if_else(
     #if all NA assume none
@@ -448,13 +506,23 @@ fill_missing_doses <- function(vector){
   )
   if(any(vector > 0)){
 
-    first_dose_loc <- min(which(vector > 0))
 
-    if(first_dose_loc > 30){
-      first_vacc <- vector[first_dose_loc[1]]
-      extension <- min(30, first_vacc[1])
+    #if first dose type we do nothing to it so that it treats the start of the vector as when the dosing started
+    #if second dose type we assume it starts 30 days from the start of the vector
+    #if its booster we just assume 30 days from when first reported
 
-      vector[first_dose_loc - extension + seq_len(extension)] <- seq(0, first_vacc, length.out = extension)
+    if(dose_type == "booster"){
+
+      first_dose_loc <- min(which(vector > 0))
+      #catch if we don't actaully have 30 days
+      if(first_dose_loc > 30) {
+        first_vacc <- vector[first_dose_loc[1]]
+        extension <- min(30, first_vacc[1])
+
+        vector[first_dose_loc - extension + seq_len(extension)] <- seq(0, first_vacc, length.out = extension)
+      }
+    } else if(dose_type == "second"){
+      vector[30] <- 0
     }
     #set first value to 0
     vector[1] <- 0

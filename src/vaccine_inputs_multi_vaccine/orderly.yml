@@ -12,16 +12,11 @@ parameters:
   date: ~
 
 sources:
-  - R/import_data.R
-  - R/get_dose_data.R
-  - R/get_single_dose_data.R
-  - R/waning.R
-  - R/get_delta.R
-  - R/plotting.R
-  - R/get_coverage_matrix.R
+  - R/dominant_vaccines.R
 
 resources:
-  - coverage_strategies.Rds
+  - dominant_vaccines.rds
+  - vaccine_efficacy_groups.csv
 
 # You must list at least one artefact that your report will generate.
 # Each artefact consists of one or more files.  The format is to list
@@ -49,7 +44,7 @@ artefacts:
   - data:
       description: The effective vaccine efficacy, max_vaccine and relative infectiousness for all countries in SQUIRE.
       filenames:
-        - vacc_inputs.rds
+        - vacc_inputs_multi.rds
 
 # Packages that should be loaded before the script is run.  Use this
 # in preference to explicit library() calls in your script because it
@@ -58,20 +53,14 @@ artefacts:
 packages:
   - dplyr
   - tidyr
-  - ggplot2
-  - lubridate
+  - purrr
+  - stringr
   - readr
   - countrycode
-  - tidyselect
-  - cowplot
-  - ggpubr
+
 
 depends:
-  ecdc:
+  vaccine_inputs_booster:
     id: latest(parameter:date == date)
     use:
-      vaccine_agreements.rds: vaccine_agreements.rds
-      vaccine_doses_by_manufacturer.rds: vaccine_doses_by_manufacturer.rds
-      who_vacc.rds: who_vacc.rds
-      who_vacc_meta.rds: who_vacc_meta.rds
-      owid.rds: owid.rds
+      vacc_inputs.rds: vacc_inputs.rds

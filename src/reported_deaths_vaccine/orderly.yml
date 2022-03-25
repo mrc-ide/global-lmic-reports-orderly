@@ -173,10 +173,10 @@ depends:
     use:
       owid.rds: owid.rds
       combined_data.Rds: combined_data.Rds
-  vaccine_inputs_2:
+  vaccine_inputs_multi_vaccine:
     id: latest(parameter:date == date)
     use:
-      vacc_inputs.rds: vacc_inputs.rds
+      vacc_inputs.rds: vacc_inputs_multi.rds
   variant_adjustments:
     id: latest(parameter:date == date)
     use:

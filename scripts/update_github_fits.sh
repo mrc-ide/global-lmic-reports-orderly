@@ -16,7 +16,8 @@ git -C gh-fits config user.email "gregbarnsley@hotmail.co.uk"
 git -C gh-fits config user.name "GBarnsley"
 
 echo "*** Create Commits"
-git -C gh-fits add .
+git -C gh-fits add standard
+git -C gh-fits add excess
 git -C gh-fits commit -m "Update fits for version ${DATE}"
 
 echo "*** Push to GitHub"
