@@ -11,7 +11,8 @@ fit_spline_rt <- function(data,
                           n_chains = 3,
                           replicates = 20,
                           rw_duration = 14,
-                          likelihood_version = "Negative Binomial"
+                          likelihood_version = "Negative Binomial",
+                          k_death = 2
 ) {
 
   #get iso3c
@@ -101,18 +102,23 @@ fit_spline_rt <- function(data,
                    'ves' = 0.5)
   pars_min = list('start_date' = first_start_date,
                   'R0' = R0_min,
-                  'ves' = 0) #about 50%
+                  'ves' = 0)
   pars_max = list('start_date' = last_start_date,
                   'R0' = R0_max,
-                  'ves' = 1) #about 20%
+                  'ves' = 1)
   pars_discrete = list('start_date' = TRUE, 'R0' = FALSE,
-                       ves = FALSE, delta_dur_R = FALSE)
-  pars_obs = list(phi_cases = 1, k_cases = 2, phi_death = 1, k_death = 2, exp_noise = 1e07,
+                       ves = FALSE)
+  pars_obs = list(phi_cases = 1, k_cases = 2, phi_death = 1, k_death = k_death, exp_noise = 1e07,
                   k_death_cumulative = 40)
   #assign this way so they keep NULL if NULL
   pars_obs$prob_hosp_multiplier <- delta_characteristics$prob_hosp_multiplier
   pars_obs$delta_start_date <- delta_characteristics$start_date
   pars_obs$shift_duration <- delta_characteristics$shift_duration
+  pars_obs$delta_dur_R <- 1 / (
+    (delta_characteristics$shift_duration / dur_R -
+       log(1 - delta_characteristics$immune_escape)) /
+      delta_characteristics$shift_duration
+  )
 
   #set up likelihood function
   if(likelihood_version == "Negative Binomial"){
@@ -131,8 +137,8 @@ fit_spline_rt <- function(data,
     pars_obs$likelihood <- function(model_deaths, data_deaths, pars_obs){
       #also add a term for cumulative deaths
       c(squire:::ll_nbinom(data_deaths, model_deaths, pars_obs$phi_death,
-                         pars_obs$k_death,
-                         pars_obs$exp_noise),
+                           pars_obs$k_death,
+                           pars_obs$exp_noise),
         squire:::ll_nbinom(sum(data_deaths), sum(model_deaths), pars_obs$phi_death,
                            pars_obs$k_death_cumulative,
                            pars_obs$exp_noise))
@@ -154,35 +160,13 @@ fit_spline_rt <- function(data,
   logprior <- function(pars){
     ret <- stats::dunif(x = pars[["start_date"]], min = -55, max = -10, log = TRUE) +
       stats::dunif(x = pars[["R0"]], min = 1, max = 10, log = TRUE) +
-      stats::dnorm(x = pars[["ves"]], mean = 0.5, sd = 0.5/1.95, log = TRUE) #normal so that 1,0 are the 95% CIs
-
-    #convert immune esacpe into percentage #taken from delhi paper median:0.42 50% interval:(0.21-0.64)
-    ret <- ret + stats::dbeta(x =
-                               1 - exp(
-                                 delta_characteristics$shift_duration *
-                                   (1/dur_R - 1/pars[["delta_dur_R"]])
-                               ), shape1 = 1.117363, shape2 = 1.46649, log = TRUE)
-
-    # ret <- ret + stats::dnorm(x = pars[["delta_dur_R"]], mean = 125.2363, sd = 15)
-
-    # # get rw spline parameters
-    # if(any(grepl("Rt_rw", names(pars)))) {
-    #   Rt_rws <- pars[grepl("Rt_rw", names(pars))]
-    #   for (i in seq_along(Rt_rws)) {
-    #     ret <- ret + stats::dnorm(x = Rt_rws[[i]], mean = 0, sd = 0.2, log = TRUE)
-    #   }
-    # }#
+      stats::dnorm(x = pars[["ves"]], mean = 0.5, sd = 0.1, log = TRUE)
     #changes for direct Rt estimation
     #assume that changes to Rt are penalised and should occur slowy
     if(any(grepl("Rt_", names(pars)))) {
       Rts <- c(pars[["R0"]], unlist(pars[grepl("Rt_", names(pars))]))
       ratio_R <- Rts[-1]/lag(Rts, 1)[-1]
-      # sum(extraDistr::pbetapr(c(1/2, 2), shape1 = 10, shape2 = 11))
-      # extraDistr::pbetapr(c(1/2, 2), shape1 = 1, shape2 = 2)
-      # diff(stats::pf(c(1/2, 2), 50, 50)) #these ones for best, alight bias positive is fine
-      # mean(rf(1000, 50, 50)) #mean is 1.04
       ret <- ret + sum(stats::df(x = ratio_R, 40, 40, log = TRUE))
-      #EXPERIMENTAL: beta prime would make more sense
     }
     return(ret)
   }
@@ -226,15 +210,19 @@ fit_spline_rt <- function(data,
   capacities <- readRDS("hospital_capacities.Rds")[[iso3c]]
 
   #use parallel
-  cores <- min(c(parallel::detectCores(), n_chains))
-  cl <- parallel::makeCluster(cores)
+  if(n_chains > 1){
+    cores <- min(c(parallel::detectCores(), n_chains))
+    cl <- parallel::makeCluster(cores)
+  } else {
+    cl <- NULL
+  }
 
   # run the pmcmc
   res <- pmcmc_excess(proposal_kernel = NULL,
                       use_drjacoby = TRUE,
                       drjacoby_list = list(
-                        rungs = 15,
-                        alpha = 5,
+                        rungs = 12,
+                        alpha = 2,
                         cluster = cl
                       ),
                       scaling_factor = NULL,
@@ -284,8 +272,10 @@ fit_spline_rt <- function(data,
                       dur_vaccine_delay = dur_vaccine_delay,
                       baseline_ICU_bed_capacity = capacities$icu_beds,
                       baseline_hosp_bed_capacity = capacities$hosp_beds)
-  #switch off parallel•
-  parallel::stopCluster(cl)
+  #switch off parallel
+  if(n_chains > 1){
+    parallel::stopCluster(cl)
+  }
 
   #set the class to be excess_nimue_simulation and inherit from nimue_simulation
   class(res) <- c("vacc_durR_nimue_simulation", "excess_nimue_simulation", "nimue_simulation")

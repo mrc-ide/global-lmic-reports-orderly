@@ -83,7 +83,8 @@ if(nrow(data) == 0 | sum(data$deaths) == 0){
     replicates = as.numeric(replicates),
     delta_characteristics = delta_characteristics,
     vaccine_inputs = vaccine_inputs,
-    likelihood_version = likelihood_version
+    likelihood_version = likelihood_version,
+    k_death = 14
   )
 
   ## -----------------------------------------------------------------------------
@@ -121,9 +122,9 @@ if(nrow(data) == 0 | sum(data$deaths) == 0){
                                      names_to = "parameter",
                                      values_to = "value") %>%
                         filter(loglikelihood != -.Machine$double.xmax) %>%
-                        filter(parameter %in% c("ves", "delta_dur_R")), aes(x = value, y = logprior + loglikelihood,
-                                                                            colour = as.character(chain))) +
-    geom_point(alpha = 0.25) +
+                        filter(parameter %in% c("ves")), aes(x = value,
+                                                             colour = as.character(chain))) +
+    geom_density(alpha = 0.25) +
     facet_wrap(vars(parameter), scales = "free_x") +
     theme_pubclean() +
     theme(legend.position = "none") +
