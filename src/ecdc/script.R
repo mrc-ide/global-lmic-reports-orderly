@@ -328,6 +328,7 @@ saveRDS(df, "worldometers_all.rds")
 
 ## Create a merged data set using WO for certain countries, this way it is easier
 #to keep consistent across tasks
+countries_not_in_jhu <- setdiff(unique(df$countryterritoryCode), unique(df$jhu_data))
 combined_data <- rbind(
   jhu_data %>% filter(!(countryterritoryCode %in% c("BOL", "ITA", "FRA", "ECU", "CHL", "COD", "ESP", "IRN",
                                                 "JPN", "GUF","KGZ", "PER", "HKG", "MAC", "TWN",
@@ -335,11 +336,11 @@ combined_data <- rbind(
                                                 "HTI", "MEX", "SOM", "VEN", "MNG", "LUX", "SAU",
                                                 "SWE", "USA"))) %>%
     select(!date),
-  df %>% filter(countryterritoryCode %in% c("BOL", "ITA", "FRA", "ECU", "CHL", "COD", "ESP", "IRN",
+  df %>% filter((countryterritoryCode %in% c("BOL", "ITA", "FRA", "ECU", "CHL", "COD", "ESP", "IRN",
                                             "JPN", "GUF","KGZ", "PER", "HKG", "MAC", "TWN",
                                             "SDN", "IRL", "TUR", "NPL", "AZE", "BIH", "CRI", "HND",
                                             "HTI", "MEX", "SOM", "VEN", "MNG",  "LUX", "SAU",
-                                            "SWE", "USA")) %>%
+                                            "SWE", "USA")) | countryterritoryCode %in% countries_not_in_jhu) %>%
     mutate(
       dateRep = as.Date(dateRep)
     )

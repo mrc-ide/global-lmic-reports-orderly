@@ -65,8 +65,17 @@ if(nrow(data) == 0 | sum(data$deaths) == 0){
   delta_characteristics <- readRDS("variant_characteristics.Rds")[[iso3c]]$Delta
 
   vaccine_inputs <- readRDS("vacc_inputs.Rds")[[iso3c]]
+  #this is fixed in the task but I forgot to rerun
+  #if na set central value to central value
+  vaccine_inputs$vaccine_efficacies <- map(vaccine_inputs$vaccine_efficacies, function(x){
+    if(is.na(x[1])){
+      c(mean(x[2:3]), x[2], x[3])
+    } else {
+      x
+    }
+  })
 
-  likelihood_version <- "Negative Binomial-Cumulative"
+  likelihood_version <- "Negative Binomial"
 
   ## -----------------------------------------------------------------------------
   ## 2. Fit Model

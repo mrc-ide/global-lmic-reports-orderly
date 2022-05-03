@@ -74,18 +74,7 @@ we running, and also whether we are doing a `short_run`. The `short_run` argumen
 dictates whether a small number of trees are used in the BRT.
 
 ```{r, eval = FALSE}
-date <- "2022-01-31" #"2021-12-08"
-
-# are we doing just a short run. If so only 20 mcmc iterations are used
-# and only 2 draws from the posterior. Set this to TRUE to do a quick test 
-# run that everything is working basically.
-short_run <- FALSE
-
-# Are we fitting to excess mortality data?
-# if yes we call the economist models from github and use the excess_mortality task
-# to fit to the data
-excess_mortality <- FALSE#TRUE
-
+date <- "2022-03-15"
 ```
 
 These arguments are then passed to our 4/5 tasks:
@@ -101,25 +90,18 @@ orderly::orderly_commit(variant_adjustments_id)
 #ideally check the calibration pdf
 
 message("*** Calculate Vaccine Inputs")
-vaccine_inputs_id <- orderly::orderly_run("vaccine_inputs_2", parameters = list(date=date), echo = FALSE)
+vaccine_inputs_id <- orderly::orderly_run("vaccine_inputs_booster", parameters = list(date=date), echo = FALSE)
 orderly::orderly_commit(vaccine_inputs_id)
 #ideally check the calibration pdf
 
-if(excess_mortality){
-  message("*** Economist Model data")
-  econ_id <- orderly::orderly_run("economist", parameters = list(date=date), echo = FALSE)
-  orderly::orderly_commit(econ_id)
-  #ideally check the calibration pdf
-} else{
-  #these are not used in the excess_mortality fitting
-  message("*** Oxford GRT data")
-  oxford_id <- orderly::orderly_run("oxford_grt", parameters = list(date=date), echo = FALSE)
-  orderly::orderly_commit(oxford_id)
+#these are not used in the excess_mortality fitting
+message("*** Oxford GRT data")
+oxford_id <- orderly::orderly_run("oxford_grt", parameters = list(date=date), echo = FALSE)
+orderly::orderly_commit(oxford_id)
 
-  message("*** Google BRT data")
-  google_id <- orderly::orderly_run("brt_google_mobility", parameters = list(date=date, short_run = short_run), echo = FALSE)
-  orderly::orderly_commit(google_id)
-}
+message("*** Google BRT data")
+google_id <- orderly::orderly_run("brt_google_mobility", parameters = list(date=date, short_run = FALSE), echo = FALSE)
+orderly::orderly_commit(google_id)
 ```
 
 Above, we are using `orderly::orderly_run` to run our 3 tasks in our R session, 
@@ -148,38 +130,25 @@ message("*** Creating country task bundles")
 
 # how long is the mcmc for
 
-if(!excess_mortality){
-  task <- "lmic_reports_vaccine_waning"
-  parameters <- list(
-    date = date,
-    n_mcmc =  100,
-    n_chains = 3,
-    n_burnin = 100,
-    #Should we build the require documentation+data for the fit,
-    #useful if just running to hone in chains (still builds fitting.pdf+grid_out.Rds)
-    document = TRUE
-  )
-} else{
-  task <- "excess_mortality_vaccine"
-  parameters <- list(
-    replicates = 50,
-    n_mcmc = 1000,
-    n_chains = 3,
-    n_burnin = 1000,
-    date = date
-  )
-}
+task <- "lmic_reports_vaccine_booster"
+parameters <- list(
+  date = date,
+  n_mcmc =  100,
+  n_chains = 3,
+  n_burnin = 400,
+  #Should we build the require documentation+data for the fit,
+  #useful if just running to hone in chains (still builds fitting.pdf+grid_out.Rds)
+  document = TRUE
+)
 
 # get the isos
 iso3cs <- grep('^[A-Z]{3}\\s*', readLines(file.path(here::here(), "countries")), value = TRUE)
 
 # make the orderly bundles to be run on the cluster
 path_bundles <- file.path(
-  "Q:/COVID-Fitting/help/glodide/analysis/data",
+  "Q:/COVID-Fitting/glodide/analysis/data",
           paste0(
-            "raw",
-            ifelse(excess_mortality, "_excess", ""),
-            ifelse(short_run, "_test", "")
+            "raw", ""
             ),
           date
           )
@@ -229,7 +198,7 @@ To do this we take the path of the finished tasks from our bundles
 paths <- gsub("raw", "derived", vapply(bundles, FUN = "[[", FUN.VALUE = character(1), "path"))
 
 # now extract the fitting.pdf files
-td <- tempdir()
+td <- tempdir(check = TRUE)
 fits <- lapply(paths, function(x) {
   if(file.exists(x)){
     zip::unzip(
@@ -248,7 +217,7 @@ pdfs <- grep("fitting", list.files(td, full.names = TRUE, recursive = TRUE), val
 # created because it needs to be for orderly to finish the task
 qpdf::pdf_combine(
   input = pdfs[file.size(pdfs) > 0], 
-  output = file.path("fits", paste0(ifelse(excess_mortality, "excess_mortality_", "lmic_reports_vaccine_"), date, ".pdf"))
+  output = file.path("fits", paste0("lmic_reports_vaccine_rerun_2_", date, ".pdf"))
 )
 ```
 
@@ -258,9 +227,7 @@ which countries require rerunning and rebundle those to be run again:
 
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
 # bundle the countries we need to rerun
-iso3cs_to_rerun <- 
-c()
-
+iso3cs_to_rerun <-  c("LKA", "ITA", "CHN", "AUS", "DEU", "SWE")
 #change start date
 bundles_to_rerun <- lapply(
   iso3cs_to_rerun, 
@@ -320,7 +287,6 @@ our local `orderly` archive:
 
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
 import <- lapply(tasks, orderly::orderly_bundle_import)
-
 # just double check they all imported
 all(unlist(import))
 ```
@@ -357,7 +323,7 @@ This script pushes the `gh-fits` changes to GitHub.
 Either execute this from the terminal or you can run it using the bash code chunk below (though it doesn't produce output until after it has finished at the moment, which may be annoying so you can see the output). 
 
 ```{bash}
-./scripts/update_github_fits.sh 2022-01-31
+./scripts/update_github_fits.sh 2021-12-08
 ```
 
 The next steps should only be followed if producing documented LMIC reports and

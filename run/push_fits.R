@@ -1,10 +1,21 @@
 #this repo
 repo <- here::here()
-excess_mortality <- FALSE
-#my one drive folder
+if(stringr::str_detect(task, "lmic_reports")){
+  excess_mortality <- FALSE
+  destination <- "standard"
+  filename <- "grid_out.Rds"
+} else if (stringr::str_detect(task, "excess_mortality")) {
+  excess_mortality <- TRUE
+  destination <- "excess"
+  filename <- "res.Rds"
+} else if (task == "reported_deaths_vaccine") {
+  excess_mortality <- TRUE
+  destination <- "reported"
+  filename <- "res.Rds"
+}
 destination <- file.path(
   repo, "gh-fits",
-  ifelse(excess_mortality, "excess", "standard")
+  destination
 )
 #get the fits
 message("Gathering Fits")
@@ -13,7 +24,7 @@ fits <- squire.page::get_fits(repo = repo, date = date, iso3cs = NULL, excess = 
 #optionally use task ids
 # library(stringr)
 # ids <- map_chr(str_split(tasks, "[\\\\.]"), ~tail(.x,2)[1])
-#fits <- map(ids, ~readRDS(file.path("archive", task, .x, "res.Rds")))
+# fits <- map(ids, ~readRDS(file.path("archive", task, .x, filename)))
 # names(fits) <- names(bundles)
 
 

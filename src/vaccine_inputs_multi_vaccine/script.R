@@ -8,7 +8,7 @@ vacc_inputs_old_format <- map(vacc_inputs_raw, ~
                                   date_vaccine_change = .x$date_vaccine_change,
                                   date_vaccine_efficacy = .x$date_vaccine_change,
                                   max_vaccine = .x$first_doses,
-                                  dose_ratio = if_else(.x$first_doses == 0, 0, cumsum(.x$second_doses)/cumsum(.x$first_doses)),
+                                  dose_ratio = if_else(cumsum(.x$first_doses) == 0, 0, cumsum(.x$second_doses)/cumsum(.x$first_doses)),
                                   vaccine_coverage_mat = .x$vaccine_coverage_mat,
                                   strategy = .x$strategy,
                                   dur_vaccine_delay = 14,

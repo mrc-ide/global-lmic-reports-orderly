@@ -221,8 +221,8 @@ fit_spline_rt <- function(data,
   res <- pmcmc_excess(proposal_kernel = NULL,
                       use_drjacoby = TRUE,
                       drjacoby_list = list(
-                        rungs = 12,
-                        alpha = 2,
+                        rungs = 15,
+                        alpha = 4,
                         cluster = cl
                       ),
                       scaling_factor = NULL,
