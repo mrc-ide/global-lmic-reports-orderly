@@ -32,36 +32,17 @@ format_covariants <- function(raw_data, variants){
 
 #This can be improve, once fitting issues resolved
 get_start_date <- function(df, variant){
-  # df %>%
-  #   group_by(iso3c) %>%
-  #   filter(sequences > 10) %>%
-  #   filter(any(.data[[variant]] > 0.9)) %>%
-  #   #isolate the period where variant first became dominant (greater than 0.95)
-  #   arrange(iso3c, week) %>%
-  #   filter(week <= min(week[.data[[variant]] > 0.9])) %>%
-  #   #now take the last week where sequences where less than 5%
-  #   filter(any(.data[[variant]] <= 0.05)) %>%
-  #   filter(week == max(week[.data[[variant]] <= 0.05])) %>%
-  #   select(iso3c, week) %>%
-  #   rename(!! paste0(variant, "_start_date") := week)
   df %>%
     group_by(iso3c) %>%
-    filter(.data[[variant]] > 0.05) %>%
+    filter(sequences > 10) %>%
+    filter(any(.data[[variant]] > 0.9)) %>%
     #isolate the period where variant first became dominant (greater than 0.95)
     arrange(iso3c, week) %>%
-    mutate(
-      problematic = min(week[.data[[variant]] > 0.9]) == min(week),
-      problematic = if_else(is.na(problematic),
-                            FALSE,
-                            problematic),
-      week = if_else(
-        problematic,
-        as.character(as.Date(min(week)) - 28), #keeps it the same as before
-        min(week)
-      )
-    ) %>%
+    filter(week <= min(week[.data[[variant]] > 0.9])) %>%
+    #now take the last week where sequences where less than 5%
+    filter(any(.data[[variant]] <= 0.05)) %>%
+    filter(week == max(week[.data[[variant]] <= 0.05])) %>%
     select(iso3c, week) %>%
-    unique() %>%
     rename(!! paste0(variant, "_start_date") := week)
 }
 

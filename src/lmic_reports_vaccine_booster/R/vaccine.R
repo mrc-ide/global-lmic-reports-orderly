@@ -48,6 +48,10 @@ vaccine_eff_over_time <- function(vacc_inputs, variant_characteristics){
   #reduce to values where things change
   indexes <- diff(c(-100, delta_shift + omicron_shift)) != 0
   date_vaccine_efficacy_change <- vacc_inputs$date_vaccine_change[indexes][-1]
+  if(length(date_vaccine_efficacy_change) == 0){
+    #if no changes then we don't modify it
+    date_vaccine_efficacy_change <- NULL
+  }
   delta_shift <- delta_shift[indexes]
   omicron_shift <- omicron_shift[indexes]
   #calculate variant adjusted effiacis over time

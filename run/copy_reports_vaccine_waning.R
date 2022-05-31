@@ -55,17 +55,11 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
             JOIN parameters
               ON parameters.report_version = report_version.id
            WHERE report_version_artefact.report_version IN (%s)
-             AND report = "lmic_reports_vaccine_waning"
+             AND report = "lmic_reports_vaccine_booster"
              AND parameters.name = "iso3c"
            ORDER BY country, report_version.id'
   sql <- sprintf(sql, paste(sprintf('"%s"', id), collapse = ", "))
   reports <- DBI::dbGetQuery(db, sql)
-
-  #TEMP REMOVE NOT READY
-  reports <- reports[!reports$country %in%   c("BRA", "IRQ", "KEN", "MEX", "MWI", "MYS", "PER", "ROU", "RUS",
-                                   "SRB", "TUR", "UKR", "VEN", "URY", "ARE", "AUT", "BHR", "CHE",
-                                   "EST", "HUN", "ISR", "POL", "PRT", "SVN", "SWE", "USA", "TCD",
-                                   "DEU", "ITA", "MDV"), ]
 
   if (any(duplicated(reports$country))) {
     keep <- tapply(seq_len(nrow(reports)), reports$country, max)
@@ -82,7 +76,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
   # get old conditions
   also_to_go <- vector("list", length(reports$id))
   for(x in seq_along(reports$id)) {
-    out <- readRDS(file.path("archive/lmic_reports_vaccine_waning",reports$id[x],"grid_out.rds"))
+    out <- readRDS(file.path("archive/lmic_reports_vaccine_booster",reports$id[x],"grid_out.rds"))
     if("pmcmc_results" %in% names(out)) {
       also_to_go[[x]] <- NULL
     } else {
@@ -104,7 +98,7 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
 
   target <- "gh-pages"
 
-  src <- file.path("archive", "lmic_reports_vaccine_waning", reports$id)
+  src <- file.path("archive", "lmic_reports_vaccine_booster", reports$id)
   dest <- sprintf("gh-pages/%s/%s", reports$country, reports$date)
   copy <- c("index.html",
             "projections.csv",

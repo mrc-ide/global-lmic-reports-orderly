@@ -19,13 +19,14 @@ destination <- file.path(
 )
 #get the fits
 message("Gathering Fits")
-fits <- squire.page::get_fits(repo = repo, date = date, iso3cs = NULL, excess = excess_mortality)
+#fits <- squire.page::get_fits(repo = repo, date = date, iso3cs = NULL, excess = excess_mortality)
 
 #optionally use task ids
-# library(stringr)
-# ids <- map_chr(str_split(tasks, "[\\\\.]"), ~tail(.x,2)[1])
-# fits <- map(ids, ~readRDS(file.path("archive", task, .x, filename)))
-# names(fits) <- names(bundles)
+library(stringr)
+library(purrr)
+ids <- map_chr(str_split(tasks, "[\\\\.]"), ~tail(.x,2)[1])
+fits <- map(ids, ~readRDS(file.path("archive", task, .x, filename)))
+names(fits) <- names(bundles)
 
 
 #upload to folder replacing existing files

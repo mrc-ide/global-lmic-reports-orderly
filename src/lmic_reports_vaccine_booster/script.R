@@ -137,7 +137,6 @@ if(sum(ecdc_df$deaths) > 0) {
   n_chains <- as.integer(n_chains)
   n_burnin <- as.integer(n_burnin)
   grid_spread <- 11
-  sleep <- 120
 
   # Defualt edges
   R0_min <- 1.6
@@ -460,8 +459,13 @@ if(sum(ecdc_df$deaths) > 0) {
   pars_obs$cases_reporting <- 21
 
   #check if possible or if no cases for the reporting section
-  if(nrow(data) < pars_obs$cases_days + pars_obs$cases_reporting |
-     all(data[(nrow(data) -  pars_obs$cases_days):(nrow(data) -  pars_obs$cases_days - pars_obs$cases_reporting), "cases"] == 0)) {
+  if(nrow(data) < pars_obs$cases_days + pars_obs$cases_reporting){
+    pars_obs$cases_fitting <- FALSE
+    pars_obs$cases_days <- NULL
+    pars_obs$cases_reporting <- NULL
+  } else if(
+     all(data[(nrow(data) -  pars_obs$cases_days):(nrow(data) -  pars_obs$cases_days - pars_obs$cases_reporting), "cases"] == 0)
+    ) {
     pars_obs$cases_fitting <- FALSE
     pars_obs$cases_days <- NULL
     pars_obs$cases_reporting <- NULL
@@ -478,18 +482,40 @@ if(sum(ecdc_df$deaths) > 0) {
   ll <- squire:::convert_log_likelihood_func_for_drjacoby(squire.page::calc_loglikelihood_booster)
   lp <- squire:::convert_log_prior_func_for_drjacoby(logprior)
 
-  # sleep so parallel is chill
-  Sys.sleep(time = runif(1, 0, sleep))
-
-  #use parallel
-  cores <- parallel::detectCores()
-  cores <- min(parallel::detectCores(), n_chains)
-  cl <- parallel::makeCluster(cores)
+  #use parallel if more than one chain
+  if(n_chains > 1){
+    cores <- parallel::detectCores()
+    cores <- min(parallel::detectCores(), n_chains)
+    cl <- parallel::makeCluster(cores)
+  } else {
+    cl <- NULL
+  }
   drjacoby_list <- list(
     rungs = 15,
-    alpha = 5,
+    alpha = 2.5,
     cluster = cl
   )
+
+  #temp fix
+  mod_classes <- class(squire_model)
+  class(squire_model) <- c("nimue_model", "squire_model")
+
+  #temp fix until squire.page update can be pushed
+  #if the final ve eff change date is less than the latest start date we add a dummy entry
+  if(tail(vacc_inputs$date_vaccine_efficacy_change, 1) < pars_max$start_date){
+    vacc_inputs$date_vaccine_efficacy_change <- c(
+      vacc_inputs$date_vaccine_efficacy_change,
+      pars_max$start_date + 1
+    )
+    vacc_inputs$vaccine_efficacy_disease <- c(
+      vacc_inputs$vaccine_efficacy_disease,
+      tail(vacc_inputs$vaccine_efficacy_disease, 1)
+    )
+    vacc_inputs$vaccine_efficacy_infection <- c(
+      vacc_inputs$vaccine_efficacy_infection,
+      tail(vacc_inputs$vaccine_efficacy_infection, 1)
+    )
+  }
 
   out <- drjacoby_mcmc(data = data,
                        n_mcmc = n_mcmc,
@@ -537,9 +563,13 @@ if(sum(ecdc_df$deaths) > 0) {
                        dur_R = dur_R,
                        dur_V = vacc_inputs$dur_V,
                        drjacoby_list = drjacoby_list
-                       )
+                      )
+  mod_classes -> class(squire_model)
+  class(out$model) <- mod_classes
   #switch off parallel
-  parallel::stopCluster(cl)
+  if(n_chains > 1){
+    parallel::stopCluster(cl)
+  }
 
   #set the class to be lmic_nimue_simulation and inherit from nimue_simulation
   class(out) <- c("lmic_booster_nimue_simulation", "lmic_nimue_simulation", "nimue_simulation")
@@ -1030,77 +1060,89 @@ if (sum(ecdc_df$deaths) == 0) {
 
   # set up vaccine inits
   vaccine_fitting_flag <- TRUE
-  squire_model <- nimue:::nimue_deterministic_model()
+  squire_model <- squire.page::nimue_booster_model()
   init <- init_state_nimue(deaths_removed = 0, iso3c,
                            seeding_cases = seeding_cases_esft,
                            vaccinated_already = sum(vacc_inputs$max_vaccine))
 
   # Scenarios with capacity constraints
   # ---------------------------------------------------------------------------
-  reverse_scenario <- nimue::run(
+  reverse_scenario <- squire.page:::run_booster(
     country = country,
     R0 = R0,
     time_period = time_period_esft,
     seeding_cases = seeding_cases_esft,
     init = init,
-    max_vaccine = as.integer(mean(tail(vacc_inputs$max_vaccine,7))),
+    first_doses =  as.integer(mean(tail(vacc_inputs$first_doses,7))),
+    second_doses =  as.integer(mean(tail(vacc_inputs$second_doses,7))),
+    booster_doses =  as.integer(mean(tail(vacc_inputs$booster_doses,7))),
     vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat
   )
 
-  mitigation_scenario <- nimue::run(
+  mitigation_scenario <- squire.page:::run_booster(
     country = country,
     R0 = Rt,
     time_period = time_period_esft,
     seeding_cases = seeding_cases_esft,
     init = init,
-    max_vaccine = as.integer(mean(tail(vacc_inputs$max_vaccine,7))),
+    first_doses =  as.integer(mean(tail(vacc_inputs$first_doses,7))),
+    second_doses =  as.integer(mean(tail(vacc_inputs$second_doses,7))),
+    booster_doses =  as.integer(mean(tail(vacc_inputs$booster_doses,7))),
     vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat
   )
 
-  maintain_scenario <- nimue::run(
+  maintain_scenario <- squire.page:::run_booster(
     country = country,
     R0 = Rt + ((R0 - Rt)/2),
     time_period = time_period_esft,
     seeding_cases = seeding_cases_esft,
     init = init,
-    max_vaccine = as.integer(mean(tail(vacc_inputs$max_vaccine,7))),
+    first_doses =  as.integer(mean(tail(vacc_inputs$first_doses,7))),
+    second_doses =  as.integer(mean(tail(vacc_inputs$second_doses,7))),
+    booster_doses =  as.integer(mean(tail(vacc_inputs$booster_doses,7))),
     vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat
   )
   saveRDS(maintain_scenario, "grid_out.rds")
 
   # Scenarios without capacity constraints
   # ---------------------------------------------------------------------------
-  reverse_scenario_surged <- nimue::run(
+  reverse_scenario_surged <- squire.page:::run_booster(
     country = country,
     R0 = R0,
     time_period = time_period_esft,
     seeding_cases = seeding_cases_esft,
     init = init,
-    max_vaccine = as.integer(mean(tail(vacc_inputs$max_vaccine,7))),
+    first_doses =  as.integer(mean(tail(vacc_inputs$first_doses,7))),
+    second_doses =  as.integer(mean(tail(vacc_inputs$second_doses,7))),
+    booster_doses =  as.integer(mean(tail(vacc_inputs$booster_doses,7))),
     vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat,
     hosp_bed_capacity = 1e10,
     ICU_bed_capacity = 1e10
   )
 
-  mitigation_scenario_surged <- nimue::run(
+  mitigation_scenario_surged <- squire.page:::run_booster(
     country = country,
     R0 = R0,
     time_period = time_period_esft,
     seeding_cases = seeding_cases_esft,
     init = init,
-    max_vaccine = as.integer(mean(tail(vacc_inputs$max_vaccine,7))),
+    first_doses =  as.integer(mean(tail(vacc_inputs$first_doses,7))),
+    second_doses =  as.integer(mean(tail(vacc_inputs$second_doses,7))),
+    booster_doses =  as.integer(mean(tail(vacc_inputs$booster_doses,7))),
     vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat,
     hosp_bed_capacity = 1e10,
     ICU_bed_capacity = 1e10
   )
 
-  maintain_scenario_surged <- nimue::run(
+  maintain_scenario_surged <- squire.page:::run_booster(
     country = country,
     R0 = R0,
     time_period = time_period_esft,
     seeding_cases = seeding_cases_esft,
     init = init,
-    max_vaccine = as.integer(mean(tail(vacc_inputs$max_vaccine,7))),
+    first_doses =  as.integer(mean(tail(vacc_inputs$first_doses,7))),
+    second_doses =  as.integer(mean(tail(vacc_inputs$second_doses,7))),
+    booster_doses =  as.integer(mean(tail(vacc_inputs$booster_doses,7))),
     vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat,
     hosp_bed_capacity = 1e10,
     ICU_bed_capacity = 1e10

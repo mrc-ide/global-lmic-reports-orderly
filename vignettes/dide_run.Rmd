@@ -135,7 +135,7 @@ parameters <- list(
   date = date,
   n_mcmc =  100,
   n_chains = 3,
-  n_burnin = 400,
+  n_burnin = 300,
   #Should we build the require documentation+data for the fit,
   #useful if just running to hone in chains (still builds fitting.pdf+grid_out.Rds)
   document = TRUE
@@ -323,7 +323,7 @@ This script pushes the `gh-fits` changes to GitHub.
 Either execute this from the terminal or you can run it using the bash code chunk below (though it doesn't produce output until after it has finished at the moment, which may be annoying so you can see the output). 
 
 ```{bash}
-./scripts/update_github_fits.sh 2021-12-08
+./scripts/update_github_fits.sh 2022-03-15
 ```
 
 The next steps should only be followed if producing documented LMIC reports and
@@ -342,7 +342,7 @@ Next we run the collation step, where the necessary outputs from the model fits 
 
 Either execute this from the terminal or you can run it using the bash code chunk below (though it doesn't produce output until after it has finished at the moment, which may be annoying so you can see the output). 
 ```{bash}
-./run/run_collate_vaccine_waning.sh 2022-01-31
+./run/run_collate_vaccine_waning.sh 2022-03-15
 ```
 
 ## 4. Push the results to the repository 

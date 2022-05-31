@@ -60,22 +60,24 @@ variant_characteristics <- list(
     prob_hosp_multiplier = 1,
     prob_severe_multiplier = 1,
 
-    ve_infection = c(0.6, 0.8),
-    ve_disease = c(0.8, 0.98),
+    ve_infection = c(0.6, 0, 0.8, 0.004340038, 0.004340038),
+    ve_disease = c(0.8, 0.022339931, 0.98, 0.98, 0.141764382),
     ve_transmission = 0.5,
 
     immune_escape = 0,
     dur_ICU = 14.8,
     dur_ICU_death = 11.1,
     dur_hosp = 9,
-    dur_hosp_death = 9
+    dur_hosp_death = 9,
+
+    dur_V = c(1/0.009339697, 1/0.008123934, 1/0.006766174)
   ),
   Delta = list(
     prob_hosp_multiplier =  1.45,
     prob_severe_multiplier = 1,
 
-    ve_infection = c(0.224,  0.646),
-    ve_disease = c(0.75, 0.94),
+    ve_infection = c(0.224, 0, 0.646, 0.001250519, 0.004340204),
+    ve_disease = c(0.75, 0.010415902, 0.94, 0.94, 0.061241989),
     ve_transmission = 0.5,
 
     immune_escape = 0.27,
@@ -84,14 +86,16 @@ variant_characteristics <- list(
     dur_hosp = 5,
     dur_hosp_death = 9,
 
-    shift_duration = 60
+    shift_duration = 60,
+
+    dur_V = c(1/0.009561369, 1/0.010645451, 1/0.011359099)
   )
 )
 #calculate omicron values, slightly more complex
 hr_hosp <- 0.59
 hr_severe_hosp <- 0.34/hr_hosp #adjust severity hazard ratio by reduction in hospitalisation
 ve_d_2 <-  mean(0.31, 0.22)/hr_hosp #as we have no value for first dose scale by change in delta values
-change_delta <- variant_characteristics$Delta$ve_disease[2]/
+change_delta <- variant_characteristics$Delta$ve_disease[3]/
   variant_characteristics$Delta$ve_disease[1]
 dur_R <- 365
 dur_s <- 45
@@ -103,8 +107,8 @@ variant_characteristics$Omicron <- list(
     prob_hosp_multiplier = hr_hosp,
     prob_severe_multiplier = hr_severe_hosp,
 
-    ve_infection = c(0, 0.1),
-    ve_disease = c(ve_d_2/change_delta, ve_d_2),
+    ve_infection = c(0, 0, 0.1, 0, 0),
+    ve_disease = c(ve_d_2/change_delta, 0.002935928, ve_d_2, 0.043389992, 0.002869262),
     ve_transmission = 0.5,
 
     immune_escape = immune_escape,
@@ -113,7 +117,9 @@ variant_characteristics$Omicron <- list(
     dur_hosp = 3,
     dur_hosp_death = 9,
 
-    shift_duration = dur_s
+    shift_duration = dur_s,
+    
+    dur_V = c(1/0.013728390, 1/0.013242636, 1/0.017599820 )
   )
 
 #produce explainer
