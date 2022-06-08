@@ -36,8 +36,8 @@ init_state_nimue <- function(deaths_removed, iso3c, seeding_cases = 5,
     init$S_0 <- S_0
   }
 
-  #drop last column
-  init <- purrr::map(init, ~.x[,-6])
+  ##drop last column
+  #init <- purrr::map(init, ~.x[,-6])
 
   return(init)
 }

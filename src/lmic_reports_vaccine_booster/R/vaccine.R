@@ -57,20 +57,12 @@ vaccine_eff_over_time <- function(vacc_inputs, variant_characteristics){
   #calculate variant adjusted effiacis over time
   vaccine_efficacy_infection <- lapply(seq_along(delta_shift), function(x){
     #produce matrix for age group/vaccine status effiacies
-    c(
-      (variant_characteristics$Wild$ve_infection[1] * (1 - delta_shift[x]) +
-         variant_characteristics$Delta$ve_infection[1] * delta_shift[x]) *
-        (1 - omicron_shift[x]) +
-        variant_characteristics$Omicron$ve_infection[1] * omicron_shift[x],
-      (variant_characteristics$Wild$ve_infection[2] * (1 - delta_shift[x]) +
-         variant_characteristics$Delta$ve_infection[2] * delta_shift[x]) *
-        (1 - omicron_shift[x]) +
-        variant_characteristics$Omicron$ve_infection[2] * omicron_shift[x],
-      (variant_characteristics$Wild$ve_infection[2]/2 * (1 - delta_shift[x]) +
-         variant_characteristics$Delta$ve_infection[2]/2 * delta_shift[x]) *
-        (1 - omicron_shift[x]) +
-        variant_characteristics$Omicron$ve_infection[2]/2 * omicron_shift[x],
-      0
+    purrr::map_dbl(
+      seq_along(variant_characteristics$Wild$ve_infection),
+      ~(variant_characteristics$Wild$ve_infection[.x] * (1 - delta_shift[x]) +
+        variant_characteristics$Delta$ve_infection[.x] * delta_shift[x]) *
+      (1 - omicron_shift[x]) +
+      variant_characteristics$Omicron$ve_infection[.x] * omicron_shift[x]
     )
   })
 
@@ -84,31 +76,26 @@ vaccine_eff_over_time <- function(vacc_inputs, variant_characteristics){
 
   vaccine_efficacy_disease <- lapply(seq_along(delta_shift), function(x){
     #produce matrix for age group/vaccine status effiacies
-    c(
-      (variant_characteristics$Wild$ve_disease[1] * (1 - delta_shift[x]) +
-         variant_characteristics$Delta$ve_disease[1] * delta_shift[x]) *
+    purrr::map_dbl(
+      seq_along(variant_characteristics$Wild$ve_disease),
+      ~(variant_characteristics$Wild$ve_disease[.x] * (1 - delta_shift[x]) +
+          variant_characteristics$Delta$ve_disease[.x] * delta_shift[x]) *
         (1 - omicron_shift[x]) +
-        variant_characteristics$Omicron$ve_disease[1] * omicron_shift[x],
-      (variant_characteristics$Wild$ve_disease[2] * (1 - delta_shift[x]) +
-         variant_characteristics$Delta$ve_disease[2] * delta_shift[x]) *
-        (1 - omicron_shift[x]) +
-        variant_characteristics$Omicron$ve_disease[2] * omicron_shift[x],
-      # (mean(variant_characteristics$Wild$ve_disease) * (1 - delta_shift[x]) +
-      #    mean(variant_characteristics$Delta$ve_disease) * delta_shift[x]) *
-      #   (1 - omicron_shift[x]) +
-      #   mean(variant_characteristics$Omicron$ve_disease) * omicron_shift[x],
-      # (variant_characteristics$Wild$ve_disease[1] * (1 - delta_shift[x]) +
-      #    variant_characteristics$Delta$ve_disease[1] * delta_shift[x]) *
-      #   (1 - omicron_shift[x]) +
-      #   variant_characteristics$Omicron$ve_disease[1] * omicron_shift[x],
-      (variant_characteristics$Wild$ve_disease[2]/2 * (1 - delta_shift[x]) +
-         variant_characteristics$Delta$ve_disease[2]/2 * delta_shift[x]) *
-        (1 - omicron_shift[x]) +
-        variant_characteristics$Omicron$ve_disease[2]/2 * omicron_shift[x],
-     0
+        variant_characteristics$Omicron$ve_disease[.x] * omicron_shift[x]
     )
   })
 
+  #durations of vaccine protection
+  dur_V <- lapply(seq_along(delta_shift), function(x){
+    #produce matrix for age group/vaccine status effiacies
+    purrr::map_dbl(
+      seq_along(variant_characteristics$Wild$dur_V),
+      ~(variant_characteristics$Wild$dur_V[.x] * (1 - delta_shift[x]) +
+          variant_characteristics$Delta$dur_V[.x] * delta_shift[x]) *
+        (1 - omicron_shift[x]) +
+        variant_characteristics$Omicron$dur_V[.x] * omicron_shift[x]
+    )
+  })
 
   return(list(
     date_vaccine_change = vacc_inputs$date_vaccine_change,
@@ -120,7 +107,7 @@ vaccine_eff_over_time <- function(vacc_inputs, variant_characteristics){
     vaccine_efficacy_disease = vaccine_efficacy_disease,
     rel_infectiousness_vaccinated = variant_characteristics$Wild$ve_transmission,
     vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat,
-    dur_V = vacc_inputs$dur_V,
+    dur_V = dur_V,
     strategy = vacc_inputs$strategy
   ))
 }

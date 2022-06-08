@@ -74,15 +74,18 @@ we running, and also whether we are doing a `short_run`. The `short_run` argumen
 dictates whether a small number of trees are used in the BRT.
 
 ```{r, eval = FALSE}
-date <- "2022-03-15"
+date <- "2022-05-30"
 ```
 
 These arguments are then passed to our 4/5 tasks:
 
 ```{r eval=FALSE, message=FALSE, warning=FALSE}
-message("*** ECDC data")
+# message("*** ECDC data")
 ecdc_id <- orderly::orderly_run("ecdc", parameters = list(date=date), echo = FALSE)
 orderly::orderly_commit(ecdc_id)
+
+economist_id <- orderly::orderly_run("economist", parameters = list(date=date), echo = FALSE)
+orderly::orderly_commit(economist_id)
 
 message("*** Covid Variants data")
 variant_adjustments_id <- orderly::orderly_run("variant_adjustments", parameters = list(date=date), echo = FALSE)
@@ -93,15 +96,6 @@ message("*** Calculate Vaccine Inputs")
 vaccine_inputs_id <- orderly::orderly_run("vaccine_inputs_booster", parameters = list(date=date), echo = FALSE)
 orderly::orderly_commit(vaccine_inputs_id)
 #ideally check the calibration pdf
-
-#these are not used in the excess_mortality fitting
-message("*** Oxford GRT data")
-oxford_id <- orderly::orderly_run("oxford_grt", parameters = list(date=date), echo = FALSE)
-orderly::orderly_commit(oxford_id)
-
-message("*** Google BRT data")
-google_id <- orderly::orderly_run("brt_google_mobility", parameters = list(date=date, short_run = FALSE), echo = FALSE)
-orderly::orderly_commit(google_id)
 ```
 
 Above, we are using `orderly::orderly_run` to run our 3 tasks in our R session, 
@@ -130,12 +124,11 @@ message("*** Creating country task bundles")
 
 # how long is the mcmc for
 
-task <- "lmic_reports_vaccine_booster"
+task <- "lmic_reports_rt_mle"
 parameters <- list(
   date = date,
-  n_mcmc =  100,
-  n_chains = 3,
-  n_burnin = 300,
+  n_particles = 100,
+  parallel = TRUE,
   #Should we build the require documentation+data for the fit,
   #useful if just running to hone in chains (still builds fitting.pdf+grid_out.Rds)
   document = TRUE
@@ -217,7 +210,7 @@ pdfs <- grep("fitting", list.files(td, full.names = TRUE, recursive = TRUE), val
 # created because it needs to be for orderly to finish the task
 qpdf::pdf_combine(
   input = pdfs[file.size(pdfs) > 0], 
-  output = file.path("fits", paste0("lmic_reports_vaccine_rerun_2_", date, ".pdf"))
+  output = file.path("fits", paste0("lmic_reports_vaccine_rerun_", date, ".pdf"))
 )
 ```
 
@@ -227,7 +220,7 @@ which countries require rerunning and rebundle those to be run again:
 
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
 # bundle the countries we need to rerun
-iso3cs_to_rerun <-  c("LKA", "ITA", "CHN", "AUS", "DEU", "SWE")
+iso3cs_to_rerun <-  c()
 #change start date
 bundles_to_rerun <- lapply(
   iso3cs_to_rerun, 
@@ -270,7 +263,6 @@ below I did two reruns ('bundles_to_rerun.rds' and 'BGD_to_rerun.rds'), which
 I will use to replace their corresponding countries with in `bundles`:
 
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
-
 # any that we had to rerun
 rerun <-  readRDS(file.path(path_bundles, "bundles_to_rerun.rds"))
 

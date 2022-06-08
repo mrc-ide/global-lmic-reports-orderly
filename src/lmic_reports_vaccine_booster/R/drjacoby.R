@@ -60,6 +60,9 @@ drjacoby_mcmc <- function(data,
                           date_vaccine_efficacy_disease_change = NULL,
                           baseline_vaccine_efficacy_disease = NULL,
                           vaccine_efficacy_disease = NULL,
+                          baseline_dur_V = NULL,
+                          dur_V = NULL,
+                          date_dur_V_change = NULL,
                           Rt_args = NULL,
                           burnin = 0,
                           replicates = 100,
@@ -342,6 +345,35 @@ drjacoby_mcmc <- function(data,
     }
   }
 
+  # handle dur_V  changes
+  if(!is.null(date_dur_V_change)) {
+
+    squire:::assert_date(date_dur_V_change)
+    if(!is.list(dur_V)) {
+      dur_V <- list(dur_V)
+    }
+    squire:::assert_vector(dur_V[[1]])
+    squire:::assert_numeric(dur_V[[1]])
+    squire:::assert_numeric(baseline_dur_V)
+
+    if(is.null(baseline_dur_V)) {
+      stop("baseline_vaccine_efficacy_infection can't be NULL if date_dur_V_change is provided")
+    }
+    if(as.Date(tail(date_dur_V_change,1)) > as.Date(tail(data$date, 1))) {
+      stop("Last date in date_dur_V_change is greater than the last date in data")
+    }
+
+    tt_dur_V <- c(0, seq_len(length(date_dur_V_change)))
+    dur_V <- c(list(baseline_dur_V), dur_V)
+
+  } else {
+    tt_dur_V <- 0
+    if(!is.null(baseline_dur_V)) {
+      dur_V <- baseline_dur_V
+    } else {
+      dur_V <- rep(365/2, 3)
+    }
+  }
 
   # handle hosp bed changed
   if(!is.null(date_hosp_bed_capacity_change)) {
@@ -399,6 +431,8 @@ drjacoby_mcmc <- function(data,
     tt_vaccine_efficacy_infection = tt_vaccine_efficacy_infection,
     vaccine_efficacy_disease = vaccine_efficacy_disease,
     tt_vaccine_efficacy_disease = tt_vaccine_efficacy_disease,
+    dur_V = dur_V,
+    tt_dur_V = tt_dur_V,
     ...)
 
   # collect interventions for odin model likelihood
@@ -418,7 +452,9 @@ drjacoby_mcmc <- function(data,
     date_vaccine_efficacy_disease_change = date_vaccine_efficacy_disease_change,
     vaccine_efficacy_disease = vaccine_efficacy_disease,
     date_vaccine_efficacy_infection_change = date_vaccine_efficacy_infection_change,
-    vaccine_efficacy_infection = vaccine_efficacy_infection
+    vaccine_efficacy_infection = vaccine_efficacy_infection,
+    dur_V = dur_V,
+    date_dur_V_change = date_dur_V_change
   )
 
   #----------------..

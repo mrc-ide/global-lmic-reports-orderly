@@ -562,6 +562,7 @@ if(sum(ecdc_df$deaths) > 0) {
                        vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat,
                        dur_R = dur_R,
                        dur_V = vacc_inputs$dur_V,
+
                        drjacoby_list = drjacoby_list
                       )
   mod_classes -> class(squire_model)

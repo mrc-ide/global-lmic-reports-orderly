@@ -328,23 +328,21 @@ saveRDS(df, "worldometers_all.rds")
 
 ## Create a merged data set using WO for certain countries, this way it is easier
 #to keep consistent across tasks
-countries_not_in_jhu <- setdiff(unique(df$countryterritoryCode), unique(df$jhu_data))
-combined_data <- rbind(
-  jhu_data %>% filter(!(countryterritoryCode %in% c("BOL", "ITA", "FRA", "ECU", "CHL", "COD", "ESP", "IRN",
-                                                "JPN", "GUF","KGZ", "PER", "HKG", "MAC", "TWN",
-                                                "SDN", "IRL", "TUR", "NPL", "AZE", "BIH", "CRI", "HND",
-                                                "HTI", "MEX", "SOM", "VEN", "MNG", "LUX", "SAU",
-                                                "SWE", "USA"))) %>%
-    select(!date),
-  df %>% filter((countryterritoryCode %in% c("BOL", "ITA", "FRA", "ECU", "CHL", "COD", "ESP", "IRN",
-                                            "JPN", "GUF","KGZ", "PER", "HKG", "MAC", "TWN",
-                                            "SDN", "IRL", "TUR", "NPL", "AZE", "BIH", "CRI", "HND",
-                                            "HTI", "MEX", "SOM", "VEN", "MNG",  "LUX", "SAU",
-                                            "SWE", "USA")) | countryterritoryCode %in% countries_not_in_jhu) %>%
-    mutate(
-      dateRep = as.Date(dateRep)
-    )
-)
+combined_data <- jhu_data %>% filter(!(countryterritoryCode %in% c("BOL", "ITA", "FRA", "ECU", "CHL", "COD", "ESP", "IRN",
+                                                                   "JPN", "GUF","KGZ", "PER", "HKG", "MAC", "TWN",
+                                                                   "SDN", "IRL", "TUR", "NPL", "AZE", "BIH", "CRI", "HND",
+                                                                   "HTI", "MEX", "SOM", "VEN", "MNG", "LUX", "SAU",
+                                                                   "SWE", "USA"))) %>%
+  select(!date)
+
+#now add every country in the worldometer that's not already in JHU
+combined_data <- combined_data %>%
+  rbind(
+    df %>% filter(!(countryterritoryCode %in% unique(combined_data$countryterritoryCode))) %>%
+      mutate(
+        dateRep = as.Date(dateRep)
+      )
+  )
 
 saveRDS(combined_data, "combined_data.Rds")
 

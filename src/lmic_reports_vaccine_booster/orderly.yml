@@ -200,10 +200,6 @@ depends:
     id: latest(parameter:date == date)
     use:
       vacc_inputs.rds: vacc_inputs.rds
-  oxford_grt:
-    id: latest(parameter:date == date)
-    use:
-      oxford_grt.rds: oxford_grt.rds
   brt_google_mobility:
     id: latest(parameter:date == date)
     use:
