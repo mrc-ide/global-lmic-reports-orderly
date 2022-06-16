@@ -75,7 +75,6 @@ artefacts:
         - index.pdf
         - index.md
         - summary_df.rds
-        - input_params.json
         - grid_out.rds
         - fitting.pdf
         - projections.csv
@@ -190,15 +189,11 @@ depends:
     id: latest(parameter:date == date)
     use:
       vacc_inputs.rds: vacc_inputs.rds
-  oxford_grt:
-    id: latest(parameter:date == date)
-    use:
-      oxford_grt.rds: oxford_grt.rds
-  brt_google_mobility:
-    id: latest(parameter:date == date)
-    use:
-      google_brt.rds: google_brt.rds
   variant_adjustments:
     id: latest(parameter:date == date)
     use:
       variant_characteristics.rds: variant_characteristics.rds
+  ecdc:
+    id: latest(parameter:date == date)
+    use:
+      combined_data.Rds: combined_data.Rds

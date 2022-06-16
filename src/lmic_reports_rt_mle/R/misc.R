@@ -24,29 +24,15 @@ named_list <- function(...) {
 
 summarise_rt_futures <- function(Rt_futures){
   #for each trend type
-  summarised <- lapply(names(Rt_futures), function(trend){
+  map_dfr(Rt_futures, function(trend){
     #for each replicate
-    do.call(
-      rbind,
-      lapply(seq_along(Rt_futures[[trend]]), function(rep){
-        #just get the mean
-        mean(Rt_futures[[trend]][[rep]])
-      })
+    values <- map_dbl(trend, ~tail(.x$R0, 1))
+    tibble(
+      q_025 = quantile(values, 0.025),
+      med = quantile(values, 0.5),
+      q_975 = quantile(values, 0.975)
     )
-  })
-  #summarise and put into dataframe
-  out <- data.frame(temp = 1
-  )
-  for(i in seq_along(Rt_futures)){
-    out <- out %>%
-      mutate(
-        !! paste0(names(Rt_futures)[i], "_med") := median(summarised[[i]]),
-        !! paste0(names(Rt_futures)[i], "_025") := quantile(summarised[[i]], 0.025),
-        !! paste0(names(Rt_futures)[i], "_975") := quantile(summarised[[i]], 0.975)
-      )
-  }
-  return(out %>%
-           select(!temp))
+  }, .id = "scenario")
 }
 
 
@@ -122,4 +108,41 @@ variant_immune_escape <- function(variant_characteristics, dur_R, start_date) {
       tt = tt
     )
   )
+}
+
+get_future_Rt_optimised <- function(model_out, forcast_days){
+  if("excess_nimue_simulation" %in% class(model_out)){
+    stop("This function cannot be used with excess_nimue_simulation at the moment")
+  }
+  Rt_futures <- purrr::map(model_out$samples, function(sample){
+    #look at the changes over length of time of the forcast period
+    Rt_changes <- map_dbl(seq(sample$tt_R0[2], tail(sample$tt_R0, 1) - forcast_days), function(t){
+      squire.page:::block_interpolate(t + forcast_days, sample$R0, sample$tt_R0)/
+        squire.page:::block_interpolate(t, sample$R0, sample$tt_R0)
+    })
+    #calculate the 20, 50 and 80% quantiles to get the optimisitc, central, and
+    #pessimistic changes
+    changes <- as.numeric(quantile(Rt_changes, c(0.2, 0.5, 0.8)))
+    #expand these out to cover the forcast period and reach the final value by
+    #this time
+    change_time <- mean(diff(sample$tt_R0[-1]))
+    map(changes, function(change){
+      tt_R0 <- seq(0, forcast_days, by = 1)
+      R0 <- seq(tail(sample$R0, 1), tail(sample$R0, 1)*change, length.out = length(tt_R0) + 1)[-1]
+      list(
+        R0 = R0,
+        tt_R0 = tt_R0
+      )
+    })
+  })
+  #reformat
+  new_names <- c(1, 2, 3)
+  names(new_names) <- c("optimistic", "central", "pessimistic")
+  map(new_names, function(x) map(Rt_futures, ~.x[[x]]))
+}
+
+update_Rt_optimised <- function(model_user_args, Rt_future){
+  map(seq_along(Rt_future), function(sample_index){
+    c(model_user_args[[sample_index]], Rt_future[[sample_index]])
+  })
 }

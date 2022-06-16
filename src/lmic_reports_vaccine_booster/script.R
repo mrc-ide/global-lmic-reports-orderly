@@ -313,7 +313,19 @@ if(sum(ecdc_df$deaths) > 0) {
   pars_min <- append(pars_min, pars_min_rw)
   pars_max <- append(pars_max, pars_max_rw)
   pars_discrete <- append(pars_discrete, pars_discrete_rw)
-
+  #ensure init is strictly less than the min/max
+  pars_init_2 <- purrr::map(names(pars_init), function(x){
+    if(pars_init[[x]] >= pars_max[[x]]){
+      (pars_max[[x]] - pars_min[[x]])*0.8 + pars_min[[x]]
+    } else if(pars_init[[x]] <= pars_min[[x]]){
+      (pars_max[[x]] - pars_min[[x]])*0.2 + pars_min[[x]]
+    } else {
+      pars_init[[x]]
+    }
+  })
+  names(pars_init_2) <- names(pars_init)
+  pars_init <- pars_init_2
+  rm(pars_init_2)
   # MCMC Functions - Prior and Likelihood Calculation
   logprior <- function(pars){
     ret <- dunif(x = pars[["start_date"]], min = -55, max = -10, log = TRUE) +
@@ -402,13 +414,18 @@ if(sum(ecdc_df$deaths) > 0) {
   if(variant_characteristics$Omicron$start_date <
      variant_characteristics$Delta$start_date +
      variant_characteristics$Delta$shift_duration){
-    variant_characteristics$Omicron$shift_duration <-
-      as.numeric(
-        variant_characteristics$Omicron$start_date + variant_characteristics$Omicron$shift_duration
-      ) -
+    new_duration <- as.numeric(
+      variant_characteristics$Omicron$start_date + variant_characteristics$Omicron$shift_duration
+    ) -
       as.numeric(
         variant_characteristics$Delta$start_date + variant_characteristics$Delta$shift_duration
       ) - 1
+    #ensure there is a minimum on the delay
+    if(new_duration < 25){
+      variant_characteristics$Omicron$shift_duration <- 25
+    } else {
+      variant_characteristics$Omicron$shift_duration <- new_duration
+    }
     variant_characteristics$Omicron$start_date <- variant_characteristics$Delta$start_date +
       variant_characteristics$Delta$shift_duration + 1
   }
@@ -502,19 +519,25 @@ if(sum(ecdc_df$deaths) > 0) {
 
   #temp fix until squire.page update can be pushed
   #if the final ve eff change date is less than the latest start date we add a dummy entry
-  if(tail(vacc_inputs$date_vaccine_efficacy_change, 1) < pars_max$start_date){
-    vacc_inputs$date_vaccine_efficacy_change <- c(
-      vacc_inputs$date_vaccine_efficacy_change,
-      pars_max$start_date + 1
-    )
-    vacc_inputs$vaccine_efficacy_disease <- c(
-      vacc_inputs$vaccine_efficacy_disease,
-      tail(vacc_inputs$vaccine_efficacy_disease, 1)
-    )
-    vacc_inputs$vaccine_efficacy_infection <- c(
-      vacc_inputs$vaccine_efficacy_infection,
-      tail(vacc_inputs$vaccine_efficacy_infection, 1)
-    )
+  if(!is.null(vacc_inputs$date_vaccine_efficacy_change)){
+    if(tail(vacc_inputs$date_vaccine_efficacy_change, 1) < pars_max$start_date){
+      vacc_inputs$date_vaccine_efficacy_change <- c(
+        vacc_inputs$date_vaccine_efficacy_change,
+        pars_max$start_date + 1
+      )
+      vacc_inputs$vaccine_efficacy_disease <- c(
+        vacc_inputs$vaccine_efficacy_disease,
+        tail(vacc_inputs$vaccine_efficacy_disease, 1)
+      )
+      vacc_inputs$vaccine_efficacy_infection <- c(
+        vacc_inputs$vaccine_efficacy_infection,
+        tail(vacc_inputs$vaccine_efficacy_infection, 1)
+      )
+      vacc_inputs$dur_V <- c(
+        vacc_inputs$dur_V,
+        tail(vacc_inputs$dur_V, 1)
+      )
+    }
   }
 
   out <- drjacoby_mcmc(data = data,
@@ -561,11 +584,12 @@ if(sum(ecdc_df$deaths) > 0) {
                        rel_infectiousness_vaccinated = vacc_inputs$rel_infectiousness_vaccinated,
                        vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat,
                        dur_R = dur_R,
-                       dur_V = vacc_inputs$dur_V,
-
+                       dur_V = vacc_inputs$dur_V[-1],
+                       baseline_dur_V = vacc_inputs$dur_V[[1]],
+                       date_dur_V_change = vacc_inputs$date_vaccine_efficacy_change,
                        drjacoby_list = drjacoby_list
                       )
-  mod_classes -> class(squire_model)
+   mod_classes -> class(squire_model)
   class(out$model) <- mod_classes
   #switch off parallel
   if(n_chains > 1){

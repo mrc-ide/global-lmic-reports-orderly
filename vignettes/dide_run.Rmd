@@ -210,7 +210,7 @@ pdfs <- grep("fitting", list.files(td, full.names = TRUE, recursive = TRUE), val
 # created because it needs to be for orderly to finish the task
 qpdf::pdf_combine(
   input = pdfs[file.size(pdfs) > 0], 
-  output = file.path("fits", paste0("lmic_reports_vaccine_rerun_", date, ".pdf"))
+  output = file.path("fits", paste0("lmic_reports_vaccine_", date, ".pdf"))
 )
 ```
 

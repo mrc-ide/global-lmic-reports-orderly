@@ -35,9 +35,38 @@ continent_match <- function(region) {
 
 }
 
-cumulative_deaths_plot <- function(country) {
-
-  d <- readRDS("combined_data.Rds")
+cumulative_deaths_plot <- function(country, excess = FALSE) {
+  if(excess){
+    d <- readRDS("excess_deaths.Rds")
+    #convert to daily
+    d <- d %>%
+      mutate(
+        deaths = deaths/as.numeric(week_end - week_start),
+        dateRep = week_start
+      ) %>%
+      group_by(iso3c) %>%
+      complete(dateRep = seq(min(dateRep), max(week_end), by = 1)) %>%
+      arrange(iso3c, dateRep) %>%
+      fill(deaths, .direction = "down") %>%
+      ungroup() %>%
+      transmute(
+        countryterritoryCode  = iso3c ,
+        Region = countrycode::countrycode(iso3c , "iso3c", "country.name"),
+        dateRep = dateRep,
+        deaths = deaths
+      )
+    d$Region[d$countryterritoryCode == "KSV"] <- "Kosovo"
+    d <- d %>%
+      left_join(
+        readRDS("combined_data.Rds") %>%
+          ungroup() %>%
+          select(countryterritoryCode, cases, dateRep),
+        by = c("countryterritoryCode", "dateRep")
+      ) %>%
+      mutate(cases = if_else(is.na(cases), 0, cases))
+  } else {
+    d <- readRDS("combined_data.Rds")
+  }
   d$Region[d$Region=="Congo"] <- "Republic of Congo"
   d$Region[d$Region=="United_Republic_of_Tanzania"] <- "Tanzania"
   d$Region[d$Region=="CuraÃ§ao"] <- "Curacao"
@@ -84,6 +113,12 @@ cumulative_deaths_plot <- function(country) {
   df_deaths_latest <- df_deaths[df_deaths$dateRep == max(df_deaths$dateRep),]
   continent <- na.omit(unique(df$Continent[df$Region == country]))
 
+  if(excess){
+    y_label <- "Cumulative Excess Deaths (Logarithmic Scale)"
+  } else {
+    y_label <- "Cumulative Deaths (Logarithmic Scale)"
+  }
+
   gg_deaths <- ggplot(df_deaths[which(df_deaths$Continent == continent), ], aes(x=day_since, y=Cum_Deaths, group = Region)) +
     geom_line(data = doubling_lines_deaths, aes(x=x, y=y, linetype = Doubling),alpha=0.7, inherit.aes = FALSE,color = "black") +
     geom_line(show.legend = FALSE, color = "grey", alpha = 0.6) +
@@ -95,7 +130,7 @@ cumulative_deaths_plot <- function(country) {
     scale_y_log10(limits=c(start, max(df_deaths$Cum_Deaths[df_deaths$Continent == continent],na.rm=TRUE))) +
     xlim(limits=c(0, max(df_deaths$day_since[df_deaths$Continent == continent],na.rm=TRUE))) +
     theme_bw() +
-    ylab("Cumulative Deaths (Logarithmic Scale)") +
+    ylab(y_label) +
     xlab(paste("Days Since", start, "Deaths"))
 
   gg_deaths
@@ -547,17 +582,11 @@ cases_plot_single <- function(df, data, date = Sys.Date(), date_0) {
                          alpha = 0.8,
                          size = 0,
                          show.legend = TRUE) +
-    ggplot2::geom_bar(data = data,
-                      mapping = ggplot2::aes(x = .data$date, y = .data$cases,
-                                             fill = "Reported"),
-                      stat = "identity",
-                      show.legend = TRUE,
-                      inherit.aes = FALSE) +
     ggplot2::ylab("Daily Number of Infections") +
     ggplot2::theme_bw()  +
     ggplot2::scale_y_continuous(expand = c(0,0)) +
-    ggplot2::scale_fill_manual(name = "", labels = (c("Estimated", "Reported")),
-                               values = (c("#3f8ea7","#c59e96"))) +
+    ggplot2::scale_fill_manual(name = "", labels = (c("Estimated")),
+                               values = (c("#3f8ea7"))) +
     ggplot2::scale_x_date(date_breaks = "1 month", date_labels = "%b %d") +
     ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, colour = "black"),
                    axis.title.x = ggplot2::element_blank(),
@@ -575,41 +604,76 @@ cases_plot_single <- function(df, data, date = Sys.Date(), date_0) {
 
 }
 
-
-deaths_plot_single <- function(out, data, date_0, date = Sys.Date(),
-                               forecast = 14, single = FALSE, full = TRUE) {
-
-
-  if(full) {
-    start_date <- min(as.Date(out$replicate_parameters$start_date))
+deaths_plot <-  function(proj, proj_surge, df_excess, df_cases, date_0, date,
+                         forecast) {
+  # build it from scratch
+  if(is.null(proj_surge)){
+    r_list <- list(proj)
   } else {
-    start_date <- min(data$date[which(data$deaths>0)])
+    r_list <- list(proj, proj_surge)
   }
 
+  start_date <- date_0
 
-  if("pmcmc_results" %in% names(out)) {
-    wh <- "pmcmc_results"
-  } else {
-    wh <- "scan_results"
+  pd_list <- lapply(r_list, function(x) {
+
+    df <- x[x$compartment == "deaths" & x$date >= start_date, ]
+    df_summ <- group_by(df, date) %>%
+      summarise(deaths = median(y, na.rm = TRUE),
+                ymin = quantile(y, 0.025, na.rm = TRUE),
+                ymax = quantile(y, 0.975, na.rm = TRUE))
+
+    return(df_summ)
+
+  })
+
+  # append scenarios
+  scenarios <- c("Current healthcare", "Surge in healthcare")
+  for(i in seq_along(pd_list)) {
+    pd_list[[i]]$Scenario <- scenarios[i]
+    pd_list[[i]]$Scenario <- scenarios[i]
   }
 
-  date <- as.Date(date)
-  gg <- plot(out, "deaths", date_0 = date_0, x_var = "date", summary_f = median)
-  ymax <- max(out[[wh]]$inputs$data$deaths, gg$layers[[1]]$data$ymax[gg$layers[[1]]$data$x<=(as.Date(date)+forecast)])
+  pds <- do.call(rbind, pd_list) %>% ungroup
 
-  gg <- gg +
-    geom_point(data = out[[wh]]$inputs$data, mapping = aes(x=date, y=deaths,shape="Reported")) +
-    ggplot2::geom_vline(xintercept = date, linetype = "dashed") +
-    ggplot2::theme_bw()  +
-    ggplot2::scale_y_continuous(limits = c(0, ymax+1)) +
-    ggplot2::scale_x_date(date_breaks = "1 month", date_labels = "%b %Y",
-                          limits = c(start_date, date + forecast),
-                          expand = c(0, 0)) +
-    ggplot2::scale_fill_manual(name = "", labels = rev(c("Estimated")),
-                               values = (c("#c59e96"))) +
-    ggplot2::scale_color_manual(name = "", labels = rev(c("Estimated")),
-                                values = (c("#c59e96"))) +
-    ggplot2::ylab("") +
+  # Plot
+  pds <- pds[pds$date <= date + forecast,]
+  p <- ggplot(pds, aes(date, deaths, ymin = ymin, ymax = ymax, col = Scenario, fill = Scenario)) +
+    geom_line() + geom_ribbon(alpha = 0.25, col = NA)
+
+  # Add remaining formatting
+  gg <- p +
+    ggplot2::scale_color_discrete(name = "") +
+    ggplot2::scale_fill_discrete(guide = "none") +
+    ggplot2::theme_bw() +
+    theme(legend.position = "top") +
+    guides(linetype = "none")
+
+  if(is.null(df_excess)){
+    gg2 <- gg +
+      geom_point(data = df_cases, mapping = aes(x=date, y=deaths,shape="Reported Deaths"), inherit.aes = FALSE) +
+      ggplot2::theme_bw()  +
+      ggplot2::scale_x_date(date_breaks = "1 month", date_labels = "%b %Y",
+                            limits = c(min(df_cases$date[which(df_cases$deaths>0)]), date + forecast),
+                            expand = c(0, 0))
+  } else {
+    gg2 <- gg +
+      geom_segment(data = df_excess, mapping = aes(x = date_start, xend = date_end, y = deaths, yend = deaths), inherit.aes = FALSE, size = 1) +
+      ggplot2::theme_bw()  +
+      ggplot2::scale_x_date(date_breaks = "1 month", date_labels = "%b %Y",
+                            limits = c(min(df_cases$date[which(df_cases$deaths>0)]), date + forecast),
+                            expand = c(0, 0))
+  }
+
+  gg2 <- gg2 +
+    ggplot2::geom_vline(xintercept = date, linetype = "dashed")  +
+    ggplot2::scale_fill_manual(name = "", labels = (c("Estimated with Current Healthcare Capacity",
+                                                      "Estimated with Surge in Healthcare Capacity")),
+                               values = (c("#c59e96","#3f8ea7"))) +
+    ggplot2::scale_color_manual(name = "", labels = (c("Estimated with Current Healthcare Capacity",
+                                                       "Estimated with Surge in Healthcare Capacity")),
+                                values = (c("#c59e96","#3f8ea7"))) +
+    ggplot2::ylab("Daily Deaths") +
     ggplot2::scale_shape_manual(name = "", values = 20) +
     ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, colour = "black"),
                    axis.title.x = ggplot2::element_blank(),
@@ -619,8 +683,59 @@ deaths_plot_single <- function(out, data, date_0, date = Sys.Date(),
                    panel.background = ggplot2::element_blank(),
                    axis.line = ggplot2::element_line(colour = "black"))
 
+  gg2 <- gg2 + ggplot2::theme(legend.position = "top",
+                              legend.justification = c(0.5,1),
+                              legend.direction = "horizontal") +
+    geom_vline(xintercept = date, linetype = "dashed")
+  #don't bother with seperate plots
+  gg2 + theme(legend.position = "none") + ylab("Daily Deaths") + ggtitle("Model Fit & 28 Day Projection")
+
+}
+
+
+
+deaths_plot_single <- function(out, data, date_0, date = Sys.Date(),
+                               forecast = 14, single = FALSE, full = TRUE) {
+
+
+  if(full) {
+    start_date <- as.Date(out$inputs$start_date)
+  } else {
+    start_date <- as.Date(
+      min(out$inputs$data$date_start[out$inputs$data$deaths > 0])
+    )
+  }
+
+  date <- as.Date(date)
+  #set deaths to daily
+  data <- out$inputs$data %>% mutate(deaths = deaths/as.numeric(date_end - date_start))
+  gg <- plot(out, summarise = TRUE, replicates = FALSE, particle_fit = TRUE)
+  ymax <- max(data$deaths, gg$layers[[1]]$data$ymax[gg$layers[[1]]$data$date<=(as.Date(date)+forecast)])
+
+  gg <- gg +
+    geom_segment(data = data,
+                 mapping = aes(x=date_start, xend = date_end, y=deaths, yend = deaths)) +
+    ggplot2::geom_vline(xintercept = date, linetype = "dashed") +
+    ggplot2::theme_bw()  +
+    ggplot2::scale_y_continuous(limits = c(0, ymax+1)) +
+    ggplot2::scale_x_date(date_breaks = "2 month", date_labels = "%b %Y",
+                          limits = c(start_date, date + forecast),
+                          expand = c(0, 0)) +
+    # ggplot2::scale_fill_manual(name = "", labels = rev(c("Estimated")),
+    #                            values = (c("#c59e96"))) +
+    # ggplot2::scale_color_manual(name = "", labels = rev(c("Estimated")),
+    #                             values = (c("#c59e96"))) +
+    ggplot2::ylab("") +
+    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, colour = "black"),
+                   axis.title.x = ggplot2::element_blank(),
+                   panel.grid.major.x = ggplot2::element_blank(),
+                   panel.grid.minor.x = ggplot2::element_blank(),
+                   panel.border = ggplot2::element_blank(),
+                   panel.background = ggplot2::element_blank(),
+                   axis.line = ggplot2::element_line(colour = "black"))
+
   rg <- gg + ylab("Daily Deaths") +
-    ylim(c(0, max(gg$layers[[1]]$data[gg$layers[[1]]$data$x < date+1,]$ymax,out[[wh]]$inputs$data$deaths+1))) +
+    #ylim(c(0, max(gg$layers[[1]]$data[gg$layers[[1]]$data$x < date+1,]$ymax,out[[wh]]$inputs$data$deaths+1))) +
     xlim(c(start_date, date)) +
     theme(legend.position = "none") +
     ggtitle("Model Fit up to Current Day")
@@ -640,182 +755,16 @@ deaths_plot_single <- function(out, data, date_0, date = Sys.Date(),
 
 }
 
-deaths_plot_single_surge <- function(out, out2, data, date_0, date = Sys.Date(),
-                                     forecast = 14) {
-
-
-  if("pmcmc_results" %in% names(out)) {
-    wh <- "pmcmc_results"
-  } else {
-    wh <- "scan_results"
-  }
-
+deaths_plot <-  function(proj, proj_surge, df_excess, df_cases, date_0, date,
+                         forecast) {
   # build it from scratch
-  r_list <- list(out, out2)
-
-  pd_list <- lapply(r_list, FUN = nim_sq_simulation_plot_prep,
-                    var_select = "deaths",
-                    x_var = "date",
-                    q = c(0.025, 0.975),
-                    summary_f = median,
-                    date_0 = date_0)
-
-  # append scenarios
-  scenarios <- c("Current healthcare", "Surge in healthcare")
-  for(i in seq_along(scenarios)) {
-    pd_list[[i]]$pd$Scenario <- scenarios[i]
-    pd_list[[i]]$pds$Scenario <- scenarios[i]
-  }
-
-  pds <- do.call(rbind, lapply(pd_list, "[[", "pds")) %>% ungroup
-  pd <- do.call(rbind, lapply(pd_list, "[[", "pd"))
-
-  # Plot
-  pds <- pds %>% filter(x <= date_0 + forecast)
-  p <- ggplot2::ggplot(data = pds,
-                       ggplot2::aes(x = .data$x, y = .data$y, col = Scenario))
-
-  p <- p + ggplot2::geom_line(data = pds,
-                              ggplot2::aes(x = .data$x, y = .data$y,
-                                           col = .data$Scenario,
-                                           linetype = .data$compartment))
-  p <- p + ggplot2::geom_ribbon(data = pds,
-                                ggplot2::aes(x = .data$x,
-                                             ymin = .data$ymin,
-                                             ymax = .data$ymax,
-                                             fill = .data$Scenario,
-                                             linetype = .data$compartment),
-                                alpha = 0.25, col = NA)
-
-  # Add remaining formatting
-  gg <- p +
-    ggplot2::scale_color_discrete(name = "") +
-    ggplot2::scale_fill_discrete(guide = FALSE) +
-    ggplot2::xlab("Time") +
-    ggplot2::ylab("N") +
-    ggplot2::theme_bw() +
-    theme(legend.position = "top") +
-    guides(linetype = FALSE)
-
-  date <- as.Date(date)
-  ymax <- max(out[[wh]]$inputs$data$deaths,
-              gg$layers[[1]]$data$ymax[gg$layers[[1]]$data$x<=(as.Date(date)+forecast)])
-
-  gg2 <- gg +
-    geom_point(data = out[[wh]]$inputs$data, mapping = aes(x=date, y=deaths,shape="Reported Deaths"), inherit.aes = FALSE) +
-    ggplot2::geom_vline(xintercept = date, linetype = "dashed") +
-    ggplot2::theme_bw()  +
-    ggplot2::scale_x_date(date_breaks = "1 month", date_labels = "%b %Y",
-                          limits = c(min(data$date[which(data$deaths>0)]), date + forecast),
-                          expand = c(0, 0)) +
-    ggplot2::scale_fill_manual(name = "", labels = (c("Estimated with Current Healthcare Capacity",
-                                                      "Estimated with Surge in Healthcare Capacity")),
-                               values = (c("#c59e96","#3f8ea7"))) +
-    ggplot2::scale_color_manual(name = "", labels = (c("Estimated with Current Healthcare Capacity",
-                                                       "Estimated with Surge in Healthcare Capacity")),
-                                values = (c("#c59e96","#3f8ea7"))) +
-    ggplot2::ylab("Daily Deaths") +
-    ggplot2::scale_shape_manual(name = "", values = 20) +
-    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, colour = "black"),
-                   axis.title.x = ggplot2::element_blank(),
-                   panel.grid.major.x = ggplot2::element_blank(),
-                   panel.grid.minor.x = ggplot2::element_blank(),
-                   panel.border = ggplot2::element_blank(),
-                   panel.background = ggplot2::element_blank(),
-                   axis.line = ggplot2::element_line(colour = "black"))
-
-  gg2 <- gg2 + ggplot2::theme(legend.position = "top",
-                              legend.justification = c(0.5,1),
-                              legend.direction = "horizontal") +
-    geom_vline(xintercept = date, linetype = "dashed")
-
-  rg <- gg2 + ylab("Daily Deaths") +
-    ylim(c(0, max(gg2$data[gg2$data$x < date+1,]$ymax, out[[wh]]$inputs$data$deaths+1))) +
-    xlim(c(min(data$date[which(data$deaths>0)]), date)) +
-    theme(legend.position = "none") +
-    ggtitle("Model Fit up to Current Day")
-
-  gg2 <- gg2 + theme(legend.position = "none") + ylab("") + ggtitle("Model Fit & 28 Day Projection")
-
-  leg <- cowplot::get_legend(gg2)
-  cowplot::plot_grid(leg,
-                     cowplot::plot_grid(rg, gg2+theme(legend.position = "none"),rel_widths=c(0.66,1)),
-                     ncol = 1, rel_heights = c(0.1,1))
-
-
-}
-
-deaths_plot_single_vaccine <- function(out, data, date_0, date = Sys.Date(),
-                                       forecast = 14, single = FALSE, full = TRUE) {
-
-
-
-  start_date <- min(data$date[which(data$deaths>0)])
-  date <- date_0 <- as.Date(date_0)
-
-  df <- out[out$compartment == "deaths" & out$date >= start_date, ]
-  df_summ <- group_by(df, date) %>%
-    summarise(deaths = median(y, na.rm = TRUE),
-              ymin = quantile(y, 0.025, na.rm = TRUE),
-              ymax = quantile(y, 0.975, na.rm = TRUE))
-
-  gg <- ggplot(df_summ, aes(date, deaths, ymin = ymin, ymax = ymax)) +
-    geom_line(color = "#c59e96") + geom_ribbon(fill = "#c59e96", alpha = 0.25)
-  ymax <- max(data$daily_deaths, df_summ$ymax[df_summ$date<=(as.Date(date)+forecast)])
-
-  gg <- gg +
-    geom_point(data = data, mapping = aes(x=date, y=daily_deaths,shape="Reported"), inherit.aes = FALSE) +
-    ggplot2::geom_vline(xintercept = date, linetype = "dashed") +
-    ggplot2::theme_bw()  +
-    ggplot2::scale_y_continuous(limits = c(0, ymax+1)) +
-    ggplot2::scale_x_date(date_breaks = "1 month", date_labels = "%b %Y",
-                          limits = c(start_date, date_0 + forecast),
-                          expand = c(0, 0)) +
-    ggplot2::scale_fill_manual(name = "", labels = rev(c("Estimated")),
-                               values = (c("#c59e96"))) +
-    ggplot2::scale_color_manual(name = "", labels = rev(c("Estimated")),
-                                values = (c("#c59e96"))) +
-    ggplot2::ylab("") +
-    ggplot2::scale_shape_manual(name = "", values = 20) +
-    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, colour = "black"),
-                   axis.title.x = ggplot2::element_blank(),
-                   panel.grid.major.x = ggplot2::element_blank(),
-                   panel.grid.minor.x = ggplot2::element_blank(),
-                   panel.border = ggplot2::element_blank(),
-                   panel.background = ggplot2::element_blank(),
-                   axis.line = ggplot2::element_line(colour = "black"))
-
-  rg <- gg + ylab("Daily Deaths") +
-    theme(legend.position = "none") +
-    ggplot2::scale_x_date(date_breaks = "1 month", date_labels = "%b %Y",
-                          limits = c(start_date, date_0),
-                          expand = c(0, 0)) +
-    ggtitle("Model Fit up to Current Day")
-
-  if(single) {
-    return(rg)
+  if(is.null(proj_surge)){
+    r_list <- list(proj)
   } else {
-
-    gg <- gg + theme(legend.position = "none") + ylab("") + ggtitle("Model Fit & 28 Day Projection")
-
-    leg <- cowplot::get_legend(gg)
-    return(cowplot::plot_grid(leg,
-                              cowplot::plot_grid(rg, gg+theme(legend.position = "none"),rel_widths=c(0.66,1)),
-                              ncol = 1, rel_heights = c(0.1,1)))
+    r_list <- list(proj, proj_surge)
   }
 
-
-}
-
-deaths_plot_single_surge_vaccine <- function(out, out2, data, date_0, date = Sys.Date(),
-                                             forecast = 14) {
-
-
-  # build it from scratch
-  r_list <- list(out, out2)
-
-  start_date <- min(data$date[which(data$deaths>0)])
-  date <- date_0 <- as.Date(date_0)
+  start_date <- date_0
 
   pd_list <- lapply(r_list, function(x) {
 
@@ -831,7 +780,7 @@ deaths_plot_single_surge_vaccine <- function(out, out2, data, date_0, date = Sys
 
   # append scenarios
   scenarios <- c("Current healthcare", "Surge in healthcare")
-  for(i in seq_along(scenarios)) {
+  for(i in seq_along(pd_list)) {
     pd_list[[i]]$Scenario <- scenarios[i]
     pd_list[[i]]$Scenario <- scenarios[i]
   }
@@ -839,27 +788,36 @@ deaths_plot_single_surge_vaccine <- function(out, out2, data, date_0, date = Sys
   pds <- do.call(rbind, pd_list) %>% ungroup
 
   # Plot
-  pds <- pds %>% filter(date <= date_0 + forecast)
+  pds <- pds[pds$date <= date + forecast,]
   p <- ggplot(pds, aes(date, deaths, ymin = ymin, ymax = ymax, col = Scenario, fill = Scenario)) +
     geom_line() + geom_ribbon(alpha = 0.25, col = NA)
-  ymax <- max(data$daily_deaths, pds$ymax[pds$date<=(as.Date(date)+forecast)])
 
   # Add remaining formatting
   gg <- p +
     ggplot2::scale_color_discrete(name = "") +
-    ggplot2::scale_fill_discrete(guide = FALSE) +
+    ggplot2::scale_fill_discrete(guide = "none") +
     ggplot2::theme_bw() +
     theme(legend.position = "top") +
-    guides(linetype = FALSE)
+    guides(linetype = "none")
 
+  if(is.null(df_excess)){
+    gg2 <- gg +
+      geom_point(data = df_cases, mapping = aes(x=date, y=deaths,shape="Reported Deaths"), inherit.aes = FALSE) +
+      ggplot2::theme_bw()  +
+      ggplot2::scale_x_date(date_breaks = "1 month", date_labels = "%b %Y",
+                            limits = c(min(df_cases$date[which(df_cases$deaths>0)]), date + forecast),
+                            expand = c(0, 0))
+  } else {
+    gg2 <- gg +
+      geom_segment(data = df_excess, mapping = aes(x = date_start, xend = date_end, y = deaths, yend = deaths), inherit.aes = FALSE, size = 1) +
+      ggplot2::theme_bw()  +
+      ggplot2::scale_x_date(date_breaks = "1 month", date_labels = "%b %Y",
+                            limits = c(min(df_cases$date[which(df_cases$deaths>0)]), date + forecast),
+                            expand = c(0, 0))
+  }
 
-  gg2 <- gg +
-    geom_point(data = data, mapping = aes(x=date, y=daily_deaths,shape="Reported Deaths"), inherit.aes = FALSE) +
-    ggplot2::geom_vline(xintercept = date, linetype = "dashed") +
-    ggplot2::theme_bw()  +
-    ggplot2::scale_x_date(date_breaks = "1 month", date_labels = "%b %Y",
-                          limits = c(min(data$date[which(data$daily_deaths>0)]), date + forecast),
-                          expand = c(0, 0)) +
+  gg2 <- gg2 +
+    ggplot2::geom_vline(xintercept = date, linetype = "dashed")  +
     ggplot2::scale_fill_manual(name = "", labels = (c("Estimated with Current Healthcare Capacity",
                                                       "Estimated with Surge in Healthcare Capacity")),
                                values = (c("#c59e96","#3f8ea7"))) +
@@ -880,504 +838,63 @@ deaths_plot_single_surge_vaccine <- function(out, out2, data, date_0, date = Sys
                               legend.justification = c(0.5,1),
                               legend.direction = "horizontal") +
     geom_vline(xintercept = date, linetype = "dashed")
-
-  rg <- gg2 + ylab("Daily Deaths") +
-    xlim(c(min(data$date[which(data$daily_deaths>0)]), date)) +
-    theme(legend.position = "none") +
-    ggtitle("Model Fit up to Current Day")
-
-  gg2 <- gg2 + theme(legend.position = "none") + ylab("") + ggtitle("Model Fit & 28 Day Projection")
-
-  leg <- cowplot::get_legend(gg2)
-  cowplot::plot_grid(leg,
-                     cowplot::plot_grid(rg, gg2+theme(legend.position = "none"),rel_widths=c(0.66,1)),
-                     ncol = 1, rel_heights = c(0.1,1))
-
+  #don't bother with seperate plots
+  gg2 + theme(legend.position = "none") + ylab("Daily Deaths") + ggtitle("Model Fit & 28 Day Projection")
 
 }
 
 
+healthcare_plot_contrast <- function(projs, what, date, forcast){
+  #get correct dates
+  df <- projs[projs$date <=  date + forecast + 1 &
+                projs$date > date - 7, ] %>%
+    #only the needed compartment
+    filter(compartment == what) %>%
+    group_by(Scenario, date) %>%
+    #summarise over dates
+    summarise(y = mean(y), .groups = "drop") %>%
+    #format scenarios
+    mutate(
+      Scenario = stringr::str_remove(Scenario, "r_") %>%
+        stringr::str_remove("_scenario") %>%
+        stringr::str_remove("_leg") %>%
+        stringr::str_to_title()
+    )
 
-deaths_plot_contrast_triple <- function(o1, o2, o3, data, date_0, date = Sys.Date(),
-                                        forecast = 14, cumulative = TRUE) {
-
-  o1$Scenario <- "No"
-  o2$Scenario <- "Yes"
-  o3$Scenario <- "Worse"
-  df <- rbind(o1,o2,o3)
-
-  # day
-  df$day <- as.Date(as.character(df$date))
-
-  # split to correct dates
-  if(!cumulative) {
-    sub <- df[df$compartment == "deaths" &
-                df$date <=  date + forecast + 1,]  %>%
-      dplyr::group_by(.data$day, .data$replicate, .data$Scenario) %>%
-      dplyr::summarise(y = mean(.data$y), n=dplyr::n()) %>%
-      dplyr::filter(.data$day <= date + forecast) %>%
-      dplyr::filter(!is.na(.data$y))
-
-    title <- "Daily Deaths"
-
-    # format deaths
-    data$deaths <- rev(c(tail(data$deaths,1), diff(rev(data$deaths))))
-
-  } else {
-    sub <- df[df$compartment == "D" &
-                df$date <=  date + forecast + 1,]  %>%
-      dplyr::group_by(.data$day, .data$replicate, .data$Scenario) %>%
-      dplyr::summarise(y = mean(.data$y), n=dplyr::n()) %>%
-      dplyr::filter(.data$day <= date + forecast) %>%
-      dplyr::filter(!is.na(.data$y))
-
-    title <- "Cumulative Deaths"
+  # y axis
+  if (what == "ICU_demand") {
+    title <- "ICU Demand"
+  } else if(what == "hospital_demand") {
+    title <- "Hospital Bed Demand"
+  } else if(what == "infections"){
+    title <- "Daily Infections"
   }
 
-  pd_group <- dplyr::group_by(sub, .data$day, .data$Scenario) %>%
-    dplyr::summarise(quants = list(quantile(.data$y, c(0.025, 0.25, 0.5, 0.75, 0.975))),
-                     ymin = round(.data$quants[[1]][1]),
-                     ymax = round(.data$quants[[1]][5]),
-                     yinner_min = round(.data$quants[[1]][2]),
-                     yinner_max = round(.data$quants[[1]][4]),
-                     y = mean(.data$y),
-                     n = dplyr::n())
-
-
-  # Plot
-  gg_healthcare <- ggplot2::ggplot(sub,
-                                   ggplot2::aes(x = .data$day,
-                                                y = .data$y,
-                                                fill = .data$compartment)) +
-    ggplot2::geom_ribbon(data = pd_group,
-                         mapping = ggplot2::aes(ymin = .data$ymin,
-                                                ymax = .data$ymax,
-                                                fill = Scenario),
-                         color = "white",
-                         alpha = 0.2,
-                         size = 0,
-                         show.legend = TRUE) +
-    ggplot2::geom_ribbon(data = pd_group,
-                         mapping = ggplot2::aes(ymin = .data$yinner_min,
-                                                ymax = .data$yinner_max,
-                                                fill = Scenario),
-                         color = "white",
-                         alpha = 0.8,
-                         size = 0,
-                         show.legend = TRUE) +
-    ggplot2::geom_vline(xintercept = date, linetype = "dashed") +
-    ggplot2::theme_bw()  +
+  ggplot2::ggplot(df, ggplot2::aes(x = .data$date,
+                                   y = .data$y,
+                                   fill = .data$Scenario)) +
+    geom_bar(
+      stat = "identity",
+      position = "identity",
+      show.legend = TRUE) +
     ggplot2::ylab(title) +
+    ggplot2::theme_bw()  +
     ggplot2::scale_y_continuous(expand = c(0,0)) +
+    ggplot2::scale_fill_manual(name = "", labels = unique(df$Scenario),
+                               values = rev(c("#9eeccd","#c59e96","#3f8ea7"))) +
     ggplot2::scale_x_date(date_breaks = "2 weeks", date_labels = "%b %d",
-                          limits = c(date - 7, date + forecast)) +
-    ggplot2::scale_fill_manual(name = "", labels = (c( "Maintain Status Quo","Relax Interventions 50%","Additional 50% Reduction")),
-                               values = (c("#9eeccd","#c59e96","#3f8ea7"))) +
+                          expand = c(0, 0)) +
     ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, colour = "black"),
                    axis.title.x = ggplot2::element_blank(),
                    panel.grid.major.x = ggplot2::element_blank(),
                    panel.grid.minor.x = ggplot2::element_blank(),
-                   panel.border = ggplot2::element_blank(),
-                   panel.background = ggplot2::element_blank(),
-                   axis.line = ggplot2::element_line(colour = "black"),
                    legend.position = "top",
                    legend.justification = c(0,1),
-                   legend.direction = "horizontal")
-
-  gg_healthcare
-
-
-}
-
-cases_contrast_triple <- function(o1, o2, o3, data, date_0, date = Sys.Date(),
-                                  forecast = 14,
-                                  version = "new") {
-
-  o1$Scenario <- "No"
-  o2$Scenario <- "Yes"
-  o3$Scenario <- "Worse"
-  df <- rbind(o1,o2,o3)
-
-  # day
-  df$day <- as.Date(as.character(df$date))
-
-  # split to correct dates
-  sub <- df[df$compartment == "infections" &
-              df$date <=  date + forecast + 1,]  %>%
-    dplyr::group_by(.data$day, .data$replicate, .data$Scenario) %>%
-    dplyr::summarise(y = mean(.data$y), n=dplyr::n()) %>%
-    dplyr::filter(.data$day <= date + forecast) %>%
-    dplyr::filter(!is.na(.data$y))
-
-  title <- "Daily Cases"
-
-
-
-  pd_group <- dplyr::group_by(sub, .data$day, .data$Scenario) %>%
-    dplyr::summarise(quants = list(quantile(.data$y, c(0.025, 0.25, 0.5, 0.75, 0.975))),
-                     ymin = round(.data$quants[[1]][1]),
-                     ymax = round(.data$quants[[1]][5]),
-                     yinner_min = round(.data$quants[[1]][2]),
-                     yinner_max = round(.data$quants[[1]][4]),
-                     y = mean(.data$y),
-                     n = dplyr::n())
-  ymax <- max(pd_group$ymax[pd_group$day<(date+forecast) & pd_group$day>(date-forecast)])
-
-  # Plot
-  gg_healthcare <- ggplot2::ggplot(sub,
-                                   ggplot2::aes(x = .data$day,
-                                                y = .data$y,
-                                                color = .data$Scenario)) +
-    # ggplot2::geom_line(sub,
-    #                    mapping = ggplot2::aes(group = interaction(Scenario, replicate),
-    #                                           y = .data$y, x=.data$day),
-    #                    show.legend = TRUE, se = FALSE,alpha=0.1) +
-    ggplot2::geom_smooth(data = pd_group,
-                         mapping = ggplot2::aes(y = .data$y,
-                                                ymin = .data$ymin,
-                                                ymax = .data$ymax,
-                                                color = Scenario),
-                         show.legend = FALSE, se = FALSE) +
-    ggplot2::geom_smooth(data = pd_group,
-                         mapping = ggplot2::aes(y = .data$ymin,
-                                                color = Scenario),
-                         linetype = "dashed",
-                         show.legend = FALSE, se = FALSE, alpha = 0.2) +
-    ggplot2::geom_smooth(data = pd_group,
-                         mapping = ggplot2::aes(y = .data$ymax,
-                                                color = Scenario),
-                         linetype = "dashed",
-                         show.legend = FALSE, se = FALSE, alpha = 0.2) +
-    ggplot2::geom_vline(xintercept = date, linetype = "dashed") +
-    ggplot2::theme_bw()  +
-    ggplot2::ylab(title) +
-    ggplot2::scale_y_continuous(expand = c(0,0),limits=c(0,ymax)) +
-    ggplot2::scale_x_date(date_breaks = "2 weeks", date_labels = "%b %d",
-                          limits = c(date - 7, date + forecast)) +
-    ggplot2::scale_color_manual(name = "", labels = (c( "Maintain Status Quo","Relax Interventions 50%","Additional 50% Reduction")),
-                                values = (c("#9eeccd","#c59e96","#3f8ea7"))) +
-    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, colour = "black"),
-                   axis.title.x = ggplot2::element_blank(),
-                   panel.grid.major.x = ggplot2::element_blank(),
-                   panel.grid.minor.x = ggplot2::element_blank(),
+                   legend.direction = "horizontal",
                    panel.border = ggplot2::element_blank(),
                    panel.background = ggplot2::element_blank(),
-                   axis.line = ggplot2::element_line(colour = "black"),
-                   legend.position = "top",
-                   legend.justification = c(0.5,1),
-                   legend.direction = "horizontal") +
-    guides(colour = guide_legend(override.aes = list(alpha = 1)))
-
-  gg_healthcare
-
-
-}
-
-cases_contrast_triple_bars <- function(o1, o2, o3, data, date_0, date = Sys.Date(), forecast = 14, what = "ICU_demand",
-                                       version = "new") {
-
-  o1$Scenario <- "No"
-  o2$Scenario <- "Yes"
-  o3$Scenario <- "Worse"
-  df <- rbind(o1,o2,o3)
-
-  # day
-  df$day <- as.Date(as.character(df$date))
-
-  # split to correct dates
-  sub <- df[df$compartment %in% "infections" &
-              df$date <=  date + forecast + 1,] %>%
-    dplyr::group_by(.data$day, .data$replicate, .data$Scenario) %>%
-    dplyr::summarise(y = mean(.data$y), n=dplyr::n()) %>%
-    dplyr::filter(.data$day <= date + forecast) %>%
-    dplyr::filter(.data$day >= date - 7) %>%
-    dplyr::filter(!is.na(.data$y))
-
-  sub$Scenario <- factor(sub$Scenario, levels = c( "No","Worse", "Yes"))
-  pd_group <- dplyr::group_by(sub, .data$day, .data$Scenario) %>%
-    dplyr::summarise(quants = list(quantile(.data$y, c(0.25, 0.5, 0.75))),
-                     ymin = .data$quants[[1]][1],
-                     y = mean(.data$y),
-                     ymax = .data$quants[[1]][3])
-  ymax <- max(pd_group$y[pd_group$day<=(date+forecast) & pd_group$day>(date-forecast)])
-
-  if(version == "legacy"){
-    scen_names <- c("Maintain Status Quo","Relax Interventions 50%","Additional 50% Reduction")
-  } else {
-    scen_names <- c("Maintain Status Quo","Pessimistic","Optimistic")
-  }
-
-  # Plot
-  suppressMessages(suppressWarnings(
-    gg_healthcare <- ggplot2::ggplot(sub, ggplot2::aes(x = .data$day,
-                                                       y = .data$y,
-                                                       fill = .data$Scenario)) +
-      ggplot2::geom_bar(data = pd_group[pd_group$Scenario=="Worse",],
-                        mapping = ggplot2::aes(x = .data$day, y = .data$y, fill = .data$Scenario),
-                        stat = "identity",
-                        position = "identity",
-                        show.legend = TRUE,
-                        inherit.aes = FALSE) +
-      ggplot2::geom_bar(data = pd_group[pd_group$Scenario=="No",],
-                        mapping = ggplot2::aes(x = .data$day, y = .data$y, fill = .data$Scenario),
-                        stat = "identity",
-                        position = "identity",
-                        show.legend = TRUE,
-                        inherit.aes = FALSE) +
-      ggplot2::geom_bar(data = pd_group[pd_group$Scenario=="Yes",],
-                        mapping = ggplot2::aes(x = .data$day, y = .data$y, fill = .data$Scenario),
-                        stat = "identity",
-                        position = "identity",
-                        show.legend = TRUE,
-                        inherit.aes = FALSE) +
-      ggplot2::theme_bw()  +
-      ggplot2::ylab("Daily Infections") +
-      ggplot2::scale_y_continuous(expand = c(0,0), limits = c(0, ymax)) +
-      ggplot2::scale_fill_manual(name = "", labels = (scen_names),
-                                 values = (c("#9eeccd","#c59e96","#3f8ea7"))) +
-      ggplot2::scale_x_date(date_breaks = "2 weeks", date_labels = "%b %d",
-                            expand = c(0, 0)) +
-      ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, colour = "black"),
-                     axis.title.x = ggplot2::element_blank(),
-                     panel.grid.major.x = ggplot2::element_blank(),
-                     panel.grid.minor.x = ggplot2::element_blank(),
-                     legend.position = "top",
-                     legend.justification = c(0.5,1),
-                     legend.direction = "horizontal",
-                     panel.border = ggplot2::element_blank(),
-                     panel.background = ggplot2::element_blank(),
-                     axis.line = ggplot2::element_line(colour = "black")) +
-      geom_vline(xintercept = date, linetype = "dashed")
-  ))
-
-  gg_healthcare
-
-}
-
-healthcare_plot_contrast <- function(o1, o2, data, date_0, date = Sys.Date(), forecast = 14, what = "ICU_demand") {
-
-  o1$Scenario <- "No"
-  o2$Scenario <- "Yes"
-  df <- rbind(o1,o2)
-
-  # day
-  df$day <- as.Date(as.character(df$date))
-
-  # split to correct dates
-  sub <- df[df$compartment %in% what &
-              df$date <=  date + forecast + 1,] %>%
-    dplyr::group_by(.data$day, .data$replicate, .data$Scenario) %>%
-    dplyr::summarise(y = mean(.data$y), n=dplyr::n()) %>%
-    dplyr::filter(.data$day <= date_0 + forecast) %>%
-    dplyr::filter(!is.na(.data$y))
-
-  sub$Scenario <- factor(sub$Scenario, levels = c("No","Yes"))
-  pd_group <- dplyr::group_by(sub, .data$day, .data$Scenario) %>%
-    dplyr::summarise(quants = list(quantile(.data$y, c(0.25, 0.5, 0.75))),
-                     ymin = .data$quants[[1]][1],
-                     y = mean(.data$y),
-                     ymax = .data$quants[[1]][3])
-
-
-  # y axis
-  if (what == "ICU_demand") {
-    title <- "ICU Demand"
-  } else if(what == "hospital_demand") {
-    title <- "Hospital Bed Demand"
-  }
-
-  # Plot
-  suppressMessages(suppressWarnings(
-    gg_healthcare <- ggplot2::ggplot(sub, ggplot2::aes(x = .data$day,
-                                                       y = .data$y,
-                                                       fill = .data$Scenario)) +
-      ggplot2::geom_bar(data = pd_group[pd_group$Scenario=="No",],
-                        mapping = ggplot2::aes(x = .data$day, y = .data$y, fill = .data$Scenario),
-                        stat = "identity",
-                        position = "identity",
-                        show.legend = TRUE,
-                        inherit.aes = FALSE) +
-      ggplot2::geom_bar(data = pd_group[pd_group$Scenario=="Yes",],
-                        mapping = ggplot2::aes(x = .data$day, y = .data$y, fill = .data$Scenario),
-                        stat = "identity",
-                        position = "identity",
-                        show.legend = TRUE,
-                        inherit.aes = FALSE) +
-      ggplot2::ylab(title) +
-      ggplot2::theme_bw()  +
-      ggplot2::scale_y_continuous(expand = c(0,0)) +
-      ggplot2::scale_fill_manual(name = "", labels = (c("Maintain Status Quo", "Additional 50% Reduction")),
-                                 values = rev(c("#3f8ea7","#c59e96"))) +
-      ggplot2::scale_x_date(date_breaks = "2 weeks", date_labels = "%b %d", limits = c(date_0-7, date_0 + forecast)) +
-      ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, colour = "black"),
-                     axis.title.x = ggplot2::element_blank(),
-                     panel.grid.major.x = ggplot2::element_blank(),
-                     panel.grid.minor.x = ggplot2::element_blank(),
-                     legend.position = "top",
-                     legend.justification = c(0,1),
-                     legend.direction = "horizontal",
-                     panel.border = ggplot2::element_blank(),
-                     panel.background = ggplot2::element_blank(),
-                     axis.line = ggplot2::element_line(colour = "black")) +
-      geom_vline(xintercept = date, linetype = "dashed")
-  ))
-  gg_healthcare
-
-}
-
-healthcare_plot_contrast_lines <- function(o1, o2, data, date_0, date = Sys.Date(), forecast = 14, what = "ICU_demand") {
-
-  o1$Scenario <- "No change to epidemic"
-  o2$Scenario <- "Mitigation (50% reduction from today)"
-  df <- rbind(o1,o2)
-
-  # day
-  df$day <- as.Date(as.character(df$date))
-
-  # split to correct dates
-  sub <- df[df$compartment %in% what &
-              df$date <=  date + forecast + 1,] %>%
-    dplyr::group_by(.data$day, .data$replicate, .data$Scenario) %>%
-    dplyr::summarise(y = mean(.data$y), n=dplyr::n()) %>%
-    dplyr::filter(.data$day <= date_0 + forecast) %>%
-    dplyr::filter(!is.na(.data$y))
-
-  pd_group <- dplyr::group_by(sub[sub$day>date_0-7,], .data$day, .data$Scenario) %>%
-    dplyr::summarise(quants = list(quantile(.data$y, c(0.25, 0.5, 0.75))),
-                     ymin = .data$quants[[1]][1],
-                     ymin_t = t.test(.data$y)$conf.int[1],
-                     y = mean(.data$y),
-                     ymax = .data$quants[[1]][3],
-                     ymin_t = t.test(.data$y)$conf.int[2])
-
-  # y axis
-  if (what == "ICU_demand") {
-    title <- "ICU Demand"
-  } else if(what == "hospital_demand") {
-    title <- "Hospital Bed Demand"
-  }
-
-  # Plot
-  suppressMessages(suppressWarnings(
-    gg_healthcare <- ggplot2::ggplot(sub, ggplot2::aes(x = .data$day,
-                                                       y = .data$y,
-                                                       fill = .data$Scenario)) +
-      ggplot2::geom_line(data = pd_group,
-                         mapping = ggplot2::aes(x = .data$day, y = .data$y, fill = .data$Scenario),
-                         show.legend = TRUE,
-                         inherit.aes = FALSE) +
-      ggplot2::geom_errorbar(data = pd_group,
-                             mapping = ggplot2::aes(x = .data$day, ymin = .data$ymin,ymax=.data$ymax, fill = .data$Scenario),
-                             stat = "identity",
-                             show.legend = TRUE,
-                             inherit.aes = FALSE) +
-      ggplot2::geom_vline(xintercept = date, linetype = "dashed") +
-      ggplot2::ylab(title) +
-      ggplot2::theme_bw()  +
-      ggplot2::scale_y_continuous(expand = c(0,0)) +
-      ggplot2::scale_fill_manual(name = "", labels = rev(c("Maintain Status Quo", "Additional 50% Reduction")),
-                                 values = rev(c("#3f8ea7","#c59e96"))) +
-      ggplot2::scale_x_date(date_breaks = "2 weeks", date_labels = "%b %d", limits = c(date_0-7, date_0 + forecast)) +
-      ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, colour = "black"),
-                     axis.title.x = ggplot2::element_blank(),
-                     panel.grid.major.x = ggplot2::element_blank(),
-                     panel.grid.minor.x = ggplot2::element_blank(),
-                     legend.position = "top",
-                     legend.justification = c(0,1),
-                     legend.direction = "horizontal",
-                     panel.border = ggplot2::element_blank(),
-                     panel.background = ggplot2::element_blank(),
-                     axis.line = ggplot2::element_line(colour = "black"))
-  ))
-  gg_healthcare
-
-}
-
-healthcare_plot_contrast_triple <- function(o1, o2, o3, data, date_0, date = Sys.Date(), forecast = 14, what = "ICU_demand",
-                                            version = "new") {
-
-  o1$Scenario <- "No"
-  o2$Scenario <- "Yes"
-  o3$Scenario <- "Worse"
-  df <- rbind(o1,o2,o3)
-
-  # day
-  df$day <- as.Date(as.character(df$date))
-
-  # split to correct dates
-  sub <- df[df$compartment %in% what &
-              df$date <=  date + forecast + 1,] %>%
-    dplyr::group_by(.data$day, .data$replicate, .data$Scenario) %>%
-    dplyr::summarise(y = mean(.data$y), n=dplyr::n()) %>%
-    dplyr::filter(.data$day <= date + forecast) %>%
-    dplyr::filter(.data$day >= date - 7) %>%
-    dplyr::filter(!is.na(.data$y))
-
-  sub$Scenario <- factor(sub$Scenario, levels = c( "No","Worse", "Yes"))
-  pd_group <- dplyr::group_by(sub, .data$day, .data$Scenario) %>%
-    dplyr::summarise(quants = list(quantile(.data$y, c(0.25, 0.5, 0.75))),
-                     ymin = .data$quants[[1]][1],
-                     y = mean(.data$y),
-                     ymax = .data$quants[[1]][3])
-
-
-  # y axis
-  if (what == "ICU_demand") {
-    title <- "ICU Demand"
-  } else if(what == "hospital_demand") {
-    title <- "Hospital Bed Demand"
-  }
-
-  if(version == "legacy"){
-    scen_names <- c("Maintain Status Quo","Relax Interventions 50%","Additional 50% Reduction")
-  } else {
-    scen_names <- c("Maintain Status Quo","Pessimistic","Optimistic")
-  }
-  # Plot
-  suppressMessages(suppressWarnings(
-    gg_healthcare <- ggplot2::ggplot(sub, ggplot2::aes(x = .data$day,
-                                                       y = .data$y,
-                                                       fill = .data$Scenario)) +
-      ggplot2::geom_bar(data = pd_group[pd_group$Scenario=="Worse",],
-                        mapping = ggplot2::aes(x = .data$day, y = .data$y, fill = .data$Scenario),
-                        stat = "identity",
-                        position = "identity",
-                        show.legend = TRUE,
-                        inherit.aes = FALSE) +
-      ggplot2::geom_bar(data = pd_group[pd_group$Scenario=="No",],
-                        mapping = ggplot2::aes(x = .data$day, y = .data$y, fill = .data$Scenario),
-                        stat = "identity",
-                        position = "identity",
-                        show.legend = TRUE,
-                        inherit.aes = FALSE) +
-      ggplot2::geom_bar(data = pd_group[pd_group$Scenario=="Yes",],
-                        mapping = ggplot2::aes(x = .data$day, y = .data$y, fill = .data$Scenario),
-                        stat = "identity",
-                        position = "identity",
-                        show.legend = TRUE,
-                        inherit.aes = FALSE) +
-      ggplot2::ylab(title) +
-      ggplot2::theme_bw()  +
-      ggplot2::scale_y_continuous(expand = c(0,0)) +
-      ggplot2::scale_fill_manual(name = "", labels = (scen_names),
-                                 values = (c("#9eeccd","#c59e96","#3f8ea7"))) +
-      ggplot2::scale_x_date(date_breaks = "2 weeks", date_labels = "%b %d",
-                            expand = c(0, 0)) +
-      ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, colour = "black"),
-                     axis.title.x = ggplot2::element_blank(),
-                     panel.grid.major.x = ggplot2::element_blank(),
-                     panel.grid.minor.x = ggplot2::element_blank(),
-                     legend.position = "top",
-                     legend.justification = c(0,1),
-                     legend.direction = "horizontal",
-                     panel.border = ggplot2::element_blank(),
-                     panel.background = ggplot2::element_blank(),
-                     axis.line = ggplot2::element_line(colour = "black")) +
-      geom_vline(xintercept = date, linetype = "dashed")
-  ))
-
-  gg_healthcare
-
+                   axis.line = ggplot2::element_line(colour = "black")) +
+    geom_vline(xintercept = date, linetype = "dashed")
 }
 
 plot_scan <- function(x, what = "likelihood", log = TRUE) {
@@ -1464,185 +981,110 @@ intervention_plot <- function(res, date) {
 
 }
 
-intervention_plot_google <- function(res, date, data, forecast, start_date) {
-
-  if(nrow(res) == 0) {
-    res <- data.frame(date = data$date, C = 1, observed = FALSE)
-  }
-
-  date <- as.Date(date)
-
-  ggplot(res[res$date <= date+forecast & res$date >= start_date,],
-         aes(x = date, y = C, color = observed)) +
-    geom_point() +
-    scale_color_discrete(name = "Observed") +
-    theme_bw() +
-    theme(legend.position = "top") +
-    ylab("% Mobility") +
-    xlab("Date")
-
-}
-
-
 simple_pmcmc_plot <- function(out) {
 
-  n_chains <- max(length(out$pmcmc_results$chains), 1)
-  if(n_chains > 1) {
+  #densities for all parameters
+  gather_parameters <- function(samples){
+    map_dfr(samples, ~c(value = head(.x$dur_R, 1))) %>%
+      mutate(parameter = "dur_R") %>%
+      rbind(
+        map_dfr(samples, ~c(value = head(head(.x$dur_V, 1)[[1]], 1))) %>%
+          mutate(parameter = "dur_V")
+      ) %>%
+      rbind(
+        map_dfr(samples, ~c(value = .x$rel_infectiousness_vaccinated)) %>%
+          mutate(parameter = "rel_infectiousness_vaccinated")
+      )
+  }
+  #do this manually too complex otherwise
+  parameter_samples <- gather_parameters(out$samples) %>%
+    mutate(
+      excluded = FALSE
+    )
 
-    master <- squire:::create_master_chain(out$pmcmc_results, 0)
-    master$chain <-  unlist(lapply(strsplit(rownames(master),".", fixed=TRUE), "[[", 1))
-    master$iteration <-  as.numeric(unlist(lapply(strsplit(rownames(master),".", fixed=TRUE), "[[", 2)))
-
-  } else {
-    master <- out$pmcmc_results$results
-    master$chain <- "1"
-    master$iteration <- seq_len(nrow(master))
+  #+density for dropped
+  if("rt_optimised_trimmed" %in% class(out)){
+    parameter_samples <- parameter_samples %>%
+      rbind(
+        gather_parameters(out$excluded$samples) %>%
+          mutate(
+            excluded = TRUE
+          )
+      )
   }
 
-  par_pos <- seq_len(which(names(master) == "log_prior")-1)
-  pars <- names(master)[par_pos]
-
-  hists <- lapply(par_pos, function(i) {
-
-    quants <- round(quantile(master[[pars[[i]]]][order(master$log_posterior, decreasing = TRUE)][1:1000], c(0.025, 0.5, 0.975), na.rm = TRUE),2)[c(2,1,3)]
-    title <- paste0(pars[i],":\n ", quants[1], " (", quants[2], ", ", quants[3], ")")
-
-    ggplot(master, mapping = aes_string(x = pars[i], color = "chain")) +
-      geom_freqpoly(stat = "density") + theme_bw() + theme(legend.position = "none") +
-      theme(panel.border = element_blank(), axis.line = element_line()) +
-      ggtitle(title) + scale_color_brewer(type = "qual") +
-      theme(axis.title = element_blank(),
-            title = element_text(size = 8))
-
-  })
-
-  chain_thins <- min(round(nrow(master)/10), 100)
-
-  chains <- lapply(par_pos, function(i) {
-
-    ggplot(master[seq(1,nrow(master),chain_thins),], mapping = aes_string(y = pars[i], x = "iteration", color = "chain")) +
-      geom_line() + theme_bw() +
-      theme(panel.border = element_blank(), axis.line = element_line()) +
-      theme(legend.position = "none") + scale_color_brewer(type = "qual")
-
-  })
-
-  suppressWarnings(p1 <- cowplot::plot_grid(plotlist = hists))
-  suppressWarnings(p2 <- cowplot::plot_grid(plotlist = chains))
-  line <- ggplot() + cowplot::draw_line(x = 1, y=0:10) +
-    theme(panel.background = element_blank(),
-          axis.title = element_blank(),
-          axis.text = element_blank(),
-          axis.ticks = element_blank())
-  cowplot::plot_grid(p1, line, p2, rel_widths = c(1,0.1,1), ncol = 3)
-
-
+  n_plots <- length(unique(parameter_samples$parameter))
+  rows <- round(sqrt(n_plots))
+  #produce plot
+  ggplot(parameter_samples, aes(x = value, colour = excluded)) +
+    geom_freqpoly(alpha = 0.9) +
+    facet_wrap(vars(parameter), scales = "free", nrow = rows, strip.position = "bottom") +
+    labs(x = "", y = "Density", colour = "Poor Fit:") +
+    theme_bw() + theme(panel.border = element_blank(), axis.line = element_line()) + scale_color_brewer(type = "qual") +
+    theme(axis.title = element_blank(),
+          title = element_text(size = 8))
 }
 
 
-rt_creation_vaccine <- function(out, date_0, max_date) {
+rt_creation_vaccine <- function(out, max_date) {
 
   iso3c <- squire::get_population(out$parameters$country)$iso3c[1]
 
-  if("pmcmc_results" %in% names(out)) {
-    wh <- "pmcmc_results"
-  } else if("scan_results" %in% names(out)) {
-    wh <- "scan_results"
-  } else {
-    wh <- "simple"
-  }
+  #SOME KIND OF CHECK FOR NOT FITTING (might not be neccessary)
+  #ret <- rt_creation_simple_out_vaccine(out, date_0, max_date)
+  # # simple here change
+  # if ("projection_args" %in% names(out)) {
+  #   ret[which(ret$date>date_0),-(1:2)] <- ret[which(ret$date>date_0),-(1:2)]*out$projection_args$R0_change
+  # }
 
-  if (wh != "simple") {
+  # impact of immunity ratios
+  ratios <- get_immunity_ratios(out, max_date = max_date, vaccine = TRUE)
 
-    date <- max(as.Date(out$pmcmc_results$inputs$data$date))
-    date_0 <- date
+  # create the Rt data frame
+  rt <- purrr::map_dfr(seq_along(out$samples), function(y) {
 
-    # impact of immunity ratios
-    ratios <- get_immunity_ratios_vaccine(out, max_date)
+    dates <- out$inputs$start_date + seq(0, tail(out$samples[[y]]$tt_R0, 1))
+    dates <- c(dates, seq.Date(tail(dates, 1) + 1,
+                               as.Date(max_date),
+                               1))
 
-    # create the Rt data frame
-    rts <- lapply(seq_len(length(out$replicate_parameters$R0)), function(y) {
+    Rt <- as.numeric(block_interpolate(seq_along(dates) - 1, out$samples[[y]]$R0, out$samples[[y]]$tt_R0))
 
-      dates <- c(out$interventions$date_R0_change,
-                 seq.Date(as.Date(tail(out$interventions$date_R0_change,1)) + 1,
-                          as.Date(max_date),
-                          1))
+    df <- data.frame(
+      "Rt" = Rt,
+      "Reff" = Rt*ratios[[y]],
+      "date" = dates,
+      "iso" = iso3c,
+      rep = y,
+      stringsAsFactors = FALSE)
+    df$pos <- seq_len(nrow(df))
+    return(df)
+  })
+  rt$date <- as.Date(rt$date)
 
-      change <- c(out$interventions$R0_change,
-                  rep(tail(out$interventions$R0_change,1), length(dates)-length(out$interventions$R0_change)))
+  rt <- rt[,c(3,4,1,2,5,6)]
 
-      tt <- squire:::intervention_dates_for_odin(dates = dates,
-                                                 change = change,
-                                                 start_date = out$replicate_parameters$start_date[y],
-                                                 steps_per_day = 1/out$parameters$dt)
-
-      if(wh == "scan_results") {
-        Rt <- c(out$replicate_parameters$R0[y],
-                vapply(tt$change, out[[wh]]$inputs$Rt_func, numeric(1),
-                       R0 = out$replicate_parameters$R0[y], Meff = out$replicate_parameters$Meff[y]))
-      } else {
-        Rt <- squire:::evaluate_Rt_pmcmc(
-          R0_change = tt$change,
-          date_R0_change = tt$dates,
-          R0 = out$replicate_parameters$R0[y],
-          pars = as.list(out$replicate_parameters[y,]),
-          Rt_args = out$pmcmc_results$inputs$Rt_args)
-      }
-
-      df <- data.frame(
-        "Rt" = Rt,
-        "Reff" = Rt*tail(na.omit(ratios[[y]]),length(Rt)),
-        "date" = tt$dates,
-        "iso" = iso3c,
-        rep = y,
-        stringsAsFactors = FALSE)
-      df$pos <- seq_len(nrow(df))
-      return(df)
-    } )
-
-    rt <- do.call(rbind, rts)
-    rt$date <- as.Date(rt$date)
-
-    rt <- rt[,c(3,4,1,2,5,6)]
-
-    new_rt_all <- rt %>%
-      group_by(iso, rep) %>%
-      arrange(date) %>%
-      complete(date = seq.Date(min(rt$date), date_0, by = "days"))
-
-    column_names <- colnames(new_rt_all)[-c(1,2,3)]
-    new_rt_all <- fill(new_rt_all, all_of(column_names), .direction = c("down"))
-    new_rt_all <- fill(new_rt_all, all_of(column_names), .direction = c("up"))
-
-    sum_rt <- dplyr::group_by(new_rt_all, date) %>%
-      dplyr::summarise(compartment = "Rt",
-                       y_025 = quantile(Rt, 0.025),
-                       y_25 = quantile(Rt, 0.25),
-                       y_median = median(Rt),
+  sum_rt <- dplyr::group_by(rt, date) %>%
+    arrange(date) %>%
+    dplyr::summarise(compartment = "Rt",
+                     y_025 = quantile(Rt, 0.025),
+                     y_25 = quantile(Rt, 0.25),
+                     y_median = median(Rt),
                        y_mean = mean(Rt),
                        y_75 = quantile(Rt, 0.75),
                        y_975 = quantile(Rt, 0.975))
 
-    sum_reff <- dplyr::group_by(new_rt_all, date) %>%
-      dplyr::summarise(compartment = "Reff",
-                       y_025 = quantile(Reff, 0.025),
-                       y_25 = quantile(Reff, 0.25),
-                       y_median = median(Reff),
-                       y_mean = mean(Reff),
-                       y_75 = quantile(Reff, 0.75),
-                       y_975 = quantile(Reff, 0.975))
+  sum_reff <- dplyr::group_by(rt, date) %>%
+    arrange(date) %>%
+    dplyr::summarise(compartment = "Reff",
+                     y_025 = quantile(Reff, 0.025),
+                     y_25 = quantile(Reff, 0.25),
+                     y_median = median(Reff),
+                     y_mean = mean(Reff),
+                     y_75 = quantile(Reff, 0.75),
+                     y_975 = quantile(Reff, 0.975))
 
-    ret <- rbind(sum_rt, sum_reff)
-
-    # simple here change
-    if ("projection_args" %in% names(out)) {
-      ret[which(ret$date>date_0),-(1:2)] <- ret[which(ret$date>date_0),-(1:2)]*out$projection_args$R0_change
-    }
-
-
-  } else {
-    ret <- rt_creation_simple_out_vaccine(out, date_0, max_date)
-  }
+  ret <- rbind(sum_rt, sum_reff)
 
   return(ret)
 }
