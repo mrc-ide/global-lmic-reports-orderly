@@ -153,25 +153,31 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
                          lapply(file.path(src, "projections.csv"), read.csv))
   #split into two csv files
   #file with old scenarios
-  projections_1 <- dplyr::filter(projections,
-                                 scenario %in% c(
-                                   "Maintain Status Quo",
-                                   "Relax Interventions 50%",
-                                   "Additional 50% Reduction",
-                                   "Surged Maintain Status Quo",
-                                   "Surged Additional 50% Reduction",
-                                   "Surged Relax Interventions 50%"
-                                 ))
+  library(magrittr)
+  projections_1 <-
+    dplyr::filter(projections,
+                  scenario %in% c(
+                    "Maintain Status Quo",
+                    "Relax Interventions 50%",
+                    "Additional 50% Reduction",
+                    "Surged Maintain Status Quo",
+                    "Surged Additional 50% Reduction",
+                    "Surged Relax Interventions 50%"
+                  )) %>%
+    dplyr::filter(as.Date(date) > min(as.Date(date) + 150)) #TEMP RESOLVE THIS ISSUE
   #new scenarios
-  projections_2 <- dplyr::filter(projections,
-                                 scenario %in% c(
-                                   "Maintain Status Quo",
-                                   "Optimistic",
-                                   "Pessimistic",
-                                   "Surged Maintain Status Quo",
-                                   "Surged Optimistic",
-                                   "Surged Pessimistic"
-                                 ))
+  projections_2 <-
+    dplyr::filter(projections,
+                  scenario %in% c(
+                    "Maintain Status Quo",
+                    "Optimistic",
+                    "Pessimistic",
+                    "Surged Maintain Status Quo",
+                    "Surged Optimistic",
+                    "Surged Pessimistic"
+                  )) %>%
+    dplyr::filter(as.Date(date) > min(as.Date(date) + 150)) #TEMP RESOLVE THIS ISSUE
+
   dir.create("gh-pages/data", FALSE, TRUE)
   cwd <- getwd()
   setwd("gh-pages/data/")
@@ -188,10 +194,20 @@ copy_outputs <- function(date = NULL, is_latest = TRUE) {
 
   setwd(cwd)
 
-  non_hic_pos_projections <- which(!(projections_2$iso3c %in% to_remove))
+  all_data <-  dplyr::filter(projections,
+                             scenario %in% c(
+                               "Maintain Status Quo",
+                               "Optimistic",
+                               "Pessimistic",
+                               "Surged Maintain Status Quo",
+                               "Surged Optimistic",
+                               "Surged Pessimistic"
+                             )) %>%
+    dplyr::mutate(version = "v9") %>%
+    dplyr::filter(!iso3c %in% to_remove)
 
-  saveRDS(projections_2[non_hic_pos_projections,], paste0("src/index_page/all_data.rds"))
-  saveRDS(projections_2[non_hic_pos_projections,], paste0("src/regional_page/all_data.rds"))
+  saveRDS(all_data, paste0("src/index_page/all_data.rds"))
+  saveRDS(all_data, paste0("src/regional_page/all_data.rds"))
 
 
 }

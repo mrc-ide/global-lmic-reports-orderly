@@ -1,0 +1,53 @@
+# You must have a script that does something with the data.  This will
+# be a single string and the filename must exist when orderly is run.
+# The default is to use script.R, and that file (by default) will run
+# your Rmd file.  Please edit script.R to contain the correct name of
+# your Rmd.
+script: script.R
+
+# Optional parameters for the task. Things listed here will be
+# available as R variables in your script.  For example:
+#
+
+resources:
+  - vaccine_efficacy_groups.csv
+
+
+# You must list at least one artefact that your report will generate.
+# Each artefact consists of one or more files.  The format is to list
+# the "type" of an artefact (staticgraph, interactivegraph, data,
+# report), then below that a description (free text) and then a
+# filename as either a single file or an array of files
+#
+#     artefacts:
+#       - staticgraph:
+#           description: A graph of things
+#           filenames: mygraph.png
+#       - report:
+#           description: A complex report
+#           filenames:
+#             - report.html
+#             - figures/fig1.png
+#             - figures/fig2.png
+#
+# The example below is suitable for creating a single docx output. If
+# you also produce data files or standlone plots declare them as well.
+#
+# Please update the filename to reflect your filename (typically this
+# would be the same as the .Rmd, with the extension changed to .docx)
+artefacts:
+  - data:
+      description: A list of functions that draw random samples when called
+      filenames: vaccine_params.Rds
+  - staticgraph:
+      description: pdfs so the fitting can be checked
+      filenames: calibration.pdf
+
+# Packages that should be loaded before the script is run.  Use this
+# in preference to explicit library() calls in your script because it
+# will make it easier to provision containers to run the orderly
+# reports.
+packages:
+  - tidyverse
+  - odin
+

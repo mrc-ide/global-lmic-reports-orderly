@@ -1017,7 +1017,7 @@ simple_pmcmc_plot <- function(out) {
   rows <- round(sqrt(n_plots))
   #produce plot
   ggplot(parameter_samples, aes(x = value, colour = excluded)) +
-    geom_freqpoly(alpha = 0.9) +
+    geom_freqpoly(alpha = 0.9, stat = "density") +
     facet_wrap(vars(parameter), scales = "free", nrow = rows, strip.position = "bottom") +
     labs(x = "", y = "Density", colour = "Poor Fit:") +
     theme_bw() + theme(panel.border = element_blank(), axis.line = element_line()) + scale_color_brewer(type = "qual") +
