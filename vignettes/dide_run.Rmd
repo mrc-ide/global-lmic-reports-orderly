@@ -10,6 +10,7 @@ vignette: >
 ```{r, setup, include=FALSE}
 knitr::opts_chunk$set(fig.width = 8, collapse = TRUE)
 knitr::opts_knit$set(root.dir = here::here())
+library(tidyverse)
 ```
 
 # Overview
@@ -18,9 +19,8 @@ This Rmd document gives an overview of the steps to be taken to run model fits
 on the DIDE HPC cluster, check results before collating and pushing to github. 
 
 As a background, the fits used to be run through a series of tasks in specific
-docker containers. At writing, docker can't be run locally due to virtualisation
-not being enabled on this windows machine, but this will be explored again 
-once/if this is enabled. 
+docker containers. Since, then we have switched from our own cluster to the 
+departmental cluster.
 
 All code chunks are set to not eval so the knitted html is just for display purposes. 
 I would recommend stepping through this Rmd each time to rerun the fits, updating
@@ -35,81 +35,70 @@ terminal (see Tools > Global Options > Terminal > New Terminals Open With)
 
 All tasks for running the model fits are conducted using orderly. This includes:
 
-1. *ecdc*
+1. *parameters_vaccines*
 
-This task grabs input data from various online databases, that are then fed into
-downstream processes.
+This task runs the fitting process to calculate booster model vaccine efficacies.
+This task only needs to be run once or any time the task it update (i.e. due to
+new variants or changes to the model). The fitting process is unreliable so any
+new runs should be checked via the calibration.pdf file.
 
-2. *oxford_grt*
+2. *input_jhu*
 
-This task is largely redundant and is a hangover from when the oxford GRT database
-was used as a model input, but this has been replaced by Google mobility data. 
+Gathers data on reported COVID cases and deaths from [John Hopkins Coronavirus Resource Centre](https://coronavirus.jhu.edu/map.html) and [Worldometer](https://www.worldometers.info/coronavirus/).
 
-3. *google_brt*
+3. *input_excess_mortality*
 
-Grabs and formats Google mobility data. For countries without mobility data, we
-use a Boosted regression tree model to infer mobility based on timing of govt. 
-policies. 
+This task gathers the excess mortality data and estimates from The Economist's
+[excess mortality model](https://github.com/TheEconomist/covid-19-the-economist-global-excess-deaths-model).
 
-4. *covariants*
+4. *input_vaccinations*
 
-Gets/calculates the information of when the delta variant becomes dominant, as
-well as any other parameters to do with this change. This must be run even if
-delta adjustments are not made as it is an input to the other tasks.
+This task gathers and formats country specific vaccination data, getting data
+from [OWID](https://ourworldindata.org/covid-vaccinations) and the [WHO](https://covid19.who.int/).
 
-5. *vaccine_inputs*
+5. *input_sequencing*
 
-Calculates the vaccine efficacies over time, can include delta adjustments and 
-waning immunity.
-
-6. *economist*
-
-Gets the excess mortality data if we are doing excess death fitting.
+This estimates the timings of the variants in each country using open source 
+sequencing data from [NextStrain](https://nextstrain.org/).
 
 
-These 6 tasks form the initial tasks that ensure all the correct data is ready
+These tasks 2-5 form the initial tasks that ensure all the correct data is ready
 before running the actual model fits. To run these tasks, we simply need to provide
 what the `date` is that we are conducting model fits for, i.e. up to what date are
-we running, and also whether we are doing a `short_run`. The `short_run` argument
-dictates whether a small number of trees are used in the BRT.
+we running.
 
 ```{r, eval = FALSE}
 date <- "2022-05-30"
 ```
 
-These arguments are then passed to our 4/5 tasks:
+These arguments are then passed to our tasks:
 
 ```{r eval=FALSE, message=FALSE, warning=FALSE}
-# message("*** ECDC data")
-ecdc_id <- orderly::orderly_run("ecdc", parameters = list(date=date), echo = FALSE)
-orderly::orderly_commit(ecdc_id)
+message("*** VE Parameters (Please check calibration.pdf)!")
+parameters_vaccines_id <- orderly::orderly_run("parameters_vaccines", echo = FALSE)
+orderly::orderly_commit(parameters_vaccines_id)
 
-economist_id <- orderly::orderly_run("economist", parameters = list(date=date), echo = FALSE)
-orderly::orderly_commit(economist_id)
+message("*** Reported COVID Deaths and Cases")
+input_jhu_id <- orderly::orderly_run("input_jhu", parameters = list(date=date), echo = FALSE)
+orderly::orderly_commit(input_jhu_id)
 
-message("*** Covid Variants data")
-variant_adjustments_id <- orderly::orderly_run("variant_adjustments", parameters = list(date=date), echo = FALSE)
-orderly::orderly_commit(variant_adjustments_id)
-#ideally check the calibration pdf
+message("*** Excess Mortality")
+input_excess_mortality_id <- orderly::orderly_run("input_excess_mortality", parameters = list(date=date), echo = FALSE)
+orderly::orderly_commit(input_excess_mortality_id)
 
-message("*** Calculate Vaccine Inputs")
-vaccine_inputs_id <- orderly::orderly_run("vaccine_inputs_booster", parameters = list(date=date), echo = FALSE)
-orderly::orderly_commit(vaccine_inputs_id)
-#ideally check the calibration pdf
+message("*** Vaccination Data")
+input_vaccinations_id <- orderly::orderly_run("input_vaccinations", parameters = list(date=date), echo = FALSE)
+orderly::orderly_commit(input_vaccinations_id)
+
+message("*** Variant Timings")
+input_sequencing_id <- orderly::orderly_run("input_sequencing", parameters = list(date=date), echo = FALSE)
+orderly::orderly_commit(input_sequencing_id)
 ```
 
-Above, we are using `orderly::orderly_run` to run our 3 tasks in our R session, 
-before then committing them to the orderly archive. Alternatively, you could run
-these from the terminal using:
-
-```{bash}
-# date=2021-08-16
-# ./orderly run ecdc date=$DATE
-```
 With these tasks run, we now begin by creating our model fit tasks. Throughout
 the pandemic, we have updated the model fit tasks to include new data, new models
 etc. Each of the various model fit tasks starts `lmic_reports_`, but the current 
-model task is `lmic_reports_vaccine`. 
+model task is `lmic_reports_rt_optimise`. 
 
 We run the the model fits on the DIDE HPC cluster. To do this we first bundle the 
 orderly reports to be run using `orderly::orderly_bundle_pack`. The zip files
@@ -120,18 +109,23 @@ submit these tasks.
 
 message("*** Creating country task bundles")
 
+glodide_loc <- "N:/lmic_fitting/glodide" ###Update if on a different drive!
+
 # main input parameters
 
-# how long is the mcmc for
-
-task <- "lmic_reports_rt_mle"
+task <- "lmic_reports_rt_optimise"
 parameters <- list(
   date = date,
-  n_particles = 100,
+  samples = 32*3, #how many random samples to generate and fit
+  seed = FALSE, #Set a seed, useful for debugging
   parallel = TRUE,
-  #Should we build the require documentation+data for the fit,
-  #useful if just running to hone in chains (still builds fitting.pdf+grid_out.Rds)
+  #Should we build the required documentation+data for the fit
   document = TRUE
+  # #Fitting parameters (leave as blank to use defaults in fitting_params.Rds)
+  # initial_infections_interval = c(5, 500),
+  # n_particles = 10,
+  # k = 14,
+  # rt_interval = c(0.5, 10)
 )
 
 # get the isos
@@ -139,12 +133,8 @@ iso3cs <- grep('^[A-Z]{3}\\s*', readLines(file.path(here::here(), "countries")),
 
 # make the orderly bundles to be run on the cluster
 path_bundles <- file.path(
-  "Q:/COVID-Fitting/glodide/analysis/data",
-          paste0(
-            "raw", ""
-            ),
-          date
-          )
+  glodide_loc, "analysis", "data", "raw", date
+)
 dir.create(path_bundles, showWarnings = FALSE, recursive = TRUE)
 
 # bundle these up - this will take like 10 mins to create all the zips. 
@@ -172,7 +162,7 @@ location on the server where they are to be run. At this point, open the
 these to the cluster:
 
 ```{r eval=FALSE}
-system(paste0("open ","\"","Q:/COVID-Fitting/glodide/glodide.Rproj","\""))
+system(paste0("open ", "\"", glodide_loc, "/glodide.Rproj", "\""))
 ```
 
 ----
@@ -210,13 +200,13 @@ pdfs <- grep("fitting", list.files(td, full.names = TRUE, recursive = TRUE), val
 # created because it needs to be for orderly to finish the task
 qpdf::pdf_combine(
   input = pdfs[file.size(pdfs) > 0], 
-  output = file.path("fits", paste0("lmic_reports_vaccine_", date, ".pdf"))
+  output = file.path("fits", paste0("lmic_reports_rt_optimise_", date, ".pdf"))
 )
 ```
 
 Now we can view these to work out if they look good. See the troubleshoot for more
 info on what to look out for etc. If some countries need to be rerun, then work out
-which countries require rerunning and rebundle those to be run again:
+which countries require rerunning and re-bundle those to be run again:
 
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
 # bundle the countries we need to rerun
@@ -258,9 +248,7 @@ bundles <- readRDS(file.path(path_bundles, "bundles.rds"))
 ```
 
 Depending on whether any needed to be rerun, the below will be needed to 
-replace paths in bundles, with the file paths of any new runs. For example, 
-below I did two reruns ('bundles_to_rerun.rds' and 'BGD_to_rerun.rds'), which
-I will use to replace their corresponding countries with in `bundles`:
+replace paths in bundles, with the file paths of any new runs:
 
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
 # any that we had to rerun
@@ -278,33 +266,39 @@ Now that we have updated with the rerun bundles, we know import these back into
 our local `orderly` archive:
 
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
-import <- lapply(tasks, orderly::orderly_bundle_import)
+import <- map(tasks, orderly::orderly_bundle_import)
 # just double check they all imported
 all(unlist(import))
 ```
 
 # Create the changes to the github pages
 
-## 1. Get gh-pages and gh-fits
+## Get gh-pages, gh-fits, gh-esft
 
 The Github pages repository is at [www.github.com:mrc-ide/global-lmic-reports](www.github.com:mrc-ide/global-lmic-reports) and
 contains all the outputs of model fits conducted to date and the web pages to describe the model fits for each country. It is
 cloned into `gh-pages`, which is where we collate the outputs of the model fits into.
 
-We also have a similar repo to collect the fit objects for other modelling work at, [https://github.com/mrc-ide/nimue_global_fits](https://github.com/mrc-ide/nimue_global_fits), which is stored in subdirectory `gh-fits`.
+There is also a more streamlined [repo](https://github.com/mrc-ide/global_lmic_projections_esft)
+to collect the projections for use in the departments version of the ESFT, which
+we will clone into `gh-esft`.
 
-If `gh-pages` or `gh-fits` is not in the repo, i.e. you have just clones `global-lmic-reports-orderly` down for example, then you need to run following in terminal (or from within this repo if the bash chunk tag is working correctly).
+We also have a similar repo to collect the fitted model objects for other modelling work at, [https://github.com/mrc-ide/nimue_global_fits](https://github.com/mrc-ide/nimue_global_fits), which is stored in subdirectory `gh-fits`.
+
+If any of these are not in the repo, i.e. you have just clones `global-lmic-reports-orderly` down for example, then you need to run following in terminal (or from within this repo if the bash chunk tag is working correctly).
 
 ```{bash}
 # mkdir gh-pages
 # git clone git@github.com:mrc-ide/global-lmic-reports.git gh-pages
 # mkdir gh-fits
 # git clone git@github.com:mrc-ide/nimue_global_fits.git gh-fits
+# mkdir gh-esft
+# git clone git@github.com:mrc-ide/global_lmic_projections_esft.git gh-esft
 ```
 
-## 2. Update the github fits
+## Update the github fits
 
-These scripts update the fits in `gh-fits` and update the initial parameters (pars_init.Rds) in the relevant task.
+These scripts update the fits in `gh-fits`.
 
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
 {source(file.path(here::here(), "run", "push_fits.R"))}
@@ -315,13 +309,11 @@ This script pushes the `gh-fits` changes to GitHub.
 Either execute this from the terminal or you can run it using the bash code chunk below (though it doesn't produce output until after it has finished at the moment, which may be annoying so you can see the output). 
 
 ```{bash}
-./scripts/update_github_fits.sh 2022-03-15
+./scripts/update_github_fits.sh 2022-05-30
 ```
 
-The next steps should only be followed if producing documented LMIC reports and
-`gh-pages needs updating`.
 
-## 3. The collation step for run_collate_vaccine
+## The collation step for run_collate_vaccine
 
 Next we run the collation step, where the necessary outputs from the model fits are copied to gh-pages. It conducts the following steps:
 
@@ -333,11 +325,10 @@ Next we run the collation step, where the necessary outputs from the model fits 
 6. Copies the output from these remaining tasks to gh-pages. 
 
 Either execute this from the terminal or you can run it using the bash code chunk below (though it doesn't produce output until after it has finished at the moment, which may be annoying so you can see the output). 
-```{bash}
-./run/run_collate_vaccine_waning.sh 2022-03-15
-```
 
-## 4. Push the results to the repository 
+```{bash}
+./run/run_collate_vaccine_waning.sh 2022-05-30
+```
 
 Once we are happy that the collation has worked we need to push this to Github. We
 do this in two steps as the git pack size if all done at once is too big. This is all in 
@@ -347,3 +338,4 @@ the following script:
 ./scripts/publish_website production
 ```
 
+## Update projections in `gh-esft`

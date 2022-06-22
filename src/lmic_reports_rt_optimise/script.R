@@ -8,10 +8,10 @@ RhpcBLASctl::omp_set_num_threads(1L)
 document <- as.logical(document)
 
 # pandoc linking
-if(file.exists("Q:\\COVID-Fitting\\pandoc") & document) {
-  rmarkdown:::set_pandoc_info("Q:\\COVID-Fitting\\pandoc")
-  Sys.setenv(RSTUDIO_PANDOC="Q:\\COVID-Fitting\\pandoc")
-  tinytex::use_tinytex("Q:\\COVID-Fitting\\TinyTex")
+if(file.exists("N:\\lmic_fitting\\pandoc") & document) {
+  rmarkdown:::set_pandoc_info("N:\\lmic_fitting\\pandoc")
+  Sys.setenv(RSTUDIO_PANDOC="N:\\lmic_fitting\\pandoc")
+  tinytex::use_tinytex("N:\\lmic_fitting\\TinyTex")
   tinytex::tlmgr_update()
 }
 
@@ -47,9 +47,9 @@ country <- squire::population$country[match(iso3c, squire::population$iso3c)[1]]
 if(sum(excess_deaths$deaths) > 0) {
 
   # get the raw data correct
-  data <- excess_deaths[, c("week_start", "week_end", "deaths")] %>%
-    arrange(week_start) %>%
-    rename(date_start = week_start, date_end = week_end)
+  data <- excess_deaths %>%
+    select(!iso) %>%
+    arrange(date_start)
 
   # and remove the rows with no data up to the first date that a death was reported
   first_report <- which(data$deaths>0)[1]
@@ -84,103 +84,114 @@ if(sum(excess_deaths$deaths) > 0) {
     ICU_bed_capacity = squire:::get_ICU_bed_capacity(country)
   )
   # Increase ICU beds where known to be too low:
-    if (iso3c == "BRA") {
-      # https://g1.globo.com/bemestar/coronavirus/noticia/2020/06/08/casos-de-coronavirus-e-numero-de-mortes-no-brasil-em-8-de-junho.ghtml - date we predicted ICU to be at capacity and reported to be at 70%
-      parameters$icu_beds <- parameters$icu_beds / 0.7
-    }
+  if (iso3c == "BRA") {
+    # https://g1.globo.com/bemestar/coronavirus/noticia/2020/06/08/casos-de-coronavirus-e-numero-de-mortes-no-brasil-em-8-de-junho.ghtml - date we predicted ICU to be at capacity and reported to be at 70%
+    parameters$hosp_bed_capacity <- parameters$hosp_bed_capacity / 0.7
+  }
+
+  #load inputs
+  vacc_inputs <- get_vaccine_inputs(iso3c)
+
+  tt_vaccine <- c(0, as.numeric(vacc_inputs$date_vaccine_change - start_date))
+
+  parameters$first_doses <- c(0, vacc_inputs$first_doses)
+  parameters$tt_first_doses <- tt_vaccine
+  parameters$second_doses <- c(0, vacc_inputs$second_doses)
+  parameters$tt_second_doses <- tt_vaccine
+  parameters$booster_doses <- c(0, vacc_inputs$booster_doses)
+  parameters$tt_booster_doses <- tt_vaccine
+  rm(tt_vaccine)
+  parameters$vaccine_coverage_mat <- vacc_inputs$vaccine_coverage_mat
+  parameters$rel_infectiousness_vaccinated <- c(0.5)
+
   ## -----------------------------------------------------------------------------
   ## Step 2b: Calculate sampled parameters
   ## -----------------------------------------------------------------------------
 
-  #load vaccine inputs
-  vacc_inputs <- get_vaccine_inputs(iso3c)
-  variant_characteristics <- readRDS("variant_characteristics.rds")[[iso3c]]
-  #check if omicron starts during delta
-  if(variant_characteristics$Omicron$start_date <
-    variant_characteristics$Delta$start_date +
-    variant_characteristics$Delta$shift_duration) {
-    variant_characteristics$Omicron$shift_duration <-
-      as.numeric(
-        variant_characteristics$Omicron$start_date + variant_characteristics$Omicron$shift_duration
-      ) -
-      as.numeric(
-        variant_characteristics$Delta$start_date + variant_characteristics$Delta$shift_duration
-      ) - 1
-    variant_characteristics$Omicron$start_date <- variant_characteristics$Delta$start_date +
-      variant_characteristics$Delta$shift_duration + 1
-  }
+  variants_to_model <- c("Delta", "Omicron", "Omicron Sub-Variant")
 
-  samples <- 100
+  #load inputs
+  sample_vaccine_efficacies <- readRDS("vaccine_params.Rds")$sample_vaccine_efficacies
+  variant_timings <- readRDS("variant_timings.Rds")[[iso3c]] %>%
+    filter(variant %in% variants_to_model & !is.na(start_date)) %>%
+    select(!mid_date) %>%
+    arrange(start_date) %>%
+    mutate(end_date = if_else(
+      .data$end_date > lead(.data$start_date, n = 1, default = as_date(max(.data$end_date) + 1)),
+      lead(.data$start_date, 1, default = as_date(max(.data$end_date) + 1)),
+      .data$end_date
+    ))
+  variants_to_model <- variant_timings$variant
+
+  #generate samples
+  dur_R <- sample_duration_natural_immunity(samples)
+  ifr <- sample_ifr(samples, iso3c)
+  immune_escape <- sample_variant_immune_escape(samples, variants_to_model)
+  prob_hosp_multiplier <- sample_variant_prob_hosp(samples, variants_to_model)
+  prob_severe_multiplier <- sample_variant_prob_severe(samples, variants_to_model)
+  variant_ve <- sample_vaccine_efficacies(samples, names(vacc_inputs$platforms)[as.logical(vacc_inputs$platforms[1,])])
+
+  #format into correct setup
   distribution <- map(seq_len(samples), function(x){
     pars <- list()
     ## disease parameters:
-    #duration of recovery
-    pars$dur_R <- rpois(1, 365)
-    #add the others
-
-    ## vaccine parameters, should probably refit this each time:
-    pars$dur_V <- map_dbl(vacc_inputs$dur_V, ~rpois(1, .x))
-    pars$rel_infectiousness_vaccinated <- rbeta(1, 1, 1)
-    #could simulate some level of under/over reporting on vaccine usage
-    tt_vaccine_change <- as.numeric(vacc_inputs$date_vaccine_change - start_date)
-    if(tt_vaccine_change[1] > 0){
-      tt_vaccine_change <- c(0, tt_vaccine_change)
-    } else {
-      tt_vaccine_change <- c(tt_vaccine_change[1] - 1, tt_vaccine_change)
-    }
-    pars$first_doses <- vacc_inputs$first_doses
-    pars$tt_first_doses <- tt_vaccine_change
-    pars$second_doses <- vacc_inputs$second_doses
-    pars$tt_second_doses <- tt_vaccine_change
-    pars$booster_doses <- vacc_inputs$booster_doses
-    pars$tt_booster_doses <- tt_vaccine_change
-    pars$vaccine_coverage_mat <- vacc_inputs$vaccine_coverage_mat
-
+    pars$prob_hosp <- ifr$prob_hosp[[x]]
+    pars$prob_severe <- ifr$prob_severe[[x]]
+    pars$prob_non_severe_death_treatment <- ifr$prob_non_severe_death_treatment[[x]]
+    pars$prob_severe_death_treatment <- ifr$prob_severe_death_treatment[[x]]
+    pars$prob_severe_death_no_treatment <- ifr$prob_severe_death_no_treatment[[x]]
+    pars$prob_non_severe_death_no_treatment <- ifr$prob_non_severe_death_no_treatment[[x]]
     ## variant parameters:
-    #add some kind of sampling
-    #calculate changes
-    dur_R_change <- variant_immune_escape(variant_characteristics,
-                                          pars$dur_R, start_date)
-    prob_hosp_multiplier <- variant_changes_over_time(variant_characteristics,
-                                                    "prob_hosp_multiplier", start_date)
-    prob_severe_multiplier <- variant_changes_over_time(variant_characteristics,
-                                                      "prob_severe_multiplier", start_date)
-    dur_ICU <- variant_changes_over_time(variant_characteristics,
-                                       "dur_ICU", start_date)
-    dur_ICU_death <- variant_changes_over_time(variant_characteristics,
-                                             "dur_ICU_death", start_date)
-    dur_hosp <- variant_changes_over_time(variant_characteristics,
-                                        "dur_hosp", start_date)
-    dur_hosp_death <- variant_changes_over_time(variant_characteristics,
-                                              "dur_hosp_death", start_date)
+
+    dur_R_change <- variant_immune_escape(variant_timings, immune_escape, x,
+                                          dur_R, start_date)
     pars$dur_R <- dur_R_change$var
     pars$tt_dur_R <- dur_R_change$tt
-    pars$prob_hosp_multiplier <- prob_hosp_multiplier$var
-    pars$tt_prob_hosp_multiplier <- prob_hosp_multiplier$tt
-    pars$prob_severe_multiplier <- prob_severe_multiplier$var
-    pars$tt_prob_severe_multiplier <- prob_severe_multiplier$tt
-    pars$dur_get_mv_survive <-  dur_ICU$var
-    pars$tt_dur_get_mv_survive <- dur_ICU$tt
-    pars$dur_get_mv_die <-  dur_ICU_death$var
-    pars$tt_dur_get_mv_die <- dur_ICU_death$tt
-    pars$dur_get_ox_survive <-  dur_hosp$var
-    pars$tt_dur_get_ox_survive <- dur_hosp$tt
-    pars$dur_get_ox_die <-  dur_hosp_death$var
-    pars$tt_dur_get_ox_die <- dur_hosp_death$tt
 
-    vacc_inputs <- vaccine_eff_over_time(vacc_inputs, variant_characteristics, start_date)
+    prob_hosp_multiplier_change <- multiplier_changes_over_time(variant_timings,
+                                                                prob_hosp_multiplier, x, start_date)
+    pars$prob_hosp_multiplier <- prob_hosp_multiplier_change$var
+    pars$tt_prob_hosp_multiplier <- prob_hosp_multiplier_change$tt
+
+    prob_severe_multiplier_change <- multiplier_changes_over_time(variant_timings,
+                                                                  prob_severe_multiplier, x, start_date)
+    pars$prob_severe_multiplier <- prob_severe_multiplier_change$var
+    pars$tt_prob_severe_multiplier <- prob_severe_multiplier_change$tt
+
+    #Vaccine Efficacies
+
+    vacc_inputs <- vaccine_eff_over_time(variant_timings, variant_ve, x, start_date)
     pars$dur_V <- vacc_inputs$dur_V
-    pars$tt_dur_V <- vacc_inputs$tt_vaccine_efficacy_change
     pars$vaccine_efficacy_infection <- vacc_inputs$vaccine_efficacy_infection
-    pars$tt_vaccine_efficacy_infection <- vacc_inputs$tt_vaccine_efficacy_change
     pars$vaccine_efficacy_disease <- vacc_inputs$vaccine_efficacy_disease
-    pars$tt_vaccine_efficacy_disease <- vacc_inputs$tt_vaccine_efficacy_change
+    pars$tt_dur_V <- pars$tt_vaccine_efficacy_infection <-
+      pars$tt_vaccine_efficacy_disease <- vacc_inputs$tt
 
     pars
   })
 
   ## -----------------------------------------------------------------------------
-  ## Step 2c: Actual run
+  ## Step 2c: Fitting Parameters
+  ## -----------------------------------------------------------------------------
+
+  #load in country specific default parameters
+  fitting_params <- readRDS("fitting_params.Rds")[[iso3c]]
+  #check if we need to update parameters
+  if(identical(initial_infections_interval, "NULL")){
+    initial_infections_interval <- fitting_params$initial_infections_interval
+  }
+  if(identical(n_particles, "NULL")){
+    n_particles <- fitting_params$n_particles
+  }
+  if(identical(k, "NULL")){
+    k <- fitting_params$k
+  }
+  if(identical(rt_interval, "NULL")){
+    rt_interval <- fitting_params$rt_interval
+  }
+
+  ## -----------------------------------------------------------------------------
+  ## Step 2d: Actual run
   ## -----------------------------------------------------------------------------
 
   #use parallel if asked for
@@ -198,20 +209,21 @@ if(sum(excess_deaths$deaths) > 0) {
     start_date = start_date,
     parallel = parallel,
     rt_spacing = 14,
-    initial_infections_interval = c(5, 500),
+    initial_infections_interval = initial_infections_interval,
     n_particles = n_particles,
-    k = 14,
-    rt_interval = c(0.5, 10)
+    k = k,
+    rt_interval = rt_interval
   ) #2 hours!!
 
-  #out <- squire.page::trim_rt_optimise(out, 0.5)
+  out <- squire.page::trim_rt_optimise(out, 0.5)
 
   ## -----------------------------------------------------------------------------
   ## Step 3: Summarise Fits
   ## -----------------------------------------------------------------------------
 
   ## summarise what we have
-  g1 <- simple_pmcmc_plot(out)
+  #originally had a series of plots to summarise parameter distributions,
+  #at the moment there are far to many so its something to work on
 
   title <- cowplot::ggdraw() +
     cowplot::draw_label(
@@ -257,20 +269,18 @@ if(sum(excess_deaths$deaths) > 0) {
   rtp2 <- rt_plot_immunity(out, R0_plot = FALSE)
 
   date_range <- as.Date(c(start_date, end_date))
+
+  vt <- variant_timings_plot(variant_timings, date_range)
+
   suppressMessages(suppressWarnings(
-    bottom <- cowplot::plot_grid(
+    combined <- cowplot::plot_grid(
+      header,
+      vt + scale_x_date(date_breaks = "3 month", date_labels = "%b"),
       rtp2$plot + scale_x_date(date_breaks = "3 month", date_labels = "%b" ,limits = date_range),
       d + scale_x_date(date_breaks = "3 month", date_labels = "%b" ,limits = date_range),
       ncol=1,
-      rel_heights = c(0.5,0.5))
+      rel_heights = c(1.25, 5, 10, 10))
   ))
-
-
-  combined <- cowplot::plot_grid(header,
-                                 cowplot::plot_grid(g1, line_v, bottom, ncol = 3, rel_widths = c(3,0.1,1)),
-                                 ncol=1, rel_heights = c(1,15))
-
-
 
   ggsave("fitting.pdf",width=24, height=12,
          combined)
@@ -305,9 +315,21 @@ if(sum(excess_deaths$deaths) > 0) {
 
     ## We need to know work out vaccine doses and efficacy going forwards
     model_user_args <- extend_vaccine_inputs(vacc_inputs, time_period, out, end_date = end_date)
+    #For now these are all identicall we so'll add them to $parameters.
+    #I've left this framework in case we want to add randomness to the doses
+    out_extended <- out
+    for(x in names(model_user_args[[1]])){
+      if(str_detect(x, "tt")){
+        out_extended$parameters[[x]] <- c(out$parameters[[x]], as.numeric(end_date - start_date) + 1)
+      } else {
+        out_extended$parameters[[x]] <- c(out$parameters[[x]], model_user_args[[1]][[x]])
+      }
+    }
+    model_user_args <- map(model_user_args, ~list())
+    rm(x, out)
 
     # Maintaining the current set of measures for a further 3 months
-    maintain_scenario_leg <- squire.page::projections(out,
+    maintain_scenario_leg <- squire.page::projections(out_extended,
                                      R0_change = c(1),
                                      tt_R0 = c(0),
                                      time_period = time_period,
@@ -358,9 +380,9 @@ if(sum(excess_deaths$deaths) > 0) {
     rm(maintain_scenario_leg)
 
     # Get the optimistic/pessimistic scenarios
-    Rt_futures <- get_future_Rt_optimised(out, forcast_days = 28)
+    Rt_futures <- get_future_Rt_optimised(out_extended, forcast_days = 28)
 
-    optimistic_scenario <- projections(out,
+    optimistic_scenario <- squire.page::projections(out_extended,
                                        R0 = map(Rt_futures$optimistic, ~.x$R0),
                                        tt_R0 = map(Rt_futures$optimistic, ~.x$tt_R0),
                                        time_period = time_period,
@@ -371,7 +393,7 @@ if(sum(excess_deaths$deaths) > 0) {
 
     rm(optimistic_scenario)
 
-    pessimistic_scenario <- projections(out,
+    pessimistic_scenario <- squire.page::projections(out_extended,
                                     R0 = map(Rt_futures$pessimistic, ~.x$R0),
                                     tt_R0 = map(Rt_futures$pessimistic, ~.x$tt_R0),
                                     time_period = time_period,
@@ -380,17 +402,17 @@ if(sum(excess_deaths$deaths) > 0) {
     rt_pessimistic_scenario <- rt_creation_vaccine(pessimistic_scenario, end_date + time_period)
     rm(pessimistic_scenario)
 
-    central_scenario <- projections(out,
-                                        R0 = map(Rt_futures$central, ~.x$R0),
-                                        tt_R0 = map(Rt_futures$central, ~.x$tt_R0),
-                                        time_period = time_period,
-                                        model_user_args = model_user_args)
+    central_scenario <- squire.page::projections(out_extended,
+                                    R0 = map(Rt_futures$central, ~.x$R0),
+                                    tt_R0 = map(Rt_futures$central, ~.x$tt_R0),
+                                    time_period = time_period,
+                                    model_user_args = model_user_args)
     r_central_scenario <- r_list_format(central_scenario, start_date)
     rt_central_scenario <- rt_creation_vaccine(central_scenario, end_date + time_period)
     rm(central_scenario)
 
     #legacy scenarios
-    mitigation_scenario_leg <- projections(out,
+    mitigation_scenario_leg <- squire.page::projections(out_extended,
                                            R0_change = c(0.5),
                                            tt_R0 = 0,
                                            time_period = time_period,
@@ -399,11 +421,11 @@ if(sum(excess_deaths$deaths) > 0) {
     rt_mitigation_scenario_leg <- rt_creation_vaccine(mitigation_scenario_leg, end_date + time_period)
     rm(mitigation_scenario_leg)
 
-    reverse_scenario_leg <- projections(out,
-                                                R0_change = c(1.5),
-                                                tt_R0 = c(0),
-                                                time_period = time_period,
-                                                model_user_args = model_user_args)
+    reverse_scenario_leg <- squire.page::projections(out_extended,
+                                        R0_change = c(1.5),
+                                        tt_R0 = c(0),
+                                        time_period = time_period,
+                                        model_user_args = model_user_args)
     r_reverse_scenario_leg <- r_list_format(reverse_scenario_leg, start_date)
     rt_reverse_scenario_leg <- rt_creation_vaccine(reverse_scenario_leg, end_date + time_period)
     rm(reverse_scenario_leg)
@@ -413,8 +435,8 @@ if(sum(excess_deaths$deaths) > 0) {
     ## -----------------------------------------------------------------------------
 
     # update for surged healthcare
-    out_surged <- out
-    rm(out)
+    out_surged <- out_extended
+    rm(out_extended)
 
     out_surged$parameters$hosp_bed_capacity <- 1e10
     out_surged$parameters$ICU_bed_capacity <- 1e10
@@ -524,28 +546,20 @@ if(sum(excess_deaths$deaths) > 0) {
     # get data in correct format for plotting
     df_excess_deaths <- excess_deaths %>%
       filter(iso == iso3c) %>%
-      transmute(
-        date_start = week_start,
-        date_end = week_end,
-        deaths = deaths/as.numeric(date_end - date_start)
-      ) %>%
+      # mutate(
+      #   deaths = deaths/as.numeric(date_end - date_start)
+      # ) %>%
+      rename(iso3c = iso) %>%
       arrange(
         date_start
       )
 
     #also get data on cases
-    df_cases <- readRDS("combined_data.Rds") %>%
-      ungroup() %>%
-      filter(countryterritoryCode == iso3c) %>%
-      transmute(
-        date = dateRep,
-        cases = cases,
-        deaths = deaths
-      ) %>%
+    df_cases <- readRDS("reported_covid.Rds") %>%
+      rename(iso = iso3c) %>%
+      filter(iso == iso3c) %>%
+      rename(iso3c = iso) %>%
       arrange(date)
-
-    #delta stuff
-    adjust_delta_index <- variant_characteristics
 
     # prepare reports
     options(tinytex.verbose = TRUE)
@@ -559,7 +573,8 @@ if(sum(excess_deaths$deaths) > 0) {
                                     "country" = country,
                                     "surging" = surging,
                                     "rt" = rtp2,
-                                    "adjust_delta" = adjust_delta_index,
+                                    "variants" = variant_timings,
+                                    "date_range" = date_range,
                                     "rt_futures" = rt_futures_df),
                       output_options = list(pandoc_args = c(paste0("--metadata=title:",country," COVID-19 report "))))
 
@@ -571,6 +586,7 @@ if(sum(excess_deaths$deaths) > 0) {
 }
 
 ## THIS IS THE ESFT LOOP FOR COUNTRIES WITH NO DEATHS CURRENTLY
+## THIS COULD DO WITH UPDATING
 if (sum(excess_deaths$deaths) == 0) {
 
   # What are the Rt values for each income group

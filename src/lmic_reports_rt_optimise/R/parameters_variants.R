@@ -8,7 +8,7 @@ sample_variant_immune_escape <- function(n, variants){
     ~variant, ~p1, ~p2,
     "Delta", 1.014, 2,
     "Omicron", 2.54, 2,
-    "Omicron Sub Variant", 1.014, 2 #ISSUE:: GET A REAL NUMBER
+    "Omicron Sub-Variant", 1.014, 2 #ISSUE:: GET A REAL NUMBER
   ) %>%
     filter(variant %in% variants)
   out <- map(seq_len(n), function(it){
@@ -33,7 +33,7 @@ sample_variant_prob_hosp <- function(n, variants){
     ~variant, ~p1, ~p2,
     "Delta", log(1.45), 0.15,
     "Omicron", log(0.59), 0.08,
-    "Omicron Sub Variant", log(1), 0.08 #ISSUE:: GET A REAL NUMBER
+    "Omicron Sub-Variant", log(1), 0.08 #ISSUE:: GET A REAL NUMBER
   ) %>%
     filter(variant %in% variants)
   out <- map(seq_len(n), function(it){
@@ -56,7 +56,7 @@ sample_variant_prob_severe <- function(n, variants){
     ~variant, ~p1, ~p2,
     "Delta", log(1), 0.08,
     "Omicron", log(0.34), 0.45,
-    "Omicron Sub Variant", log(1), 0.08 #ISSUE:: GET A REAL NUMBER
+    "Omicron Sub-Variant", log(1), 0.08 #ISSUE:: GET A REAL NUMBER
   ) %>%
     filter(variant %in% variants)
   out <- map(seq_len(n), function(it){

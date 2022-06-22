@@ -4,7 +4,7 @@ date_0 <- as.Date(date, "%Y-%m-%d")
 excess_deaths_raw <- read.csv(
   "https://raw.githubusercontent.com/TheEconomist/covid-19-the-economist-global-excess-deaths-model/main/output-data/export_country.csv"
   ) %>%
-  mutate(date = as_Date(date)) %>%
+  mutate(date = as_date(date)) %>%
   filter(date <= date_0)
 
 if(lubridate::week(max(excess_deaths_raw$date)) < lubridate::week(date_0)){
@@ -27,8 +27,7 @@ excess_deaths <- excess_deaths_raw %>%
     date_end = lubridate::ceiling_date(date, unit = "week")
   ) %>% #summarise incase multiple entries a week
   group_by(iso3c, date_start, date_end) %>%
-  summarise(deaths = mean(deaths)) %>%
-  ungroup() %>%
+  summarise(deaths = mean(deaths), .groups = "drop") %>%
   mutate(
     #make it weekly
     deaths = as.integer(deaths*as.numeric(date_end - date_start))

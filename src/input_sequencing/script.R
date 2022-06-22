@@ -77,54 +77,84 @@ find_timings <- function(df){
     mutate(p_var = count/sum(count)) %>%
     ungroup() %>%
     complete(week = seq(min(week), max(week), 1), variant = unique(variant),
-             fill = list(p_var = NA)) %>%
-    select(!count) %>%
+             fill = list(p_var = NA, count = 0)) %>%
     #linearlly interpolate the percentages
     group_by(variant) %>%
     arrange(week) %>%
     mutate(p_var = linearly_interpolate(p_var))
   map_dfr(variants, function(this_variant){
     temp <- filter(df, variant == this_variant)
-    #find the mid point, (i.e first date where p_var > 0.5)
-    mid_date <- suppressWarnings(min(temp$week[temp$p_var > 0.5]))
-    if(is.infinite(mid_date)){
-      mid_date <- temp$week[which.max(temp$p_var)]
-    }
-    #start_date is last then where p_var < 10 before the mid_date
-    start_date <- suppressWarnings(temp %>%
-      filter(week < mid_date & p_var < 0.1) %>%
-      pull(week) %>%
-      max)
-    if(is.infinite(start_date)){
-      start_date <- mid_date - 30
-    }
-    #end_date is the first time p_var >80% after mid_date
-    end_date <- temp %>%
-      filter(week > mid_date & p_var > 0.8)
-    if(nrow(end_date) > 0){
-      end_date <- end_date %>%
-        pull(week) %>%
-        max
+    if(all(temp$count < 20)){
+      #not present
+      start_date <- mid_date <- end_date <- NA
     } else {
-      end_date <- mid_date + as.numeric(mid_date - start_date)
+      #find the mid point, (i.e first date where p_var > 0.5)
+      mid_date <- suppressWarnings(min(temp$week[temp$p_var > 0.5]))
+      if(is.infinite(mid_date)){
+        mid_date <- temp$week[which.max(temp$p_var)]
+      }
+      #start_date is last then where p_var < 10 before the mid_date
+      start_date <- suppressWarnings(temp %>%
+                                       filter(week < mid_date & p_var < 0.1) %>%
+                                       pull(week) %>%
+                                       max)
+      if(is.infinite(start_date)){
+        start_date <- mid_date - 30
+      }
+      #end_date is the first time p_var >80% after mid_date
+      end_date <- temp %>%
+        filter(week > mid_date & p_var > 0.8)
+      if(nrow(end_date) > 0){
+        end_date <- end_date %>%
+          pull(week) %>%
+          max
+      } else {
+        end_date <- mid_date + as.numeric(mid_date - start_date)
+      }
+      #limit shift time to 60 days max
+      max_shift <- 60
+      if(as.numeric(end_date - start_date) > max_shift){
+        start_date <- mid_date - max_shift/2
+        end_date <- mid_date + max_shift/2
+      }
+      min_shift <- 20
+      if(as.numeric(end_date - start_date) < min_shift){
+        start_date <- mid_date - min_shift/2
+        end_date <- mid_date + min_shift/2
+      }
     }
     tibble(start_date = start_date, mid_date = mid_date, end_date = end_date)
   }) %>%
     mutate(variant = variants)
 }
 can_fit_to <- function(df){
-  df %>%
+  #needs more than 20 sequences for more than 20 weeks,
+  #with at least 2 in the last 2 months
+  sum_df <- df %>%
     mutate(week = floor_date(date, "week")) %>%
     group_by(week, .add = TRUE) %>%
-    summarise(count = sum(count), .groups = "drop_last") %>%
-    filter(count > 20) %>%
-    summarise(count = n(), .groups = "drop") %>%
-    filter(count > 20) %>%
-    select(!count)
+    summarise(count = sum(count), .groups = "drop_last")
+  two_months <- as_date(date)
+  if(day(two_months) > 28){
+    day(two_months) <- 28
+  }
+  month(two_months) <- month(two_months) - 2
+  inner_join(
+    sum_df %>%
+      filter(count > 20) %>%
+      summarise(count = n(), .groups = "drop") %>%
+      filter(count > 20) %>%
+      select(!count),
+    sum_df %>%
+      filter(week >= floor_date(two_months, "week") & count > 20) %>%
+      summarise(count = n(), .groups = "drop") %>%
+      filter(count > 2) %>%
+      select(!count),
+    by = group_vars(df)
+  )
 }
 
-#Determine which countries have enough data to fit to (more than 20 sequences
-#on more than 20 weeks)
+#Determine which countries have enough data to fit
 variants_df <- variants_df %>%
   mutate(
     un_region = countrycode::countrycode(iso3c, "iso3c", "un.region.name",

@@ -41,31 +41,32 @@ cumulative_deaths_plot <- function(country, excess = FALSE) {
     #convert to daily
     d <- d %>%
       mutate(
-        deaths = deaths/as.numeric(week_end - week_start),
-        dateRep = week_start
+        deaths = deaths/as.numeric(date_end - date_start),
+        date = date_start
       ) %>%
       group_by(iso3c) %>%
-      complete(dateRep = seq(min(dateRep), max(week_end), by = 1)) %>%
-      arrange(iso3c, dateRep) %>%
+      complete(date = seq(min(date), max(date_end), by = 1)) %>%
+      arrange(iso3c, date) %>%
       fill(deaths, .direction = "down") %>%
       ungroup() %>%
       transmute(
-        countryterritoryCode  = iso3c ,
+        iso3c  = iso3c ,
         Region = countrycode::countrycode(iso3c , "iso3c", "country.name"),
-        dateRep = dateRep,
+        date = date,
         deaths = deaths
       )
-    d$Region[d$countryterritoryCode == "KSV"] <- "Kosovo"
+    d$Region[d$iso3c == "KSV"] <- "Kosovo"
     d <- d %>%
       left_join(
-        readRDS("combined_data.Rds") %>%
+        readRDS("reported_covid.Rds") %>%
           ungroup() %>%
-          select(countryterritoryCode, cases, dateRep),
-        by = c("countryterritoryCode", "dateRep")
+          select(iso3c, cases, date),
+        by = c("iso3c", "date")
       ) %>%
       mutate(cases = if_else(is.na(cases), 0, cases))
   } else {
-    d <- readRDS("combined_data.Rds")
+    d <- readRDS("reported_covid.Rds") %>%
+      mutate(Region = countrycode::countrycode(iso3c , "iso3c", "country.name"))
   }
   d$Region[d$Region=="Congo"] <- "Republic of Congo"
   d$Region[d$Region=="United_Republic_of_Tanzania"] <- "Tanzania"
@@ -95,7 +96,7 @@ cumulative_deaths_plot <- function(country, excess = FALSE) {
   }
 
   df <- group_by(d, Region) %>%
-    arrange(dateRep) %>%
+    arrange(date) %>%
     mutate(Cum_Deaths = cumsum(deaths),
            Cum_Cases = cumsum(cases))
 
@@ -110,7 +111,7 @@ cumulative_deaths_plot <- function(country, excess = FALSE) {
     doubling(x, start = start, xmax = max(df_deaths$day_since))
   }))
 
-  df_deaths_latest <- df_deaths[df_deaths$dateRep == max(df_deaths$dateRep),]
+  df_deaths_latest <- df_deaths[df_deaths$date == max(df_deaths$date),]
   continent <- na.omit(unique(df$Continent[df$Region == country]))
 
   if(excess){
@@ -141,7 +142,7 @@ cumulative_deaths_plot <- function(country, excess = FALSE) {
 plotly_style <- function(country) {
 
   #ecdc <- readRDS("ecdc_all.rds")
-  ecdc <- readRDS("combined_data.Rds")
+  ecdc <- readRDS("reported_covid.Rds")
 
   d$Continent <- countrycode::countrycode(d$Region, origin = 'country.name', destination = 'continent')
   d$Continent[d$Region=="Eswatini"] <- "Africa"
@@ -156,7 +157,7 @@ plotly_style <- function(country) {
 
   # to reduce need for user inputs, precalculate for set options
   d <- group_by(d, Region) %>%
-    arrange(dateRep) %>%
+    arrange(date) %>%
     mutate(Cumulative_Deaths = cumsum(deaths),
            Cumulative_Cases = cumsum(cases),
            cc_10 = Cumulative_Cases > 10,
@@ -484,12 +485,18 @@ cases_plot <- function(df, data, date = Sys.Date(), date_0) {
                      y = mean(.data$y))
 
   # format cases
-  data$cases <- rev(c(tail(data$cases,1), diff(rev(data$cases))))
+  #data$cases <- rev(c(tail(data$cases,1), diff(rev(data$cases))))
 
   # Plot
   gg_cases <- ggplot2::ggplot(sub, ggplot2::aes(x = .data$day,
                                                 y = .data$y,
                                                 col = .data$compartment)) +
+    ggplot2::geom_bar(data = data,
+                      mapping = ggplot2::aes(x = .data$date, y = .data$cases,
+                                             fill = "Reported"),
+                      stat = "identity",
+                      show.legend = TRUE,
+                      inherit.aes = FALSE) +
     ggplot2::geom_ribbon(data = pd_group,
                          mapping = ggplot2::aes(ymin = .data$ymin,
                                                 ymax = .data$ymax,
@@ -506,12 +513,6 @@ cases_plot <- function(df, data, date = Sys.Date(), date_0) {
                          alpha = 0.8,
                          size = 0,
                          show.legend = TRUE) +
-    ggplot2::geom_bar(data = data,
-                      mapping = ggplot2::aes(x = .data$date, y = .data$cases,
-                                             fill = "Reported"),
-                      stat = "identity",
-                      show.legend = TRUE,
-                      inherit.aes = FALSE) +
     ggplot2::ylab("Daily Number of Infections") +
     ggplot2::theme_bw()  +
     ggplot2::scale_y_continuous(expand = c(0,0)) +
@@ -844,7 +845,7 @@ deaths_plot <-  function(proj, proj_surge, df_excess, df_cases, date_0, date,
 }
 
 
-healthcare_plot_contrast <- function(projs, what, date, forcast){
+healthcare_plot_contrast <- function(projs, what, date, forecast){
   #get correct dates
   df <- projs[projs$date <=  date + forecast + 1 &
                 projs$date > date - 7, ] %>%
@@ -858,8 +859,10 @@ healthcare_plot_contrast <- function(projs, what, date, forcast){
       Scenario = stringr::str_remove(Scenario, "r_") %>%
         stringr::str_remove("_scenario") %>%
         stringr::str_remove("_leg") %>%
-        stringr::str_to_title()
-    )
+        stringr::str_to_title(),
+      Scenario = ordered(Scenario, level = c("Pessimistic", "Central", "Optimistic", "Reverse", "Maintain", "Mitigation"))
+    ) %>%
+    arrange(date, Scenario)
 
   # y axis
   if (what == "ICU_demand") {
@@ -880,8 +883,8 @@ healthcare_plot_contrast <- function(projs, what, date, forcast){
     ggplot2::ylab(title) +
     ggplot2::theme_bw()  +
     ggplot2::scale_y_continuous(expand = c(0,0)) +
-    ggplot2::scale_fill_manual(name = "", labels = unique(df$Scenario),
-                               values = rev(c("#9eeccd","#c59e96","#3f8ea7"))) +
+    ggplot2::scale_fill_manual(name = "", labels = sort(unique(df$Scenario)),
+                               values = c("#9eeccd", "#c59e96", "#3f8ea7")) +
     ggplot2::scale_x_date(date_breaks = "2 weeks", date_labels = "%b %d",
                           expand = c(0, 0)) +
     ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, colour = "black"),
@@ -895,6 +898,7 @@ healthcare_plot_contrast <- function(projs, what, date, forcast){
                    panel.background = ggplot2::element_blank(),
                    axis.line = ggplot2::element_line(colour = "black")) +
     geom_vline(xintercept = date, linetype = "dashed")
+
 }
 
 plot_scan <- function(x, what = "likelihood", log = TRUE) {
@@ -979,50 +983,6 @@ intervention_plot <- function(res, date) {
     theme(legend.position = "top")
 
 
-}
-
-simple_pmcmc_plot <- function(out) {
-
-  #densities for all parameters
-  gather_parameters <- function(samples){
-    map_dfr(samples, ~c(value = head(.x$dur_R, 1))) %>%
-      mutate(parameter = "dur_R") %>%
-      rbind(
-        map_dfr(samples, ~c(value = head(head(.x$dur_V, 1)[[1]], 1))) %>%
-          mutate(parameter = "dur_V")
-      ) %>%
-      rbind(
-        map_dfr(samples, ~c(value = .x$rel_infectiousness_vaccinated)) %>%
-          mutate(parameter = "rel_infectiousness_vaccinated")
-      )
-  }
-  #do this manually too complex otherwise
-  parameter_samples <- gather_parameters(out$samples) %>%
-    mutate(
-      excluded = FALSE
-    )
-
-  #+density for dropped
-  if("rt_optimised_trimmed" %in% class(out)){
-    parameter_samples <- parameter_samples %>%
-      rbind(
-        gather_parameters(out$excluded$samples) %>%
-          mutate(
-            excluded = TRUE
-          )
-      )
-  }
-
-  n_plots <- length(unique(parameter_samples$parameter))
-  rows <- round(sqrt(n_plots))
-  #produce plot
-  ggplot(parameter_samples, aes(x = value, colour = excluded)) +
-    geom_freqpoly(alpha = 0.9, stat = "density") +
-    facet_wrap(vars(parameter), scales = "free", nrow = rows, strip.position = "bottom") +
-    labs(x = "", y = "Density", colour = "Poor Fit:") +
-    theme_bw() + theme(panel.border = element_blank(), axis.line = element_line()) + scale_color_brewer(type = "qual") +
-    theme(axis.title = element_blank(),
-          title = element_text(size = 8))
 }
 
 
@@ -1271,4 +1231,125 @@ nim_sq_simulation_plot_prep <- function(x,
 
   return(list(pd = pd, pds = pds))
 
+}
+
+# variant_timings_plot <- function(variant_timings, date_range){
+#   df <- variant_timings %>%
+#     mutate(new_start_date = end_date, end_date = lead(start_date, 1, default = date_range[2]),
+#            start_date = new_start_date) %>%
+#     select(!new_start_date) %>%
+#     rbind(
+#       variant_timings %>%
+#         mutate(variant = "Shift-Period")
+#     ) %>%
+#     add_row(end_date = min(variant_timings$start_date), start_date = date_range[1],
+#             variant = "Wild") %>%
+#     arrange(start_date) %>%
+#     transmute(
+#       t_end = as.numeric(end_date - min(start_date)),
+#       t_start = as.numeric(start_date - min(start_date)),
+#       centre = (t_end + t_start)/2,
+#       date_label = start_date,
+#       variant = variant,
+#       angle = if_else(variant == "Shift-Period", 90, 0)
+#     )
+#   height <- 1
+#   off_set <- height*0.025
+#   date_pos <- c(-off_set, height + off_set)
+#   v_pos <- c(1, 0)
+#   text_size <- 5
+#   ggplot(
+#     df,
+#     aes(xmin = t_start, xmax = t_end, ymin = 0, ymax = height, fill = variant)
+#   ) +
+#     geom_rect(show.legend = FALSE) +
+#     geom_text(aes(x = centre, y = height/2, label = variant, angle = angle), size = text_size) +
+#     geom_text(aes(x = t_start, y = rep(date_pos, nrow(df))[seq_len(nrow(df))], label = date_label,
+#                   vjust = rep(v_pos, nrow(df))[seq_len(nrow(df))]),
+#               size = text_size*0.75, inherit.aes = FALSE) +
+#     geom_segment(aes(
+#       x = t_start, xend = t_start, y = rep(date_pos, nrow(df))[seq_len(nrow(df))],
+#       yend = rep(c(0, height), nrow(df))[seq_len(nrow(df))]
+#     ))+
+#     coord_cartesian(xlim = c(-30, as.numeric(diff(date_range))), ylim = date_pos) +
+#     theme_void()
+# }
+
+
+variant_timings_plot <- function(variant_timings, date_range){
+  df <- variant_timings %>%
+    mutate(new_start_date = end_date, end_date = lead(start_date, 1, default = date_range[2]),
+           start_date = new_start_date) %>%
+    select(!new_start_date) %>%
+    rbind(
+      variant_timings %>%
+        mutate(variant = "Shift-Period")
+    ) %>%
+    add_row(end_date = min(variant_timings$start_date), start_date = date_range[1],
+            variant = "Wild") %>%
+    arrange(start_date) %>%
+    mutate(
+      centre = as.numeric(end_date - start_date)/2 + start_date,
+      variant = variant,
+      angle = if_else(variant == "Shift-Period", 90, 0),
+      end_date = if_else(end_date == date_range[2], date_range[2] + 100, end_date)
+    )
+  height <- 1
+  text_size <- 5
+  ggplot(
+    df,
+    aes(xmin = start_date, xmax = end_date, ymin = 0, ymax = height, fill = variant)
+  ) +
+    geom_rect(show.legend = FALSE, alpha = 0.75) +
+    geom_text(aes(x = centre, y = height/2, label = variant, angle = angle), size = text_size, alpha = 0.75) +
+    coord_cartesian(xlim = date_range, ylim = c(0, height)) +
+    theme(axis.line.y=element_blank(),
+          axis.text.y=element_blank(),
+          axis.ticks.y=element_blank(),
+          axis.title.y=element_blank(),
+          panel.grid.minor.y=element_blank(),
+          panel.grid.major.y=element_blank(),
+          panel.background = element_blank()) +
+    ggplot2::scale_x_date(date_labels = "%b %Y", date_breaks = "1 months") +
+    ggplot2::labs(title = "Dominant Variants:") +
+    xlab("Date")
+}
+
+variant_timings_index_plot <- function(variant_timings, date_range){
+  df <- variant_timings %>%
+    mutate(new_start_date = end_date, end_date = lead(start_date, 1, default = date_range[2]),
+           start_date = new_start_date) %>%
+    select(!new_start_date) %>%
+    rbind(
+      variant_timings %>%
+        mutate(variant = "")
+    ) %>%
+    add_row(end_date = min(variant_timings$start_date), start_date = date_range[1],
+            variant = "Wild-Type") %>%
+    arrange(start_date) %>%
+    mutate(
+      centre = as.numeric(end_date - start_date)/2 + start_date,
+      variant = variant,
+      end_date = if_else(end_date == date_range[2], date_range[2] + 100, end_date)
+    )
+  height <- 1
+  text_size <- 5
+  ggplot(
+    df,
+    aes(xmin = start_date, xmax = end_date, ymin = 0, ymax = height, fill = variant)
+  ) +
+    geom_rect(show.legend = FALSE, alpha = 0.75) +
+    geom_text(aes(x = centre, y = height/2, label = variant), size = text_size,
+              alpha = 0.75) +
+    coord_cartesian(xlim = date_range, ylim = c(0, height)) +
+    theme(axis.line.y=element_blank(),
+          axis.text.y=element_blank(),
+          axis.ticks.y=element_blank(),
+          axis.title.y=element_blank(),
+          panel.grid.minor.y=element_blank(),
+          panel.grid.major.y=element_blank(),
+          panel.background = element_blank()) +
+    ggplot2::scale_x_date(date_labels = "%b %Y", date_breaks = "3 months") +
+    ggplot2::labs(title = "") +
+    xlab("Date")
 }

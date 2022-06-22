@@ -36,75 +36,75 @@ summarise_rt_futures <- function(Rt_futures){
 }
 
 
-variant_changes_over_time <- function(variant_characteristics,
-                                      var, start_date) {
+multiplier_changes_over_time <- function(variant_timings, variable, x, start_date) {
+  variant_timings <- arrange(variant_timings, start_date)
 
-  #delta
-  dates <- seq(
-    variant_characteristics$Delta$start_date,
-    variant_characteristics$Delta$start_date +
-      variant_characteristics$Delta$shift_duration,
-    by = 1
-  )
-  variable <- c(seq(variant_characteristics$Wild[[var]],
-                    variant_characteristics$Delta[[var]],
-                    length.out = length(dates)+1))
-  #omicron
-  dates_omicron <- seq(
-    variant_characteristics$Omicron$start_date,
-    variant_characteristics$Omicron$start_date +
-      variant_characteristics$Omicron$shift_duration,
-    by = 1
-  )
-  variable <- c(
-    variable,
-    seq(variant_characteristics$Delta[[var]],
-        variant_characteristics$Omicron[[var]],
-        length.out = length(dates_omicron)+1)[-1]
-  )
-  dates <- c(dates, dates_omicron)
-  tt <- as.numeric(dates - start_date)
-  if(tt[1] > 0){
+  #adjust for historic changes
+  var <- map_dbl(variable, ~.x[[x]])[variant_timings$variant]
+  var <- var/lag(var, 1, 1)
+
+  change_tt <- map(transpose(variant_timings), function(l){
+    period <- as.numeric(as_date(c(l$start_date, l$end_date)) - start_date)
+    tt <- seq(period[1], period[2], by = 1)
+    list(
+      change = seq(0, 1, length.out = length(tt) + 1)[-1],
+      tt = tt
+    )
+  })
+  tt <- map(change_tt, ~.x$tt) %>% unlist()
+  var <- map(seq_along(change_tt), function(i){
+    if(i == 1){
+      start_value <- 1
+    } else {
+      start_value <- var[[variant_timings$variant[i - 1]]]
+    }
+    end_value <- var[[variant_timings$variant[i]]]
+    start_value * (1 - change_tt[[i]]$change) + end_value * change_tt[[i]]$change
+  }) %>% unlist()
+
+  #add the zero entry if needed
+  if(all(tt > 0)){
     tt <- c(0, tt)
-  } else {
-    tt <- c(tt[1] - 1, tt)
+    var <- c(1, var)
   }
+
   return(
     list(
-      var = variable,
+      var = var,
       tt = tt
     )
   )
 }
 
-variant_immune_escape <- function(variant_characteristics, dur_R, start_date) {
+variant_immune_escape <- function(variant_timings, immune_escape, x, dur_R, start_date) {
+  variant_timings <- arrange(variant_timings, start_date)
+  #adjust immune escape for previous escape levels
+  immune_escapes <- map_dbl(immune_escape, ~.x[x])
+  immune_escapes <- (immune_escapes - lag(immune_escapes, 1, default = 0))/(
+    1 - lag(immune_escapes, 1, default = 0)
+  )
+  immune_escapes <- immune_escapes[variant_timings$variant]
 
-  #delta
-  dur_R_d <- c(dur_R, 1 / (
-    (variant_characteristics$Delta$shift_duration / dur_R - log(1 - variant_characteristics$Delta$immune_escape)) /
-      variant_characteristics$Delta$shift_duration
-  ), dur_R)
-  date_dur_R_change_d <- c(variant_characteristics$Delta$start_date,
-                           variant_characteristics$Delta$start_date +
-                             variant_characteristics$Delta$shift_duration)
-  #omicron
-  dur_R_o <- c( 1 / (
-    (variant_characteristics$Omicron$shift_duration / dur_R - log(1 - variant_characteristics$Omicron$immune_escape)) /
-      variant_characteristics$Omicron$shift_duration
-  ), dur_R)
-  date_dur_R_change_o <- c(variant_characteristics$Omicron$start_date,
-                           variant_characteristics$Omicron$start_date +
-                             variant_characteristics$Omicron$shift_duration)
+  dur_Rs <- map(transpose(variant_timings), function(l){
+    shift_duration <- as.numeric(l$end_date - l$start_date)
+    c(1 / (
+      (shift_duration / dur_R[x] - log(1 - immune_escape[[l$variant]][[x]])) /
+        shift_duration
+    ), dur_R[x])
+  }) %>% unlist()
 
-  tt <- as.numeric(c(date_dur_R_change_d, date_dur_R_change_o) - start_date)
-  if(tt[1] > 0){
+  tt <- map(transpose(variant_timings), function(l){
+    as.numeric(as_date(c(l$start_date, l$end_date)) - start_date)
+  }) %>% unlist()
+
+  if(all(tt > 0)){
     tt <- c(0, tt)
-  } else {
-    tt <- c(tt[1] - 1, tt)
+    dur_Rs <- c(dur_R[x], dur_Rs)
   }
+
   return(
     list(
-      variable = c(dur_R_d, dur_R_o),
+      var = dur_Rs,
       tt = tt
     )
   )

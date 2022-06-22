@@ -15,6 +15,7 @@ master_ves <- tribble(
   "Omicron", "Partial", "Hospitalisation", 0.4192211,
   "Omicron", "Full", "Hospitalisation", 0.5254237
 )
+
 #calculate omicron changes based on the changes from delta in the old generalised ves
 changes <- master_ves %>%
   filter(Variant != "Wild") %>%
@@ -40,6 +41,7 @@ ves_by_type <- ves_by_type %>%
   rbind(
     omicron_efficacies
   )
+
 ##Fit Waning Curves
 simulate_time <- 2*365
 calc_eff_partial_gen <- odin({
@@ -73,7 +75,6 @@ calc_eff_full_gen <- odin({
   fV_2_i <- user()
   fV_3_i <- user()
 })
-df <- ves_by_type %>% filter(vaccine_type == "mRNA", dose == "Partial", variant == "Wild")
 fit_curve <- function(df) {
   parameter_infection <- df %>% filter(endpoint == "Infection") %>% pull(efficacy)
   parameter_hospitalisation <- df %>% filter(endpoint == "Hospitalisation") %>% pull(efficacy)
@@ -440,11 +441,33 @@ random_efficacies <- random_efficacies %>%
     random_efficacies %>% filter(platform == "Johnson&Johnson") %>% mutate(dose = "Partial", value = 0)
   ) %>%
   rbind(
-    random_efficacies %>% filter(variant == "Omicron") %>% mutate(variant = "Omicron Sub Variant")
+    random_efficacies %>% filter(variant == "Omicron") %>% mutate(variant = "Omicron Sub-Variant")
   ) %>%
   arrange(
     sample, platform, variant, dose, parameter
   )
+
+#Scale for breakthrough infections
+random_efficacies <- random_efficacies %>%
+  filter(str_detect(parameter, "V")) %>%
+  mutate(temp_1 = str_remove(parameter, "[di]"),
+         temp_2 = str_sub(parameter, -1, -1)) %>%
+  select(dose, variant, platform, sample, temp_1, temp_2, value) %>%
+  pivot_wider(names_from = temp_2, values_from = value) %>%
+  mutate(
+    d = (d - i)/(1 - i)
+  ) %>%
+  pivot_longer(c(d, i), names_to = "temp_2", values_to = "value_new") %>%
+  mutate(parameter = paste0(temp_1, temp_2)) %>%
+  select(!c(temp_1, temp_2)) %>%
+  right_join(
+    random_efficacies,
+    by = c("dose", "variant", "platform", "sample", "parameter")
+  ) %>%
+  mutate(
+    value = if_else(is.na(value_new), value, value_new)
+  ) %>%
+  select(!value_new)
 
 #empty environment of everything not relevant
 rm(list = setdiff(ls(), c("N_samples", "random_efficacies")))

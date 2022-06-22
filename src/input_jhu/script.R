@@ -33,6 +33,9 @@ format_jhu <- function(data, parameter){
     summarise(
       across(all_of(parameter), ~sum(.x, na.rm = TRUE)),
       .groups = "drop"
+    ) %>%
+    mutate(
+      across(all_of(parameter), ~diff(c(0, .x), na.rm = TRUE))
     )
 }
 

@@ -34,16 +34,24 @@ script: script.R
 # a parameter of b with no default.
 #
 parameters:
-    iso3c:
-      default: AGO
+    iso3c: ~
     date: ~
-    n_particles: ~
+    samples: ~
     seed:
       default: FALSE
     document:
       default: TRUE
     parallel:
       default: FALSE
+    initial_infections_interval:
+      default: "NULL"
+    n_particles:
+      default: "NULL"
+    k:
+      default: "NULL"
+    rt_interval:
+      default: "NULL"
+
 
 # You must list at least one artefact that your report will generate.
 # Each artefact consists of one or more files.  The format is to list
@@ -131,6 +139,8 @@ sources:
   - R/no_deaths.R
   - R/vaccine.R
   - R/initialise.R
+  - R/parameters_variants.R
+  - R/parameters_disease.R
 
 # Resources that the script needs to run; this is an array of strings
 # representing filenames *relative to, and below, this directory*.
@@ -144,6 +154,7 @@ sources:
 resources:
   - index.Rmd
   - gdp_income_group.csv
+  - fitting_params.Rds
 
 global_resources:
   _navbar.html: _navbar.html
@@ -181,19 +192,23 @@ global_resources:
 #   * after the colon is what the file is called in the existing task
 #
 depends:
-  economist:
+  parameters_vaccines:
+    id: latest
+    use:
+      vaccine_params.Rds: vaccine_params.Rds
+  input_jhu:
     id: latest(parameter:date == date)
     use:
-      excess_deaths.rds: excess_deaths.rds
-  vaccine_inputs_booster:
+      reported_covid.Rds: reported_covid.Rds
+  input_excess_mortality:
     id: latest(parameter:date == date)
     use:
-      vacc_inputs.rds: vacc_inputs.rds
-  variant_adjustments:
+      excess_deaths.Rds: excess_deaths.Rds
+  input_vaccinations:
     id: latest(parameter:date == date)
     use:
-      variant_characteristics.rds: variant_characteristics.rds
-  ecdc:
+      vacc_inputs.Rds: vacc_inputs.Rds
+  input_sequencing:
     id: latest(parameter:date == date)
     use:
-      combined_data.Rds: combined_data.Rds
+      variant_timings.Rds: variant_timings.Rds

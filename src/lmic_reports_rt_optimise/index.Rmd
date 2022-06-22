@@ -25,17 +25,18 @@ output:
     fig_width: 6
     highlight: tango
     reference_docx: template.docx
-params:
-   o_list: NA
-   excess: FALSE
-   df_excess: NA
-   df_cases: NA
-   date_0: NA
-   country: NA
-   surging: FALSE
-   rt: NA
-   rt_futures: NA
-   adjust_delta: FALSE
+# params:
+#    o_list: NA
+#    excess: FALSE
+#    df_excess: NA
+#    df_cases: NA
+#    date_0: NA
+#    country: NA
+#    surging: FALSE
+#    rt: NA
+#    rt_futures: NA
+#    variants: FALSE
+#    date_range: NA
 ---
 
 ```{r rm_title_page, echo=FALSE}
@@ -449,24 +450,6 @@ if (iso3c == "BRA") {
 
 ```
 
-```{r set up delta, echo = FALSE, collapse = TRUE, warning = FALSE}
-if(identical(params$adjust_delta, FALSE)){
-  delta_text <- ""
-} else {
-  delta_text <- paste0(
-    "This report adjusts for the Omicron and Delta variants, with the variants becoming dominant over the period: ",
-    params$adjust_delta$Delta$start_date,
-    " to ",
-    params$adjust_delta$Delta$start_date + params$adjust_delta$Delta$shift_duration, 
-    " for Delta, and ",
-    params$adjust_delta$Omicron$start_date,
-    " to ",
-    params$adjust_delta$Omicron$start_date + params$adjust_delta$Omicron$shift_duration, 
-    " for Omicron. These timings are informed by sequence data taken from [CoVariants](https://covariants.org/)."
-  )
-}
-```
-
 ## Situation Report for COVID-19: `r country`, `r base::format(date, "%Y-%m-%d")`
 
 `r latex_omit("---")`
@@ -481,8 +464,6 @@ Not all countries are able to provide timely estimates of excess mortality, so e
 Data on reported deaths and cases are from the COVID-19 Data Repository by the Center for Systems Science and Engineering (CSSE) at Johns Hopkins University.
 These are updated daily and whilst there may be a short delay, they are generally consistent with Ministry reports.
 
-`r delta_text`
-
 <br> 
 
 ### Epidemiological Situation
@@ -490,6 +471,21 @@ These are updated daily and whilst there may be a short delay, they are generall
 | **Total Reported Cases** | **Total Reported Deaths** | **Total Estimated Excess Mortality** | **Estimated $R_{eff}$** |
 | --- | --- | ---- | --- |
 | `r base::format(sum(df_cases$cases), big.mark=",")` | `r base::format(sum(df_cases$deaths), big.mark=",")`|`r base::format(sum(df_excess$deaths), big.mark=",")`| `r form_round_dig(rt$rts[nrow(rt$rts),c("Reff", "Reff_min", "Reff_max")])` |
+
+### Dominant Variants of Concern
+
+```{r set up delta, echo = FALSE, collapse = TRUE, warning = FALSE, fig.cap=figRef("**Figure 0: Timings of the modelled variants.**"), fig.height=fig_height(1,1), fig.width=fig_height(8,8), fig.align=fig_center()}
+if(identical(params$adjust_delta, FALSE)){
+  delta_text <- ""
+} else {
+  delta_text <- paste0(
+    "This report adjusts for the ", paste0(variant_timings$variant, collapse = ", "), " variants. The timings of which are shown in Figure 1. These dates are based upon reported sequencing data from NextStrain and GISAID. For countries with a limited number of recent sequences, these dates are inferred from global or regional trends and should be interpreted with caution."
+  )
+  suppressWarnings(suppressMessages(print(variant_timings_index_plot(variant_timings, date_range))))
+}
+```
+
+`r delta_text`
 
 `r pdf_line_break()`
 
@@ -562,7 +558,8 @@ if(surging){
 suppressWarnings(suppressMessages(
     deaths_plot(proj = params$o_list$r_maintain_scenario_leg, proj_surge = proj_surge,
                              forecast = 28, 
-                       df_cases = df_cases, df_excess = df_excess, date_0 = date_0, date = date)))
+                       df_cases = df_cases, df_excess = df_excess %>% 
+                  mutate(deaths = deaths/as.numeric(date_end - date_start)), date_0 = date_0, date = date)))
 
 
 ```
@@ -572,6 +569,8 @@ suppressWarnings(suppressMessages(
 `r pagebreak()`
 
 ### Short-term Epidemic Scenarios
+
+**The following scenarios do not account for future VoC and assumes the current VoC (based on sequence data) remains dominant.**
 
 ```{r, include=FALSE, echo=FALSE}
 rts <- map(split(rt_futures, rt_futures$scenario), 
@@ -607,10 +606,10 @@ combined_projections <- map_dfr(combined_projections,
                                 ~params$o_list[[.x]], .id = "Scenario")
 
 suppressWarnings(suppressMessages(gg_hosp <- healthcare_plot_contrast(
-  projs = combined_projections, what = "hospital_demand", date = date, forcast = 28
+  projs = combined_projections, what = "hospital_demand", date = date, forecast = 28
 )))
 suppressWarnings(suppressMessages(gg_icu <- healthcare_plot_contrast(
-  projs = combined_projections, what = "ICU_demand", date = date, forcast = 28
+  projs = combined_projections, what = "ICU_demand", date = date, forecast = 28
 )))
 
 leg <- suppressWarnings(suppressMessages(
@@ -636,7 +635,7 @@ The impact of each scenario has a more immediate effect on the daily number of i
 
 
 suppressWarnings(suppressMessages(healthcare_plot_contrast(
-  projs = combined_projections, what = "infections", date = date, forcast = 28
+  projs = combined_projections, what = "infections", date = date, forecast = 28
 )))
 
 ```
@@ -653,10 +652,10 @@ combined_projections_leg <- map_dfr(combined_projections_leg,
                                 ~params$o_list[[.x]], .id = "Scenario")
 
 suppressWarnings(suppressMessages(gg_hosp_leg <- healthcare_plot_contrast(
-  projs = combined_projections_leg, what = "hospital_demand", date = date, forcast = 28
+  projs = combined_projections_leg, what = "hospital_demand", date = date, forecast = 28
 )))
 suppressWarnings(suppressMessages(gg_icu_leg <- healthcare_plot_contrast(
-  projs = combined_projections_leg, what = "ICU_demand", date = date, forcast = 28
+  projs = combined_projections_leg, what = "ICU_demand", date = date, forecast = 28
 )))
 leg <- suppressWarnings(suppressMessages(
   cowplot::get_legend(gg_hosp_leg + theme(legend.justification = c(0.5,1)))
@@ -671,6 +670,6 @@ suppressWarnings(suppressMessages(print(grid)))
 
 ```{r infections forecast plots legacy, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap=figRef("**Figure 8: Daily number of infections estimated by fitting to deaths.** Projected infections for Maintain (the epidemic continues to grow at the current rate) are shown in green. Projections for Mitigation (a further 50% reduction in transmission) are shown in blue. Projections for Reverse (relaxing interventions by 50%) are shown in red. Current date shown with dashed line."), fig.width=7, fig.height=fig_height(4,4.5), fig.align=fig_center()}
 suppressWarnings(suppressMessages(healthcare_plot_contrast(
-  projs = combined_projections_leg, what = "infections", date = date, forcast = 28
+  projs = combined_projections_leg, what = "infections", date = date, forecast = 28
 )))
 ```
