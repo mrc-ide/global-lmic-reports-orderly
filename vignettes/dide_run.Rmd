@@ -7,10 +7,12 @@ vignette: >
   \usepackage[utf8]{inputenc}
 ---
 
-```{r, setup, include=FALSE}
+```{r setup, include=FALSE}
 knitr::opts_chunk$set(fig.width = 8, collapse = TRUE)
 knitr::opts_knit$set(root.dir = here::here())
 library(tidyverse)
+#source all file in R directory
+walk(list.files(here::here("R"), full.names = TRUE), source)
 ```
 
 # Overview
@@ -68,15 +70,15 @@ what the `date` is that we are conducting model fits for, i.e. up to what date a
 we running.
 
 ```{r, eval = FALSE}
-date <- "2022-05-30"
+date <- "2022-06-20"
 ```
 
 These arguments are then passed to our tasks:
 
 ```{r eval=FALSE, message=FALSE, warning=FALSE}
-message("*** VE Parameters (Please check calibration.pdf)!")
-parameters_vaccines_id <- orderly::orderly_run("parameters_vaccines", echo = FALSE)
-orderly::orderly_commit(parameters_vaccines_id)
+# message("*** VE Parameters (Please check calibration.pdf)!")
+# parameters_vaccines_id <- orderly::orderly_run("parameters_vaccines", echo = FALSE)
+# orderly::orderly_commit(parameters_vaccines_id)
 
 message("*** Reported COVID Deaths and Cases")
 input_jhu_id <- orderly::orderly_run("input_jhu", parameters = list(date=date), echo = FALSE)
@@ -213,7 +215,7 @@ which countries require rerunning and re-bundle those to be run again:
 iso3cs_to_rerun <-  c()
 #change start date
 bundles_to_rerun <- lapply(
-  iso3cs_to_rerun, 
+  iso3cs_to_rerun,
   function(x) {
     #set country in parameters
     parameters$iso3c = x
@@ -266,7 +268,7 @@ Now that we have updated with the rerun bundles, we know import these back into
 our local `orderly` archive:
 
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
-import <- map(tasks, orderly::orderly_bundle_import)
+import <- map(tasks, ~tryCatch(orderly::orderly_bundle_import(.x), error = function(e){NULL}))
 # just double check they all imported
 all(unlist(import))
 ```
@@ -298,20 +300,17 @@ If any of these are not in the repo, i.e. you have just clones `global-lmic-repo
 
 ## Update the github fits
 
-These scripts update the fits in `gh-fits`.
+These scripts update the fits in `gh-fits` and pushes the `gh-fits` changes to GitHub by calling a `.sh` file.
+Potentially worth running the `.sh` script from the terminal or git bash to view the log.
 
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
-{source(file.path(here::here(), "run", "push_fits.R"))}
+#just takes the latest fit for each country, will take some time to keep RAM usage low
+report_ids <- gather_report_ids(task)
+update_gh_fits(report_ids, "grid_out.Rds")
+
+#requires git bash be on the path and that the working directory is set correctly
+shell(paste0(here::here("scripts/update_github_fits.sh"), " ", date), intern = TRUE, wait = TRUE, shell = "bash")
 ```
-
-This script pushes the `gh-fits` changes to GitHub.
-
-Either execute this from the terminal or you can run it using the bash code chunk below (though it doesn't produce output until after it has finished at the moment, which may be annoying so you can see the output). 
-
-```{bash}
-./scripts/update_github_fits.sh 2022-05-30
-```
-
 
 ## The collation step for run_collate_vaccine
 
@@ -324,18 +323,24 @@ Next we run the collation step, where the necessary outputs from the model fits 
 5. Runs the remaining tasks needed to create the website (index, FAQ, regional pages)
 6. Copies the output from these remaining tasks to gh-pages. 
 
-Either execute this from the terminal or you can run it using the bash code chunk below (though it doesn't produce output until after it has finished at the moment, which may be annoying so you can see the output). 
+Either execute this though the R code below, and push to the GitHub repo. We
+do this in two steps as the git pack size if all done at once is too big.
 
-```{bash}
-./run/run_collate_vaccine_waning.sh 2022-05-30
-```
+```{r eval=FALSE, message=FALSE, warning = FALSE}
+update_gh_pages(report_ids, date)
 
-Once we are happy that the collation has worked we need to push this to Github. We
-do this in two steps as the git pack size if all done at once is too big. This is all in 
-the following script:
-
-```{bash}
-./scripts/publish_website production
+#requires git bash be on the path and that the working directory is set correctly
+log <- shell(here::here("scripts/update_github_pages.sh"), intern = TRUE, wait = TRUE, shell = "bash")
 ```
 
 ## Update projections in `gh-esft`
+
+We also need to update the streamlined version of the outputs.
+
+```{r eval=FALSE, message=FALSE, warning = FALSE}
+#put projections into R format and trim
+update_gh_esft(here::here("gh-pages"), here::here("gh-esft"))
+
+#requires git bash be on the path and that the working directory is set correctly
+shell(paste0(here::here("scripts/update_github_esft.sh"), " ", date), intern = TRUE, wait = TRUE, shell = "bash")
+```

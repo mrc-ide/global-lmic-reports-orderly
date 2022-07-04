@@ -44,12 +44,20 @@ excess_deaths <- readRDS("excess_deaths.Rds") %>%
 country <- squire::population$country[match(iso3c, squire::population$iso3c)[1]]
 
 ## MAIN LOOP IS ONLY FOR THOSE WITH DEATHS
-if(sum(excess_deaths$deaths) > 0) {
+if(sum(excess_deaths$deaths) > 10) {
 
   # get the raw data correct
   data <- excess_deaths %>%
     select(!iso) %>%
     arrange(date_start)
+
+  if(iso3c == "TKM"){
+    #remove starting deaths before major waves
+    if(sum(cumsum(data$deaths) < 40) > 15){
+      data <- data %>%
+        filter(cumsum(deaths) > 40)
+    }
+  }
 
   # and remove the rows with no data up to the first date that a death was reported
   first_report <- which(data$deaths>0)[1]
@@ -199,8 +207,6 @@ if(sum(excess_deaths$deaths) > 0) {
     future::plan(future::multisession())
   }
 
-  progressr::handlers(global = TRUE)
-
   out <- rt_optimise(
     data = data,
     distribution = distribution,
@@ -213,9 +219,22 @@ if(sum(excess_deaths$deaths) > 0) {
     n_particles = n_particles,
     k = k,
     rt_interval = rt_interval
-  ) #2 hours!!
+  )
 
-  out <- squire.page::trim_rt_optimise(out, 0.5)
+  out_trim <- squire.page::trim_rt_optimise(out, 0.5)
+
+  if(length(out_trim$samples) == 0){
+    warning("No suitable trajectories calculated")
+  } else {
+    out <- out_trim
+  }
+  rm(out_trim)
+
+  #Stop using parallel, furrr doesn't like something (maybe model object)
+  Sys.setenv(SQUIRE_PARALLEL_DEBUG = "TRUE")
+  if(parallel){
+    future::plan(future::sequential())
+  }
 
   ## -----------------------------------------------------------------------------
   ## Step 3: Summarise Fits
@@ -293,11 +312,18 @@ if(sum(excess_deaths$deaths) > 0) {
   ## now let's trim the out for saving really small
   output_temp <- out$output
   out$output <- NULL
+  if(inherits(out, "rt_optimised_trimmed")){
+    output_excluded_temp <- out$excluded$output
+    out$excluded$output <- NULL
+  }
   saveRDS(out, "grid_out.rds")
   #reattach output
   out$output <- output_temp
   rm(output_temp)
-
+  if(inherits(out, "rt_optimised_trimmed")){
+    out$excluded$output <- output_excluded_temp
+    rm(output_excluded_temp)
+  }
 
   if(document){
     #the following is only relevant if producing documentation
@@ -583,22 +609,16 @@ if(sum(excess_deaths$deaths) > 0) {
     file.create("index.html", "index.pdf", "index.md",
                 "summary_df.rds")
   }
-}
-
+} else {
 ## THIS IS THE ESFT LOOP FOR COUNTRIES WITH NO DEATHS CURRENTLY
 ## THIS COULD DO WITH UPDATING
-if (sum(excess_deaths$deaths) == 0) {
 
   # What are the Rt values for each income group
   inc_R0s <- income_R0()
   inc_Rts <- income_Rt(date_0 = date)
 
   # what income group is this country
-  wb_metadata <- read.csv("gdp_income_group.csv",
-                          fileEncoding="UTF-8-BOM",
-                          stringsAsFactors = TRUE)
-
-  income <- wb_metadata$income_group[match(iso3c, wb_metadata$country_code)]
+  income <- as.character(squire.page::get_income_group(iso3c))
 
   # And the upper and lower Rs for our scenarios
   R0 <- inc_R0s$R0[inc_R0s$income == income]
@@ -616,11 +636,12 @@ if (sum(excess_deaths$deaths) == 0) {
   squire_model <- squire.page::nimue_booster_model()
   init <- init_state_nimue(deaths_removed = 0, iso3c,
                            seeding_cases = seeding_cases_esft,
-                           vaccinated_already = sum(vacc_inputs$max_vaccine))
+                           vaccinated_already = sum(vacc_inputs$first_doses))
+  init <- map(init, ~cbind(.x, rep(0, 17)))
 
   # Scenarios with capacity constraints
   # ---------------------------------------------------------------------------
-  reverse_scenario <- squire.page:::run_booster(
+  r_pessimistic_scenario <- squire.page:::run_booster(
     country = country,
     R0 = R0,
     time_period = time_period_esft,
@@ -632,7 +653,7 @@ if (sum(excess_deaths$deaths) == 0) {
     vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat
   )
 
-  mitigation_scenario <- squire.page:::run_booster(
+  r_optimistic_scenario <- squire.page:::run_booster(
     country = country,
     R0 = Rt,
     time_period = time_period_esft,
@@ -644,7 +665,7 @@ if (sum(excess_deaths$deaths) == 0) {
     vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat
   )
 
-  maintain_scenario <- squire.page:::run_booster(
+  r_central_scenario <- squire.page:::run_booster(
     country = country,
     R0 = Rt + ((R0 - Rt)/2),
     time_period = time_period_esft,
@@ -655,11 +676,14 @@ if (sum(excess_deaths$deaths) == 0) {
     booster_doses =  as.integer(mean(tail(vacc_inputs$booster_doses,7))),
     vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat
   )
-  saveRDS(maintain_scenario, "grid_out.rds")
+  output_temp <- r_central_scenario$output
+  saveRDS(r_central_scenario, "grid_out.rds")
+  r_central_scenario$output <- output_temp
+  rm(output_temp)
 
   # Scenarios without capacity constraints
   # ---------------------------------------------------------------------------
-  reverse_scenario_surged <- squire.page:::run_booster(
+  r_pessimistic_scenario_surged <- squire.page:::run_booster(
     country = country,
     R0 = R0,
     time_period = time_period_esft,
@@ -673,7 +697,7 @@ if (sum(excess_deaths$deaths) == 0) {
     ICU_bed_capacity = 1e10
   )
 
-  mitigation_scenario_surged <- squire.page:::run_booster(
+  r_optimistic_scenario_surged <- squire.page:::run_booster(
     country = country,
     R0 = R0,
     time_period = time_period_esft,
@@ -687,7 +711,7 @@ if (sum(excess_deaths$deaths) == 0) {
     ICU_bed_capacity = 1e10
   )
 
-  maintain_scenario_surged <- squire.page:::run_booster(
+  r_central_scenario_surged <- squire.page:::run_booster(
     country = country,
     R0 = R0,
     time_period = time_period_esft,
@@ -704,12 +728,12 @@ if (sum(excess_deaths$deaths) == 0) {
   # bundle into a list
   r_list <-
     named_list(
-      maintain_scenario,
-      mitigation_scenario,
-      reverse_scenario,
-      maintain_scenario_surged,
-      mitigation_scenario_surged,
-      reverse_scenario_surged
+      r_central_scenario,
+      r_optimistic_scenario,
+      r_pessimistic_scenario,
+      r_central_scenario_surged,
+      r_optimistic_scenario_surged,
+      r_pessimistic_scenario_surged
     )
 
   # And adjust their time variable so that we have t = 0 as today
@@ -717,7 +741,7 @@ if (sum(excess_deaths$deaths) == 0) {
     for(i in seq_len(dim(x$output)[3])) {
       x$output[,"time",i] <- x$output[,"time",i] - 1
     }
-    rownames(x$output) <- as.character(seq.Date(date_0, date_0 + nrow(x$output) -1, 1))
+    rownames(x$output) <- as.character(seq.Date(date, date + nrow(x$output) -1, 1))
     return(x)
   })
 
@@ -727,10 +751,12 @@ if (sum(excess_deaths$deaths) == 0) {
               "fitting.pdf")
 
   # major summaries
-  o_list <- lapply(r_list_pass, r_list_format, date_0)
-
-  rt_list <- lapply(r_list_pass, rt_creation_vaccine, date_0, date_0+89)
-
+  o_list <- lapply(r_list_pass, r_list_format, date)
+  rt_list <- lapply(
+    r_list_pass,
+    rt_creation_simple_out_vaccine, date, date+89
+  )
+  names(rt_list) <- str_replace(names(rt_list), "r_", "rt_")
 }
 
 if(document){
@@ -785,7 +811,7 @@ if(document){
   data_sum$r_optimistic_scenario_surged$scenario <- "Surged Optimistic"
   data_sum$r_pessimistic_scenario_surged$scenario <- "Surged Pessimistic"
 
-  if(sum(excess_deaths$deaths) > 0){
+  if(sum(excess_deaths$deaths) > 10){
     #these won't be present for the non-fitting countries
     data_sum$r_maintain_scenario_leg$scenario <- "Maintain Status Quo"
     data_sum$r_mitigation_scenario_leg$scenario <- "Additional 50% Reduction"
@@ -814,7 +840,7 @@ if(document){
   rt_list$rt_central_scenario_surged$scenario <- "Surged Central"
   rt_list$rt_optimistic_scenario_surged$scenario <- "Surged Optimistic"
   rt_list$rt_pessimistic_scenario_surged$scenario <- "Surged Pessimistic"
-  if(sum(excess_deaths$deaths) > 0){
+  if(sum(excess_deaths$deaths) > 10){
     #these won't be present for the non-fitting countries
     rt_list$rt_maintain_scenario_leg$scenario <- "Maintain Status Quo"
     rt_list$rt_mitigation_scenario_leg$scenario <- "Additional 50% Reduction"

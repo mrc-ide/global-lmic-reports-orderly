@@ -160,15 +160,35 @@ render_toc("FAQ.Rmd")
 
 #### 1. How reliable are the data?
   
-We use two sources of data to calibrate the model. The first is the reported numbers of deaths by date as available in the European Centre for Disease Control database. These data are updated daily and whilst there may be a short delay, they are generally consistent with Ministry reports. However, as noted below, it is not clear what proportion of deaths are reported.
+We use data on excess mortality to calibrate our model, this allows us to
+account for under ascertainment of COVID-19 related deaths. This data taken is taken from
+[The Economists Excess Deaths Tracker](https://github.com/TheEconomist/covid-19-excess-deaths-tracker) and [World Mortality Dataset](https://github.com/akarlinsky/world_mortality). Where this data is 
+unavailable we use data from the [The Economists Excess-Deaths Model](https://www.economist.com/graphic-detail/coronavirus-excess-deaths-estimates), which uses
+machine learning methods to predict excess-mortality. Though these methods and
+the sparsity of mortality data outside of HIC & UMICs the estimates are [comparable](https://ourworldindata.org/excess-mortality-covid#estimated-excess-mortality-from-the-economist) to 
+estimates made by the [WHO](https://www.who.int/publications/m/item/methods-for-estimating-the-excess-mortality-associatedwith-the-covid-19-pandemic).
 
-The second data source is information on the interventions that have been implemented. In Version 1, we captured this in a relatively simplistic way making assumptions about the impact of different goverment interventions on transmission. As more data became available, we adapted our methods to incorporate data on mobility from the [Google Community Mobility Reports](https://www.google.com/covid19/mobility/) to inform the change in transmission over time. 
+We also present and contrast reported COVID-19 deaths and cases. These are
+taken from the [Johns Hopkins Coronavirus Resource Centre](https://coronavirus.jhu.edu/map.html).
 
 <br>
 
-#### 2. How have you accounted for unreported deaths?
+#### 2. How have you accounted for excess deaths not-related to COVID-19?
   
-As noted above, the extent to which reported deaths capture the true mortality is unclear, and will vary from one country to another depending on their vital registration system and surveillance methods. We do not therefore attempt to make any adjustment at present for under-reporting and it is likely that our projections are a minimum compared to the true overall mortality.
+There is potential for excess-mortality to capture the impact of unrelated
+events that occurred during the COVID-19 epidemic (i.e. conflicts or famines).
+Hence, it is reasonable to treat the modelled numbers as upper-limits
+on the true mortality and burden.
+
+However, please note that in some countries (such as the UK)
+excess-mortality closely matches reported deaths and is sometimes negative 
+suggesting that the non-pharmaceutical interventions might have caused a reduction
+in mortality. This means that excess-mortality that does not adjust for this may
+under estimate the true burden of COVID-19.
+  
+Additionally, assuming the severity of COVID-19 reduces and the epidemic moves into endemicity,
+we might expect the true mortality and excess-mortality to further decouple.
+In that case, these assumptions will be re-examined.
 
 <br>
 
@@ -216,20 +236,12 @@ There are many aspects of populations that vary at a smaller spatial scale and c
 
 <br>
 
-#### 9. Why do your models only consider direct COVID-19 deaths? / How do your predictions account for excess mortality?
+#### 9. How should a national response respond in light of these findings and in the context of the secondary impact of COVID-19 interventions on other health systems?
   
-As our epidemiological model was developed to understand the transmission of SARS-CoV-2 virus, we can only capture the direct mortality from COVID-19. Although we do capture the potential impact of lack of healthcare on this direct mortality, we do not capture the indirect mortality that may occur due to either lack of healthcare for other health conditions or the wider impact of mitigation and suppression interventions on health.
-
-Our outputs should therefore be considered as inputs into wider discussion about the appropriate balance between mitigation/suppression of SARS-CoV-2 virus transmission and the impact of these interventions on wider health. One example of this could be the impact on efforts to control other infectious diseases, which we have explored for malaria in Africa ([see Report 18](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-18-malaria/)) as well more broadly on the impact on malaria, HIV and TB in low- and middle-income countries ([see Report 19](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-19-hiv-tb-malaria/)).
-
-<br>
-
-#### 10. How should a national response respond in light of these findings and in the context of the secondary impact of COVID-19 interventions on other health systems?
-  
-Our outputs are provided to help support decision makers to interpret their current epidemiological situation and to provide short-term projections of the likely trajectory of the COVID-19 epidemic. They are, however, only one input to be considered prior to deciding on the most appropriate actions to take in response to this epidemic. It is important to note that our model only provides an estimate of the direct mortality due to COVID-19 disease and not any indirect mortality that could occur as a result of either limited healthcare capacity or the wider response taken. Equally, it is likely that any actions taken to mitigate the spread of SARS-CoV-2 virus could impact in other ways that could impact both the health and livelihoods of populations. All of these factors should be considered in tandem to decide the appropriate national response.
+Our outputs are provided to help support decision makers to interpret their current epidemiological situation and to provide short-term projections of the likely trajectory of the COVID-19 epidemic. They are, however, only one input to be considered prior to deciding on the most appropriate actions to take in response to this epidemic. It is important to note that our model (for many countries) is reliant on estimates of excess-mortality and we do not estimate any indirect mortality that could occur as a result of either limited healthcare capacity or the wider response taken. Equally, it is likely that any actions taken to mitigate the spread of SARS-CoV-2 virus could impact in other ways that could impact both the health and livelihoods of populations. All of these factors should be considered in tandem to decide the appropriate national response.
   
 <br>
 
-#### 11. The website and projections look different to when I last viewed the website?
+#### 10. The website and projections look different to when I last viewed the website?
 
 We are actively involved in updating our methods and the scenarios that we are modelling. Consequently, the website will change as we try to provide a more useful tool for the global community, which more accurately captures the dynamics of the COVID-19 pandemic. To see how the website has changed over time, please view the [News](https://mrc-ide.github.io/global-lmic-reports/News.html) page for more information.

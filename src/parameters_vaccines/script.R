@@ -434,17 +434,23 @@ dev.off()
 
 ##Create Sampling Function
 
-#add omicon sub unit values
+#add first dose eff for J&J
 random_efficacies <- map_dfr(random_efficacies, ~.x)
 random_efficacies <- random_efficacies %>%
   rbind(
-    random_efficacies %>% filter(platform == "Johnson&Johnson") %>% mutate(dose = "Partial", value = 0)
-  ) %>%
+    random_efficacies %>% filter(platform == "mRNA" & dose == "Partial") %>%
+      mutate(platform = "Johnson&Johnson", value = if_else(str_detect(parameter, "w"), value, 0))
+  )
+#add Omicron sub unit efficacies
+random_efficacies <- random_efficacies %>%
   rbind(
     random_efficacies %>% filter(variant == "Omicron") %>% mutate(variant = "Omicron Sub-Variant")
   ) %>%
   arrange(
     sample, platform, variant, dose, parameter
+  ) %>%
+  mutate(
+    platform = if_else(platform == "Johnson&Johnson", "Single-Dose", platform)
   )
 
 #Scale for breakthrough infections
@@ -455,7 +461,8 @@ random_efficacies <- random_efficacies %>%
   select(dose, variant, platform, sample, temp_1, temp_2, value) %>%
   pivot_wider(names_from = temp_2, values_from = value) %>%
   mutate(
-    d = (d - i)/(1 - i)
+    d = (d - i)/(1 - i),
+    d = if_else(d < 0, 0, d)
   ) %>%
   pivot_longer(c(d, i), names_to = "temp_2", values_to = "value_new") %>%
   mutate(parameter = paste0(temp_1, temp_2)) %>%
@@ -477,8 +484,8 @@ sample_vaccine_efficacies <- function(n, platforms){
   platforms <- sample(platforms, n, replace = TRUE)
   #now for each plat form draw a random sample from the df
   output <- map_dfr(seq_along(platforms),
-      ~random_efficacies %>% filter(platform == platforms[.x], sample == sample(N_samples, 1)) %>% select(dose, variant, parameter, value),
-      .id = "sample")
+      ~random_efficacies %>% filter(platform == platforms[.x], sample == sample(N_samples, 1)) %>% select(dose, variant, parameter, value) %>% mutate(sample = .x)
+  )
   #make per variant and format into model compatible formats
   variants <- unique(output$variant)
   output <- map(variants, function(this_variant){
@@ -488,7 +495,7 @@ sample_vaccine_efficacies <- function(n, platforms){
         pull(value, parameter))
       #convert to format
       list(
-        dur_V = 1/c(values$w_1, values$w_2, values$w_p),
+        dur_V = 1/c(values$w_p, values$w_1, values$w_2),
         vaccine_efficacy_infection = c(values$pV_1_i, values$pV_2_i, values$fV_1_i, values$fV_2_i, values$fV_3_i),
         vaccine_efficacy_disease = c(values$pV_1_d, values$pV_2_d, values$fV_1_d, values$fV_2_d, values$fV_3_d)
       )

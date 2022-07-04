@@ -27,6 +27,7 @@ script: script.R
 #
 parameters:
   date: ~
+  continent: ~
 
 # You must list at least one artefact that your report will generate.
 # Each artefact consists of one or more files.  The format is to list
@@ -55,7 +56,7 @@ artefacts:
       description: Projections report for a single country
       filenames:
         - index.html
-#        - index.pdf
+        - index.pdf
 
 # An optional name to describe the report in more detail than its
 # directory name (which must be short) but less detail than
@@ -85,6 +86,8 @@ packages:
   - grid
   - ggforce
   - scales
+  - countrycode
+  - lubridate
 
 # Source files, in addition to the script.  Typically these will
 # contain function definitions.  These will be sourced after loading
@@ -108,10 +111,8 @@ sources:
 resources:
   - index.Rmd
   - summaries.rds
-  - wellcome.png
-  - ukaid.jpg
   - all_data.rds
-  - wb.csv
+  - sum_rt.rds
 
 global_resources:
   _navbar.html: _navbar.html
@@ -152,11 +153,11 @@ global_resources:
 #   * after the colon is what the file is called in the existing task
 #
 depends:
-  ecdc:
-    id: latest
+  input_jhu:
+    id: latest(parameter:date == date)
     use:
-      ecdc_all.rds: ecdc_all.rds
-      jhu_all.rds: jhu_all.rds
-      worldometers_all.rds: worldometers_all.rds
-      combined_data.Rds: combined_data.Rds
-
+      reported_covid.Rds: reported_covid.Rds
+  input_excess_mortality:
+    id: latest(parameter:date == date)
+    use:
+      excess_deaths.Rds: excess_deaths.Rds

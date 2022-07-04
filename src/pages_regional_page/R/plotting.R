@@ -1,5 +1,5 @@
 
-cumulative_deaths_plot_continent_projections <- function(continent, today, data, ecdc) {
+cumulative_deaths_plot_continent_projections <- function(continent, today, data, excess) {
 
   ## handle arugments coming in
   if(!continent %in% c("Asia","Europe","Africa","Americas","Oceania")) {
@@ -30,20 +30,19 @@ cumulative_deaths_plot_continent_projections <- function(continent, today, data,
 
   slim <- slim[,c("date", "y", "country", "iso3c", "observed", "compartment", "y_025", "y_975")]
 
-  # handle ecdc
-  ecdc <- ecdc %>% select(-date)
-  names(ecdc)[names(ecdc) %in% c("dateRep","Region", "countryterritoryCode")] <- c("iso3c","country", "date")
-  ecdc <- ecdc %>%
-    mutate(date = as.Date(date),
-           observed = TRUE,
-           compartment = "deaths") %>%
-    rename(y = deaths) %>%
+  # handle excess
+  excess <- mutate(excess, country = countrycode::countrycode(iso3c, "iso3c", "country.name", custom_match = c(KSV = "Kosovo")))
+  excess <- excess %>%
+    mutate(observed = TRUE,
+           compartment = "deaths",
+           date = lubridate::as_date((as.numeric(date_start) + as.numeric(date_end))/2)) %>%
+    mutate(y = if_else(deaths < 0, as.double(0), as.double(deaths))) %>%
     select(date, y, country, iso3c, observed, compartment) %>%
     mutate(y_025 = NA,
            y_975 = NA)
 
 
-  df <- as.data.frame(do.call(rbind, list(as.data.frame(ecdc), slim)), stringsAsFactors = FALSE)
+  df <- as.data.frame(do.call(rbind, list(as.data.frame(excess), slim)), stringsAsFactors = FALSE)
 
   d <- df
   d$country[d$country=="Congo"] <- "Republic of Congo"
@@ -51,15 +50,20 @@ cumulative_deaths_plot_continent_projections <- function(continent, today, data,
   d$country[d$country=="CuraÃ§ao"] <- "Curacao"
   start <- 10
 
-  suppressWarnings(d$Continent <- countrycode::countrycode(d$country, origin = 'country.name', destination = 'continent'))
-  d$Continent[d$country=="Eswatini"] <- "Africa"
-  d$Continent[d$country=="United State of America"] <- "Americas"
-  d$Continent[d$country=="Isle_of_Man"] <- "Europe"
-  d$Continent[d$country=="Kosovo"] <- "Europe"
-  d$Continent[d$country=="Netherlands_Antilles"] <- "Americas"
-  d$Continent[d$country=="Saint_Lucia"] <- "Americas"
-  d$Continent[d$country=="South_Korea"] <- "Asia"
-  d$Continent[d$country=="United_States_of_America"] <- "Americas"
+  suppressWarnings(d$Continent <- countrycode::countrycode(d$country, origin = 'country.name', destination = 'continent',
+                                                           custom_match =
+                                                             c(
+                                                               "Kosovo" = "Europe",
+                                                               "Eswatini" = "Africa",
+                                                               "United State of America" = "Americas",
+                                                               "Isle_of_Man" = "Europe" ,
+                                                               "Kosovo" = "Europe",
+                                                               "Netherlands_Antilles" = "Americas",
+                                                               "Saint_Lucia" = "Americas",
+                                                               "South_Korea" = "Asia",
+                                                               "United_States_of_America" = "Americas",
+                                                               "Micronesia" = "Oceania"
+                                                             )))
 
   doubling <- function(double = 2, start = 10, xmax = 100) {
 
@@ -111,7 +115,7 @@ cumulative_deaths_plot_continent_projections <- function(continent, today, data,
     theme_bw() +
     scale_color_hue("country",l = 50, c = 90) +
     #scale_linetype(name = "Doubling Time:") +
-    ylab("Cumulative Deaths (Logarithmic Scale)") +
+    ylab("Cumulative Excess Deaths (Logarithmic Scale)") +
     xlab(paste("Days Since", start, "Deaths")) +
     ggtitle(continent)
 
@@ -123,14 +127,13 @@ full_firework_plot <- function() {
 
   data <- readRDS("all_data.rds")
 
-  #ecdc <- readRDS("ecdc_all.rds")
-  ecdc <- readRDS("combined_data.Rds")
+  excess <- readRDS("excess_deaths.Rds")
 
   plots <- lapply(c("Asia","Europe","Africa","Americas","Oceania"),
                   cumulative_deaths_plot_continent_projections,
                   today = date,
                   data = data,
-                  ecdc = ecdc)
+                  excess = excess)
   plotted <- lapply(plots[1:4], function(x){x+theme(legend.position = "none")})
   leg <- cowplot::get_legend(plots[[1]] + theme(legend.position = "top"))
   main <- cowplot::plot_grid(plotlist = plotted[1:4], ncol = 2)
@@ -142,15 +145,13 @@ one_firework_plot <- function(cont) {
 
   data <- readRDS("all_data.rds")
 
-  #ecdc <- readRDS("ecdc_all.rds")
-  ecdc <- readRDS("jhu_all.rds")
-  wo <- readRDS("combined_data.Rds")
+  excess <- readRDS("excess_deaths.Rds")
 
   plot <- cumulative_deaths_plot_continent_projections(
     continent = cont,
     today = date,
     data = data,
-    ecdc = ecdc) + theme(plot.title = element_blank())
+    excess = excess) + theme(plot.title = element_blank())
 
   return(plot)
 
@@ -245,7 +246,7 @@ rt_plot <- function(cont) {
   sum_rt <- sum_rt %>% filter(continent == cont)
   sum_rt <- sum_rt %>% filter(date <= today)
 
-  ggplot(sum_rt[sum_rt$compartment == "Reff" & sum_rt$scenario == "Maintain Status Quo",],
+  ggplot(sum_rt[sum_rt$compartment == "Reff" & sum_rt$scenario == "Central",],
          aes(x=as.Date(date), ymin=y_025, ymax = y_975, group = iso3c, fill = iso3c)) +
     geom_line(aes(y = y_median), color = "#48996b") +
     geom_ribbon(fill = "#96c4aa") +
@@ -256,7 +257,7 @@ rt_plot <- function(cont) {
     xlab("") +
     ylab("Reff") +
     facet_wrap(~country, ncol = 6) +
-    scale_x_date(breaks = "3 week",
+    scale_x_date(breaks = "3 month",
                  date_labels = "%d %b") +
     theme(legend.position = "none") +
     theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, colour = "black", size = 8),

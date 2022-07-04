@@ -25,18 +25,18 @@ output:
     fig_width: 6
     highlight: tango
     reference_docx: template.docx
-# params:
-#    o_list: NA
-#    excess: FALSE
-#    df_excess: NA
-#    df_cases: NA
-#    date_0: NA
-#    country: NA
-#    surging: FALSE
-#    rt: NA
-#    rt_futures: NA
-#    variants: FALSE
-#    date_range: NA
+params:
+   o_list: NA
+   excess: FALSE
+   df_excess: NA
+   df_cases: NA
+   date_0: NA
+   country: NA
+   surging: FALSE
+   rt: NA
+   rt_futures: NA
+   variants: FALSE
+   date_range: NA
 ---
 
 ```{r rm_title_page, echo=FALSE}
@@ -642,7 +642,7 @@ suppressWarnings(suppressMessages(healthcare_plot_contrast(
 
 ### Legacy Short Term Scenarios
 
-Legacy scenarios with flat $50\%$ increase/decrease to $R_t$ are presented here.
+Legacy scenarios with a flat $50\%$ increase/decrease to $R_t$ are presented here.
 
 ```{r healthcare plots legacy, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 7: Healthcare demands in the next 28 days.** Individuals needing an ICU bed are assumed to need mechanical ventilation. Projected demand for Maintain (the epidemic continues to grow at the current rate) are shown in green. Projections for Migitation (a further 50% reduction in transmission) are shown in blue. Projections for Reverse (relaxing interventions by 50%) are shown in red. Current date shown with dashed line."), fig.width=fig_height(8,10), fig.height=fig_height(3.5,4.5), fig.align=fig_center()}
 

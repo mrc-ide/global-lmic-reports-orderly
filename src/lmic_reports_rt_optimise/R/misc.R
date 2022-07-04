@@ -8,7 +8,7 @@ r_list_format <- function(out, date_0) {
   pr <- nimue_format(out, var_select = c("S","R","D"), date_0 = date_0) %>%
     na.omit %>%
     pivot_wider(names_from = compartment, values_from = y) %>%
-    mutate(y = sum(out$parameters$population)-D-R-S,
+    mutate(y = sum(squire.page:::get_parameters(out)$population)-D-R-S,
            compartment = "prevalence") %>%
     select(replicate, compartment, t, y, date)
 

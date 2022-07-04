@@ -144,48 +144,90 @@ pdf_line_break <- function() {
 
 ```{r ecdc prep, echo = FALSE, collapse=TRUE, warning=FALSE}
 
-# get the ecdc data
-# df <- readRDS("ecdc_all.rds")
-df <- readRDS("combined_data.Rds")
-data <- df[,c("dateRep", "deaths", "cases","Region", "countryterritoryCode")]
-names(data)[c(1,4,5)] <- c("date","country","iso3c")
-data$date <- as.Date(data$date)
-date <- date_0 <- as.Date(date)
+date_0 <- as.Date(date)
+rm(date)
 
-# group for cumulative deaths
-data <- group_by(data, country) %>% arrange(date) %>% 
-  mutate(cum_deaths = cumsum(deaths),
-         cum_cases = cumsum(cases))
+df <- readRDS("reported_covid.Rds")
+df_excess <- readRDS("excess_deaths.Rds")
+#summarise per country
+d <- df %>% 
+  filter(date < date_0) %>% 
+  group_by(iso3c) %>% 
+    summarise(
+      deaths = sum(deaths),
+      cases = sum(cases)
+    ) %>% 
+  full_join(
+    df_excess %>% 
+      filter(date_end < date_0) %>% 
+      group_by(iso3c) %>% 
+      summarise(
+        excess_mortality = sum(if_else(deaths < 0, as.double(0), as.double(deaths)))
+      ),
+    by = "iso3c"
+  ) %>% 
+  ungroup() %>% 
+  mutate(summary = TRUE, date_start = NA, date_end = NA) %>% 
+  rbind(
+    df_excess %>% 
+      filter(date_end < date_0) %>% 
+      group_by(iso3c) %>% 
+      arrange(date_start) %>% 
+      transmute(
+        iso3c = iso3c, 
+        date_start = date_start,
+        date_end = date_end,
+        excess_mortality = cumsum(if_else(deaths < 0, as.double(0), as.double(deaths))),
+        deaths = NA,
+        cases = NA,
+        summary = FALSE
+      ) %>% 
+      ungroup()
+  ) %>% 
+  mutate(country = countrycode::countrycode(iso3c, "iso3c", "country.name", custom_match = c(KSV = "Kosovo")),
+         country = case_when(
+           country=="Congo" ~ "Republic of Congo",
+           country=="United_Republic_of_Tanzania" ~ "Tanzania",
+           country=="CuraÃ§ao" ~ "Curacao",
+           TRUE ~ country
+         ),
+         Continent = countrycode::countrycode(country, origin = 'country.name', destination = 'continent',
+                                                         custom_match = 
+                                                           c(
+                                                          "Kosovo" = "Europe",
+"Eswatini" = "Africa",
+"United State of America" = "Americas",
+"Isle_of_Man" = "Europe" ,
+"Kosovo" = "Europe",
+"Netherlands_Antilles" = "Americas",
+"Saint_Lucia" = "Americas",
+"South_Korea" = "Asia",
+"United_States_of_America" = "Americas",
+"Micronesia" = "Oceania" 
+                                                         ))
+)
 
+cont_sums <- d %>% 
+  filter(summary) %>% 
+  filter(Continent == continent)
+d <- d %>% 
+  filter(!summary) %>% 
+  select(iso3c, date_start, date_end, excess_mortality, country, Continent) %>% 
+  mutate(
+    across(c(date_start, date_end), lubridate::as_date)
+  )
 
-
-d <- data
-d$country[d$country=="Congo"] <- "Republic of Congo"
-d$country[d$country=="United_Republic_of_Tanzania"] <- "Tanzania"
-d$country[d$country=="CuraÃ§ao"] <- "Curacao"
-suppressWarnings(d$Continent <- countrycode::countrycode(d$country, origin = 'country.name', destination = 'continent'))
-d$Continent[d$country=="Eswatini"] <- "Africa"
-d$Continent[d$country=="United State of America"] <- "Americas"
-d$Continent[d$country=="Isle_of_Man"] <- "Europe"             
-d$Continent[d$country=="Kosovo"] <- "Europe"                  
-d$Continent[d$country=="Netherlands_Antilles"] <- "Americas"    
-d$Continent[d$country=="Saint_Lucia"] <- "Americas"             
-d$Continent[d$country=="South_Korea"] <- "Asia"             
-d$Continent[d$country=="United_States_of_America"] <- "Americas"
-d$Continent[d$country=="Micronesia"] <- "Oceania"
-
-cont_sums <- d[d$Continent == continent & d$date == date_0,]
 
 ## summaries
 summaries <- readRDS("summaries.rds")
 
 ```
 
-## Situation Report for COVID-19: `r continent`, `r format(date, "%Y-%m-%d")`
+## Situation Report for COVID-19: `r continent`, `r base::format(date_0, "%Y-%m-%d")`
 
 `r latex_omit("---")`
 
-#### **[Download the report for `r continent`, `r format(date, "%Y-%m-%d")` here](`r url`).**
+#### **[Download the report for `r continent`, `r base::format(date_0, "%Y-%m-%d")` here](`r url`).**
 
 <br> 
 
@@ -195,13 +237,13 @@ summaries <- readRDS("summaries.rds")
 
 ### Epidemiological Situation
 
-| **Total Reported Cases** | **New Reported Cases** | **Total Reported Deaths** | **New Reported Deaths** | 
+| **Total Reported Cases** | **Total Reported Deaths** | **Total Estimated Excess-Mortality** | 
 | ---- | ---- | ---- | ---- |
-| `r format(sum(cont_sums$cum_cases), big.mark=",")` | `r format(sum(cont_sums$cases), big.mark=",")` | `r format(sum(cont_sums$cum_deaths), big.mark=",")`|`r format(sum(cont_sums$deaths), big.mark=",")`|
+| `r base::format(sum(cont_sums$cases, na.rm = TRUE), big.mark=",")` | `r base::format(sum(cont_sums$deaths, na.rm = TRUE), big.mark=",")` | `r base::format(sum(cont_sums$excess_mortality, na.rm = TRUE), big.mark=",")` |
 
 <br>
 
-This report uses data from the European Centre for Disease Control. These data are updated daily and whilst there may be a short delay, they are generally consistent with Ministry reports. Below is an overview of the cumulative number of deaths in each continent as of `r format(date, "%Y-%m-%d")`
+This report uses data from The Economists Excess Deaths Model and the World Mortality Dataset, as well as the John Hopkin's Coronavirus Resouce Centre. Below is an overview of the cumulative number of estimated excess deaths in each continent as of `r base::format(date_0, "%Y-%m-%d")`
 
 <br>
 
@@ -210,12 +252,12 @@ This report uses data from the European Centre for Disease Control. These data a
 d <- d[!is.na(d$country),]
 d <- d[!is.na(d$Continent),]
 
-suppressMessages(suppressWarnings(print(d %>% filter(date < date_0) %>% 
-  group_by(date, Continent) %>% 
-  summarise(deaths = sum(cum_deaths)) %>% 
-  ggplot(aes(x=date,y=deaths,color=Continent)) + 
+suppressMessages(suppressWarnings(print(d %>% 
+  group_by(date_start, date_end, Continent) %>% 
+  summarise(deaths = sum(excess_mortality, na.rm = TRUE)) %>%
+  ggplot(aes(x=date_start, xend = date_end, y=deaths, yend = deaths, color=Continent)) + 
   geom_line(lwd=1) + 
-  theme_bw() + xlab("") + ylab("Cumulative Deaths") + 
+  theme_bw() + xlab("") + ylab("Cumulative Excess Deaths") + 
   scale_color_brewer(palette = "Set2") + 
   scale_y_log10(limits=c(1,NA), labels = scales::comma) + 
   theme(panel.border = element_blank(), axis.line = element_line(size=0.5)))))
@@ -228,7 +270,7 @@ suppressMessages(suppressWarnings(print(d %>% filter(date < date_0) %>%
 
 <br>
 
-We assume that the deaths reported to date provide the best indication of the stage of the epidemic, as deaths are more consistently and accurately reported. These data are then used to calibrate our our [mathematical model](https://github.com/mrc-ide/squire), which allows us to forecast the number of deaths in the next 28 days (Figure 1), assuming that the current level of interventions and mobility are maintained.
+We assume that the estimated excess-mortality to date provide the best indication of the stage of the epidemic. These data are then used to calibrate our our [mathematical model](https://github.com/mrc-ide/nimue), which allows us to forecast the number of deaths in the next 28 days (Figure 1), assuming that the current level of interventions and mobility are maintained.
 
 <br>
 
@@ -265,7 +307,7 @@ suppressMessages(suppressWarnings(print(summaries_forecasts_plot(sums = summarie
 
 <br>
 
-By fitting to the time series of deaths in each country, we are able to estimate a time-varying effective reproduction number, $R_{eff}$. $R_{eff}$ is the the average number of secondary infections caused by a single infected person at a given time. If $R_t$ is above 1, the rate of transmission is increasing and the number of new infections is increasing. $R_{eff}$ is assumed to change in relation to mobility  fall in proportion. When fitting out model we assume that 100% of COVID-19 related deaths have been reported (please see our [FAQ](https://mrc-ide.github.io/global-lmic-reports/FAQ.html#how-have-you-accounted-for-unreported-deaths) section for more information about this assumption). 
+By fitting to the time series of deaths in each country, we are able to estimate a time-varying effective reproduction number, $R_{eff}$. $R_{eff}$ is the the average number of secondary infections caused by a single infected person at a given time. If $R_t$ is above 1, the rate of transmission is increasing and the number of new infections is increasing. $R_{eff}$ is assumed to change in relation to mobility  fall in proportion. When fitting out model we assume that 100% of excess mortality is COVID-19 related (please see our [FAQ](https://mrc-ide.github.io/global-lmic-reports/FAQ.html)). 
 
 <br>
 

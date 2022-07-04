@@ -813,7 +813,8 @@ deaths_plot <-  function(proj, proj_surge, df_excess, df_cases, date_0, date,
       geom_segment(data = df_excess, mapping = aes(x = date_start, xend = date_end, y = deaths, yend = deaths), inherit.aes = FALSE, size = 1) +
       ggplot2::theme_bw()  +
       ggplot2::scale_x_date(date_breaks = "1 month", date_labels = "%b %Y",
-                            limits = c(min(df_cases$date[which(df_cases$deaths>0)]), date + forecast),
+                            limits = c(df_cases %>% filter(date >= min(df_excess$date_start[df_excess$deaths > 0])) %>%
+                                         pull(date) %>% min, date + forecast),
                             expand = c(0, 0))
   }
 
@@ -1008,7 +1009,7 @@ rt_creation_vaccine <- function(out, max_date) {
                                as.Date(max_date),
                                1))
 
-    Rt <- as.numeric(block_interpolate(seq_along(dates) - 1, out$samples[[y]]$R0, out$samples[[y]]$tt_R0))
+    Rt <- as.numeric(squire.page:::block_interpolate(seq_along(dates) - 1, out$samples[[y]]$R0, out$samples[[y]]$tt_R0))
 
     df <- data.frame(
       "Rt" = Rt,
@@ -1316,6 +1317,9 @@ variant_timings_plot <- function(variant_timings, date_range){
 }
 
 variant_timings_index_plot <- function(variant_timings, date_range){
+  height <- 1
+  text_size <- 5
+  offset <- 1.05
   df <- variant_timings %>%
     mutate(new_start_date = end_date, end_date = lead(start_date, 1, default = date_range[2]),
            start_date = new_start_date) %>%
@@ -1329,19 +1333,18 @@ variant_timings_index_plot <- function(variant_timings, date_range){
     arrange(start_date) %>%
     mutate(
       centre = as.numeric(end_date - start_date)/2 + start_date,
-      variant = variant,
+      variant = if_else(variant == "Omicron Sub-Variant", "Sub-Variant", variant),
+      y = if_else(as.numeric(end_date - start_date)/as.numeric(max(end_date) - min(start_date)) < 0.1, height*offset, height/2),
       end_date = if_else(end_date == date_range[2], date_range[2] + 100, end_date)
     )
-  height <- 1
-  text_size <- 5
   ggplot(
     df,
     aes(xmin = start_date, xmax = end_date, ymin = 0, ymax = height, fill = variant)
   ) +
     geom_rect(show.legend = FALSE, alpha = 0.75) +
-    geom_text(aes(x = centre, y = height/2, label = variant), size = text_size,
+    geom_text(aes(x = centre, y = y, label = variant), size = text_size,
               alpha = 0.75) +
-    coord_cartesian(xlim = date_range, ylim = c(0, height)) +
+    coord_cartesian(xlim = date_range, ylim = c(0, height*offset)) +
     theme(axis.line.y=element_blank(),
           axis.text.y=element_blank(),
           axis.ticks.y=element_blank(),
