@@ -102,15 +102,18 @@ if(sum(excess_deaths$deaths) > 10) {
 
   tt_vaccine <- c(0, as.numeric(vacc_inputs$date_vaccine_change - start_date))
 
-  parameters$first_doses <- c(0, vacc_inputs$first_doses)
-  parameters$tt_first_doses <- tt_vaccine
-  parameters$second_doses <- c(0, vacc_inputs$second_doses)
-  parameters$tt_second_doses <- tt_vaccine
+  parameters$primary_doses <- c(0, vacc_inputs$primary_doses)
+  parameters$tt_primary_doses <- tt_vaccine
+  parameters$second_dose_delay <- vacc_inputs$second_dose_delay
   parameters$booster_doses <- c(0, vacc_inputs$booster_doses)
   parameters$tt_booster_doses <- tt_vaccine
   rm(tt_vaccine)
   parameters$vaccine_coverage_mat <- vacc_inputs$vaccine_coverage_mat
   parameters$rel_infectiousness_vaccinated <- c(0.5)
+  parameters$vaccine_booster_follow_up_coverage <- c(rep(0, 12), rep(1, 5))
+  parameters$protection_delay_rate <- 1/7
+  parameters$protection_delay_shape <- 2
+  parameters$protection_delay_time <- as.numeric(date - start_date)
 
   ## -----------------------------------------------------------------------------
   ## Step 2b: Calculate sampled parameters
@@ -340,10 +343,22 @@ if(sum(excess_deaths$deaths) > 10) {
     time_period <- 365
 
     ## We need to know work out vaccine doses and efficacy going forwards
+    #catch for no vaccines
+    if(
+      length(vacc_inputs$primary_doses) == 0
+    ){
+      vacc_inputs$primary_doses <- 0
+    }
+    if(
+      length(vacc_inputs$booster_doses) == 0
+    ){
+      vacc_inputs$booster_doses <- 0
+    }
     model_user_args <- extend_vaccine_inputs(vacc_inputs, time_period, out, end_date = end_date)
     #For now these are all identicall we so'll add them to $parameters.
     #I've left this framework in case we want to add randomness to the doses
     out_extended <- out
+    out_extended$parameters$protection_delay_time <- out_extended$parameters$protection_delay_time + time_period
     for(x in names(model_user_args[[1]])){
       if(str_detect(x, "tt")){
         out_extended$parameters[[x]] <- c(out$parameters[[x]], as.numeric(end_date - start_date) + 1)
@@ -639,6 +654,18 @@ if(sum(excess_deaths$deaths) > 10) {
                            vaccinated_already = sum(vacc_inputs$first_doses))
   init <- map(init, ~cbind(.x, rep(0, 17)))
 
+  #catch if no vaccines
+  if(
+    length(vacc_inputs$primary_doses) == 0
+  ){
+    vacc_inputs$primary_doses <- 0
+  }
+  if(
+    length(vacc_inputs$booster_doses) == 0
+  ){
+    vacc_inputs$booster_doses <- 0
+  }
+  second_dose_delay <- 60
   # Scenarios with capacity constraints
   # ---------------------------------------------------------------------------
   r_pessimistic_scenario <- squire.page:::run_booster(
@@ -647,8 +674,8 @@ if(sum(excess_deaths$deaths) > 10) {
     time_period = time_period_esft,
     seeding_cases = seeding_cases_esft,
     init = init,
-    first_doses =  as.integer(mean(tail(vacc_inputs$first_doses,7))),
-    second_doses =  as.integer(mean(tail(vacc_inputs$second_doses,7))),
+    primary_doses = as.integer(mean(tail(vacc_inputs$primary_doses,7))),
+    second_dose_delay = second_dose_delay,
     booster_doses =  as.integer(mean(tail(vacc_inputs$booster_doses,7))),
     vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat
   )
@@ -659,7 +686,7 @@ if(sum(excess_deaths$deaths) > 10) {
     time_period = time_period_esft,
     seeding_cases = seeding_cases_esft,
     init = init,
-    first_doses =  as.integer(mean(tail(vacc_inputs$first_doses,7))),
+    primary_doses =  as.integer(mean(tail(vacc_inputs$primary_doses,7))),
     second_doses =  as.integer(mean(tail(vacc_inputs$second_doses,7))),
     booster_doses =  as.integer(mean(tail(vacc_inputs$booster_doses,7))),
     vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat
@@ -671,7 +698,7 @@ if(sum(excess_deaths$deaths) > 10) {
     time_period = time_period_esft,
     seeding_cases = seeding_cases_esft,
     init = init,
-    first_doses =  as.integer(mean(tail(vacc_inputs$first_doses,7))),
+    primary_doses =  as.integer(mean(tail(vacc_inputs$primary_doses,7))),
     second_doses =  as.integer(mean(tail(vacc_inputs$second_doses,7))),
     booster_doses =  as.integer(mean(tail(vacc_inputs$booster_doses,7))),
     vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat
@@ -689,7 +716,7 @@ if(sum(excess_deaths$deaths) > 10) {
     time_period = time_period_esft,
     seeding_cases = seeding_cases_esft,
     init = init,
-    first_doses =  as.integer(mean(tail(vacc_inputs$first_doses,7))),
+    primary_doses =  as.integer(mean(tail(vacc_inputs$primary_doses,7))),
     second_doses =  as.integer(mean(tail(vacc_inputs$second_doses,7))),
     booster_doses =  as.integer(mean(tail(vacc_inputs$booster_doses,7))),
     vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat,
@@ -703,7 +730,7 @@ if(sum(excess_deaths$deaths) > 10) {
     time_period = time_period_esft,
     seeding_cases = seeding_cases_esft,
     init = init,
-    first_doses =  as.integer(mean(tail(vacc_inputs$first_doses,7))),
+    primary_doses =  as.integer(mean(tail(vacc_inputs$primary_doses,7))),
     second_doses =  as.integer(mean(tail(vacc_inputs$second_doses,7))),
     booster_doses =  as.integer(mean(tail(vacc_inputs$booster_doses,7))),
     vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat,
@@ -717,7 +744,7 @@ if(sum(excess_deaths$deaths) > 10) {
     time_period = time_period_esft,
     seeding_cases = seeding_cases_esft,
     init = init,
-    first_doses =  as.integer(mean(tail(vacc_inputs$first_doses,7))),
+    primary_doses =  as.integer(mean(tail(vacc_inputs$primary_doses,7))),
     second_doses =  as.integer(mean(tail(vacc_inputs$second_doses,7))),
     booster_doses =  as.integer(mean(tail(vacc_inputs$booster_doses,7))),
     vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat,

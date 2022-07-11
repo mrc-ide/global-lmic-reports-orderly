@@ -1,8 +1,8 @@
 get_vaccine_inputs <- function(iso3c) {
   vacc_inputs <- readRDS("vacc_inputs.Rds")[[iso3c]]
   vacc_inputs$date_vaccine_change <- vacc_inputs$date_vaccine_change
-  vacc_inputs$first_doses <- as.numeric(vacc_inputs$first_doses)
-  vacc_inputs$second_doses <- as.numeric(vacc_inputs$second_doses)
+  vacc_inputs$primary_doses <- as.numeric(vacc_inputs$primary_doses)
+  vacc_inputs$second_dose_delay <- as.numeric(vacc_inputs$second_dose_delay)
   vacc_inputs$booster_doses <- as.numeric(vacc_inputs$booster_doses)
   return(vacc_inputs)
 }

@@ -68,10 +68,18 @@ dose_list <-
            platforms <- platforms_df %>%
              filter(iso3c == country) %>%
              select(!iso3c)
+           #estimate the second dose delay
+           scaled_first_doses <- cumsum(country_df$first_dose_per_day)/sum(country_df$first_dose_per_day)
+           scaled_second_doses <- cumsum(country_df$second_dose_per_day)/sum(country_df$second_dose_per_day)
+           delays <- seq(30, 120, by = 1)
+           errs <- map_dbl(delays, function(delay){
+             mean((na.omit(scaled_first_doses - lead(scaled_second_doses, delay)))^2)
+           })
+           second_dose_delay <- delays[which.min(errs)]
            list(
              date_vaccine_change = country_df$date_vaccine_change,
-             first_doses = country_df$first_dose_per_day,
-             second_doses = country_df$second_dose_per_day,
+             primary_doses = country_df$first_dose_per_day,
+             second_dose_delay = second_dose_delay,
              booster_doses = country_df$booster_dose_per_day,
              vaccine_coverage_mat = vaccine_coverage_mats[[country]],
              strategy = strategy,
