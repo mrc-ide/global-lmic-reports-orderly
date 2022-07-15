@@ -687,7 +687,7 @@ if(sum(excess_deaths$deaths) > 10) {
     seeding_cases = seeding_cases_esft,
     init = init,
     primary_doses =  as.integer(mean(tail(vacc_inputs$primary_doses,7))),
-    second_doses =  as.integer(mean(tail(vacc_inputs$second_doses,7))),
+    second_dose_delay = second_dose_delay,
     booster_doses =  as.integer(mean(tail(vacc_inputs$booster_doses,7))),
     vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat
   )
@@ -699,7 +699,7 @@ if(sum(excess_deaths$deaths) > 10) {
     seeding_cases = seeding_cases_esft,
     init = init,
     primary_doses =  as.integer(mean(tail(vacc_inputs$primary_doses,7))),
-    second_doses =  as.integer(mean(tail(vacc_inputs$second_doses,7))),
+    second_dose_delay = second_dose_delay,
     booster_doses =  as.integer(mean(tail(vacc_inputs$booster_doses,7))),
     vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat
   )
@@ -717,7 +717,7 @@ if(sum(excess_deaths$deaths) > 10) {
     seeding_cases = seeding_cases_esft,
     init = init,
     primary_doses =  as.integer(mean(tail(vacc_inputs$primary_doses,7))),
-    second_doses =  as.integer(mean(tail(vacc_inputs$second_doses,7))),
+    second_dose_delay = second_dose_delay,
     booster_doses =  as.integer(mean(tail(vacc_inputs$booster_doses,7))),
     vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat,
     hosp_bed_capacity = 1e10,
@@ -731,7 +731,7 @@ if(sum(excess_deaths$deaths) > 10) {
     seeding_cases = seeding_cases_esft,
     init = init,
     primary_doses =  as.integer(mean(tail(vacc_inputs$primary_doses,7))),
-    second_doses =  as.integer(mean(tail(vacc_inputs$second_doses,7))),
+    second_dose_delay = second_dose_delay,
     booster_doses =  as.integer(mean(tail(vacc_inputs$booster_doses,7))),
     vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat,
     hosp_bed_capacity = 1e10,
@@ -745,7 +745,7 @@ if(sum(excess_deaths$deaths) > 10) {
     seeding_cases = seeding_cases_esft,
     init = init,
     primary_doses =  as.integer(mean(tail(vacc_inputs$primary_doses,7))),
-    second_doses =  as.integer(mean(tail(vacc_inputs$second_doses,7))),
+    second_dose_delay = second_dose_delay,
     booster_doses =  as.integer(mean(tail(vacc_inputs$booster_doses,7))),
     vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat,
     hosp_bed_capacity = 1e10,

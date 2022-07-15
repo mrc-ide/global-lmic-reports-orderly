@@ -73,7 +73,7 @@ what the `date` is that we are conducting model fits for, i.e. up to what date a
 we running.
 
 ```{r, eval = FALSE}
-date <- "2022-07-10"
+date <- "2022-07-12"
 ```
 
 These arguments are then passed to our tasks:

@@ -60,7 +60,7 @@ update_gh_pages <- function(ids, date){
     "Surged Relax Interventions 50%"
   ))) %>%
     dplyr::mutate(version = "v8") %>%
-    dplyr::filter(.data$date > min(.data$date) + 150) %>%
+    dplyr::filter(.data$date > min(.data$date) + 250) %>%
     dplyr::ungroup() %>%
     readr::write_csv(filename)
   zip(paste0(filename, ".zip"), filename)
@@ -77,7 +77,7 @@ update_gh_pages <- function(ids, date){
     "Surged Pessimistic"
   ))) %>%
     dplyr::mutate(version = "v9") %>%
-    dplyr::filter(.data$date > min(.data$date) + 150) %>%
+    dplyr::filter(.data$date > min(.data$date) + 250) %>%
     dplyr::ungroup()
   readr::write_csv(projections, filename)
   zip(paste0(filename, ".zip"), filename)

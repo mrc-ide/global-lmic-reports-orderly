@@ -31,6 +31,7 @@ logit <- function(x){
 inv_logit <- function(x){
   1/(1+exp(-x))
 }
+#assume that boosters are either mRNA or whol virus
 changes_booster <- master_ves %>%
   pivot_wider(names_from = Dose, values_from = Efficacy) %>%
   transmute(
@@ -39,7 +40,7 @@ changes_booster <- master_ves %>%
     p_change = logit(Booster)/logit(Second)
   )
 booster_efficacies <- ves_by_type %>%
-  filter(dose == "Second") %>%
+  filter(dose == "Second" & vaccine_type %in% c("mRNA", "Whole Virus")) %>%
   left_join(
     changes_booster,
     by = c("variant", "endpoint")
@@ -78,6 +79,23 @@ ves_by_type <- ves_by_type %>%
     omicron_efficacies
   ) %>%
   arrange(vaccine_type, variant, endpoint, dose)
+
+#overwrite with omicron data for boosters where possible
+ves_by_type <- ves_by_type %>%
+  mutate(
+    efficacy = case_when(
+      vaccine_type == "mRNA" & dose == "booster" & endpoint == "Infection" & variant == "Omicron" ~
+        0.65, #https://www.nejm.org/doi/full/10.1056/NEJMoa2119451
+      vaccine_type == "mRNA" & dose == "booster" & endpoint == "Hospitalisation" & variant == "Omicron" ~
+        0.82, #https://www.sciencedirect.com/science/article/pii/S0264410X22005230
+      vaccine_type == "Whole Virus" & dose == "booster" & endpoint == "Hospitalisation" & variant == "Omicron" ~
+        0.80, #evidence suggest that its similar to mRNA so we'll keep them the same
+      #https://doi.org/10.1016/S2214-109X(22)00112-7 #Not the right variant but presumably will be lower?
+      #some evidence that it's much higher https://www.medrxiv.org/content/10.1101/2022.03.22.22272769v1#:~:text=Two%20doses%20of%20either%20vaccine,%3A%2067.8%25%2C%2079.2%25).
+      TRUE ~ efficacy
+    )
+  )
+#subvariant data where possible
 
 ##Fit Waning Curves
 simulate_time <- 2*365
@@ -549,7 +567,8 @@ random_efficacies <- random_efficacies %>%
     random_efficacies %>% select(!value),
     by = c("variant", "platform", "sample", "parameter")
   ) %>%
-  ungroup()
+  ungroup() %>%
+  filter(!is.na(dose))
 
 
 #add Omicron sub unit efficacies
@@ -591,11 +610,24 @@ random_efficacies <- random_efficacies %>%
 rm(list = setdiff(ls(), c("N_samples", "random_efficacies")))
 
 sample_vaccine_efficacies <- function(n, platforms){
-  #uniformly samples
+  if("mRNA" %in% platforms){
+    booster_platform <- "mRNA"
+  } else {
+    booster_platform <- "Whole Virus"
+  }
+  #uniformly sample
   platforms <- sample(platforms, n, replace = TRUE)
-  #now for each plat form draw a random sample from the df
+  #now for each platform draw a random sample from the df
   output <- map_dfr(seq_along(platforms),
-      ~random_efficacies %>% filter(platform == platforms[.x], sample == sample(N_samples, 1)) %>% select(dose, variant, parameter, value) %>% mutate(sample = .x)
+      ~random_efficacies %>%
+        filter(platform == platforms[.x], sample == sample(N_samples, 1), dose != "Booster") %>%
+        select(dose, variant, parameter, value) %>% #add booster sample
+        rbind(
+          random_efficacies %>%
+            filter(platform == booster_platform, sample == sample(N_samples, 1), dose == "Booster") %>%
+            select(dose, variant, parameter, value)
+        ) %>%
+        mutate(sample = .x)
   )
   #make per variant and format into model compatible formats
   variants <- unique(output$variant)
