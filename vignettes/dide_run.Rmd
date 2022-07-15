@@ -61,7 +61,10 @@ from [OWID](https://ourworldindata.org/covid-vaccinations) and the [WHO](https:/
 5. *input_sequencing*
 
 This estimates the timings of the variants in each country using open source 
-sequencing data from [NextStrain](https://nextstrain.org/).
+sequencing data from [NextStrain](https://nextstrain.org/). Can use data from 
+[GISAID](https://www.gisaid.org/) provided that valid credentials are placed in
+the `src/inputs_sequencing/gisaid_credentials.secret`. This file should be ignored
+by *git* though take care not to send the file to anybody.
 
 
 These tasks 2-5 form the initial tasks that ensure all the correct data is ready
@@ -70,7 +73,7 @@ what the `date` is that we are conducting model fits for, i.e. up to what date a
 we running.
 
 ```{r, eval = FALSE}
-date <- "2022-06-20"
+date <- "2022-07-10"
 ```
 
 These arguments are then passed to our tasks:
@@ -93,7 +96,7 @@ input_vaccinations_id <- orderly::orderly_run("input_vaccinations", parameters =
 orderly::orderly_commit(input_vaccinations_id)
 
 message("*** Variant Timings")
-input_sequencing_id <- orderly::orderly_run("input_sequencing", parameters = list(date=date), echo = FALSE)
+input_sequencing_id <- orderly::orderly_run("input_sequencing", parameters = list(date=date, gisaid=TRUE), echo = FALSE)
 orderly::orderly_commit(input_sequencing_id)
 ```
 

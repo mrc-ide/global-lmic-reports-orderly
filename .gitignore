@@ -145,6 +145,7 @@ src/FAQ/structure.JPG
 src/test
 .ssh
 src/lmic_reports/ecdc.xlsx
+*.secret
 ecdc.xlsx
 dummy
 todo.txt

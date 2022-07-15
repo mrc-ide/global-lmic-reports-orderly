@@ -1,27 +1,65 @@
 date_0 <- as.Date(date, "%Y-%m-%d")
 
-#get open data from next strain
-download.file("https://data.nextstrain.org/files/ncov/open/metadata.tsv.gz",
-              "next_strain.gz")
-#read in chunkwise and simplify
-next_strain <- read_tsv_chunked(gzfile("next_strain.gz"), chunk_size = 5000, callback = DataFrameCallback$new(function(x, pos){
-  group_by(x, date, country, Nextstrain_clade) %>%
+if(gisaid){
+  if(!file.exists("gisaid_credentials.secret")){
+    stop("gisaid_credentials.secret must be provided to use GISAID data!")
+  }
+
+  sequence_df <- tryCathc(read_tsv(
+    paste0(
+      "https://", readLines("gisaid_credentials.secret")[1], ":", readLines("gisaid_credentials.secret")[2], "@www.epicov.org/epi3/feed/gisaid_variants_statistics.tsv"
+    ), num_threads = 1
+  ) %>%
+    transmute(
+      date = lubridate::floor_date(`Week prior to` - 7, "week"),
+      country = Country,
+      clade = Value,
+      count = `Submission Count`,
+      type = Type
+    ), error = function(e){
+      stop("Failed to down load gisaid data, please check your credentials or wait a day if over the request limits.")
+    })
+
+  #get omicron sub variant (lineage really)
+  omicron_sequences <- sequence_df %>%
+    filter(type == "Lineage") %>%
+    filter(stringr::str_detect("BA.4", clade) | stringr::str_detect("BA.5", clade)) %>%
+    group_by(date, country) %>%
+    summarise(count = sum(count),
+              clade = "Omicron Sub-Variant",
+              .groups = "drop")
+  sequence_df <- sequence_df %>%
+    filter(type == "Variant") %>%
+    select(!type) %>%
+    rbind(omicron_sequences) %>%
+    mutate(date = as.character(date))
+  rm(omicron_sequences)
+} else {
+  #get open data from next strain
+  download.file("https://data.nextstrain.org/files/ncov/open/metadata.tsv.gz",
+                "next_strain.gz")
+  #read in chunkwise and simplify
+  sequence_df <- read_tsv_chunked(gzfile("next_strain.gz"), chunk_size = 5000, callback = DataFrameCallback$new(function(x, pos){
+    group_by(x, date, country, Nextstrain_clade) %>%
+      summarise(
+        count = n(),
+        .groups = "keep"
+      )
+  })) %>%
     summarise(
-      count = n(),
-      .groups = "keep"
-    )
-})) %>%
-  summarise(
-    count = sum(count),
-    .groups = "drop"
-  )
-unlink("next_strain.gz")
+      count = sum(count),
+      .groups = "drop"
+    ) %>%
+    rename(clade = Nextstrain_clade)
+  unlink("next_strain.gz")
+}
 
 #convert clades to variants
 clade_to_variant <- function(clades){
   variants <- case_when(
     clades == "recombinant" | is.na(clades) ~ as.character(NA),
-    clades == "22A (Omicron)" | clades == "22B (Omicron)" ~ "Omicron Sub-Variant",
+    clades == "22A (Omicron)" | clades == "22B (Omicron)" | clades == "Omicron Sub-Variant" ~ "Omicron Sub-Variant",
+    stringr::str_detect(clades, "VO") ~ purrr::map_chr(str_split(clades, " "), ~.x[2]),
     TRUE ~ stringr::str_sub(clades, 5, -1) %>%
       stringr::str_remove_all("[\\(\\)V\\d, ]")
   )
@@ -35,12 +73,29 @@ clade_to_variant <- function(clades){
   )
   ordered(variants, levels = c("Wild", who_variants))
 }
-variants_df <- next_strain %>%
-  mutate(variant = clade_to_variant(Nextstrain_clade)) %>%
+variants_df <- sequence_df %>%
+  mutate(variant = clade_to_variant(clade)) %>%
   filter(!is.na(variant)) %>%
   group_by(date, country, variant) %>%
   summarise(count = sum(count),
             .groups = "drop")
+
+if(gisaid){
+  #remove omicron sub variants from omicron
+  variants_df <- variants_df %>%
+    left_join(
+      variants_df %>%
+        filter(variant == "Omicron Sub-Variant") %>%
+        transmute(
+          date = date, country = country, variant = "Omicron", sub_seq = count
+        ),
+      by = c("date", "country", "variant")
+    ) %>%
+    mutate(
+      count = if_else(is.na(sub_seq), count, count - sub_seq)
+    ) %>%
+    select(!sub_seq)
+}
 
 #format data
 iso3cs <- unique(squire::population$iso3c)
@@ -49,6 +104,7 @@ variants_df <- variants_df %>%
   transmute(iso3c = countrycode::countrycode(country, "country.name", "iso3c",
                                           custom_match = c(Kosovo = "XKX")),
          date = as_date(date), variant = variant, count = count) %>%
+  filter(!is.na(iso3c)) %>%
   #ensure we have an entry for all countries dates and variants
   complete(
     iso3c = iso3cs, variant = unique(variant), date = seq(min(date), max(date), by = 1), fill = list(count = 0)
@@ -134,7 +190,7 @@ can_fit_to <- function(df){
     mutate(week = floor_date(date, "week")) %>%
     group_by(week, .add = TRUE) %>%
     summarise(count = sum(count), .groups = "drop_last")
-  two_months <- as_date(date)
+  two_months <- as_date(date_0)
   if(day(two_months) > 28){
     day(two_months) <- 28
   }
