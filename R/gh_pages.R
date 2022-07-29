@@ -63,7 +63,7 @@ update_gh_pages <- function(ids, date){
     dplyr::filter(.data$date > min(.data$date) + 250) %>%
     dplyr::ungroup() %>%
     readr::write_csv(filename)
-  zip(paste0(filename, ".zip"), filename)
+  zip(paste0(filename, ".zip"), filename, extras = '-j')
   file.remove(filename)
 
   message("Copying projection summaries")
@@ -80,7 +80,7 @@ update_gh_pages <- function(ids, date){
     dplyr::filter(.data$date > min(.data$date) + 250) %>%
     dplyr::ungroup()
   readr::write_csv(projections, filename)
-  zip(paste0(filename, ".zip"), filename)
+  zip(paste0(filename, ".zip"), filename, extras = '-j')
   file.remove(filename)
   #projections to regional page
   saveRDS(projections %>%
