@@ -42,7 +42,12 @@ multiplier_changes_over_time <- function(variant_timings, variable, x, start_dat
   #adjust for historic changes
   var <- map_dbl(variable, ~.x[[x]])[variant_timings$variant]
   var <- var/lag(var, 1, 1)
+  var <- c(Wild = 1, var)
 
+  variant_par_changes_over_time(variant_timings, as.list(var), start_date)
+}
+
+variant_par_changes_over_time <- function(variant_timings, variable, start_date) {
   change_tt <- map(transpose(variant_timings), function(l){
     period <- as.numeric(as_date(c(l$start_date, l$end_date)) - start_date)
     tt <- seq(period[1], period[2], by = 1)
@@ -54,18 +59,18 @@ multiplier_changes_over_time <- function(variant_timings, variable, x, start_dat
   tt <- map(change_tt, ~.x$tt) %>% unlist()
   var <- map(seq_along(change_tt), function(i){
     if(i == 1){
-      start_value <- 1
+      start_value <- variable[["Wild"]]
     } else {
-      start_value <- var[[variant_timings$variant[i - 1]]]
+      start_value <- variable[[variant_timings$variant[i - 1]]]
     }
-    end_value <- var[[variant_timings$variant[i]]]
+    end_value <- variable[[variant_timings$variant[i]]]
     start_value * (1 - change_tt[[i]]$change) + end_value * change_tt[[i]]$change
   }) %>% unlist()
 
   #add the zero entry if needed
   if(all(tt > 0)){
     tt <- c(0, tt)
-    var <- c(1, var)
+    var <- c(variable[["Wild"]], var)
   }
 
   return(

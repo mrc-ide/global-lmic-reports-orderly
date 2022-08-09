@@ -73,7 +73,7 @@ what the `date` is that we are conducting model fits for, i.e. up to what date a
 we running.
 
 ```{r, eval = FALSE}
-date <- "2022-07-12"
+date <- "2022-07-28"
 ```
 
 These arguments are then passed to our tasks:
@@ -312,7 +312,9 @@ report_ids <- gather_report_ids(task)
 update_gh_fits(report_ids, "grid_out.Rds")
 
 #requires git bash be on the path and that the working directory is set correctly
-shell(paste0(here::here("scripts/update_github_fits.sh"), " ", date), intern = TRUE, wait = TRUE, shell = "bash")
+#shell(paste0(here::here("scripts/update_github_fits.sh"), " ", date), intern = TRUE, wait = TRUE, shell = "bash")
+#alternatively just copy this code into git bash
+dput(paste0("scripts/update_github_fits.sh", " ", date))
 ```
 
 ## The collation step for run_collate_vaccine
@@ -333,7 +335,7 @@ do this in two steps as the git pack size if all done at once is too big.
 update_gh_pages(report_ids, date)
 
 #requires git bash be on the path and that the working directory is set correctly
-log <- shell(here::here("scripts/update_github_pages.sh"), intern = TRUE, wait = TRUE, shell = "bash")
+log <- shell("scripts/update_github_pages.sh", intern = TRUE, wait = TRUE, shell = "bash")
 ```
 
 ## Update projections in `gh-esft`
@@ -345,5 +347,5 @@ We also need to update the streamlined version of the outputs.
 update_gh_esft(here::here("gh-pages"), here::here("gh-esft"))
 
 #requires git bash be on the path and that the working directory is set correctly
-shell(paste0(here::here("scripts/update_github_esft.sh"), " ", date), intern = TRUE, wait = TRUE, shell = "bash")
+shell(paste0("scripts/update_github_esft.sh", " ", date), intern = TRUE, wait = TRUE, shell = "bash")
 ```

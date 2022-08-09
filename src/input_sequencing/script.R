@@ -5,7 +5,7 @@ if(gisaid){
     stop("gisaid_credentials.secret must be provided to use GISAID data!")
   }
 
-  sequence_df <- tryCathc(read_tsv(
+  sequence_df <- tryCatch(read_tsv(
     paste0(
       "https://", readLines("gisaid_credentials.secret")[1], ":", readLines("gisaid_credentials.secret")[2], "@www.epicov.org/epi3/feed/gisaid_variants_statistics.tsv"
     ), num_threads = 1

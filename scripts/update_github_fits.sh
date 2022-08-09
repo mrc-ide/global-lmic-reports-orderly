@@ -21,3 +21,4 @@ git -C gh-fits commit -m "Update fits for version ${DATE}"
 
 echo "*** Push to GitHub"
 git -C gh-fits push
+

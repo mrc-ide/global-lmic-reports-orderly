@@ -43,8 +43,10 @@ excess_deaths <- readRDS("excess_deaths.Rds") %>%
 
 country <- squire::population$country[match(iso3c, squire::population$iso3c)[1]]
 
+death_limit <- 10
+
 ## MAIN LOOP IS ONLY FOR THOSE WITH DEATHS
-if(sum(excess_deaths$deaths) > 10) {
+if(sum(excess_deaths$deaths) > death_limit) {
 
   # get the raw data correct
   data <- excess_deaths %>%
@@ -133,6 +135,12 @@ if(sum(excess_deaths$deaths) > 10) {
       .data$end_date
     ))
   variants_to_model <- variant_timings$variant
+
+  # #add the changes to generation time to the fixed parameters
+  # parameters <- append(parameters, estimate_generation_time(variant_timings, start_date)) %>%
+  #                 append(estimate_healthcare_durations(variant_timings, start_date))
+  parameters <-
+    append(parameters, estimate_healthcare_durations(variant_timings, start_date))
 
   #generate samples
   dur_R <- sample_duration_natural_immunity(samples)
@@ -916,7 +924,7 @@ if(document){
   data_sum <- dplyr::mutate(data_sum, across(dplyr::starts_with("y_"), ~round(.x,digits = 2)))
 
   # specify if this is calibrated to deaths or just hypothetical forecast for ESFT
-  data_sum$death_calibrated <- sum(excess_deaths$deaths) == 0
+  data_sum$death_calibrated <- sum(excess_deaths$deaths) > death_limit
 
   write.csv(data_sum, "projections.csv", row.names = FALSE, quote = FALSE)
 } else {

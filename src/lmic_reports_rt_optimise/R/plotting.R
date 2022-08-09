@@ -464,6 +464,8 @@ FacetZoom2 <- ggproto(
 
 cases_plot <- function(df, data, date = Sys.Date(), date_0) {
 
+  cases_exist <- nrow(data) > 0
+
   # day
   df$day <- as.Date(as.character(df$date))
 
@@ -490,14 +492,16 @@ cases_plot <- function(df, data, date = Sys.Date(), date_0) {
   # Plot
   gg_cases <- ggplot2::ggplot(sub, ggplot2::aes(x = .data$day,
                                                 y = .data$y,
-                                                col = .data$compartment)) +
-    ggplot2::geom_bar(data = data,
+                                                col = .data$compartment))
+  if(cases_exist){
+    gg_cases <- gg_cases + ggplot2::geom_bar(data = data,
                       mapping = ggplot2::aes(x = .data$date, y = .data$cases,
                                              fill = "Reported"),
                       stat = "identity",
                       show.legend = TRUE,
-                      inherit.aes = FALSE) +
-    ggplot2::geom_ribbon(data = pd_group,
+                      inherit.aes = FALSE)
+  }
+  gg_cases <- gg_cases + ggplot2::geom_ribbon(data = pd_group,
                          mapping = ggplot2::aes(ymin = .data$ymin,
                                                 ymax = .data$ymax,
                                                 fill = "Estimated"),
@@ -528,13 +532,16 @@ cases_plot <- function(df, data, date = Sys.Date(), date_0) {
                    axis.line = ggplot2::element_line(colour = "black")
     )
 
-  gg_cases + ggplot2::theme(legend.position = "top",
-                            legend.justification = c(0,1),
-                            legend.direction = "horizontal") +
-    facet_zoom2(ylim = c(0, max((data$cases)*1)), zoom.size = 0.5) +
-    ggtitle("Plot on right zoomed in on reported cases") +
-    geom_vline(xintercept = date, linetype = "dashed")
-
+  if(cases_exist){
+    gg_cases + ggplot2::theme(legend.position = "top",
+                              legend.justification = c(0,1),
+                              legend.direction = "horizontal") +
+      facet_zoom2(ylim = c(0, max((data$cases)*1)), zoom.size = 0.5) +
+      ggtitle("Plot on right zoomed in on reported cases") +
+      geom_vline(xintercept = date, linetype = "dashed")
+  } else {
+    gg_cases
+  }
 }
 
 
@@ -604,96 +611,6 @@ cases_plot_single <- function(df, data, date = Sys.Date(), date_0) {
     geom_vline(xintercept = date, linetype = "dashed")
 
 }
-
-deaths_plot <-  function(proj, proj_surge, df_excess, df_cases, date_0, date,
-                         forecast) {
-  # build it from scratch
-  if(is.null(proj_surge)){
-    r_list <- list(proj)
-  } else {
-    r_list <- list(proj, proj_surge)
-  }
-
-  start_date <- date_0
-
-  pd_list <- lapply(r_list, function(x) {
-
-    df <- x[x$compartment == "deaths" & x$date >= start_date, ]
-    df_summ <- group_by(df, date) %>%
-      summarise(deaths = median(y, na.rm = TRUE),
-                ymin = quantile(y, 0.025, na.rm = TRUE),
-                ymax = quantile(y, 0.975, na.rm = TRUE))
-
-    return(df_summ)
-
-  })
-
-  # append scenarios
-  scenarios <- c("Current healthcare", "Surge in healthcare")
-  for(i in seq_along(pd_list)) {
-    pd_list[[i]]$Scenario <- scenarios[i]
-    pd_list[[i]]$Scenario <- scenarios[i]
-  }
-
-  pds <- do.call(rbind, pd_list) %>% ungroup
-
-  # Plot
-  pds <- pds[pds$date <= date + forecast,]
-  p <- ggplot(pds, aes(date, deaths, ymin = ymin, ymax = ymax, col = Scenario, fill = Scenario)) +
-    geom_line() + geom_ribbon(alpha = 0.25, col = NA)
-
-  # Add remaining formatting
-  gg <- p +
-    ggplot2::scale_color_discrete(name = "") +
-    ggplot2::scale_fill_discrete(guide = "none") +
-    ggplot2::theme_bw() +
-    theme(legend.position = "top") +
-    guides(linetype = "none")
-
-  if(is.null(df_excess)){
-    gg2 <- gg +
-      geom_point(data = df_cases, mapping = aes(x=date, y=deaths,shape="Reported Deaths"), inherit.aes = FALSE) +
-      ggplot2::theme_bw()  +
-      ggplot2::scale_x_date(date_breaks = "1 month", date_labels = "%b %Y",
-                            limits = c(min(df_cases$date[which(df_cases$deaths>0)]), date + forecast),
-                            expand = c(0, 0))
-  } else {
-    gg2 <- gg +
-      geom_segment(data = df_excess, mapping = aes(x = date_start, xend = date_end, y = deaths, yend = deaths), inherit.aes = FALSE, size = 1) +
-      ggplot2::theme_bw()  +
-      ggplot2::scale_x_date(date_breaks = "1 month", date_labels = "%b %Y",
-                            limits = c(min(df_cases$date[which(df_cases$deaths>0)]), date + forecast),
-                            expand = c(0, 0))
-  }
-
-  gg2 <- gg2 +
-    ggplot2::geom_vline(xintercept = date, linetype = "dashed")  +
-    ggplot2::scale_fill_manual(name = "", labels = (c("Estimated with Current Healthcare Capacity",
-                                                      "Estimated with Surge in Healthcare Capacity")),
-                               values = (c("#c59e96","#3f8ea7"))) +
-    ggplot2::scale_color_manual(name = "", labels = (c("Estimated with Current Healthcare Capacity",
-                                                       "Estimated with Surge in Healthcare Capacity")),
-                                values = (c("#c59e96","#3f8ea7"))) +
-    ggplot2::ylab("Daily Deaths") +
-    ggplot2::scale_shape_manual(name = "", values = 20) +
-    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, colour = "black"),
-                   axis.title.x = ggplot2::element_blank(),
-                   panel.grid.major.x = ggplot2::element_blank(),
-                   panel.grid.minor.x = ggplot2::element_blank(),
-                   panel.border = ggplot2::element_blank(),
-                   panel.background = ggplot2::element_blank(),
-                   axis.line = ggplot2::element_line(colour = "black"))
-
-  gg2 <- gg2 + ggplot2::theme(legend.position = "top",
-                              legend.justification = c(0.5,1),
-                              legend.direction = "horizontal") +
-    geom_vline(xintercept = date, linetype = "dashed")
-  #don't bother with seperate plots
-  gg2 + theme(legend.position = "none") + ylab("Daily Deaths") + ggtitle("Model Fit & 28 Day Projection")
-
-}
-
-
 
 deaths_plot_single <- function(out, data, date_0, date = Sys.Date(),
                                forecast = 14, single = FALSE, full = TRUE) {
@@ -801,20 +718,25 @@ deaths_plot <-  function(proj, proj_surge, df_excess, df_cases, date_0, date,
     theme(legend.position = "top") +
     guides(linetype = "none")
 
+  if(nrow(df_cases) == 0){
+    limits <- c(min(df_excess$date_start[which(df_excess$deaths>0)]), date + forecast)
+  } else {
+    limits <- c(min(df_cases$date[which(df_cases$deaths>0)]), date + forecast)
+  }
+
   if(is.null(df_excess)){
     gg2 <- gg +
       geom_point(data = df_cases, mapping = aes(x=date, y=deaths,shape="Reported Deaths"), inherit.aes = FALSE) +
       ggplot2::theme_bw()  +
       ggplot2::scale_x_date(date_breaks = "1 month", date_labels = "%b %Y",
-                            limits = c(min(df_cases$date[which(df_cases$deaths>0)]), date + forecast),
+                            limits = limits,
                             expand = c(0, 0))
   } else {
     gg2 <- gg +
       geom_segment(data = df_excess, mapping = aes(x = date_start, xend = date_end, y = deaths, yend = deaths), inherit.aes = FALSE, size = 1) +
       ggplot2::theme_bw()  +
       ggplot2::scale_x_date(date_breaks = "1 month", date_labels = "%b %Y",
-                            limits = c(df_cases %>% filter(date >= min(df_excess$date_start[df_excess$deaths > 0])) %>%
-                                         pull(date) %>% min, date + forecast),
+                            limits = limits,
                             expand = c(0, 0))
   }
 
