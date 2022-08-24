@@ -320,7 +320,7 @@ if(sum(excess_deaths$deaths) > death_limit) {
 
   #remove all dr jacoby data, no reason we should need it
 
-  ## now let's trim the out for saving really small
+  ## now let's trim the output for saving
   output_temp <- out$output
   out$output <- NULL
   if(inherits(out, "rt_optimised_trimmed")){
@@ -378,15 +378,13 @@ if(sum(excess_deaths$deaths) > death_limit) {
     rm(x, out)
 
     # Maintaining the current set of measures for a further 3 months
-    maintain_scenario_leg <- squire.page::projections(out_extended,
-                                     R0_change = c(1),
+    forwards_projection <- squire.page::projections(out_extended,
+                                     R0 = map(out_extended$samples, ~tail(.x$R0, 1)),
                                      tt_R0 = c(0),
                                      time_period = time_period,
                                      model_user_args = model_user_args)
-    r_maintain_scenario_leg <- r_list_format(maintain_scenario_leg, date_0 = start_date)
-    rt_maintain_scenario_leg <- rt_creation_vaccine(maintain_scenario_leg, end_date + time_period)
-
-    ## check for capacity being passed here
+    r_forwards_projection <- r_list_format(forwards_projection, date_0 = start_date)
+    rt_forwards_projection <- rt_creation_vaccine(forwards_projection, end_date + time_period)
 
     ## Is capacity passed prior to today
     icu_cap <- squire:::get_ICU_bed_capacity(country)
@@ -394,199 +392,151 @@ if(sum(excess_deaths$deaths) > death_limit) {
 
     t_test_safe <- function(x, ...) {
       out <- try(t.test(x, ...), silent = TRUE)
-      if (inherits(out, "try-error"))
-      {
+      if (inherits(out, "try-error")) {
         out <- list("conf.int"=c(mean(x),mean(x)))
       }
       return(out)
     }
-
     # has surging been required
-    icu <- nimue_format(maintain_scenario_leg, "ICU_demand", date_0 = start_date)
+    icu <- nimue_format(forwards_projection, "ICU_demand", date_0 = start_date)
     icu <- icu[icu$compartment == "ICU_demand",]
     icu_28 <- group_by(icu, t) %>%
-      summarise(i_tot = mean(y, na.rm = TRUE),
-                i_min = t_test_safe(y)$conf.int[1],
-                i_max = t_test_safe(y)$conf.int[2])
-
-    hosp <- nimue_format(maintain_scenario_leg, "hospital_demand", date_0 = start_date)
+    summarise(i_tot = mean(y, na.rm = TRUE),
+              i_min = t_test_safe(y)$conf.int[1],
+              i_max = t_test_safe(y)$conf.int[2])
+    hosp <- nimue_format(forwards_projection, "hospital_demand", date_0 = start_date)
     hosp <- hosp[hosp$compartment == "hospital_demand",]
     hosp_28 <- group_by(hosp, t) %>%
-      summarise(i_tot = mean(y, na.rm = TRUE),
-                i_min = t_test_safe(y)$conf.int[1],
-                i_max = t_test_safe(y)$conf.int[2])
+    summarise(i_tot = mean(y, na.rm = TRUE),
+              i_min = t_test_safe(y)$conf.int[1],
+              i_max = t_test_safe(y)$conf.int[2])
 
-    if(any(na.omit(icu_28$i_tot > icu_cap)) || any(na.omit(icu_28$i_tot > icu_cap))) {
-
+    if(any(na.omit(icu_28$i_tot > icu_cap)) || any(na.omit(icu_28$i_tot > icu_cap))){
       surging <- TRUE
-
     } else {
-
       surging <- FALSE
-
     }
 
-    rm(maintain_scenario_leg)
+    ggplot(cases_milds %>% filter(replicate == 1), aes(x = date, y = new_Case)) +
+      geom_line()
 
-    # Get the optimistic/pessimistic scenarios
-    Rt_futures <- get_future_Rt_optimised(out_extended, forcast_days = 28)
+    #get new mild and cases
+    #need to extract E2 and multiple the correct proportions
+    cases_milds <- purrr::map_dfr(seq_along(forwards_projection$samples), function(replicate){
+      params <- squire.page:::setup_parameters(forwards_projection$squire_model,
+                                               c(
+                                                 forwards_projection$parameters,
+                                                 forwards_projection$samples[[replicate]]
+                                               )
+      )
+      E2 <- forwards_projection$output[
+        lubridate::as_date(rownames(forwards_projection$output)) > date - 30*3,
+        str_detect(colnames(forwards_projection$output), "E2"),
+        replicate
+      ]
+      #convert to 3d (date, age, vaccine status)
+      E2_array <- array(NA, c(nrow(E2), 17, 7))
+      for(row in seq_len(17)){
+        E2_array[,row,] <- E2[, stringr::str_detect(colnames(E2), paste0("E2\\[", row, ","))]
+      }
+      dates <- lubridate::as_date(rownames(E2))
+      rm(E2)
+      #get just the transitions
+      E2_array <- E2_array * params$gamma_E
+      #get the time/vaccine varying proability of hopsitalisation
+      tt <- as.numeric(dates - forwards_projection$inputs$start_date)
+      prob_hosp_multiplier <- squire.page:::block_interpolate(tt, params$prob_hosp_multiplier, params$tt_prob_hosp_multiplier)
+      prob_hosp <- params$prob_hosp[
+        squire.page:::block_interpolate(tt, seq_len(dim(params$prob_hosp)[1]), params$tt_vaccine_efficacy_disease), ,
+      ] * prob_hosp_multiplier
+      new_Case <- E2_array * prob_hosp
+      new_Mild <- E2_array * (1 - prob_hosp)
+      #sum over ages and vaccine status
+      tibble(
+        replicate = replicate,
+        date = dates,
+        new_Case = rowSums(new_Case),
+        new_Mild = rowSums(new_Mild)
+      )
+    }) %>%
+      rename(ddate = date) %>%
+      mutate(projection = ddate > date) %>%
+      rename(date = ddate)
+    #estimate reported cases
+    cases <- readRDS("reported_covid.Rds") %>%
+      rename(iso = iso3c, d_date = date) %>%
+      filter(iso == iso3c & d_date > date - 30*3 & d_date <= date) %>%
+      transmute(date = d_date, detected_infections = cases) %>%
+      arrange(date)
+    reported_cases <- sum(cases$detected_infections) > 0
+    if(reported_cases){
+      #could split this further into ICU, HOSP, Mild
+      l_post <- function(detected_infections, p_case_eff, p_mild, Cases, Mild){
+        lp <- 0 #for now
+        p_case <- p_mild + (1 - p_mild) * p_case_eff
+        ll <- purrr::pmap_dbl(
+          list(
+            detected_infections = detected_infections, Mild = Mild, Cases = Cases
+          ), function(detected_infections, Mild, Cases, p_case, p_mild){
 
-    optimistic_scenario <- squire.page::projections(out_extended,
-                                       R0 = map(Rt_futures$optimistic, ~.x$R0),
-                                       tt_R0 = map(Rt_futures$optimistic, ~.x$tt_R0),
-                                       time_period = time_period,
-                                       model_user_args = model_user_args)
-
-    r_optimistic_scenario <- r_list_format(optimistic_scenario, start_date)
-    rt_optimistic_scenario <- rt_creation_vaccine(optimistic_scenario, end_date + time_period)
-
-    rm(optimistic_scenario)
-
-    pessimistic_scenario <- squire.page::projections(out_extended,
-                                    R0 = map(Rt_futures$pessimistic, ~.x$R0),
-                                    tt_R0 = map(Rt_futures$pessimistic, ~.x$tt_R0),
-                                    time_period = time_period,
-                                    model_user_args = model_user_args)
-    r_pessimistic_scenario <- r_list_format(pessimistic_scenario, start_date)
-    rt_pessimistic_scenario <- rt_creation_vaccine(pessimistic_scenario, end_date + time_period)
-    rm(pessimistic_scenario)
-
-    central_scenario <- squire.page::projections(out_extended,
-                                    R0 = map(Rt_futures$central, ~.x$R0),
-                                    tt_R0 = map(Rt_futures$central, ~.x$tt_R0),
-                                    time_period = time_period,
-                                    model_user_args = model_user_args)
-    r_central_scenario <- r_list_format(central_scenario, start_date)
-    rt_central_scenario <- rt_creation_vaccine(central_scenario, end_date + time_period)
-    rm(central_scenario)
-
-    #legacy scenarios
-    mitigation_scenario_leg <- squire.page::projections(out_extended,
-                                           R0_change = c(0.5),
-                                           tt_R0 = 0,
-                                           time_period = time_period,
-                                           model_user_args = model_user_args)
-    r_mitigation_scenario_leg <- r_list_format(mitigation_scenario_leg, start_date)
-    rt_mitigation_scenario_leg <- rt_creation_vaccine(mitigation_scenario_leg, end_date + time_period)
-    rm(mitigation_scenario_leg)
-
-    reverse_scenario_leg <- squire.page::projections(out_extended,
-                                        R0_change = c(1.5),
-                                        tt_R0 = c(0),
-                                        time_period = time_period,
-                                        model_user_args = model_user_args)
-    r_reverse_scenario_leg <- r_list_format(reverse_scenario_leg, start_date)
-    rt_reverse_scenario_leg <- rt_creation_vaccine(reverse_scenario_leg, end_date + time_period)
-    rm(reverse_scenario_leg)
-
-    ## -----------------------------------------------------------------------------
-    ## 4.2. Investigating a capacity surge
-    ## -----------------------------------------------------------------------------
-
-    # update for surged healthcare
-    out_surged <- out_extended
-    rm(out_extended)
-
-    out_surged$parameters$hosp_bed_capacity <- 1e10
-    out_surged$parameters$ICU_bed_capacity <- 1e10
-
-    out_surged <- generate_draws(out_surged)
-
-    ## Now simulate the surged scenarios
-
-    optimistic_scenario_surged <- projections(out_surged,
-                                       R0 = map(Rt_futures$optimistic, ~.x$R0),
-                                       tt_R0 = map(Rt_futures$optimistic, ~.x$tt_R0),
-                                       time_period = time_period,
-                                       model_user_args = model_user_args)
-
-    r_optimistic_scenario_surged <- r_list_format(optimistic_scenario_surged, start_date)
-    rt_optimistic_scenario_surged <- rt_creation_vaccine(optimistic_scenario_surged, end_date + time_period)
-
-    rm(optimistic_scenario_surged)
-
-    pessimistic_scenario_surged <- projections(out_surged,
-                                        R0 = map(Rt_futures$pessimistic, ~.x$R0),
-                                        tt_R0 = map(Rt_futures$pessimistic, ~.x$tt_R0),
-                                        time_period = time_period,
-                                        model_user_args = model_user_args)
-    r_pessimistic_scenario_surged <- r_list_format(pessimistic_scenario_surged, start_date)
-    rt_pessimistic_scenario_surged <- rt_creation_vaccine(pessimistic_scenario_surged, end_date + time_period)
-    rm(pessimistic_scenario_surged)
-
-    central_scenario_surged <- projections(out_surged,
-                                    R0 = map(Rt_futures$central, ~.x$R0),
-                                    tt_R0 = map(Rt_futures$central, ~.x$tt_R0),
-                                    time_period = time_period,
-                                    model_user_args = model_user_args)
-    r_central_scenario_surged <- r_list_format(central_scenario_surged, start_date)
-    rt_central_scenario_surged <- rt_creation_vaccine(central_scenario_surged, end_date + time_period)
-    rm(central_scenario_surged)
-
-    #legacy scenarios
-    maintain_scenario_surged_leg <- projections(out_surged,
-                                            R0_change = c(1),
-                                            tt_R0 = c(0),
-                                            time_period = time_period,
-                                            model_user_args = model_user_args)
-
-    r_maintain_scenario_surged_leg <- r_list_format(maintain_scenario_surged_leg, start_date)
-    rt_maintain_scenario_surged_leg <- rt_creation_vaccine(maintain_scenario_surged_leg, end_date + time_period)
-    rm(maintain_scenario_surged_leg)
-
-    mitigation_scenario_surged_leg <- projections(out_surged,
-                                                  R0_change = c(0.5),
-                                                  tt_R0 = c(0),
-                                                  time_period = time_period,
-                                                  model_user_args = model_user_args)
-    r_mitigation_scenario_surged_leg <- r_list_format(mitigation_scenario_surged_leg, start_date)
-    rt_mitigation_scenario_surged_leg <- rt_creation_vaccine(mitigation_scenario_surged_leg, end_date + time_period)
-    rm(mitigation_scenario_surged_leg)
-
-
-    reverse_scenario_surged_leg <- projections(out_surged,
-                                               R0_change = c(1.5),
-                                               tt_R0 = c(0),
-                                               time_period = time_period,
-                                               model_user_args = model_user_args)
-    r_reverse_scenario_surged_leg <- r_list_format(reverse_scenario_surged_leg, start_date)
-    rt_reverse_scenario_surged_leg <- rt_creation_vaccine(reverse_scenario_surged_leg, end_date + time_period)
-    rm(reverse_scenario_surged_leg)
-
-    rm(out_surged)
-
-    o_list <- named_list(
-      r_central_scenario,
-      r_optimistic_scenario,
-      r_pessimistic_scenario,
-      r_central_scenario_surged,
-      r_optimistic_scenario_surged,
-      r_pessimistic_scenario_surged,
-      r_maintain_scenario_leg,
-      r_mitigation_scenario_leg,
-      r_reverse_scenario_leg,
-      r_maintain_scenario_surged_leg,
-      r_mitigation_scenario_surged_leg,
-      r_reverse_scenario_surged_leg
-    )
-
-    rt_list <- named_list(
-      rt_central_scenario,
-      rt_optimistic_scenario,
-      rt_pessimistic_scenario,
-      rt_central_scenario_surged,
-      rt_optimistic_scenario_surged,
-      rt_pessimistic_scenario_surged,
-      rt_maintain_scenario_leg,
-      rt_mitigation_scenario_leg,
-      rt_reverse_scenario_leg,
-      rt_maintain_scenario_surged_leg,
-      rt_mitigation_scenario_surged_leg,
-      rt_reverse_scenario_surged_leg
-    )
-
-    rt_futures_df <-
-      summarise_rt_futures(Rt_futures)
+            #for now limit
+            if(detected_infections > Mild + Cases){
+              detected_infections <- Mild + Cases
+            }
+            if(detected_infections > Cases) {
+              Cases_x <- seq.int(0, Cases)
+              Mild_x <- detected_infections - Cases_x
+            } else if(detected_infections > Mild) {
+              Mild_x <- seq.int(0, Mild)
+              Cases_x <- detected_infections - Mild_x
+            } else {
+              Mild_x <- seq.int(0, detected_infections)
+              Cases_x <- rev(Mild_x)
+            }
+            (dbinom(Mild_x, Mild, p_mild) * dbinom(Cases_x, Cases, p_case)) %>%
+              sum %>%
+              log
+          },
+          p_case = p_case, p_mild = p_mild
+        ) %>%
+          sum()
+        if(ll < -10^10){
+          ll <- -10^10
+        }
+        lp + ll
+      }
+      p_detection <- cases_milds %>%
+        left_join(cases, by = c("date")) %>%
+        filter(!is.na(detected_infections)) %>%
+        mutate(
+          across(
+            c(new_Case, new_Mild, detected_infections),
+            ~as.integer(round(.x))
+          )
+        ) %>%
+        group_by(replicate) %>%
+        summarise(
+          out = list(optim(c(0.01,0.01), function(x){
+            l_post(detected_infections, x[1], x[2], new_Case, new_Mild)
+          }, method = "L-BFGS-B", lower = c(0, 0), upper = c(1, 1),
+          control = list(fnscale = -1))$par)
+        ) %>%
+        transmute(
+          replicate = replicate,
+          p_mild = purrr::map_dbl(out, ~.x[2]),
+          p_case = p_mild + (1 - p_mild) * purrr::map_dbl(out, ~.x[1])
+        )
+      cases_milds <- cases_milds %>%
+        left_join(cases, by = c("date")) %>%
+        left_join(p_detection, by = "replicate") %>%
+        mutate(
+          new_detected_Case = new_Case * p_case,
+          new_detected_Mild = new_Mild * p_mild
+        )
+      cases_milds <-
+        cases_milds %>%
+        select(!detected_infections)
+    }
 
     ## -----------------------------------------------------------------------------
     ## Step 5: Report
@@ -614,7 +564,7 @@ if(sum(excess_deaths$deaths) > death_limit) {
     options(tinytex.verbose = TRUE)
     rmarkdown::render("index.Rmd",
                       output_format = c("html_document","pdf_document"),
-                      params = list("o_list" = o_list,
+                      params = list("central" = r_forwards_projection,
                                     "excess" = TRUE,
                                     "df_excess" = df_excess_deaths,
                                     "df_cases" = df_cases,
@@ -624,7 +574,7 @@ if(sum(excess_deaths$deaths) > death_limit) {
                                     "rt" = rtp2,
                                     "variants" = variant_timings,
                                     "date_range" = date_range,
-                                    "rt_futures" = rt_futures_df),
+                                    "cases_milds" = cases_milds),
                       output_options = list(pandoc_args = c(paste0("--metadata=title:",country," COVID-19 report "))))
 
     } else {
@@ -676,31 +626,8 @@ if(sum(excess_deaths$deaths) > death_limit) {
   second_dose_delay <- 60
   # Scenarios with capacity constraints
   # ---------------------------------------------------------------------------
-  r_pessimistic_scenario <- squire.page:::run_booster(
-    country = country,
-    R0 = R0,
-    time_period = time_period_esft,
-    seeding_cases = seeding_cases_esft,
-    init = init,
-    primary_doses = as.integer(mean(tail(vacc_inputs$primary_doses,7))),
-    second_dose_delay = second_dose_delay,
-    booster_doses =  as.integer(mean(tail(vacc_inputs$booster_doses,7))),
-    vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat
-  )
 
-  r_optimistic_scenario <- squire.page:::run_booster(
-    country = country,
-    R0 = Rt,
-    time_period = time_period_esft,
-    seeding_cases = seeding_cases_esft,
-    init = init,
-    primary_doses =  as.integer(mean(tail(vacc_inputs$primary_doses,7))),
-    second_dose_delay = second_dose_delay,
-    booster_doses =  as.integer(mean(tail(vacc_inputs$booster_doses,7))),
-    vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat
-  )
-
-  r_central_scenario <- squire.page:::run_booster(
+  forwards_projection <- squire.page:::run_booster(
     country = country,
     R0 = Rt + ((R0 - Rt)/2),
     time_period = time_period_esft,
@@ -711,74 +638,19 @@ if(sum(excess_deaths$deaths) > death_limit) {
     booster_doses =  as.integer(mean(tail(vacc_inputs$booster_doses,7))),
     vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat
   )
-  output_temp <- r_central_scenario$output
-  saveRDS(r_central_scenario, "grid_out.rds")
-  r_central_scenario$output <- output_temp
+  output_temp <- forwards_projection$output
+  saveRDS(forwards_projection, "grid_out.rds")
+  forwards_projection$output <- output_temp
   rm(output_temp)
 
-  # Scenarios without capacity constraints
-  # ---------------------------------------------------------------------------
-  r_pessimistic_scenario_surged <- squire.page:::run_booster(
-    country = country,
-    R0 = R0,
-    time_period = time_period_esft,
-    seeding_cases = seeding_cases_esft,
-    init = init,
-    primary_doses =  as.integer(mean(tail(vacc_inputs$primary_doses,7))),
-    second_dose_delay = second_dose_delay,
-    booster_doses =  as.integer(mean(tail(vacc_inputs$booster_doses,7))),
-    vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat,
-    hosp_bed_capacity = 1e10,
-    ICU_bed_capacity = 1e10
-  )
-
-  r_optimistic_scenario_surged <- squire.page:::run_booster(
-    country = country,
-    R0 = R0,
-    time_period = time_period_esft,
-    seeding_cases = seeding_cases_esft,
-    init = init,
-    primary_doses =  as.integer(mean(tail(vacc_inputs$primary_doses,7))),
-    second_dose_delay = second_dose_delay,
-    booster_doses =  as.integer(mean(tail(vacc_inputs$booster_doses,7))),
-    vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat,
-    hosp_bed_capacity = 1e10,
-    ICU_bed_capacity = 1e10
-  )
-
-  r_central_scenario_surged <- squire.page:::run_booster(
-    country = country,
-    R0 = R0,
-    time_period = time_period_esft,
-    seeding_cases = seeding_cases_esft,
-    init = init,
-    primary_doses =  as.integer(mean(tail(vacc_inputs$primary_doses,7))),
-    second_dose_delay = second_dose_delay,
-    booster_doses =  as.integer(mean(tail(vacc_inputs$booster_doses,7))),
-    vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat,
-    hosp_bed_capacity = 1e10,
-    ICU_bed_capacity = 1e10
-  )
-
-  # bundle into a list
-  r_list <-
-    named_list(
-      r_central_scenario,
-      r_optimistic_scenario,
-      r_pessimistic_scenario,
-      r_central_scenario_surged,
-      r_optimistic_scenario_surged,
-      r_pessimistic_scenario_surged
-    )
-
   # And adjust their time variable so that we have t = 0 as today
-  r_list_pass <- lapply(r_list, function(x) {
+  forwards_projection <- lapply(list(forwards_projection), function(x) {
     for(i in seq_len(dim(x$output)[3])) {
       x$output[,"time",i] <- x$output[,"time",i] - 1
     }
     rownames(x$output) <- as.character(seq.Date(date, date + nrow(x$output) -1, 1))
     return(x)
-  })
+  })[[1]]
 
   ## Lastly make up some outputs here to pass orderly
   file.create("index.html", "index.pdf", "index.md",
@@ -786,19 +658,20 @@ if(sum(excess_deaths$deaths) > death_limit) {
               "fitting.pdf")
 
   # major summaries
-  o_list <- lapply(r_list_pass, r_list_format, date)
-  rt_list <- lapply(
-    r_list_pass,
+  r_forwards_projection <- lapply(list(forwards_projection), r_list_format, date)[[1]]
+  rt_forwards_projection <- lapply(
+    list(forwards_projection),
     rt_creation_simple_out_vaccine, date, date+89
-  )
-  names(rt_list) <- str_replace(names(rt_list), "r_", "rt_")
+  )[[1]]
 }
 
 if(document){
   sim_end_date <- as.Date(date)+90
 
   # summarise the projections
-  data_sum <- map(o_list, function(pd){
+  data_sum <- map(list(
+    r_central_scenario = r_forwards_projection
+  ), function(pd){
 
     # remove any NA rows (due to different start dates)
     if(sum(is.na(pd$t) | is.na(pd$y))>0) {
@@ -840,63 +713,12 @@ if(document){
   })
 
   data_sum$r_central_scenario$scenario <- "Central"
-  data_sum$r_optimistic_scenario$scenario <- "Optimistic"
-  data_sum$r_pessimistic_scenario$scenario <- "Pessimistic"
-  data_sum$r_central_scenario_surged$scenario <- "Surged Central"
-  data_sum$r_optimistic_scenario_surged$scenario <- "Surged Optimistic"
-  data_sum$r_pessimistic_scenario_surged$scenario <- "Surged Pessimistic"
 
-  if(sum(excess_deaths$deaths) > 10){
-    #these won't be present for the non-fitting countries
-    data_sum$r_maintain_scenario_leg$scenario <- "Maintain Status Quo"
-    data_sum$r_mitigation_scenario_leg$scenario <- "Additional 50% Reduction"
-    data_sum$r_reverse_scenario_leg$scenario <- "Relax Interventions 50%"
-    data_sum$r_maintain_scenario_surged_leg$scenario <- "Surged Maintain Status Quo"
-    data_sum$r_mitigation_scenario_surged_leg$scenario <- "Surged Additional 50% Reduction"
-    data_sum$r_reverse_scenario_surged_leg$scenario <- "Surged Relax Interventions 50%"
-  } else {
-    data_sum$r_maintain_scenario_leg <- data_sum$r_central_scenario
-    data_sum$r_maintain_scenario_leg$scenario <- "Maintain Status Quo"
-    data_sum$r_mitigation_scenario_leg <- data_sum$r_optimistic_scenario
-    data_sum$r_mitigation_scenario_leg$scenario <- "Additional 50% Reduction"
-    data_sum$r_reverse_scenario_leg <- data_sum$r_pessimistic_scenario
-    data_sum$r_reverse_scenario_leg$scenario <- "Relax Interventions 50%"
-    data_sum$r_maintain_scenario_surged_leg <- data_sum$r_central_scenario_surged
-    data_sum$r_maintain_scenario_surged_leg$scenario <- "Surged Maintain Status Quo"
-    data_sum$r_mitigation_scenario_surged_leg <- data_sum$r_optimistic_scenario_surged
-    data_sum$r_mitigation_scenario_surged_leg$scenario <- "Surged Additional 50% Reduction"
-    data_sum$r_reverse_scenario_surged_leg <- data_sum$r_pessimistic_scenario_surged
-    data_sum$r_reverse_scenario_surged_leg$scenario <- "Surged Relax Interventions 50%"
-  }
+  rt_list <- list(
+    rt_central_scenario = rt_forwards_projection
+  )
 
   rt_list$rt_central_scenario$scenario <- "Central"
-  rt_list$rt_optimistic_scenario$scenario <- "Optimistic"
-  rt_list$rt_pessimistic_scenario$scenario <- "Pessimistic"
-  rt_list$rt_central_scenario_surged$scenario <- "Surged Central"
-  rt_list$rt_optimistic_scenario_surged$scenario <- "Surged Optimistic"
-  rt_list$rt_pessimistic_scenario_surged$scenario <- "Surged Pessimistic"
-  if(sum(excess_deaths$deaths) > 10){
-    #these won't be present for the non-fitting countries
-    rt_list$rt_maintain_scenario_leg$scenario <- "Maintain Status Quo"
-    rt_list$rt_mitigation_scenario_leg$scenario <- "Additional 50% Reduction"
-    rt_list$rt_reverse_scenario_leg$scenario <- "Relax Interventions 50%"
-    rt_list$rt_maintain_scenario_surged_leg$scenario <- "Surged Maintain Status Quo"
-    rt_list$rt_mitigation_scenario_surged_leg$scenario <- "Surged Additional 50% Reduction"
-    rt_list$rt_reverse_scenario_surged_leg$scenario <- "Surged Relax Interventions 50%"
-  } else {
-    rt_list$rt_maintain_scenario_leg <- rt_list$rt_central_scenario
-    rt_list$rt_maintain_scenario_leg$scenario <- "Maintain Status Quo"
-    rt_list$rt_mitigation_scenario_leg <- rt_list$rt_optimistic_scenario
-    rt_list$rt_mitigation_scenario_leg$scenario <- "Additional 50% Reduction"
-    rt_list$rt_reverse_scenario_leg <- rt_list$rt_pessimistic_scenario
-    rt_list$rt_reverse_scenario_leg$scenario <- "Relax Interventions 50%"
-    rt_list$rt_maintain_scenario_surged_leg <- rt_list$rt_central_scenario_surged
-    rt_list$rt_maintain_scenario_surged_leg$scenario <- "Surged Maintain Status Quo"
-    rt_list$rt_mitigation_scenario_surged_leg <- rt_list$rt_optimistic_scenario_surged
-    rt_list$rt_mitigation_scenario_surged_leg$scenario <- "Surged Additional 50% Reduction"
-    rt_list$rt_reverse_scenario_surged_leg <- rt_list$rt_pessimistic_scenario_surged
-    rt_list$rt_reverse_scenario_surged_leg$scenario <- "Surged Relax Interventions 50%"
-  }
 
   # combine and annotate
   data_sum <- do.call(rbind, data_sum)
@@ -920,7 +742,7 @@ if(document){
   data_sum$iso3c <- iso3c
   data_sum$report_date <- date
   data_sum <- data_sum[data_sum$compartment != "D",]
-  data_sum$version <- "v8"
+  data_sum$version <- "v10"
   data_sum <- dplyr::mutate(data_sum, across(dplyr::starts_with("y_"), ~round(.x,digits = 2)))
 
   # specify if this is calibrated to deaths or just hypothetical forecast for ESFT
@@ -930,3 +752,5 @@ if(document){
 } else {
   file.create("projections.csv")
 }
+
+#check prevalence and estimated reported calculation + how to report projections?, reported deaths fits?

@@ -26,7 +26,7 @@ output:
     highlight: tango
     reference_docx: template.docx
 params:
-   o_list: NA
+   central: NA
    excess: FALSE
    df_excess: NA
    df_cases: NA
@@ -34,9 +34,9 @@ params:
    country: NA
    surging: FALSE
    rt: NA
-   rt_futures: NA
    variants: FALSE
    date_range: NA
+   cases_milds: NA
 ---
 
 ```{r rm_title_page, echo=FALSE}
@@ -97,7 +97,59 @@ country <- params$country
 date_0 <- params$date_0
 surging <- params$surging
 rt <- params$rt
-rt_futures <- params$rt_futures
+cases_milds <- params$cases_milds
+has_reported_case <- "new_detected_Mild" %in% names(cases_milds)
+if(has_reported_case){
+  proportion_detected <- base::format(signif(quantile(unique(cases_milds$p_detected), c(0.025, 0.5, 0.975)) * 100, 3),
+                                      trim = TRUE, drop0trailing = TRUE)
+  proportion_detected_txt <- paste0(
+    "Assuming a uniform level of detection across all infections, our modelling estimates that ",
+    proportion_detected[2], "% (", proportion_detected[1], ", ", proportion_detected[3], " 95% CrI) of infections are detected over the 3 month period before ", date, "."
+  )
+  
+  projection_detected <- cases_milds %>% 
+    rename(ddate = date) %>% 
+    filter(projection & ddate <= date + 28) %>%
+    group_by(replicate) %>% 
+    summarise(
+      detected_case = sum(new_detected_Case) + sum(new_detected_Mild)
+    ) %>% 
+    pull(detected_case) %>% 
+    quantile(c(0.025, 0.5, 0.975)) %>% 
+    signif(3) %>% 
+    base::format(trim = TRUE, drop0trailing = TRUE)
+  
+  chance_of_detection <- cases_milds %>% 
+    group_by(replicate) %>% 
+    summarise(
+      p_mild = p_mild[1],
+      p_case = p_case[1],
+      .groups = "drop"
+    ) %>% 
+    summarise(
+      across(
+        c(p_mild, p_case),
+        ~quantile(.x * 100, c(0.025, 0.5, 0.975)) %>% 
+          signif(3) %>% 
+          base::format(trim = TRUE, drop0trailing = TRUE)
+      )
+    )
+  print_cr <- function(m, l, h){
+    paste0(m, " (", l, ", ", h, " 95% CrI)")
+  }
+  
+  estimated_detected_txt <- paste0(
+    "Looking at the last 3 months of reported COVID-19 infections we estimate that ", 
+    print_cr(chance_of_detection$p_case[2], chance_of_detection$p_case[1], chance_of_detection$p_case[3]), 
+    "% of hospitalised cases are detected and ",
+    print_cr(chance_of_detection$p_mild[2], chance_of_detection$p_mild[1], chance_of_detection$p_mild[3]),
+    "% of the mild for asymptomatic. With this we estimate that there will be ", 
+    projection_detected[2], " (", projection_detected[1], ", ", projection_detected[3], " 95% CrI) new detected infections over the next 28 days."
+  )
+} else {
+  proportion_detected_txt <- ""
+  estimated_detected_txt <- ""
+}
 url <- paste0("https://github.com/mrc-ide/global-lmic-reports/raw/master/",iso3c,"/index.pdf")
 
 format_type <- knitr::opts_knit$get("rmarkdown.pandoc.to")
@@ -210,7 +262,7 @@ time_period <- 28
 past_dates <- seq(date - time_period, date, by = 1)[-1]
 projection_end_date <- date + time_period
 
-infections <- params$o_list$r_central_scenario %>% 
+infections <- params$central %>% 
   filter(compartment == "infections")
 infections_28 <- infections %>% 
   filter(date %in% past_dates)
@@ -233,7 +285,7 @@ infs_28 <- group_by(infections[infections$date==projection_end_date,], replicate
             i_min = t_test_safe(tot)$conf.int[1],
             i_max = t_test_safe(tot)$conf.int[2])
 
-hospital <- params$o_list$r_central_scenario %>% 
+hospital <- params$central %>% 
   filter(compartment == "hospital_demand")
 
 hosp_today <- group_by(hospital[hospital$date == date,], replicate) %>% 
@@ -248,7 +300,7 @@ hosp_28 <- group_by(hospital[hospital$date==projection_end_date,], replicate) %>
             i_min = t_test_safe(tot)$conf.int[1],
             i_max = t_test_safe(tot)$conf.int[2])
 
-icu <- params$o_list$r_central_scenario %>% 
+icu <- params$central %>% 
   filter(compartment == "ICU_demand")
 icu_today <- group_by(icu[icu$date == date,], replicate) %>% 
   summarise(tot = sum(y, na.rm = TRUE)) %>% 
@@ -262,7 +314,7 @@ icu_28 <- group_by(icu[icu$date==projection_end_date,], replicate) %>%
             i_min = t_test_safe(tot)$conf.int[1],
             i_max = t_test_safe(tot)$conf.int[2])
 
-deaths <- params$o_list$r_central_scenario %>% 
+deaths <- params$central %>% 
   filter(compartment == "deaths")
 deaths_28 <- group_by(deaths[deaths$date==projection_end_date,], replicate) %>% 
   summarise(tot = sum(y, na.rm = TRUE)) %>% 
@@ -270,141 +322,10 @@ deaths_28 <- group_by(deaths[deaths$date==projection_end_date,], replicate) %>%
             i_min = t_test_safe(tot)$conf.int[1],
             i_max = t_test_safe(tot)$conf.int[2])
 
-## -----------------------------------------------------------------------------
-## totals optimistic
-## -----------------------------------------------------------------------------
-
-infections_mit <- params$o_list$r_optimistic_scenario %>% 
-  filter(compartment == "infections")
-infections_mit_28 <- infections_mit %>% 
-  filter(date %in% past_dates)
-
-infs_mit <- group_by(infections_mit_28, replicate) %>% 
-  summarise(tot = sum(y, na.rm = TRUE)) %>% 
-  summarise(inf_tot = mean(tot, na.rm = TRUE), 
-            inf_min = t_test_safe(tot)$conf.int[1],
-            inf_max = t_test_safe(tot)$conf.int[2])
-
-infs_today_mit <- group_by(infections_mit[infections_mit$date==date,], replicate) %>% 
-  summarise(tot = sum(y, na.rm = TRUE)) %>% 
-  summarise(i_tot = mean(tot, na.rm = TRUE), 
-            i_min = t_test_safe(tot)$conf.int[1],
-            i_max = t_test_safe(tot)$conf.int[2])
-
-infs_28_mit <- group_by(infections_mit[infections_mit$date == projection_end_date,], replicate) %>% 
-  summarise(tot = sum(y, na.rm = TRUE)) %>% 
-  summarise(i_tot = mean(tot, na.rm = TRUE), 
-            i_min = t_test_safe(tot)$conf.int[1],
-            i_max = t_test_safe(tot)$conf.int[2])
-
-hospital_mit <- params$o_list$r_optimistic_scenario %>% 
-  filter(compartment == "hospital_demand")
-hosp_today_mit <- group_by(hospital_mit[hospital_mit$date == date,], replicate) %>% 
-  summarise(tot = sum(y, na.rm = TRUE)) %>% 
-  summarise(i_tot = mean(tot, na.rm = TRUE), 
-            i_min = t_test_safe(tot)$conf.int[1],
-            i_max = t_test_safe(tot)$conf.int[2])
-
-hosp_28_mit <- group_by(hospital_mit[hospital_mit$date == projection_end_date,], replicate) %>% 
-  summarise(tot = sum(y, na.rm = TRUE)) %>% 
-  summarise(i_tot = mean(tot, na.rm = TRUE), 
-            i_min = t_test_safe(tot)$conf.int[1],
-            i_max = t_test_safe(tot)$conf.int[2])
-
-icu_mit <- params$o_list$r_optimistic_scenario %>% 
-  filter(compartment == "ICU_demand")
-icu_today_mit <- group_by(icu_mit[icu_mit$date == date,], replicate) %>% 
-  summarise(tot = sum(y, na.rm = TRUE)) %>% 
-  summarise(i_tot = mean(tot, na.rm = TRUE), 
-            i_min = t_test_safe(tot)$conf.int[1],
-            i_max = t_test_safe(tot)$conf.int[2])
-
-icu_28_mit <- group_by(icu_mit[icu_mit$date == projection_end_date,], replicate) %>% 
-  summarise(tot = sum(y, na.rm = TRUE)) %>% 
-  summarise(i_tot = mean(tot, na.rm = TRUE), 
-            i_min = t_test_safe(tot)$conf.int[1],
-            i_max = t_test_safe(tot)$conf.int[2])
-
-deaths_mit <- params$o_list$r_optimistic_scenario %>% 
-  filter(compartment == "deaths")
-deaths_28_mit <- group_by(deaths_mit[deaths_mit$date == projection_end_date,], replicate) %>% 
-  summarise(tot = sum(y, na.rm = TRUE)) %>% 
-  summarise(i_tot = mean(tot, na.rm = TRUE), 
-            i_min = t_test_safe(tot)$conf.int[1],
-            i_max = t_test_safe(tot)$conf.int[2])
-
-## -----------------------------------------------------------------------------
-## totals reverse
-## -----------------------------------------------------------------------------
-
-infections_rev <- params$o_list$r_pessimistic_scenario %>% 
-  filter(compartment == "infections")
-infections_rev_28 <- infections_rev %>% 
-  filter(date %in% past_dates)
-
-infs_rev_28 <- group_by(infections_rev, replicate) %>% 
-  summarise(tot = sum(y, na.rm = TRUE)) %>% 
-  summarise(inf_tot = mean(tot, na.rm = TRUE), 
-            inf_min = t_test_safe(tot)$conf.int[1],
-            inf_max = t_test_safe(tot)$conf.int[2])
-
-infs_28_rev <- group_by(infections_rev[infections_rev$date==projection_end_date,], replicate) %>% 
-  summarise(tot = sum(y, na.rm = TRUE)) %>% 
-  summarise(i_tot = mean(tot, na.rm = TRUE), 
-            i_min = t_test_safe(tot)$conf.int[1],
-            i_max = t_test_safe(tot)$conf.int[2])
-
-infs_today_rev <- group_by(infections_rev[infections_rev$date==date,], replicate) %>% 
-  summarise(tot = sum(y, na.rm = TRUE)) %>% 
-  summarise(i_tot = mean(tot, na.rm = TRUE), 
-            i_min = t_test_safe(tot)$conf.int[1],
-            i_max = t_test_safe(tot)$conf.int[2])
-
-
-hospital_rev <- params$o_list$r_pessimistic_scenario %>% 
-  filter(compartment == "hospital_demand")
-hosp_today_rev <- group_by(hospital_rev[hospital_rev$date==date,], replicate) %>% 
-  summarise(tot = sum(y, na.rm = TRUE)) %>% 
-  summarise(i_tot = mean(tot, na.rm = TRUE), 
-            i_min = t_test_safe(tot)$conf.int[1],
-            i_max = t_test_safe(tot)$conf.int[2])
-
-hosp_28_rev <- group_by(hospital_rev[hospital_rev$date==projection_end_date,], replicate) %>% 
-  summarise(tot = sum(y, na.rm = TRUE)) %>% 
-  summarise(i_tot = mean(tot, na.rm = TRUE), 
-            i_min = t_test_safe(tot)$conf.int[1],
-            i_max = t_test_safe(tot)$conf.int[2])
-
-icu_rev <- params$o_list$r_pessimistic_scenario %>% 
-  filter(compartment == "ICU_demand")
-icu_today_rev <- group_by(icu_rev[icu_rev$date==date,], replicate) %>% 
-  summarise(tot = sum(y, na.rm = TRUE)) %>% 
-  summarise(i_tot = mean(tot, na.rm = TRUE), 
-            i_min = t_test_safe(tot)$conf.int[1],
-            i_max = t_test_safe(tot)$conf.int[2])
-
-icu_28_rev <- group_by(icu_rev[icu_rev$date==projection_end_date,], replicate) %>% 
-  summarise(tot = sum(y, na.rm = TRUE)) %>% 
-  summarise(i_tot = mean(tot, na.rm = TRUE), 
-            i_min = t_test_safe(tot)$conf.int[1],
-            i_max = t_test_safe(tot)$conf.int[2])
-
-deaths_rev <- params$o_list$r_pessimistic_scenario %>% 
-  filter(compartment == "deaths")
-deaths_28_rev <- group_by(deaths_rev[deaths_rev$date==projection_end_date,], replicate) %>% 
-  summarise(tot = sum(y, na.rm = TRUE)) %>% 
-  summarise(i_tot = mean(tot, na.rm = TRUE), 
-            i_min = t_test_safe(tot)$conf.int[1],
-            i_max = t_test_safe(tot)$conf.int[2])
-
 summary_number_df <- data.frame(variable = c("est_infections","report_infections",
-                                             "report_deaths", "hospital_28", "icu_28",
-                                             "hospital_28_mit", "icu_28_mit",
-                                             "hospital_28_rev", "icu_28_rev"),
+                                             "report_deaths", "hospital_28", "icu_28"),
                                 value = c(infs[[1]], sum(df_cases$cases), sum(data$deaths),
-                                          hosp_28[[1]], icu_28[[1]], 
-                                          hosp_28_mit[[1]],icu_28_mit[[1]],
-                                          hosp_28_rev[[1]],icu_28_rev[[1]]),
+                                          hosp_28[[1]], icu_28[[1]]),
                                 country = country,
                                 continent = countrycode::countrycode(country, origin = 'country.name', destination = 'continent'))
 saveRDS(summary_number_df, "summary_df.rds")
@@ -510,13 +431,13 @@ The bar charts show, for comparison, the number of reported cases.
 We estimate that there has been a total of `r form(infs)` infections over the past 4 weeks.
 The right-hand plot shows these data on a different scale as the estimated infections are likely to be much larger than the reported cases.  **Importantly**, the estimated infections includes both asymptomatic and mild cases that would not necessarily be identified through surveillance.
 Consequently, the estimated infections are likely to be significantly higher than the reported cases in all countries (see our [FAQ](https://mrc-ide.github.io/global-lmic-reports/FAQ.html#why-are-the-estimated-infections-so-much-higher-than-the-reported-cases) for further explanation of these differences and why the reported cases and estimated infections are unlikely to match).
-`r show_cases_sentence`
+`r show_cases_sentence` `r proportion_detected_txt`
 
 <br>
 
 ```{r case plot, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE,  fig.cap=figRef("**Figure 2: Daily number of infections estimated by fitting to the current total of deaths.** Reported cases are shown in red. Model estimated infections are shown in blue (dark blue 50% interquartile range, light blue 95% quantile). The dashed line shows the current day."), fig.width=10, fig.height=fig_height(5.5,5.5), fig.align=fig_center()}
 
-suppressWarnings(suppressMessages(print(cases_plot(params$o_list[[1]], data = df_cases, date = date, date_0 = date_0))))
+suppressWarnings(suppressMessages(print(cases_plot(params$central, data = df_cases, date = date, date_0 = date_0))))
 
 ```
 
@@ -547,16 +468,10 @@ Using the model fit, we can forecast the expected trajectory for cumulative deat
 
 <br>
 
-```{r death forecast plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap=figRef(paste0("**Figure 4: Estimated daily deaths.** Projected deaths assuming the current level of interventions are maintained are shown in red (median and 95% quantile). Excess mortality is plotted in black. Includes a forecast of the next 28 days. ", fig_cap_capacity)), fig.width=if (surging) 10 else 8, fig.height=if (surging) 8 else 6, fig.align=fig_center()}
-
-if(surging){
-  proj_surge <- params$o_list$r_maintain_scenario_surged_leg
-} else {
-  proj_surge <- NULL
-}
+```{r death forecast plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap=figRef(paste0("**Figure 4: Estimated daily deaths.** Projected deaths assuming the current level of interventions are maintained are shown in red (median and 95% quantile). Excess mortality is plotted in black. Includes a forecast of the next 28 days.")), fig.width=if (surging) 10 else 8, fig.height=if (surging) 8 else 6, fig.align=fig_center()}
 
 suppressWarnings(suppressMessages(
-    deaths_plot(proj = params$o_list$r_maintain_scenario_leg, proj_surge = proj_surge,
+    deaths_plot(proj = params$central, proj_surge = NULL,
                              forecast = 28, 
                        df_cases = df_cases, df_excess = df_excess %>% 
                   mutate(deaths = deaths/as.numeric(date_end - date_start)), date_0 = date_0, date = date)))
@@ -568,108 +483,99 @@ suppressWarnings(suppressMessages(
 
 `r pagebreak()`
 
-### Short-term Epidemic Scenarios
+### Short-term Epidemic Scenario
 
-**The following scenarios do not account for future VoC and assumes the current VoC (based on sequence data) remains dominant.**
+**The following scenario does not account for future VoC and assumes the current VoC (based on sequence data) remains dominant.**
 
-```{r, include=FALSE, echo=FALSE}
-rts <- map(split(rt_futures, rt_futures$scenario), 
-    ~paste0(signif(.x$med, 3), " (", 
-                      signif(.x$q_025, 3), ", ",
-                      signif(.x$q_975, 3), ")")
-)
-```
-
-
-We include short-term projections of healthcare demand and new infections under the following three scenarios:
-
-* **Scenario 1, Central:** $R_{t}$ will continue its median trend, reaching `r rts$central` by the end of the 28 day projection period. 
-* **Scenario 2, Optimistic:** The $R_{t}$ value will continue its $25\%$ quantile trend, reaching `r rts$optimistic`.
-Representing either the implementation of new interventions, scaling up of interventions, or a reduction in mixing.
-* **Scenario 3, Pessimistic:** The $R_{t}$ value will continue its $75\%$ quantile trend, reaching `r rts$pessimistic`.
-Representing either the relaxation of interventions, or an increase in mixing.
-
-These trends were calculated by looking at all 28 day changes in the fitted $R_t$ values and then calculating the relevant quantiles within each replicate.
+We include a short-term projections of healthcare demand, new infections, and detected infections given that the $R_t$ number does not change.
 
 We estimate that over the next 4 weeks demand for hospital beds will change from `r form(hosp_today)` patients requiring treatment with high-pressure oxygen at the current date to `r form(hosp_28)` hospital beds being required on `r base::format(date + 28, "%Y-%m-%d")` if no further interventions are introduced (Scenario 1).
 Similarly, we estimate that over the next 4 weeks demand for critical care (ICU) beds will change from `r form(icu_today)` patients requiring treatment with mechanical ventilation at the current date to `r form(icu_28)` by `r base::format(date + 28, "%Y-%m-%d")`.
 These projections are dependant on the chosen age-dependant hospitalisation rates (see [Methods](https://mrc-ide.github.io/global-lmic-reports/parameters.html)).
-**N.B. These scenarios are unlikely to show significant differences for the first week since there is a delay of approximately 10 days between infection and hospital admission. Consequently, the effectiveness of a change in policy is likely to be better captured by hospital admission data approximately 2 weeks after the policy change is implemented.**
+**N.B. This scenario is unlikely to show significant differences for the first week since there is a delay of approximately 10 days between infection and hospital admission. Consequently, the effectiveness of a change in policy is likely to be better captured by hospital admission data approximately 2 weeks after the policy change is implemented.**
+
+The impact of each scenario has a more immediate effect on the daily number of infections. The figure below shows the impact of each scenario on the estimated daily incidence of new infections. We estimate that if the underlying $R_t$ of the virus remains the same the daily number of infections will change from `r form(infs_today)` at the current date to `r form(infs_28)` by `r base::format(date + 28, "%Y-%m-%d")`. `r estimated_detected_txt`
 
 <br>
 
-```{r healthcare plots, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 5: Healthcare demands in the next 28 days.** Individuals needing an ICU bed are assumed to need mechanical ventilation. Projected demand for Scenario 1 (Central) are shown in green . Projections for Scenario 2 (Optimistic) are shown in blue. Projections for Scenario 3 (Pessimistic) are shown in red. Current date shown with dashed line."), fig.width=fig_height(8,10), fig.height=fig_height(3.5,4.5), fig.align=fig_center()}
+```{r healthcare plots, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 5: Scenario projection for the next 28 days.** Individuals needing an ICU bed are assumed to need mechanical ventilation. **"), fig.width=fig_height(8,10), fig.height=fig_height(8,10), fig.align=fig_center()}
 
-combined_projections <- c("r_central_scenario", "r_optimistic_scenario", "r_pessimistic_scenario")
-names(combined_projections) <- combined_projections
-combined_projections <- map_dfr(combined_projections,
-                                ~params$o_list[[.x]], .id = "Scenario")
+vars_to_plot <- c("infections", "hospital_demand", "ICU_demand")
+if(has_reported_case){
+  vars_to_plot <- c(vars_to_plot, "new_detected_Infections")
+  cases_milds <- cases_milds %>% 
+    mutate(
+      new_detected_Infections = new_detected_Mild + new_detected_Case
+    )
+}
+plotting_df <- cases_milds %>% 
+  left_join(
+    params$central %>% 
+      filter(compartment %in% c("infections", "hospital_demand", "ICU_demand")) %>% 
+      select(replicate, date, compartment, y) %>% 
+      pivot_wider(names_from = compartment, values_from = y),
+    by = c("replicate", "date")
+  ) %>% 
+  group_by(date) %>% 
+  summarise(
+    across(
+      all_of(vars_to_plot),
+      median,
+      .names = "{.col}/med"
+    ),
+    across(
+      all_of(vars_to_plot),
+      ~quantile(.x, 0.25),
+      .names = "{.col}/50_l"
+    ),
+    across(
+      all_of(vars_to_plot),
+      ~quantile(.x, 0.75),
+      .names = "{.col}/50_h"
+    ),
+    across(
+      all_of(vars_to_plot),
+      ~quantile(.x, 0.025),
+      .names = "{.col}/95_l"
+    ),
+    across(
+      all_of(vars_to_plot),
+      ~quantile(.x, 0.975),
+      .names = "{.col}/95_h"
+    )
+    ) %>% 
+  pivot_longer(!date, names_to = "temp", values_to = "value") %>% 
+  mutate(
+    variable = stringr::str_split(temp, "/", n = 2),
+    type = map_chr(variable, ~.x[[2]]),
+    variable = map_chr(variable, ~.x[[1]])
+  ) %>% 
+  select(!temp) %>% 
+  pivot_wider(names_from = type, values_from = value) %>% 
+  mutate(
+    variable = case_when(
+      variable == "infections" ~ "Infections",
+      variable == "hospital_demand" ~ "Hospital Bed Demand",
+      variable == "ICU_demand" ~ "ICU Demand",
+      variable == "new_detected_Infections" ~ "Estimated Detected Infections"
+    )
+  ) %>% 
+  rename(ddate = date) %>% 
+  filter(ddate > date - 10 & ddate <= date + 28)
 
-suppressWarnings(suppressMessages(gg_hosp <- healthcare_plot_contrast(
-  projs = combined_projections, what = "hospital_demand", date = date, forecast = 28
-)))
-suppressWarnings(suppressMessages(gg_icu <- healthcare_plot_contrast(
-  projs = combined_projections, what = "ICU_demand", date = date, forecast = 28
-)))
-
-leg <- suppressWarnings(suppressMessages(
-  cowplot::get_legend(gg_hosp + theme(legend.justification = c(0.5,1)))
-))
-bottom <- suppressWarnings(suppressMessages(
-  cowplot::plot_grid(gg_hosp + theme(legend.position = "none"), 
-                     gg_icu + theme(legend.position = "none"), ncol = 2)
-))
-suppressWarnings(suppressMessages(grid <- cowplot::plot_grid(leg,bottom,nrow=2,rel_heights = c(0.1,1))))
-suppressWarnings(suppressMessages(print(grid)))
-
+ggplot(plotting_df,
+       aes(x = ddate)) + 
+  #geom_ribbon(aes(ymin = `95_l`, ymax = `95_h`, fill = variable), alpha = 0.25, show.legend = FALSE) + 
+  geom_ribbon(aes(ymin = `50_l`, ymax = `50_h`, fill = variable), alpha = 0.25, show.legend = FALSE) +
+  geom_line(aes(y = med, colour = variable), show.legend = FALSE) + 
+  geom_vline(date = NULL, aes(xintercept = date), linetype = "dashed") +
+  facet_wrap(vars(variable), ncol = 1, scales = "free_y",
+             strip.position = "left") + 
+  ggpubr::theme_pubclean() + 
+  labs(x = "Date", y = "")
 ```
 
 <br>
-`r pagebreak()`
-
-The impact of each scenario has a more immediate effect on the daily number of infections. The figure below shows the impact of each scenario on the estimated daily incidence of new infections. If interventions are scaled up (Scenario 2), the daily number of infections will change from `r form(infs_today)` at the current date to `r form(infs_28_mit)` by `r base::format(date + 28, "%Y-%m-%d")`. Under the pessimistic scenario, we estimate the daily number of infections will change from `r form(infs_today)` at the current date to `r form(infs_28_rev)` by `r base::format(date + 28, "%Y-%m-%d")`.
-
-<br>
-
-```{r infections forecast plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap=figRef("**Figure 6: Daily number of infections estimated by fitting to deaths.** Projected infections for Scenario 1 (Central) are shown in green. Projections for Scenario 2 (Optimistic) are shown in blue. Projections for Scenario 3 (Pessimistic) are shown in red. Current date shown with dashed line."), fig.width=7, fig.height=fig_height(4,4.5), fig.align=fig_center()}
 
 
-suppressWarnings(suppressMessages(healthcare_plot_contrast(
-  projs = combined_projections, what = "infections", date = date, forecast = 28
-)))
 
-```
-
-### Legacy Short Term Scenarios
-
-Legacy scenarios with a flat $50\%$ increase/decrease to $R_t$ are presented here.
-
-```{r healthcare plots legacy, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 7: Healthcare demands in the next 28 days.** Individuals needing an ICU bed are assumed to need mechanical ventilation. Projected demand for Maintain (the epidemic continues to grow at the current rate) are shown in green. Projections for Migitation (a further 50% reduction in transmission) are shown in blue. Projections for Reverse (relaxing interventions by 50%) are shown in red. Current date shown with dashed line."), fig.width=fig_height(8,10), fig.height=fig_height(3.5,4.5), fig.align=fig_center()}
-
-combined_projections_leg <- c("r_maintain_scenario_leg", "r_mitigation_scenario_leg", "r_reverse_scenario_leg")
-names(combined_projections_leg) <- combined_projections_leg
-combined_projections_leg <- map_dfr(combined_projections_leg,
-                                ~params$o_list[[.x]], .id = "Scenario")
-
-suppressWarnings(suppressMessages(gg_hosp_leg <- healthcare_plot_contrast(
-  projs = combined_projections_leg, what = "hospital_demand", date = date, forecast = 28
-)))
-suppressWarnings(suppressMessages(gg_icu_leg <- healthcare_plot_contrast(
-  projs = combined_projections_leg, what = "ICU_demand", date = date, forecast = 28
-)))
-leg <- suppressWarnings(suppressMessages(
-  cowplot::get_legend(gg_hosp_leg + theme(legend.justification = c(0.5,1)))
-))
-bottom <- suppressWarnings(suppressMessages(
-  cowplot::plot_grid(gg_hosp_leg + theme(legend.position = "none"), 
-                     gg_icu_leg + theme(legend.position = "none"), ncol = 2)
-))
-suppressWarnings(suppressMessages(grid <- cowplot::plot_grid(leg,bottom,nrow=2,rel_heights = c(0.1,1))))
-suppressWarnings(suppressMessages(print(grid)))
-```
-
-```{r infections forecast plots legacy, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap=figRef("**Figure 8: Daily number of infections estimated by fitting to deaths.** Projected infections for Maintain (the epidemic continues to grow at the current rate) are shown in green. Projections for Mitigation (a further 50% reduction in transmission) are shown in blue. Projections for Reverse (relaxing interventions by 50%) are shown in red. Current date shown with dashed line."), fig.width=7, fig.height=fig_height(4,4.5), fig.align=fig_center()}
-suppressWarnings(suppressMessages(healthcare_plot_contrast(
-  projs = combined_projections_leg, what = "infections", date = date, forecast = 28
-)))
-```

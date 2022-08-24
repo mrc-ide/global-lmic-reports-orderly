@@ -7,7 +7,7 @@ vignette: >
   \usepackage[utf8]{inputenc}
 ---
 
-```{r setup, include=FALSE}
+```{r, setup, include=FALSE}
 knitr::opts_chunk$set(fig.width = 8, collapse = TRUE)
 knitr::opts_knit$set(root.dir = here::here())
 library(tidyverse)
@@ -73,7 +73,9 @@ what the `date` is that we are conducting model fits for, i.e. up to what date a
 we running.
 
 ```{r, eval = FALSE}
-date <- "2022-07-28"
+date <- "2022-08-08"
+
+glodide_loc <- "N:/lmic_fitting/glodide" ###Update if on a different drive!
 ```
 
 These arguments are then passed to our tasks:
@@ -113,8 +115,6 @@ submit these tasks.
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
 
 message("*** Creating country task bundles")
-
-glodide_loc <- "N:/lmic_fitting/glodide" ###Update if on a different drive!
 
 # main input parameters
 
@@ -347,5 +347,6 @@ We also need to update the streamlined version of the outputs.
 update_gh_esft(here::here("gh-pages"), here::here("gh-esft"))
 
 #requires git bash be on the path and that the working directory is set correctly
-shell(paste0("scripts/update_github_esft.sh", " ", date), intern = TRUE, wait = TRUE, shell = "bash")
+#shell(paste0("scripts/update_github_esft.sh", " ", date), intern = TRUE, wait = TRUE, shell = "bash")
+dput(paste0("scripts/update_github_esft.sh", " ", date))
 ```
