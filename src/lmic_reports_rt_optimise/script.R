@@ -417,9 +417,6 @@ if(sum(excess_deaths$deaths) > death_limit) {
       surging <- FALSE
     }
 
-    ggplot(cases_milds %>% filter(replicate == 1), aes(x = date, y = new_Case)) +
-      geom_line()
-
     #get new mild and cases
     #need to extract E2 and multiple the correct proportions
     cases_milds <- purrr::map_dfr(seq_along(forwards_projection$samples), function(replicate){
@@ -471,37 +468,19 @@ if(sum(excess_deaths$deaths) > death_limit) {
     reported_cases <- sum(cases$detected_infections) > 0
     if(reported_cases){
       #could split this further into ICU, HOSP, Mild
+      #should probably add tail cases fitting back into to get this closer
       l_post <- function(detected_infections, p_case_eff, p_mild, Cases, Mild){
-        lp <- 0 #for now
         p_case <- p_mild + (1 - p_mild) * p_case_eff
-        ll <- purrr::pmap_dbl(
-          list(
-            detected_infections = detected_infections, Mild = Mild, Cases = Cases
-          ), function(detected_infections, Mild, Cases, p_case, p_mild){
-
-            #for now limit
-            if(detected_infections > Mild + Cases){
-              detected_infections <- Mild + Cases
-            }
-            if(detected_infections > Cases) {
-              Cases_x <- seq.int(0, Cases)
-              Mild_x <- detected_infections - Cases_x
-            } else if(detected_infections > Mild) {
-              Mild_x <- seq.int(0, Mild)
-              Cases_x <- detected_infections - Mild_x
-            } else {
-              Mild_x <- seq.int(0, detected_infections)
-              Cases_x <- rev(Mild_x)
-            }
-            (dbinom(Mild_x, Mild, p_mild) * dbinom(Cases_x, Cases, p_case)) %>%
-              sum %>%
-              log
-          },
-          p_case = p_case, p_mild = p_mild
-        ) %>%
+        #prior that pcase is about 10x higher than pmild
+        lp <- dgamma(p_case/p_mild, shape = 100, rate = 10, log = TRUE)
+        detected_infections[detected_infections > Mild + Cases] <- (Mild + Cases)[detected_infections > Mild + Cases]
+        prop_mild <- Mild * p_mild /(Mild * p_mild + Cases * p_case) #expectation of this, since we're doing MLE doesn't matter
+        detected_mild <- (detected_infections*prop_mild) %>% round()
+        ll <- (dbinom(detected_mild, Mild, p_mild, log = TRUE) +
+          dbinom(detected_infections - detected_mild, Cases, p_case, log = TRUE)) %>%
           sum()
-        if(ll < -10^10){
-          ll <- -10^10
+        if(ll < -10^9){
+          ll <- -10^9
         }
         lp + ll
       }
@@ -515,17 +494,26 @@ if(sum(excess_deaths$deaths) > death_limit) {
           )
         ) %>%
         group_by(replicate) %>%
+        mutate(
+          initial_value = min(c(1, sum(detected_infections)/sum(new_Case + new_Mild))),
+        ) %>%
         summarise(
-          out = list(optim(c(0.01,0.01), function(x){
+          #non optimial, often barely moves from initial values when detection is very low
+          out = list(optim(c(initial_value, initial_value), function(x, detected_infections, new_Case, new_Mild, l_post){
             l_post(detected_infections, x[1], x[2], new_Case, new_Mild)
-          }, method = "L-BFGS-B", lower = c(0, 0), upper = c(1, 1),
-          control = list(fnscale = -1))$par)
+          }, method = "L-BFGS-B", lower = rep(10^-10, 2), upper = rep(0.9999999, 2),
+          control = list(fnscale = -1),#, lmm = 10, factr = 1e10, pgtol = 1e2),
+          detected_infections = detected_infections,
+          new_Case = new_Case, new_Mild = new_Mild, l_post = l_post)$par),
+          .groups = "drop",
+          initial_value = initial_value[1]
         ) %>%
         transmute(
           replicate = replicate,
           p_mild = purrr::map_dbl(out, ~.x[2]),
           p_case = p_mild + (1 - p_mild) * purrr::map_dbl(out, ~.x[1])
         )
+
       cases_milds <- cases_milds %>%
         left_join(cases, by = c("date")) %>%
         left_join(p_detection, by = "replicate") %>%
@@ -533,6 +521,22 @@ if(sum(excess_deaths$deaths) > death_limit) {
           new_detected_Case = new_Case * p_case,
           new_detected_Mild = new_Mild * p_mild
         )
+
+      # temp <- cases_milds %>%
+      #   filter(!projection) %>%
+      #   group_by(date) %>%
+      #   summarise(
+      #     est_detected_025 = quantile(new_detected_Case + new_detected_Mild, c(0.025)),
+      #     est_detected_50 = quantile(new_detected_Case + new_detected_Mild, c(0.5)),
+      #     est_detected_975 = quantile(new_detected_Case + new_detected_Mild, c(0.975))
+      #   )
+      # ggplot() +
+      #   geom_line(data = cases_milds %>% filter(!projection & replicate == 1),
+      #             aes(x = date, y = detected_infections), linetype = "dashed") +
+      #   geom_ribbon(data = temp, aes(x = date, ymin = est_detected_025 , ymax = est_detected_975),
+      #               alpha = 0.2) +
+      #   geom_line(data = temp, aes(x = date, y = est_detected_50))
+
       cases_milds <-
         cases_milds %>%
         select(!detected_infections)
@@ -569,6 +573,7 @@ if(sum(excess_deaths$deaths) > death_limit) {
                                     "df_excess" = df_excess_deaths,
                                     "df_cases" = df_cases,
                                     "date_0" = start_date,
+                                    "date" = date,
                                     "country" = country,
                                     "surging" = surging,
                                     "rt" = rtp2,

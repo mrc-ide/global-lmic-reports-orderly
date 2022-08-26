@@ -31,6 +31,7 @@ params:
    df_excess: NA
    df_cases: NA
    date_0: NA
+   date: NA
    country: NA
    surging: FALSE
    rt: NA
@@ -87,7 +88,7 @@ return false;
 
 
 ```{r, echo = FALSE, message=FALSE, warning=FALSE}
-date <- as.Date(date)
+date <- as.Date(params$date)
 
 # grab inputs
 excess <- params$excess
@@ -100,13 +101,6 @@ rt <- params$rt
 cases_milds <- params$cases_milds
 has_reported_case <- "new_detected_Mild" %in% names(cases_milds)
 if(has_reported_case){
-  proportion_detected <- base::format(signif(quantile(unique(cases_milds$p_detected), c(0.025, 0.5, 0.975)) * 100, 3),
-                                      trim = TRUE, drop0trailing = TRUE)
-  proportion_detected_txt <- paste0(
-    "Assuming a uniform level of detection across all infections, our modelling estimates that ",
-    proportion_detected[2], "% (", proportion_detected[1], ", ", proportion_detected[3], " 95% CrI) of infections are detected over the 3 month period before ", date, "."
-  )
-  
   projection_detected <- cases_milds %>% 
     rename(ddate = date) %>% 
     filter(projection & ddate <= date + 28) %>%
@@ -137,6 +131,14 @@ if(has_reported_case){
   print_cr <- function(m, l, h){
     paste0(m, " (", l, ", ", h, " 95% CrI)")
   }
+  
+  proportion_detected_txt <- paste0(
+    "Looking at the last 3 months of reported COVID-19 infections we estimate that ", 
+    print_cr(chance_of_detection$p_case[2], chance_of_detection$p_case[1], chance_of_detection$p_case[3]), 
+    "% of hospitalised cases are detected and ",
+    print_cr(chance_of_detection$p_mild[2], chance_of_detection$p_mild[1], chance_of_detection$p_mild[3]),
+    "% of the mild for asymptomatic."
+  )
   
   estimated_detected_txt <- paste0(
     "Looking at the last 3 months of reported COVID-19 infections we estimate that ", 
@@ -498,7 +500,7 @@ The impact of each scenario has a more immediate effect on the daily number of i
 
 <br>
 
-```{r healthcare plots, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 5: Scenario projection for the next 28 days.** Individuals needing an ICU bed are assumed to need mechanical ventilation. **"), fig.width=fig_height(8,10), fig.height=fig_height(8,10), fig.align=fig_center()}
+```{r healthcare plots, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 5: Scenario projection for the next 28 days.** Individuals needing an ICU bed are assumed to need mechanical ventilation. **"), fig.width=fig_height(8,10), fig.height=fig_height(10,12), fig.align=fig_center()}
 
 vars_to_plot <- c("infections", "hospital_demand", "ICU_demand")
 if(has_reported_case){
@@ -553,12 +555,20 @@ plotting_df <- cases_milds %>%
   select(!temp) %>% 
   pivot_wider(names_from = type, values_from = value) %>% 
   mutate(
-    variable = case_when(
-      variable == "infections" ~ "Infections",
-      variable == "hospital_demand" ~ "Hospital Bed Demand",
-      variable == "ICU_demand" ~ "ICU Demand",
-      variable == "new_detected_Infections" ~ "Estimated Detected Infections"
-    )
+    # variable = case_when(
+    #   variable == "infections" ~ "Infections",
+    #   variable == "hospital_demand" ~ "Hospital Bed Demand",
+    #   variable == "ICU_demand" ~ "ICU Demand",
+    #   variable == "new_detected_Infections" ~ "Estimated Detected Infections"
+    # ),
+    variable = factor(case_when(
+      variable == "infections" ~ 3,
+      variable == "hospital_demand" ~ 1,
+      variable == "ICU_demand" ~ 2,
+      variable == "new_detected_Infections" ~ 4
+    ), levels = seq_len(4), labels = c(
+      "Hospital Bed Demand", "ICU Demand", "Infections", "Estimated Detected Infections"
+    ))
   ) %>% 
   rename(ddate = date) %>% 
   filter(ddate > date - 10 & ddate <= date + 28)
