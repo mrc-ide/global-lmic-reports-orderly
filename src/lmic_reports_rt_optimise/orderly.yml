@@ -83,8 +83,10 @@ artefacts:
         - index.pdf
         - index.md
         - summary_df.rds
-        - grid_out.rds
-        - fitting.pdf
+        - reported_out.Rds
+        - reported_fitting.pdf
+        - excess_out.Rds
+        - excess_fitting.pdf
         - projections.csv
 
 # An optional name to describe the report in more detail than its

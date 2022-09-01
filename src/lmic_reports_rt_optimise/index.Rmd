@@ -26,18 +26,19 @@ output:
     highlight: tango
     reference_docx: template.docx
 params:
-   central: NA
-   excess: FALSE
+   list_projections: NA
+   date_range: NA
+   list_cases_milds: NA
+   list_rtp2: NA
+   fit_excess: NA
+   fit_reported: NA
    df_excess: NA
    df_cases: NA
    date_0: NA
    date: NA
    country: NA
-   surging: FALSE
-   rt: NA
-   variants: FALSE
-   date_range: NA
-   cases_milds: NA
+   surging: NA
+   variants: NA
 ---
 
 ```{r rm_title_page, echo=FALSE}
@@ -87,21 +88,72 @@ return false;
 ```
 
 
-```{r, echo = FALSE, message=FALSE, warning=FALSE}
+```{r parameter setup, echo = FALSE, message=FALSE, warning=FALSE}
 date <- as.Date(params$date)
 
 # grab inputs
-excess <- params$excess
+fit_excess <- params$fit_excess
+fit_reported <- params$fit_reported
 df_cases <- params$df_cases
 df_excess <- params$df_excess
 country <- params$country
 date_0 <- params$date_0
 surging <- params$surging
-rt <- params$rt
-cases_milds <- params$cases_milds
-has_reported_case <- "new_detected_Mild" %in% names(cases_milds)
+has_reported_case <- "new_detected_Mild" %in%
+  (map(params$list_cases_milds, ~names(.x)) %>% unlist)
+
+#text for fitting
+if(fit_excess & fit_reported){
+  fitting_txt_1 <- "This report presents two analyses. One using reported COVID-19 related deaths another using positive excess-mortality (December 2019 onwards) as the underlying number of COVID-19 deaths."
+  fitting_txt_2 <- "Not all countries are able to provide timely estimates of excess mortality, so estimates from the [The Economist Excess Deaths Model](https://github.com/TheEconomist/covid-19-the-economist-global-excess-deaths-model) are harnessed to fill in these gaps."
+} else if(fit_excess) {
+  fitting_txt_1 <- "This report presents an analysis using positive excess-mortality (December 2019 onwards) as the underlying number of COVID-19 deaths."
+  fitting_txt_2 <- "Not all countries are able to provide timely estimates of excess mortality, so estimates from the [The Economist Excess Deaths Model](https://github.com/TheEconomist/covid-19-the-economist-global-excess-deaths-model) are harnessed to fill in these gaps."
+} else if(fit_reported) {
+  fitting_txt_1 <- "This report presents an analysis using reported COVID-19 related deaths as the underlying number of COVID-19 deaths."
+  fitting_txt_2 <- ""
+}
+
+form <- function(x) {
+  if(length(x) == 1){
+    paste0(base::format(round(x[[1]][[1]]), big.mark=","),
+         " (95% CI: ", base::format(round(x[[1]][[2]]), big.mark=","),
+         "-", base::format(round(x[[1]][[3]]), big.mark=","),")")
+  } else {
+    paste0(
+      base::format(round(x$excess[[1]]), big.mark=","),
+      " (95% CI: ", base::format(round(x$excess[[2]]), big.mark=","),
+      "-", base::format(round(x$excess[[3]]), big.mark=","),")",
+      " (Excess Mortality) or ",
+      base::format(round(x$reported[[1]]), big.mark=","),
+      " (95% CI: ", base::format(round(x$reported[[2]]), big.mark=","),
+      "-", base::format(round(x$reported[[3]]), big.mark=","),")",
+      " (Reported Deaths)"
+    )
+  }
+}
+
+form_percentage <- function(x, digits = 4) {
+  if(length(x) == 1){
+    paste0(base::format(signif(x[[1]][[1]], digits), big.mark=","),
+         " (95% CI: ", base::format(signif(x[[1]][[2]], digits), big.mark=","),
+         "-", base::format(signif(x[[1]][[3]], digits), big.mark=","),")")
+  } else {
+    paste0(
+      base::format(signif(x$excess[[1]], digits), big.mark=","),
+      " (95% CI: ", base::format(signif(x$excess[[2]], digits), big.mark=","),
+      "-", base::format(signif(x$excess[[3]], digits), big.mark=","),")",
+      " (Excess Mortality) or ",
+      base::format(signif(x$reported[[1]], digits), big.mark=","),
+      " (95% CI: ", base::format(signif(x$reported[[2]], digits), big.mark=","),
+      "-", base::format(signif(x$reported[[3]], digits), big.mark=","),")",
+      " (Reported Deaths)"
+    )
+  }
+}
+
 if(has_reported_case){
-  projection_detected <- cases_milds %>% 
+  projection_detected <- map(params$list_cases_milds, ~.x %>% 
     rename(ddate = date) %>% 
     filter(projection & ddate <= date + 28) %>%
     group_by(replicate) %>% 
@@ -109,11 +161,11 @@ if(has_reported_case){
       detected_case = sum(new_detected_Case) + sum(new_detected_Mild)
     ) %>% 
     pull(detected_case) %>% 
-    quantile(c(0.025, 0.5, 0.975)) %>% 
-    signif(3) %>% 
-    base::format(trim = TRUE, drop0trailing = TRUE)
+    quantile(c(0.5, 0.025, 0.975))
+  ) %>% 
+    form()
   
-  chance_of_detection <- cases_milds %>% 
+  chance_of_detection <- map(params$list_cases_milds, ~.x %>% 
     group_by(replicate) %>% 
     summarise(
       p_mild = p_mild[1],
@@ -123,30 +175,29 @@ if(has_reported_case){
     summarise(
       across(
         c(p_mild, p_case),
-        ~quantile(.x * 100, c(0.025, 0.5, 0.975)) %>% 
-          signif(3) %>% 
-          base::format(trim = TRUE, drop0trailing = TRUE)
+        ~quantile(.x * 100, c(0.5, 0.025, 0.975))
       )
-    )
-  print_cr <- function(m, l, h){
-    paste0(m, " (", l, ", ", h, " 95% CrI)")
-  }
+    ))
+  cod_p_case <- map(chance_of_detection, ~.x$p_case) %>% 
+    form_percentage(4)
+  cod_p_mild <- map(chance_of_detection, ~.x$p_mild) %>% 
+    form_percentage(4)
   
   proportion_detected_txt <- paste0(
     "Looking at the last 3 months of reported COVID-19 infections we estimate that ", 
-    print_cr(chance_of_detection$p_case[2], chance_of_detection$p_case[1], chance_of_detection$p_case[3]), 
+    cod_p_case, 
     "% of hospitalised cases are detected and ",
-    print_cr(chance_of_detection$p_mild[2], chance_of_detection$p_mild[1], chance_of_detection$p_mild[3]),
+    cod_p_mild,
     "% of the mild for asymptomatic."
   )
   
   estimated_detected_txt <- paste0(
     "Looking at the last 3 months of reported COVID-19 infections we estimate that ", 
-    print_cr(chance_of_detection$p_case[2], chance_of_detection$p_case[1], chance_of_detection$p_case[3]), 
+    cod_p_case, 
     "% of hospitalised cases are detected and ",
-    print_cr(chance_of_detection$p_mild[2], chance_of_detection$p_mild[1], chance_of_detection$p_mild[3]),
+    cod_p_mild,
     "% of the mild for asymptomatic. With this we estimate that there will be ", 
-    projection_detected[2], " (", projection_detected[1], ", ", projection_detected[3], " 95% CrI) new detected infections over the next 28 days."
+    projection_detected, " new detected infections over the next 28 days."
   )
 } else {
   proportion_detected_txt <- ""
@@ -207,19 +258,7 @@ pdf_line_break <- function() {
     return('')
 }
 
-if(excess & sum(df_excess$deaths) <= 10) {
-  show_sentence <- paste("**N.B. ", country, 
-                          " is not shown in the following plot as only ", 
-                           sum(df_excess$deaths),
-                          " deaths have been reported to date**")
-} else if(!excess & sum(df_cases$deaths) <= 10) {
-  show_sentence <- paste("**N.B. ", country, 
-                          " is not shown in the following plot as only ", 
-                           sum(df_cases$deaths),
-                          " deaths have been reported to date**")
-} else {
-  show_sentence <-  ""
-}
+show_sentence <-  ""
 
 if(any(df_cases$cases < 0)) {
   show_cases_sentence <- paste("**N.B. ", country, 
@@ -235,11 +274,6 @@ if(any(df_cases$cases < 0)) {
 ```{r ecdc prep, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE}
 
 ## Summaries
-form <- function(x) {
-  paste0(base::format(round(x[[1]]), big.mark=","),
-         " (95% CI: ", base::format(round(x[[2]]), big.mark=","),
-         "-", base::format(round(x[[3]]), big.mark=","),")")
-}
 
 form_round_dig <- function(x, dig = 2) {
   paste0(base::format(round(x[[1]], dig), big.mark=","),
@@ -264,72 +298,95 @@ time_period <- 28
 past_dates <- seq(date - time_period, date, by = 1)[-1]
 projection_end_date <- date + time_period
 
-infections <- params$central %>% 
+infections <- map(params$list_projections, ~.x %>% 
   filter(compartment == "infections")
-infections_28 <- infections %>% 
+)
+infections_28 <- map(infections, ~.x %>% 
   filter(date %in% past_dates)
+)
 
-infs <- group_by(infections_28, replicate) %>% 
+infs <- map(infections_28, ~group_by(.x, replicate) %>% 
   summarise(tot = sum(y, na.rm = TRUE)) %>% 
   summarise(inf_tot = mean(tot, na.rm = TRUE), 
             inf_min = t_test_safe(tot)$conf.int[1],
             inf_max = t_test_safe(tot)$conf.int[2])
+)
 
-infs_today <- group_by(infections[infections$date == date,], replicate) %>% 
+infs_today <- map(infections, ~group_by(.x[.x$date == date,], replicate) %>% 
   summarise(tot = sum(y, na.rm = TRUE)) %>% 
   summarise(i_tot = mean(tot, na.rm = TRUE), 
             i_min = t_test_safe(tot)$conf.int[1],
             i_max = t_test_safe(tot)$conf.int[2])
+)
 
-infs_28 <- group_by(infections[infections$date==projection_end_date,], replicate) %>% 
+infs_28 <- map(infections, ~group_by(.x[.x$date==projection_end_date,], replicate) %>% 
   summarise(tot = sum(y, na.rm = TRUE)) %>% 
   summarise(i_tot = mean(tot, na.rm = TRUE), 
             i_min = t_test_safe(tot)$conf.int[1],
             i_max = t_test_safe(tot)$conf.int[2])
+)
 
-hospital <- params$central %>% 
+hospital <- map(params$list_projections, ~.x %>% 
   filter(compartment == "hospital_demand")
+)
 
-hosp_today <- group_by(hospital[hospital$date == date,], replicate) %>% 
+hosp_today <- map(hospital, ~group_by(.x[.x$date == date,], replicate) %>% 
   summarise(tot = sum(y, na.rm = TRUE)) %>% 
   summarise(i_tot = mean(tot, na.rm = TRUE), 
             i_min = t_test_safe(tot)$conf.int[1],
             i_max = t_test_safe(tot)$conf.int[2])
+)
 
-hosp_28 <- group_by(hospital[hospital$date==projection_end_date,], replicate) %>% 
+hosp_28 <- map(hospital, ~group_by(.x[.x$date==projection_end_date,], replicate) %>% 
   summarise(tot = sum(y, na.rm = TRUE)) %>% 
   summarise(i_tot = mean(tot, na.rm = TRUE), 
             i_min = t_test_safe(tot)$conf.int[1],
             i_max = t_test_safe(tot)$conf.int[2])
+)
 
-icu <- params$central %>% 
+icu <- map(params$list_projections, ~.x %>% 
   filter(compartment == "ICU_demand")
-icu_today <- group_by(icu[icu$date == date,], replicate) %>% 
+)
+
+icu_today <- map(icu, ~group_by(.x[.x$date == date,], replicate) %>% 
   summarise(tot = sum(y, na.rm = TRUE)) %>% 
   summarise(i_tot = mean(tot, na.rm = TRUE), 
             i_min = t_test_safe(tot)$conf.int[1],
             i_max = t_test_safe(tot)$conf.int[2])
+)
 
-icu_28 <- group_by(icu[icu$date==projection_end_date,], replicate) %>% 
+icu_28 <- map(icu, ~group_by(.x[.x$date==projection_end_date,], replicate) %>% 
   summarise(tot = sum(y, na.rm = TRUE)) %>% 
   summarise(i_tot = mean(tot, na.rm = TRUE), 
             i_min = t_test_safe(tot)$conf.int[1],
             i_max = t_test_safe(tot)$conf.int[2])
+)
 
-deaths <- params$central %>% 
+deaths <- map(params$list_projections, ~.x %>% 
   filter(compartment == "deaths")
-deaths_28 <- group_by(deaths[deaths$date==projection_end_date,], replicate) %>% 
+)
+deaths_28 <- map(deaths, ~group_by(.x[.x$date==projection_end_date,], replicate) %>% 
   summarise(tot = sum(y, na.rm = TRUE)) %>% 
   summarise(i_tot = mean(tot, na.rm = TRUE), 
             i_min = t_test_safe(tot)$conf.int[1],
             i_max = t_test_safe(tot)$conf.int[2])
+)
 
-summary_number_df <- data.frame(variable = c("est_infections","report_infections",
+if(fit_excess){
+  summary_number_df <- data.frame(variable = c("est_infections","report_infections",
                                              "report_deaths", "hospital_28", "icu_28"),
-                                value = c(infs[[1]], sum(df_cases$cases), sum(data$deaths),
-                                          hosp_28[[1]], icu_28[[1]]),
+                                value = c(infs$excess[[1]], sum(df_cases$cases), sum(df_excess$deaths),
+                                          hosp_28$excess[[1]], icu_28$excess[[1]]),
                                 country = country,
                                 continent = countrycode::countrycode(country, origin = 'country.name', destination = 'continent'))
+} else {
+  summary_number_df <- data.frame(variable = c("est_infections","report_infections",
+                                             "report_deaths", "hospital_28", "icu_28"),
+                                value = c(infs$reported[[1]], sum(df_cases$cases), sum(df_cases$deaths),
+                                          hosp_28$reported[[1]], icu_28$reported[[1]]),
+                                country = country,
+                                continent = countrycode::countrycode(country, origin = 'country.name', destination = 'continent'))
+}
 saveRDS(summary_number_df, "summary_df.rds")
 
 ```
@@ -379,11 +436,10 @@ if (iso3c == "BRA") {
 
 #### **[Download the report for `r country`, `r base::format(date, "%Y-%m-%d")` here](`r url`).**
 
-
-This report uses excess mortality data for the period of the COVID-19 epidemic (December 2019 onwards).
+`r fitting_txt_1`
 These numbers are calculated by comparing current mortality to historic trends.
 These data are then used to back-calculate an ‘inferred number of COVID-19 infections’ using mathematical modelling techniques (see [Methods](https://mrc-ide.github.io/global-lmic-reports/parameters.html) for further details) to estimate the number of people that have been infected and to make short-term projections for future healthcare needs.
-Not all countries are able to provide timely estimates of excess mortality, so estimates from the [The Economist Excess Deaths Model](https://github.com/TheEconomist/covid-19-the-economist-global-excess-deaths-model) are harnessed to fill in these gaps.
+`r fitting_txt_2`
 Data on reported deaths and cases are from the COVID-19 Data Repository by the Center for Systems Science and Engineering (CSSE) at Johns Hopkins University.
 These are updated daily and whilst there may be a short delay, they are generally consistent with Ministry reports.
 
@@ -391,9 +447,9 @@ These are updated daily and whilst there may be a short delay, they are generall
 
 ### Epidemiological Situation
 
-| **Total Reported Cases** | **Total Reported Deaths** | **Total Estimated Excess Mortality** | **Estimated $R_{eff}$** |
-| --- | --- | ---- | --- |
-| `r base::format(sum(df_cases$cases), big.mark=",")` | `r base::format(sum(df_cases$deaths), big.mark=",")`|`r base::format(sum(df_excess$deaths), big.mark=",")`| `r form_round_dig(rt$rts[nrow(rt$rts),c("Reff", "Reff_min", "Reff_max")])` |
+| **Total Reported Cases** | **Total Reported Deaths** | **Total Estimated Excess Mortality** |
+| --- | --- | ---- |
+| `r base::format(sum(df_cases$cases), big.mark=",")` | `r base::format(sum(df_cases$deaths), big.mark=",")`|`r base::format(sum(df_excess$deaths), big.mark=",")`|
 
 ### Dominant Variants of Concern
 
@@ -416,9 +472,19 @@ The figure below shows the cumulative reported deaths as a function of the time 
 
 <br>
 
-```{r fig1, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 1: Cumulative Deaths since 10 deaths.** Country not shown if fewer than 10 deaths."), fig.height=fig_height(4.25,6), fig.width=fig_height(8,8), fig.align=fig_center()}
+```{r fig1, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 1: Cumulative Deaths since 10 deaths.** Country not shown if fewer than 10 deaths."), fig.height=fig_height(4.25 * sum(c(fit_excess, fit_reported)),6 * sum(c(fit_excess, fit_reported))), fig.width=fig_height(8,8), fig.align=fig_center()}
 
-suppressWarnings(suppressMessages(print(cumulative_deaths_plot(country = country, excess = excess))))
+if(fit_excess & fit_reported){
+  print(ggpubr::ggarrange(
+    suppressWarnings(suppressMessages((cumulative_deaths_plot(country = country, excess = TRUE)))),
+    suppressWarnings(suppressMessages((cumulative_deaths_plot(country = country, excess = FALSE)))),
+    nrow = 2, common.legend = TRUE
+  ))
+} else if (fit_excess){
+  suppressWarnings(suppressMessages(print(cumulative_deaths_plot(country = country, excess = TRUE))))
+} else if (fit_reported){
+  suppressWarnings(suppressMessages(print(cumulative_deaths_plot(country = country, excess = FALSE))))
+}
 
 ```
 
@@ -427,6 +493,26 @@ suppressWarnings(suppressMessages(print(cumulative_deaths_plot(country = country
 <br>
 
 ### COVID-19 Transmission Modelling
+
+```{r infs text, echo = FALSE, collapse=TRUE, warning=FALSE}
+if (surging) {
+  show_capacity_sentence <- paste(
+    "**N.B.", country,
+    "is forecast to be close to or surpassing our best estimates for healthcare",
+    "capacity in the next 28 days.** Estimates of deaths in the next 28 days may be", 
+    "inaccurate due to our working assumptions for mortality in individuals who", 
+    "do not receive appropriate treatment. [See our methods for more", 
+    "information.](https://mrc-ide.github.io/global-lmic-reports/parameters.html)")
+  fig_cap_capacity <- paste(
+    "The forecasted deaths in blue assumes healthcare capacity has been surged",
+    "to ensure sufficient supply of ICU and hospital beds. The red curve assumes",
+    "no surging in healthcare capacity and subsequently projects increased deaths.")
+} else  {
+  show_capacity_sentence <-  paste("")
+  fig_cap_capacity <- ""
+}
+```
+
 
 The figure below shows the estimated number of people infected over the past 4 weeks.
 The bar charts show, for comparison, the number of reported cases.
@@ -437,9 +523,21 @@ Consequently, the estimated infections are likely to be significantly higher tha
 
 <br>
 
-```{r case plot, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE,  fig.cap=figRef("**Figure 2: Daily number of infections estimated by fitting to the current total of deaths.** Reported cases are shown in red. Model estimated infections are shown in blue (dark blue 50% interquartile range, light blue 95% quantile). The dashed line shows the current day."), fig.width=10, fig.height=fig_height(5.5,5.5), fig.align=fig_center()}
+```{r case plot, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE,  fig.cap=figRef("**Figure 2: Daily number of infections estimated by fitting to the current total of deaths.** Reported cases are shown in red. Model estimated infections are shown in blue (dark blue 50% interquartile range, light blue 95% quantile). The dashed line shows the current day."), fig.width=10, fig.height=fig_height(5.5 * sum(c(fit_excess, fit_reported))), fig.align=fig_center()}
 
-suppressWarnings(suppressMessages(print(cases_plot(params$central, data = df_cases, date = date, date_0 = date_0))))
+plotlist <- map(params$list_projections, ~(cases_plot(.x, data = df_cases, date = date, date_0 = date_0)))
+plotlist[-1] <- map(plotlist[-1], ~.x + labs(title = ""))
+if(fit_excess & fit_reported){
+  plotlist$excess <- plotlist$excess + labs(subtitle = "Excess Mortality")
+  plotlist$reported <- plotlist$reported + labs(subtitle = "Reported Deaths")
+}
+suppressWarnings(
+  suppressMessages(
+    ggpubr::ggarrange(
+      plotlist = plotlist, ncol = 1, common.legend = TRUE
+    )
+  )
+)
 
 ```
 
@@ -456,10 +554,16 @@ By fitting our model to excess mortality we aim to account for under-ascertainme
 
 <br>
 
-```{r fig0, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 3: Time-varying effective reproduction number, $R_{eff}$.** $R_{eff}$ (**green**) is the average number of secondary infections caused by a single infected person at time equal to $t$. A horizonatal dashed line is shown at $R_{eff}$ = 1. $R_{eff}$ < 1 indicates a slowing epidemic in which new infections are not increasing. $R_{eff}$ > 1 indicates a growing epidemic in which new infections are increasing over time. Dark green shows the 50% CI and light green shows the 95% CI"), fig.height=fig_height(3.5,5), fig.width=fig_height(6,10), fig.align=fig_center()}
+```{r fig0, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 3: Time-varying effective reproduction number, $R_{eff}$.** $R_{eff}$ (**green**) is the average number of secondary infections caused by a single infected person at time equal to $t$. A horizonatal dashed line is shown at $R_{eff}$ = 1. $R_{eff}$ < 1 indicates a slowing epidemic in which new infections are not increasing. $R_{eff}$ > 1 indicates a growing epidemic in which new infections are increasing over time. Dark green shows the 50% CI and light green shows the 95% CI"), fig.height=fig_height(3.5* sum(c(fit_excess, fit_reported)),5* sum(c(fit_excess, fit_reported))), fig.width=fig_height(6,10), fig.align=fig_center()}
 
-suppressWarnings(suppressMessages(print(rt$plot)))
-
+plotlist <- map(params$list_rtp2, ~.x$plot)
+if(fit_excess & fit_reported){
+  plotlist$excess <- plotlist$excess + labs(subtitle = "Excess Mortality")
+  plotlist$reported <- plotlist$reported + labs(subtitle = "Reported Deaths")
+}
+suppressWarnings(suppressMessages(print(
+  ggpubr::ggarrange(plotlist = plotlist, ncol = 1)
+)))
 ```
 
 <br>
@@ -470,14 +574,41 @@ Using the model fit, we can forecast the expected trajectory for cumulative deat
 
 <br>
 
-```{r death forecast plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap=figRef(paste0("**Figure 4: Estimated daily deaths.** Projected deaths assuming the current level of interventions are maintained are shown in red (median and 95% quantile). Excess mortality is plotted in black. Includes a forecast of the next 28 days.")), fig.width=if (surging) 10 else 8, fig.height=if (surging) 8 else 6, fig.align=fig_center()}
+```{r death forecast plots, echo = FALSE, collapse=TRUE, warning=FALSE, message=FALSE, fig.cap=figRef(paste0("**Figure 4: Estimated daily deaths.** Projected deaths assuming the current level of interventions are maintained are shown in red (median and 95% quantile). Excess mortality is plotted in black. Includes a forecast of the next 28 days.")), fig.width=if (surging) 10 else 8, fig.height=if (surging) 8* sum(c(fit_excess, fit_reported)) else 6* sum(c(fit_excess, fit_reported)), fig.align=fig_center()}
+plotlist <- list()
+if(fit_excess){
+  df_excess <- mutate(df_excess, deaths = deaths/as.numeric(date_end - date_start))
+  plotlist$excess <- 
+    suppressWarnings(suppressMessages(
+      deaths_plot(
+        proj = params$list_projections$excess, proj_surge = NULL, forecast = 28, 
+        df_cases = df_cases, df_excess = df_excess, date_0 = date_0, date = date
+      )
+    ))
+  if(fit_reported){
+    plotlist$excess <- plotlist$excess + 
+      labs(subtitle = "Excess Mortality")
+  }
+}
+if(fit_reported){
+  df_cases_format <- df_cases %>% 
+    transmute(iso = iso3c, date_start = date - 1, date_end = date, deaths = deaths)
+  plotlist$reported <- 
+    suppressWarnings(suppressMessages(
+      deaths_plot(
+        proj = params$list_projections$reported, proj_surge = NULL, forecast = 28, 
+        df_cases = df_cases, df_excess = df_cases_format, date_0 = date_0, date = date
+      )
+    ))
+  if(fit_excess){
+    plotlist$reported <- plotlist$reported + 
+      labs(subtitle = "Reported Deaths", title = "")
+  }
+}
 
 suppressWarnings(suppressMessages(
-    deaths_plot(proj = params$central, proj_surge = NULL,
-                             forecast = 28, 
-                       df_cases = df_cases, df_excess = df_excess %>% 
-                  mutate(deaths = deaths/as.numeric(date_end - date_start)), date_0 = date_0, date = date)))
-
+  print(ggpubr::ggarrange(plotlist = plotlist, ncol = 1))
+))
 
 ```
 
@@ -500,19 +631,20 @@ The impact of each scenario has a more immediate effect on the daily number of i
 
 <br>
 
-```{r healthcare plots, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 5: Scenario projection for the next 28 days.** Individuals needing an ICU bed are assumed to need mechanical ventilation. **"), fig.width=fig_height(8,10), fig.height=fig_height(10,12), fig.align=fig_center()}
+```{r healthcare plots, echo = FALSE, collapse=TRUE, message = FALSE, warning = FALSE, fig.cap=figRef("**Figure 5: Scenario projection for the next 28 days.** Individuals needing an ICU bed are assumed to need mechanical ventilation. **"), fig.width=fig_height(8,10), fig.height=fig_height(10* sum(c(fit_excess, fit_reported)),12* sum(c(fit_excess, fit_reported))), fig.align=fig_center()}
 
 vars_to_plot <- c("infections", "hospital_demand", "ICU_demand")
 if(has_reported_case){
   vars_to_plot <- c(vars_to_plot, "new_detected_Infections")
-  cases_milds <- cases_milds %>% 
+  cases_milds <- map(params$list_cases_milds, ~.x %>% 
     mutate(
       new_detected_Infections = new_detected_Mild + new_detected_Case
     )
+  )
 }
-plotting_df <- cases_milds %>% 
+plotting_df <- map(seq_along(cases_milds), ~cases_milds[[.x]] %>% 
   left_join(
-    params$central %>% 
+    params$list_projections[[.x]] %>% 
       filter(compartment %in% c("infections", "hospital_demand", "ICU_demand")) %>% 
       select(replicate, date, compartment, y) %>% 
       pivot_wider(names_from = compartment, values_from = y),
@@ -555,12 +687,6 @@ plotting_df <- cases_milds %>%
   select(!temp) %>% 
   pivot_wider(names_from = type, values_from = value) %>% 
   mutate(
-    # variable = case_when(
-    #   variable == "infections" ~ "Infections",
-    #   variable == "hospital_demand" ~ "Hospital Bed Demand",
-    #   variable == "ICU_demand" ~ "ICU Demand",
-    #   variable == "new_detected_Infections" ~ "Estimated Detected Infections"
-    # ),
     variable = factor(case_when(
       variable == "infections" ~ 3,
       variable == "hospital_demand" ~ 1,
@@ -572,17 +698,30 @@ plotting_df <- cases_milds %>%
   ) %>% 
   rename(ddate = date) %>% 
   filter(ddate > date - 10 & ddate <= date + 28)
-
-ggplot(plotting_df,
+)
+names(plotting_df) <- names(cases_milds)
+plotlist <- map(plotting_df, ~
+  ggplot(.x,
        aes(x = ddate)) + 
   #geom_ribbon(aes(ymin = `95_l`, ymax = `95_h`, fill = variable), alpha = 0.25, show.legend = FALSE) + 
   geom_ribbon(aes(ymin = `50_l`, ymax = `50_h`, fill = variable), alpha = 0.25, show.legend = FALSE) +
   geom_line(aes(y = med, colour = variable), show.legend = FALSE) + 
-  geom_vline(date = NULL, aes(xintercept = date), linetype = "dashed") +
+  geom_vline(data = NULL, aes(xintercept = date), linetype = "dashed") +
+  ylim(c(0, NA)) +
   facet_wrap(vars(variable), ncol = 1, scales = "free_y",
              strip.position = "left") + 
   ggpubr::theme_pubclean() + 
-  labs(x = "Date", y = "")
+  labs(x = "Date", y = ""))
+if(fit_excess & fit_reported){
+  plotlist$excess <- plotlist$excess + 
+    labs(subtitle = "Excess Mortality")
+  plotlist$reported <- plotlist$reported + 
+    labs(subtitle = "Reported Deaths")
+}
+
+suppressMessages(suppressWarnings(
+  ggpubr::ggarrange(plotlist = plotlist, ncol = 1, common.legend = TRUE)
+))
 ```
 
 <br>

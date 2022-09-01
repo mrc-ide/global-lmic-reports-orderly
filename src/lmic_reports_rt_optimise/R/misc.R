@@ -151,3 +151,282 @@ update_Rt_optimised <- function(model_user_args, Rt_future){
     c(model_user_args[[sample_index]], Rt_future[[sample_index]])
   })
 }
+
+summarise_fit <- function(file, out, country, iso3c, end_date, start_date){
+  ## summarise what we have
+  #originally had a series of plots to summarise parameter distributions,
+  #at the moment there are far to many so its something to work on
+
+  title <- cowplot::ggdraw() +
+    cowplot::draw_label(
+      paste0(country, ", ", iso3c),
+      fontface = 'bold',
+      x = 0.5
+    )
+
+  line <- ggplot() + cowplot::draw_line(x = 0:10, y=1) +
+    theme(panel.background = element_blank(),
+          axis.title = element_blank(),
+          axis.text = element_blank(),
+          axis.ticks = element_blank())
+
+  line_v <- ggplot() + cowplot::draw_line(y = 0:10, x=1) +
+    theme(panel.background = element_blank(),
+          axis.title = element_blank(),
+          axis.text = element_blank(),
+          axis.ticks = element_blank())
+
+
+  header <- cowplot::plot_grid(title, line, ncol = 1)
+
+  index <- squire:::odin_index(out$model)
+  forecast <- 0
+
+  suppressMessages(suppressWarnings(
+    d <- deaths_plot_single(
+      out, out$inputs$data, date = end_date,
+      date_0 = out$inputs$start_date, forecast = 0,
+      single = TRUE, full = TRUE) +
+      theme(legend.position = "none")))
+
+  suppressMessages(suppressWarnings(
+    cas_plot <- cases_plot_single(
+      df = nimue_format(out, "infections", date_0 = out$inputs$start_date),
+      data = out$inputs$data,
+      date = end_date,
+      date_0 = out$inputs$start_date) +
+      theme(legend.position = "none")))
+
+  rtp <- rt_plot_immunity(out, R0_plot = TRUE)
+  rtp2 <- rt_plot_immunity(out, R0_plot = FALSE)
+
+  date_range <- as.Date(c(out$inputs$start_date, end_date))
+
+  vt <- variant_timings_plot(variant_timings, date_range)
+
+  suppressMessages(suppressWarnings(
+    combined <- cowplot::plot_grid(
+      header,
+      vt + scale_x_date(date_breaks = "3 month", date_labels = "%b"),
+      rtp2$plot + scale_x_date(date_breaks = "3 month", date_labels = "%b" ,limits = date_range),
+      d + scale_x_date(date_breaks = "3 month", date_labels = "%b" ,limits = date_range),
+      ncol=1,
+      rel_heights = c(1.25, 5, 10, 10))
+  ))
+
+  ggsave(file,width=24, height=12,
+         combined)
+}
+
+trim_output <- function(out){
+  out_trim <- squire.page::trim_rt_optimise(out, 0.5)
+
+  if(length(out_trim$samples) == 0){
+    warning("No suitable trajectories calculated")
+    out
+  } else {
+    out_trim
+  }
+}
+
+save_output <- function(out, file){
+  ## now let's trim the output for saving
+  out$output <- NULL
+  if(inherits(out, "rt_optimised_trimmed")){
+    out$excluded$output <- NULL
+  }
+  saveRDS(out, file)
+}
+
+extend_output <- function(out, vacc_inputs, time_period, start_date, end_date){
+  ## We need to know work out vaccine doses and efficacy going forwards
+  #catch for no vaccines
+  if(
+    length(vacc_inputs$primary_doses) == 0
+  ){
+    vacc_inputs$primary_doses <- 0
+  }
+  if(
+    length(vacc_inputs$booster_doses) == 0
+  ){
+    vacc_inputs$booster_doses <- 0
+  }
+  model_user_args <- extend_vaccine_inputs(vacc_inputs, time_period, out, end_date = end_date)
+  #For now these are all identicall we so'll add them to $parameters.
+  #I've left this framework in case we want to add randomness to the doses
+  out_extended <- out
+  out_extended$parameters$protection_delay_time <- out_extended$parameters$protection_delay_time + time_period
+  for(x in names(model_user_args[[1]])){
+    if(str_detect(x, "tt")){
+      out_extended$parameters[[x]] <- c(out$parameters[[x]], as.numeric(end_date - start_date) + 1)
+    } else {
+      out_extended$parameters[[x]] <- c(out$parameters[[x]], model_user_args[[1]][[x]])
+    }
+  }
+  out_extended
+}
+
+check_breached_capacity <- function(forwards_projection, country, start_date){
+  ## Is capacity passed prior to today
+  icu_cap <- squire:::get_ICU_bed_capacity(country)
+  hosp_cap <- squire:::get_hosp_bed_capacity(country)
+  t_test_safe <- function(x, ...) {
+    out <- try(t.test(x, ...), silent = TRUE)
+    if (inherits(out, "try-error")) {
+      out <- list("conf.int"=c(mean(x),mean(x)))
+    }
+    return(out)
+  }
+  # has surging been required
+  icu <- nimue_format(forwards_projection, "ICU_demand", date_0 = start_date)
+  icu <- icu[icu$compartment == "ICU_demand",]
+  icu_28 <- group_by(icu, t) %>%
+    summarise(i_tot = mean(y, na.rm = TRUE),
+              i_min = t_test_safe(y)$conf.int[1],
+              i_max = t_test_safe(y)$conf.int[2])
+  hosp <- nimue_format(forwards_projection, "hospital_demand", date_0 = start_date)
+  hosp <- hosp[hosp$compartment == "hospital_demand",]
+  hosp_28 <- group_by(hosp, t) %>%
+    summarise(i_tot = mean(y, na.rm = TRUE),
+              i_min = t_test_safe(y)$conf.int[1],
+              i_max = t_test_safe(y)$conf.int[2])
+
+  any(na.omit(icu_28$i_tot > icu_cap)) || any(na.omit(icu_28$i_tot > icu_cap))
+}
+
+summarise_infection_types <- function(forwards_projection, end_date){
+  purrr::map_dfr(seq_along(forwards_projection$samples), function(replicate){
+    params <- squire.page:::setup_parameters(forwards_projection$squire_model,
+                                             c(
+                                               forwards_projection$parameters,
+                                               forwards_projection$samples[[replicate]]
+                                             )
+    )
+    E2 <- forwards_projection$output[
+      lubridate::as_date(rownames(forwards_projection$output)) > end_date - 30*3,
+      str_detect(colnames(forwards_projection$output), "E2"),
+      replicate
+    ]
+    #convert to 3d (date, age, vaccine status)
+    E2_array <- array(NA, c(nrow(E2), 17, 7))
+    for(row in seq_len(17)){
+      E2_array[,row,] <- E2[, stringr::str_detect(colnames(E2), paste0("E2\\[", row, ","))]
+    }
+    dates <- lubridate::as_date(rownames(E2))
+    rm(E2)
+    #get just the transitions
+    E2_array <- E2_array * params$gamma_E
+    #get the time/vaccine varying proability of hopsitalisation
+    tt <- as.numeric(dates - forwards_projection$inputs$start_date)
+    prob_hosp_multiplier <- squire.page:::block_interpolate(tt, params$prob_hosp_multiplier, params$tt_prob_hosp_multiplier)
+    prob_hosp <- params$prob_hosp[
+      squire.page:::block_interpolate(tt, seq_len(dim(params$prob_hosp)[1]), params$tt_vaccine_efficacy_disease), ,
+    ] * prob_hosp_multiplier
+    new_Case <- E2_array * prob_hosp
+    new_Mild <- E2_array * (1 - prob_hosp)
+    #sum over ages and vaccine status
+    tibble(
+      replicate = replicate,
+      date = dates,
+      new_Case = rowSums(new_Case),
+      new_Mild = rowSums(new_Mild)
+    )
+  }) %>%
+    mutate(projection = date > end_date)
+}
+
+detected_cases_estimation <- function(cases_milds, cases){
+    #could split this further into ICU, HOSP, Mild
+    #should probably add tail cases fitting back into to get this closer
+    l_post <- function(detected_infections, p_case_eff, p_mild, Cases, Mild){
+      p_case <- p_mild + (1 - p_mild) * p_case_eff
+      #prior that pcase is about 10x higher than pmild
+      lp <- dgamma(p_case/p_mild, shape = 100, rate = 10, log = TRUE)
+      detected_infections[detected_infections > Mild + Cases] <- (Mild + Cases)[detected_infections > Mild + Cases]
+      prop_mild <- Mild * p_mild /(Mild * p_mild + Cases * p_case) #expectation of this, since we're doing MLE doesn't matter
+      detected_mild <- (detected_infections*prop_mild) %>% round()
+      ll <- (dbinom(detected_mild, Mild, p_mild, log = TRUE) +
+               dbinom(detected_infections - detected_mild, Cases, p_case, log = TRUE)) %>%
+        sum()
+      if(ll < -10^9){
+        ll <- -10^9
+      }
+      lp + ll
+    }
+    p_detection <- cases_milds %>%
+      left_join(cases, by = c("date")) %>%
+      filter(!is.na(detected_infections)) %>%
+      mutate(
+        across(
+          c(new_Case, new_Mild, detected_infections),
+          ~as.integer(round(.x))
+        )
+      ) %>%
+      group_by(replicate) %>%
+      mutate(
+        initial_value = min(c(1, sum(detected_infections)/sum(new_Case + new_Mild))),
+      ) %>%
+      summarise(
+        #non optimial, often barely moves from initial values when detection is very low
+        out = list(optim(c(initial_value, initial_value), function(x, detected_infections, new_Case, new_Mild, l_post){
+          l_post(detected_infections, x[1], x[2], new_Case, new_Mild)
+        }, method = "L-BFGS-B", lower = rep(10^-10, 2), upper = rep(0.9999999, 2),
+        control = list(fnscale = -1),#, lmm = 10, factr = 1e10, pgtol = 1e2),
+        detected_infections = detected_infections,
+        new_Case = new_Case, new_Mild = new_Mild, l_post = l_post)$par),
+        .groups = "drop",
+        initial_value = initial_value[1]
+      ) %>%
+      transmute(
+        replicate = replicate,
+        p_mild = purrr::map_dbl(out, ~.x[2]),
+        p_case = p_mild + (1 - p_mild) * purrr::map_dbl(out, ~.x[1])
+      )
+
+    cases_milds <- cases_milds %>%
+      left_join(cases, by = c("date")) %>%
+      left_join(p_detection, by = "replicate") %>%
+      mutate(
+        new_detected_Case = new_Case * p_case,
+        new_detected_Mild = new_Mild * p_mild
+      )
+
+    # temp <- cases_milds %>%
+    #   filter(!projection) %>%
+    #   group_by(date) %>%
+    #   summarise(
+    #     est_detected_025 = quantile(new_detected_Case + new_detected_Mild, c(0.025)),
+    #     est_detected_50 = quantile(new_detected_Case + new_detected_Mild, c(0.5)),
+    #     est_detected_975 = quantile(new_detected_Case + new_detected_Mild, c(0.975))
+    #   )
+    # ggplot() +
+    #   geom_line(data = cases_milds %>% filter(!projection & replicate == 1),
+    #             aes(x = date, y = detected_infections), linetype = "dashed") +
+    #   geom_ribbon(data = temp, aes(x = date, ymin = est_detected_025 , ymax = est_detected_975),
+    #               alpha = 0.2) +
+    #   geom_line(data = temp, aes(x = date, y = est_detected_50))
+
+
+  cases_milds %>%
+      select(!detected_infections)
+}
+
+update_parameters <- function(parameters, difference_in_t){
+  for(var in stringr::str_subset(names(parameters), "tt_")){
+    parameters[[var]] <- parameters[[var]] - difference_in_t
+    parameters[[var]][1] <- 0
+    if(sum(parameters[[var]] < 0) > 0){
+      stop("parameters begin before epidemic, write adjustment here!")
+    }
+  }
+  if(!is.null(parameters$protection_delay_time)){
+    parameters$protection_delay_time <- parameters$protection_delay_time - difference_in_t
+  }
+  parameters
+}
+
+update_distribution <- function(distribution, difference_in_t){
+  purrr::map(distribution, function(parameters){
+    update_parameters(parameters, difference_in_t)
+  })
+}

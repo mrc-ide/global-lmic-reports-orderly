@@ -1,3 +1,14 @@
+select_fit <- function(df){
+  df <- df %>% filter(death_calibrated)
+  types <- df %>% select(iso3c, fit_type) %>% unique() %>%
+    mutate(present = TRUE) %>%
+    group_by(iso3c) %>%
+    complete(fit_type = c("Excess Mortality", "Reported Deaths"), fill = list(present = FALSE)) %>%
+    pivot_wider(names_from = fit_type, values_from = present) %>%
+    mutate(type = if_else(`Excess Mortality`, "Excess Mortality", "Reported Deaths")) %>%
+    pull(type, iso3c)
+  df %>% group_by(iso3c) %>% filter(fit_type == types[iso3c]) %>% ungroup()
+}
 
 cumulative_deaths_plot_continent_projections <- function(continent, today, data, excess) {
 
@@ -12,12 +23,7 @@ cumulative_deaths_plot_continent_projections <- function(continent, today, data,
   lmics <- gsub("(.*reports/)(\\w\\w\\w)(\".*)","\\2",grep("reports/(\\w\\w\\w)\"",rl, value =TRUE))
 
   # Are we presnting the surge if it's there
-  data <- group_by(data, iso3c) %>%
-    filter(scenario == (if("Surged Maintain Status Quo" %in% unique(scenario)) {
-      "Surged Maintain Status Quo"
-    } else {
-      "Maintain Status Quo"
-    })) %>% ungroup()
+  data <- select_fit(data)
 
   # create dataset
   slim <- data %>%
@@ -170,7 +176,7 @@ forecasted_deaths_bar <- function(cont, today) {
     slim <- data %>%
       mutate(date = as.Date(.data$date)) %>%
       filter(date == (today+28)) %>%
-      filter(scenario == "Maintain Status Quo") %>%
+      select_fit() %>%
       select(date, compartment, y_mean, y_025, y_975, country, iso3c) %>%
       mutate(observed = FALSE) %>%
       rename(y = y_mean)
@@ -245,8 +251,10 @@ rt_plot <- function(cont) {
   sum_rt$continent <- countrycode::countrycode(sum_rt$iso3c, "iso3c", "continent")
   sum_rt <- sum_rt %>% filter(continent == cont)
   sum_rt <- sum_rt %>% filter(date <= today)
+  sum_rt <- select_fit(sum_rt)
 
-  ggplot(sum_rt[sum_rt$compartment == "Reff" & sum_rt$scenario == "Central",],
+
+  ggplot(sum_rt[sum_rt$compartment == "Reff",],
          aes(x=as.Date(date), ymin=y_025, ymax = y_975, group = iso3c, fill = iso3c)) +
     geom_line(aes(y = y_median), color = "#48996b") +
     geom_ribbon(fill = "#96c4aa") +
@@ -276,12 +284,13 @@ rt_continental_plot <- function(cont) {
   sum_rt$continent <- countrycode::countrycode(sum_rt$iso3c, "iso3c", "continent")
   sum_rt <- sum_rt %>% filter(continent == cont)
   sum_rt <- sum_rt %>% filter(date <= today)
+  sum_rt <- select_fit(sum_rt)
 
   sum_rt$code <- countrycode::countrycode(sum_rt$iso3c, "iso3c", "iso2c")
   sum_rt$code[sum_rt$code=="NA"] <- "NAM"
 
 
-  ggplot(sum_rt[sum_rt$compartment == "Reff" & sum_rt$scenario == "Maintain Status Quo",] %>%
+  ggplot(sum_rt[sum_rt$compartment == "Reff",] %>%
            filter(date > "2020-10-01"),
          aes(x=as.Date(date), y = y_median, ymin=y_025, ymax = y_975, group = iso3c, fill = iso3c)) +
     geom_ribbon(fill = "#96c4aa") +

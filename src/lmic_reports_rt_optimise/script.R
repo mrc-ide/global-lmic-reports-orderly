@@ -36,58 +36,91 @@ if(!identical(seed, FALSE)){
 # format user provided arguments correctly
 date <- as.Date(date)
 
+country <- squire::population$country[match(iso3c, squire::population$iso3c)[1]]
+
 ## Get the excess mortality estimates from the economist
 excess_deaths <- readRDS("excess_deaths.Rds") %>%
   rename(iso = iso3c) %>%
-  filter(iso == iso3c)
+  filter(iso == iso3c) %>%
+  arrange(date_start)
 
-country <- squire::population$country[match(iso3c, squire::population$iso3c)[1]]
+##Get the reported deaths
+reported_deaths <- readRDS("reported_covid.Rds") %>%
+  rename(iso = iso3c) %>%
+  filter(iso == iso3c) %>%
+  filter(cumsum(deaths) > 0) %>%
+  transmute(
+    iso = iso,
+    date_start = date - 1,
+    date_end = date,
+    deaths = deaths
+  ) %>%
+  arrange(date_start)
 
 death_limit <- 10
 
-## MAIN LOOP IS ONLY FOR THOSE WITH DEATHS
-if(sum(excess_deaths$deaths) > death_limit) {
+fit_excess <- sum(excess_deaths$deaths) > death_limit
+fit_reported <- sum(reported_deaths$deaths) > death_limit
 
-  # get the raw data correct
-  data <- excess_deaths %>%
-    select(!iso) %>%
-    arrange(date_start)
+cases <- readRDS("reported_covid.Rds") %>%
+  rename(iso = iso3c, d_date = date) %>%
+  filter(iso == iso3c & d_date > date - 30*3 & d_date <= date) %>%
+  transmute(date = d_date, detected_infections = cases) %>%
+  arrange(date)
+estimate_reported_cases <- sum(cases$detected_infections) > 0
 
-  if(iso3c == "TKM"){
-    #remove starting deaths before major waves
-    if(sum(cumsum(data$deaths) < 40) > 15){
-      data <- data %>%
-        filter(cumsum(deaths) > 40)
+#setup model and parameters
+if(fit_excess | fit_reported){
+
+  #get model start dates
+  if(fit_excess){
+    if(iso3c == "TKM"){
+      #remove starting deaths before major waves
+      if(sum(cumsum(excess_deaths$deaths) < 40) > 15){
+        excess_deaths <- excess_deaths %>%
+          filter(cumsum(excess_deaths) > 40)
+      }
     }
+
+    first_report <- which(excess_deaths$deaths>0)[1]
+    missing <- which(excess_deaths$deaths == 0 | is.na(excess_deaths$deaths))
+    to_remove <- missing[missing<first_report]
+    if(length(to_remove) > 0) {
+      if(length(to_remove) == (nrow(excess_deaths)-1)) {
+        excess_deaths <- excess_deaths[-head(to_remove,-1),]
+      } else {
+        excess_deaths <- excess_deaths[-to_remove,]
+      }
+    }
+
+    excess_start_date <-  excess_deaths$date_start[1] - 30
+    first_start_date <- excess_start_date
+  }
+  if(fit_reported){
+    first_report <- which(reported_deaths$deaths>0)[1]
+    missing <- which(reported_deaths$deaths == 0 | is.na(reported_deaths$deaths))
+    to_remove <- missing[missing<first_report]
+    if(length(to_remove) > 0) {
+      if(length(to_remove) == (nrow(reported_deaths)-1)) {
+        reported_deaths <- reported_deaths[-head(to_remove,-1),]
+      } else {
+        reported_deaths <- reported_deaths[-to_remove,]
+      }
+    }
+
+    reported_start_date <-  reported_deaths$date_start[1] - 30
+    first_start_date <- reported_start_date
+  }
+  if(fit_excess & fit_reported){
+    first_start_date <- min(c(reported_start_date, excess_start_date))
   }
 
-  # and remove the rows with no data up to the first date that a death was reported
-  first_report <- which(data$deaths>0)[1]
-  missing <- which(data$deaths == 0 | is.na(data$deaths))
-  to_remove <- missing[missing<first_report]
-  if(length(to_remove) > 0) {
-    if(length(to_remove) == (nrow(data)-1)) {
-      data <- data[-head(to_remove,-1),]
-    } else {
-      data <- data[-to_remove,]
-    }
-  }
-
-  # conduct unmitigated
   pop <- squire::get_population(country)
-
-  ## -----------------------------------------------------------------------------
-  ## Step 2: Fit model
-  ## -----------------------------------------------------------------------------
-
   squire_model <- squire.page:::nimue_booster_model()
-  start_date <-  data$date_start[1] - 30
   end_date <- date
+  projection_period <- 365
 
-  ## -----------------------------------------------------------------------------
-  ## Step 2a: Invariant Parameters
-  ## -----------------------------------------------------------------------------
-
+  #Invariant parameters
   parameters <- list(
     country = country,
     hosp_bed_capacity = squire:::get_hosp_bed_capacity(country),
@@ -101,8 +134,7 @@ if(sum(excess_deaths$deaths) > death_limit) {
 
   #load inputs
   vacc_inputs <- get_vaccine_inputs(iso3c)
-
-  tt_vaccine <- c(0, as.numeric(vacc_inputs$date_vaccine_change - start_date))
+  tt_vaccine <- as.numeric(c(start_date, vacc_inputs$date_vaccine_change) - first_start_date)
 
   parameters$primary_doses <- c(0, vacc_inputs$primary_doses)
   parameters$tt_primary_doses <- tt_vaccine
@@ -115,12 +147,9 @@ if(sum(excess_deaths$deaths) > death_limit) {
   parameters$vaccine_booster_follow_up_coverage <- c(rep(0, 12), rep(1, 5))
   parameters$protection_delay_rate <- 1/7
   parameters$protection_delay_shape <- 2
-  parameters$protection_delay_time <- as.numeric(date - start_date)
+  parameters$protection_delay_time <- as.numeric(date - first_start_date)
 
-  ## -----------------------------------------------------------------------------
-  ## Step 2b: Calculate sampled parameters
-  ## -----------------------------------------------------------------------------
-
+  #Variant dependant parameters
   variants_to_model <- c("Delta", "Omicron", "Omicron Sub-Variant")
 
   #load inputs
@@ -140,8 +169,9 @@ if(sum(excess_deaths$deaths) > death_limit) {
   # parameters <- append(parameters, estimate_generation_time(variant_timings, start_date)) %>%
   #                 append(estimate_healthcare_durations(variant_timings, start_date))
   parameters <-
-    append(parameters, estimate_healthcare_durations(variant_timings, start_date))
+    append(parameters, estimate_healthcare_durations(variant_timings, first_start_date))
 
+  #Sample from random parameter
   #generate samples
   dur_R <- sample_duration_natural_immunity(samples)
   ifr <- sample_ifr(samples, iso3c)
@@ -163,23 +193,23 @@ if(sum(excess_deaths$deaths) > death_limit) {
     ## variant parameters:
 
     dur_R_change <- variant_immune_escape(variant_timings, immune_escape, x,
-                                          dur_R, start_date)
+                                          dur_R, first_start_date)
     pars$dur_R <- dur_R_change$var
     pars$tt_dur_R <- dur_R_change$tt
 
     prob_hosp_multiplier_change <- multiplier_changes_over_time(variant_timings,
-                                                                prob_hosp_multiplier, x, start_date)
+                                                                prob_hosp_multiplier, x, first_start_date)
     pars$prob_hosp_multiplier <- prob_hosp_multiplier_change$var
     pars$tt_prob_hosp_multiplier <- prob_hosp_multiplier_change$tt
 
     prob_severe_multiplier_change <- multiplier_changes_over_time(variant_timings,
-                                                                  prob_severe_multiplier, x, start_date)
+                                                                  prob_severe_multiplier, x, first_start_date)
     pars$prob_severe_multiplier <- prob_severe_multiplier_change$var
     pars$tt_prob_severe_multiplier <- prob_severe_multiplier_change$tt
 
     #Vaccine Efficacies
 
-    vacc_inputs <- vaccine_eff_over_time(variant_timings, variant_ve, x, start_date)
+    vacc_inputs <- vaccine_eff_over_time(variant_timings, variant_ve, x, first_start_date)
     pars$dur_V <- vacc_inputs$dur_V
     pars$vaccine_efficacy_infection <- vacc_inputs$vaccine_efficacy_infection
     pars$vaccine_efficacy_disease <- vacc_inputs$vaccine_efficacy_disease
@@ -188,13 +218,23 @@ if(sum(excess_deaths$deaths) > death_limit) {
 
     pars
   })
+}
 
-  ## -----------------------------------------------------------------------------
-  ## Step 2c: Fitting Parameters
-  ## -----------------------------------------------------------------------------
+## Excess deaths loop
+if(fit_excess){
+  #ensure parameters are in correct format
+  if(first_start_date != excess_start_date){
+    difference_in_t <- as.numeric(excess_start_date - first_start_date)
+    excess_parameters <- update_parameters(parameters, difference_in_t)
+    excess_distribution <- update_distribution(distribution, difference_in_t)
+  } else {
+    excess_parameters <- parameters
+    excess_distribution <- distribution
+  }
 
+  #fitting parameters
   #load in country specific default parameters
-  fitting_params <- readRDS("fitting_params.Rds")[[iso3c]]
+  fitting_params <- readRDS("fitting_params.Rds")[[iso3c]]$excess
   #check if we need to update parameters
   if(identical(initial_infections_interval, "NULL")){
     initial_infections_interval <- fitting_params$initial_infections_interval
@@ -209,21 +249,18 @@ if(sum(excess_deaths$deaths) > death_limit) {
     rt_interval <- fitting_params$rt_interval
   }
 
-  ## -----------------------------------------------------------------------------
-  ## Step 2d: Actual run
-  ## -----------------------------------------------------------------------------
-
+  #run model
   #use parallel if asked for
   if(parallel){
     future::plan(future::multisession())
   }
 
-  out <- rt_optimise(
-    data = data,
-    distribution = distribution,
+  excess_out <- rt_optimise(
+    data = excess_deaths,
+    distribution = excess_distribution,
     squire_model = squire_model,
-    parameters = parameters,
-    start_date = start_date,
+    parameters = excess_parameters,
+    start_date = excess_start_date,
     parallel = parallel,
     rt_spacing = 14,
     initial_infections_interval = initial_infections_interval,
@@ -232,14 +269,7 @@ if(sum(excess_deaths$deaths) > death_limit) {
     rt_interval = rt_interval
   )
 
-  out_trim <- squire.page::trim_rt_optimise(out, 0.5)
-
-  if(length(out_trim$samples) == 0){
-    warning("No suitable trajectories calculated")
-  } else {
-    out <- out_trim
-  }
-  rm(out_trim)
+  excess_out <- trim_output(excess_out)
 
   #Stop using parallel, furrr doesn't like something (maybe model object)
   Sys.setenv(SQUIRE_PARALLEL_DEBUG = "TRUE")
@@ -247,349 +277,187 @@ if(sum(excess_deaths$deaths) > death_limit) {
     future::plan(future::sequential())
   }
 
-  ## -----------------------------------------------------------------------------
-  ## Step 3: Summarise Fits
-  ## -----------------------------------------------------------------------------
+  #save fitting plot
+  summarise_fit("excess_fitting.pdf", excess_out, country, iso3c, end_date, excess_start_date)
 
-  ## summarise what we have
-  #originally had a series of plots to summarise parameter distributions,
-  #at the moment there are far to many so its something to work on
-
-  title <- cowplot::ggdraw() +
-    cowplot::draw_label(
-      paste0(country, ", ", iso3c),
-      fontface = 'bold',
-      x = 0.5
-    )
-
-  line <- ggplot() + cowplot::draw_line(x = 0:10, y=1) +
-    theme(panel.background = element_blank(),
-          axis.title = element_blank(),
-          axis.text = element_blank(),
-          axis.ticks = element_blank())
-
-  line_v <- ggplot() + cowplot::draw_line(y = 0:10, x=1) +
-    theme(panel.background = element_blank(),
-          axis.title = element_blank(),
-          axis.text = element_blank(),
-          axis.ticks = element_blank())
-
-
-  header <- cowplot::plot_grid(title, line, ncol = 1)
-
-  index <- squire:::odin_index(out$model)
-  forecast <- 0
-
-  suppressMessages(suppressWarnings(
-    d <- deaths_plot_single(
-      out, data, date = date,
-      date_0 = start_date, forecast = forecast,
-      single = TRUE, full = TRUE) +
-      theme(legend.position = "none")))
-
-  suppressMessages(suppressWarnings(
-    cas_plot <- cases_plot_single(
-      df = nimue_format(out, "infections", date_0 = start_date),
-      data = out$inputs$data,
-      date = date,
-      date_0 = start_date) +
-      theme(legend.position = "none")))
-
-  rtp <- rt_plot_immunity(out, R0_plot = TRUE)
-  rtp2 <- rt_plot_immunity(out, R0_plot = FALSE)
-
-  date_range <- as.Date(c(start_date, end_date))
-
-  vt <- variant_timings_plot(variant_timings, date_range)
-
-  suppressMessages(suppressWarnings(
-    combined <- cowplot::plot_grid(
-      header,
-      vt + scale_x_date(date_breaks = "3 month", date_labels = "%b"),
-      rtp2$plot + scale_x_date(date_breaks = "3 month", date_labels = "%b" ,limits = date_range),
-      d + scale_x_date(date_breaks = "3 month", date_labels = "%b" ,limits = date_range),
-      ncol=1,
-      rel_heights = c(1.25, 5, 10, 10))
-  ))
-
-  ggsave("fitting.pdf",width=24, height=12,
-         combined)
-
-
-  ## Save the grid out object
-
-  #remove all dr jacoby data, no reason we should need it
-
-  ## now let's trim the output for saving
-  output_temp <- out$output
-  out$output <- NULL
-  if(inherits(out, "rt_optimised_trimmed")){
-    output_excluded_temp <- out$excluded$output
-    out$excluded$output <- NULL
-  }
-  saveRDS(out, "grid_out.rds")
-  #reattach output
-  out$output <- output_temp
-  rm(output_temp)
-  if(inherits(out, "rt_optimised_trimmed")){
-    out$excluded$output <- output_excluded_temp
-    rm(output_excluded_temp)
-  }
+  save_output(excess_out, "excess_out.Rds")
 
   if(document){
-    #the following is only relevant if producing documentation
+    #projections
+    project_excess <- as.numeric(end_date + projection_period - max(excess_deaths$date_end))
 
-    ## -----------------------------------------------------------------------------
-    ## Step 4: Scenarios
-    ## -----------------------------------------------------------------------------
-
-    ## -----------------------------------------------------------------------------
-    ## 4.1. Conduct our projections based on no surging
-    ## -----------------------------------------------------------------------------
-
-    ## Functions for working out the relative changes in R0 for given scenarios
-    time_period <- 365
-
-    ## We need to know work out vaccine doses and efficacy going forwards
-    #catch for no vaccines
-    if(
-      length(vacc_inputs$primary_doses) == 0
-    ){
-      vacc_inputs$primary_doses <- 0
-    }
-    if(
-      length(vacc_inputs$booster_doses) == 0
-    ){
-      vacc_inputs$booster_doses <- 0
-    }
-    model_user_args <- extend_vaccine_inputs(vacc_inputs, time_period, out, end_date = end_date)
-    #For now these are all identicall we so'll add them to $parameters.
-    #I've left this framework in case we want to add randomness to the doses
-    out_extended <- out
-    out_extended$parameters$protection_delay_time <- out_extended$parameters$protection_delay_time + time_period
-    for(x in names(model_user_args[[1]])){
-      if(str_detect(x, "tt")){
-        out_extended$parameters[[x]] <- c(out$parameters[[x]], as.numeric(end_date - start_date) + 1)
-      } else {
-        out_extended$parameters[[x]] <- c(out$parameters[[x]], model_user_args[[1]][[x]])
-      }
-    }
-    model_user_args <- map(model_user_args, ~list())
-    rm(x, out)
+    excess_out <- extend_output(excess_out, vacc_inputs, project_excess, excess_start_date, end_date)
+    model_user_args <- map(seq_len(samples), ~list())
 
     # Maintaining the current set of measures for a further 3 months
-    forwards_projection <- squire.page::projections(out_extended,
-                                     R0 = map(out_extended$samples, ~tail(.x$R0, 1)),
-                                     tt_R0 = c(0),
-                                     time_period = time_period,
-                                     model_user_args = model_user_args)
-    r_forwards_projection <- r_list_format(forwards_projection, date_0 = start_date)
-    rt_forwards_projection <- rt_creation_vaccine(forwards_projection, end_date + time_period)
+    forwards_projection_excess <- squire.page::projections(excess_out,
+                                                    R0 = map(excess_out$samples, ~tail(.x$R0, 1)),
+                                                    tt_R0 = c(0),
+                                                    time_period = project_excess,
+                                                    model_user_args = model_user_args)
+    r_forwards_projection_excess <- r_list_format(forwards_projection_excess, date_0 = excess_start_date)
+    rt_forwards_projection_excess <- rt_creation_vaccine(forwards_projection_excess, end_date + projection_period)
 
-    ## Is capacity passed prior to today
-    icu_cap <- squire:::get_ICU_bed_capacity(country)
-    hosp_cap <- squire:::get_hosp_bed_capacity(country)
+    surging <- check_breached_capacity(forwards_projection_excess, country, excess_start_date)
 
-    t_test_safe <- function(x, ...) {
-      out <- try(t.test(x, ...), silent = TRUE)
-      if (inherits(out, "try-error")) {
-        out <- list("conf.int"=c(mean(x),mean(x)))
-      }
-      return(out)
+    cases_milds_excess <- summarise_infection_types(forwards_projection_excess, end_date)
+
+    if(estimate_reported_cases){
+      cases_milds_excess <- detected_cases_estimation(cases_milds_excess, cases)
     }
-    # has surging been required
-    icu <- nimue_format(forwards_projection, "ICU_demand", date_0 = start_date)
-    icu <- icu[icu$compartment == "ICU_demand",]
-    icu_28 <- group_by(icu, t) %>%
-    summarise(i_tot = mean(y, na.rm = TRUE),
-              i_min = t_test_safe(y)$conf.int[1],
-              i_max = t_test_safe(y)$conf.int[2])
-    hosp <- nimue_format(forwards_projection, "hospital_demand", date_0 = start_date)
-    hosp <- hosp[hosp$compartment == "hospital_demand",]
-    hosp_28 <- group_by(hosp, t) %>%
-    summarise(i_tot = mean(y, na.rm = TRUE),
-              i_min = t_test_safe(y)$conf.int[1],
-              i_max = t_test_safe(y)$conf.int[2])
-
-    if(any(na.omit(icu_28$i_tot > icu_cap)) || any(na.omit(icu_28$i_tot > icu_cap))){
-      surging <- TRUE
-    } else {
-      surging <- FALSE
-    }
-
-    #get new mild and cases
-    #need to extract E2 and multiple the correct proportions
-    cases_milds <- purrr::map_dfr(seq_along(forwards_projection$samples), function(replicate){
-      params <- squire.page:::setup_parameters(forwards_projection$squire_model,
-                                               c(
-                                                 forwards_projection$parameters,
-                                                 forwards_projection$samples[[replicate]]
-                                               )
-      )
-      E2 <- forwards_projection$output[
-        lubridate::as_date(rownames(forwards_projection$output)) > date - 30*3,
-        str_detect(colnames(forwards_projection$output), "E2"),
-        replicate
-      ]
-      #convert to 3d (date, age, vaccine status)
-      E2_array <- array(NA, c(nrow(E2), 17, 7))
-      for(row in seq_len(17)){
-        E2_array[,row,] <- E2[, stringr::str_detect(colnames(E2), paste0("E2\\[", row, ","))]
-      }
-      dates <- lubridate::as_date(rownames(E2))
-      rm(E2)
-      #get just the transitions
-      E2_array <- E2_array * params$gamma_E
-      #get the time/vaccine varying proability of hopsitalisation
-      tt <- as.numeric(dates - forwards_projection$inputs$start_date)
-      prob_hosp_multiplier <- squire.page:::block_interpolate(tt, params$prob_hosp_multiplier, params$tt_prob_hosp_multiplier)
-      prob_hosp <- params$prob_hosp[
-        squire.page:::block_interpolate(tt, seq_len(dim(params$prob_hosp)[1]), params$tt_vaccine_efficacy_disease), ,
-      ] * prob_hosp_multiplier
-      new_Case <- E2_array * prob_hosp
-      new_Mild <- E2_array * (1 - prob_hosp)
-      #sum over ages and vaccine status
-      tibble(
-        replicate = replicate,
-        date = dates,
-        new_Case = rowSums(new_Case),
-        new_Mild = rowSums(new_Mild)
-      )
-    }) %>%
-      rename(ddate = date) %>%
-      mutate(projection = ddate > date) %>%
-      rename(date = ddate)
-    #estimate reported cases
-    cases <- readRDS("reported_covid.Rds") %>%
-      rename(iso = iso3c, d_date = date) %>%
-      filter(iso == iso3c & d_date > date - 30*3 & d_date <= date) %>%
-      transmute(date = d_date, detected_infections = cases) %>%
-      arrange(date)
-    reported_cases <- sum(cases$detected_infections) > 0
-    if(reported_cases){
-      #could split this further into ICU, HOSP, Mild
-      #should probably add tail cases fitting back into to get this closer
-      l_post <- function(detected_infections, p_case_eff, p_mild, Cases, Mild){
-        p_case <- p_mild + (1 - p_mild) * p_case_eff
-        #prior that pcase is about 10x higher than pmild
-        lp <- dgamma(p_case/p_mild, shape = 100, rate = 10, log = TRUE)
-        detected_infections[detected_infections > Mild + Cases] <- (Mild + Cases)[detected_infections > Mild + Cases]
-        prop_mild <- Mild * p_mild /(Mild * p_mild + Cases * p_case) #expectation of this, since we're doing MLE doesn't matter
-        detected_mild <- (detected_infections*prop_mild) %>% round()
-        ll <- (dbinom(detected_mild, Mild, p_mild, log = TRUE) +
-          dbinom(detected_infections - detected_mild, Cases, p_case, log = TRUE)) %>%
-          sum()
-        if(ll < -10^9){
-          ll <- -10^9
-        }
-        lp + ll
-      }
-      p_detection <- cases_milds %>%
-        left_join(cases, by = c("date")) %>%
-        filter(!is.na(detected_infections)) %>%
-        mutate(
-          across(
-            c(new_Case, new_Mild, detected_infections),
-            ~as.integer(round(.x))
-          )
-        ) %>%
-        group_by(replicate) %>%
-        mutate(
-          initial_value = min(c(1, sum(detected_infections)/sum(new_Case + new_Mild))),
-        ) %>%
-        summarise(
-          #non optimial, often barely moves from initial values when detection is very low
-          out = list(optim(c(initial_value, initial_value), function(x, detected_infections, new_Case, new_Mild, l_post){
-            l_post(detected_infections, x[1], x[2], new_Case, new_Mild)
-          }, method = "L-BFGS-B", lower = rep(10^-10, 2), upper = rep(0.9999999, 2),
-          control = list(fnscale = -1),#, lmm = 10, factr = 1e10, pgtol = 1e2),
-          detected_infections = detected_infections,
-          new_Case = new_Case, new_Mild = new_Mild, l_post = l_post)$par),
-          .groups = "drop",
-          initial_value = initial_value[1]
-        ) %>%
-        transmute(
-          replicate = replicate,
-          p_mild = purrr::map_dbl(out, ~.x[2]),
-          p_case = p_mild + (1 - p_mild) * purrr::map_dbl(out, ~.x[1])
-        )
-
-      cases_milds <- cases_milds %>%
-        left_join(cases, by = c("date")) %>%
-        left_join(p_detection, by = "replicate") %>%
-        mutate(
-          new_detected_Case = new_Case * p_case,
-          new_detected_Mild = new_Mild * p_mild
-        )
-
-      # temp <- cases_milds %>%
-      #   filter(!projection) %>%
-      #   group_by(date) %>%
-      #   summarise(
-      #     est_detected_025 = quantile(new_detected_Case + new_detected_Mild, c(0.025)),
-      #     est_detected_50 = quantile(new_detected_Case + new_detected_Mild, c(0.5)),
-      #     est_detected_975 = quantile(new_detected_Case + new_detected_Mild, c(0.975))
-      #   )
-      # ggplot() +
-      #   geom_line(data = cases_milds %>% filter(!projection & replicate == 1),
-      #             aes(x = date, y = detected_infections), linetype = "dashed") +
-      #   geom_ribbon(data = temp, aes(x = date, ymin = est_detected_025 , ymax = est_detected_975),
-      #               alpha = 0.2) +
-      #   geom_line(data = temp, aes(x = date, y = est_detected_50))
-
-      cases_milds <-
-        cases_milds %>%
-        select(!detected_infections)
-    }
-
-    ## -----------------------------------------------------------------------------
-    ## Step 5: Report
-    ## -----------------------------------------------------------------------------
-
-    # get data in correct format for plotting
-    df_excess_deaths <- excess_deaths %>%
-      filter(iso == iso3c) %>%
-      # mutate(
-      #   deaths = deaths/as.numeric(date_end - date_start)
-      # ) %>%
-      rename(iso3c = iso) %>%
-      arrange(
-        date_start
-      )
-
-    #also get data on cases
-    df_cases <- readRDS("reported_covid.Rds") %>%
-      rename(iso = iso3c) %>%
-      filter(iso == iso3c) %>%
-      rename(iso3c = iso) %>%
-      arrange(date)
-
-    # prepare reports
-    options(tinytex.verbose = TRUE)
-    rmarkdown::render("index.Rmd",
-                      output_format = c("html_document","pdf_document"),
-                      params = list("central" = r_forwards_projection,
-                                    "excess" = TRUE,
-                                    "df_excess" = df_excess_deaths,
-                                    "df_cases" = df_cases,
-                                    "date_0" = start_date,
-                                    "date" = date,
-                                    "country" = country,
-                                    "surging" = surging,
-                                    "rt" = rtp2,
-                                    "variants" = variant_timings,
-                                    "date_range" = date_range,
-                                    "cases_milds" = cases_milds),
-                      output_options = list(pandoc_args = c(paste0("--metadata=title:",country," COVID-19 report "))))
-
-    } else {
-    # create empty files
-    file.create("index.html", "index.pdf", "index.md",
-                "summary_df.rds")
   }
 } else {
-## THIS IS THE ESFT LOOP FOR COUNTRIES WITH NO DEATHS CURRENTLY
-## THIS COULD DO WITH UPDATING
+  file.create(c("excess_fitting.pdf", "excess_out.Rds"))
+}
+
+## Excess deaths loop
+if(fit_reported){
+  #ensure parameters are in correct format
+  if(first_start_date != reported_start_date){
+    difference_in_t <- as.numeric(reported_start_date - first_start_date)
+    reported_parameters <- update_parameters(parameters, difference_in_t)
+    reported_distribution <- update_distribution(distribution, difference_in_t)
+  } else {
+    reported_parameters <- parameters
+    reported_distribution <- distribution
+  }
+
+  #fitting parameters
+  #load in country specific default parameters
+  fitting_params <- readRDS("fitting_params.Rds")[[iso3c]]$reported
+  #check if we need to update parameters
+  if(identical(initial_infections_interval, "NULL")){
+    initial_infections_interval <- fitting_params$initial_infections_interval
+  }
+  if(identical(n_particles, "NULL")){
+    n_particles <- fitting_params$n_particles
+  }
+  if(identical(k, "NULL")){
+    k <- fitting_params$k
+  }
+  if(identical(rt_interval, "NULL")){
+    rt_interval <- fitting_params$rt_interval
+  }
+
+  #run model
+  #use parallel if asked for
+  if(parallel){
+    future::plan(future::multisession())
+  }
+
+  reported_out <- rt_optimise(
+    data = reported_deaths,
+    distribution = reported_distribution,
+    squire_model = squire_model,
+    parameters = reported_parameters,
+    start_date = reported_start_date,
+    parallel = parallel,
+    rt_spacing = 14,
+    initial_infections_interval = initial_infections_interval,
+    n_particles = n_particles,
+    k = k,
+    rt_interval = rt_interval
+  )
+
+  reported_out <- trim_output(reported_out)
+
+  #Stop using parallel, furrr doesn't like something (maybe model object)
+  Sys.setenv(SQUIRE_PARALLEL_DEBUG = "TRUE")
+  if(parallel){
+    future::plan(future::sequential())
+  }
+
+  #save fitting plot
+  summarise_fit("reported_fitting.pdf", reported_out, country, iso3c, end_date, reported_start_date)
+
+  save_output(reported_out, "reported_out.Rds")
+
+  if(document){
+    #projections
+    project_reported <- as.numeric(end_date + projection_period - max(reported_deaths$date_end))
+
+    reported_out <- extend_output(reported_out, vacc_inputs, project_reported, reported_start_date, end_date)
+    model_user_args <- map(seq_len(samples), ~list())
+
+    # Maintaining the current set of measures for a further 3 months
+    forwards_projection_reported <- squire.page::projections(reported_out,
+                                                           R0 = map(reported_out$samples, ~tail(.x$R0, 1)),
+                                                           tt_R0 = c(0),
+                                                           time_period = project_reported,
+                                                           model_user_args = model_user_args)
+    r_forwards_projection_reported <- r_list_format(forwards_projection_reported, date_0 = reported_start_date)
+    rt_forwards_projection_reported <- rt_creation_vaccine(forwards_projection_reported, end_date + projection_period)
+
+    surging <- check_breached_capacity(forwards_projection_reported, country, reported_start_date)
+
+    cases_milds_reported <- summarise_infection_types(forwards_projection_reported, end_date)
+
+    if(estimate_reported_cases){
+      cases_milds_reported <- detected_cases_estimation(cases_milds_reported, cases)
+    }
+  }
+} else {
+  file.create(c("reported_fitting.pdf", "reported_out.Rds"))
+}
+
+#create rmd report
+if(document & (fit_excess | fit_reported)){
+  # get data in correct format for plotting
+  df_excess_deaths <- excess_deaths %>%
+    arrange(
+      date_start
+    )
+
+  #also get data on cases
+  df_cases <- readRDS("reported_covid.Rds") %>%
+    rename(iso = iso3c) %>%
+    filter(iso == iso3c) %>%
+    rename(iso3c = iso) %>%
+    arrange(date)
+
+  list_projections <- list()
+  list_date_range <- list()
+  list_cases_milds <- list()
+  list_rtp2 <- list()
+  if(fit_excess){
+    list_projections$excess <- r_forwards_projection_excess
+    list_date_range$excess <- c(excess_start_date, end_date)
+    list_cases_milds$excess <- cases_milds_excess
+    list_rtp2$excess <- rt_plot_immunity(excess_out, R0_plot = FALSE)
+  }
+  if(fit_reported){
+    list_projections$reported <- r_forwards_projection_reported
+    list_date_range$reported <- c(reported_start_date, end_date)
+    list_cases_milds$reported <- cases_milds_reported
+    list_rtp2$reported <- rt_plot_immunity(reported_out, R0_plot = FALSE)
+  }
+  date_range <- list_date_range[[which.min(unlist(map(list_date_range, ~.x[1])))]]
+
+  # prepare reports
+  options(tinytex.verbose = TRUE)
+  rmarkdown::render("index.Rmd",
+                    output_format = c("html_document","pdf_document"),
+                    params = list("list_projections" = list_projections,
+                                  "date_range" = date_range,
+                                  "list_cases_milds" = list_cases_milds,
+                                  "list_rtp2" = list_rtp2,
+                                  "fit_excess" = fit_excess,
+                                  "fit_reported" = fit_reported,
+                                  "df_excess" = df_excess_deaths,
+                                  "df_cases" = df_cases,
+                                  "date_0" = start_date,
+                                  "date" = date,
+                                  "country" = country,
+                                  "surging" = surging,
+                                  "variants" = variant_timings),
+                    output_options = list(pandoc_args = c(paste0("--metadata=title:",country," COVID-19 report "))))
+
+}
+
+if(!fit_excess | !fit_reported){
+  #ESFT loop for countries with no deaths,
+  ## THIS IS THE ESFT LOOP FOR COUNTRIES WITH NO DEATHS CURRENTLY
+  ## THIS COULD DO WITH UPDATING
 
   # What are the Rt values for each income group
   inc_R0s <- income_R0()
@@ -632,7 +500,7 @@ if(sum(excess_deaths$deaths) > death_limit) {
   # Scenarios with capacity constraints
   # ---------------------------------------------------------------------------
 
-  forwards_projection <- squire.page:::run_booster(
+  forwards_projection_esft <- squire.page:::run_booster(
     country = country,
     R0 = Rt + ((R0 - Rt)/2),
     time_period = time_period_esft,
@@ -643,13 +511,13 @@ if(sum(excess_deaths$deaths) > death_limit) {
     booster_doses =  as.integer(mean(tail(vacc_inputs$booster_doses,7))),
     vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat
   )
-  output_temp <- forwards_projection$output
-  saveRDS(forwards_projection, "grid_out.rds")
-  forwards_projection$output <- output_temp
+  output_temp <- forwards_projection_esft$output
+  saveRDS(forwards_projection_esft, "grid_out.rds")
+  forwards_projection_esft$output <- output_temp
   rm(output_temp)
 
   # And adjust their time variable so that we have t = 0 as today
-  forwards_projection <- lapply(list(forwards_projection), function(x) {
+  forwards_projection_esft <- lapply(list(forwards_projection_esft), function(x) {
     for(i in seq_len(dim(x$output)[3])) {
       x$output[,"time",i] <- x$output[,"time",i] - 1
     }
@@ -663,9 +531,9 @@ if(sum(excess_deaths$deaths) > death_limit) {
               "fitting.pdf")
 
   # major summaries
-  r_forwards_projection <- lapply(list(forwards_projection), r_list_format, date)[[1]]
-  rt_forwards_projection <- lapply(
-    list(forwards_projection),
+  r_forwards_projection_esft <- lapply(list(forwards_projection_esft), r_list_format, date)[[1]]
+  rt_forwards_projection_esft <- lapply(
+    list(forwards_projection_esft),
     rt_creation_simple_out_vaccine, date, date+89
   )[[1]]
 }
@@ -674,9 +542,18 @@ if(document){
   sim_end_date <- as.Date(date)+90
 
   # summarise the projections
-  data_sum <- map(list(
-    r_central_scenario = r_forwards_projection
-  ), function(pd){
+  scenario_list <- list()
+  if(fit_excess){
+    scenario_list$r_excess_scenario <- r_forwards_projection_excess
+  } else {
+    scenario_list$r_excess_scenario <- r_forwards_projection_esft
+  }
+  if(fit_reported){
+    scenario_list$r_reported_scenario <- r_forwards_projection_reported
+  } else {
+    scenario_list$r_reported_scenario <- r_forwards_projection_esft
+  }
+  data_sum <- map(scenario_list, function(pd){
 
     # remove any NA rows (due to different start dates)
     if(sum(is.na(pd$t) | is.na(pd$y))>0) {
@@ -717,20 +594,34 @@ if(document){
     return(as.data.frame(pds, stringsAsFactors = FALSE))
   })
 
-  data_sum$r_central_scenario$scenario <- "Central"
+  data_sum$r_excess_scenario$fit_type <- "Excess Mortality"
+  data_sum$r_excess_scenario$death_calibrated <- sum(excess_deaths$deaths) > death_limit
+  data_sum$r_reported_scenario$fit_type <- "Reported Deaths"
+  data_sum$r_reported_scenario$death_calibrated <- sum(reported_deaths$deaths) > death_limit
 
-  rt_list <- list(
-    rt_central_scenario = rt_forwards_projection
-  )
+  rt_list <- list()
+  if(fit_excess){
+    rt_list$rt_excess_scenario <- rt_forwards_projection_excess
+  } else {
+    rt_list$rt_excess_scenario <- rt_forwards_projection_esft
+  }
+  if(fit_reported){
+    rt_list$rt_reported_scenario <- rt_forwards_projection_reported
+  } else {
+    rt_list$rt_reported_scenario <- rt_forwards_projection_esft
+  }
 
-  rt_list$rt_central_scenario$scenario <- "Central"
+  rt_list$rt_excess_scenario$fit_type <- "Excess Mortality"
+  rt_list$rt_excess_scenario$death_calibrated <- sum(excess_deaths$deaths) > death_limit
+  rt_list$rt_reported_scenario$fit_type <- "Reported Deaths"
+  rt_list$rt_reported_scenario$death_calibrated <- sum(reported_deaths$deaths) > death_limit
 
   # combine and annotate
   data_sum <- do.call(rbind, data_sum)
   data_sum <- rbind(
     data_sum,
     do.call(rbind, rt_list) %>% filter(date <= max(data_sum$date))
-  ) %>% arrange(date, scenario)
+  ) %>% arrange(date, fit_type)
   rownames(data_sum) <- NULL
 
   # catch for hong kong and taiwan country name
@@ -750,12 +641,8 @@ if(document){
   data_sum$version <- "v10"
   data_sum <- dplyr::mutate(data_sum, across(dplyr::starts_with("y_"), ~round(.x,digits = 2)))
 
-  # specify if this is calibrated to deaths or just hypothetical forecast for ESFT
-  data_sum$death_calibrated <- sum(excess_deaths$deaths) > death_limit
-
   write.csv(data_sum, "projections.csv", row.names = FALSE, quote = FALSE)
 } else {
   file.create("projections.csv")
 }
 
-#check prevalence and estimated reported calculation + how to report projections?, reported deaths fits?

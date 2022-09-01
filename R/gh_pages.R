@@ -33,9 +33,9 @@ update_gh_pages <- function(ids, date){
     to_copy <- file.path(report_origins[i], copy)
     file_copy(to_copy, report_destinations[i])
     #update main files too
-    if(is_HIC[i]){
-      to_copy <- to_copy[copy %in% "projections.csv"]
-    }
+    #if(is_HIC[i]){
+    #  to_copy <- to_copy[copy %in% "projections.csv"]
+    #}
     file_copy(to_copy, dirname(report_destinations[i]))
   })
   #combined reports (LMIC/LIC only)
@@ -48,36 +48,12 @@ update_gh_pages <- function(ids, date){
                        lapply(file.path(report_origins[!is_HIC & made_report], "summary_df.rds"), readRDS))
   saveRDS(summaries, file.path(repo, "src", "pages_regional_page", "summaries.rds"))
   #combine projections
-  #legacy projections
-  message("Copying legacy projection summaries")
-  filename <- file.path(destination, "data", paste0(date,"_v8.csv"))
-  purrr::map_dfr(file.path(report_origins, "projections.csv"), ~readr::read_csv(.x, progress = FALSE, show_col_types = FALSE) %>% filter(scenario %in% c(
-    "Maintain Status Quo",
-    "Relax Interventions 50%",
-    "Additional 50% Reduction",
-    "Surged Maintain Status Quo",
-    "Surged Additional 50% Reduction",
-    "Surged Relax Interventions 50%"
-  ))) %>%
-    dplyr::mutate(version = "v8") %>%
-    dplyr::filter(.data$date > min(.data$date) + 250) %>%
-    dplyr::ungroup() %>%
-    readr::write_csv(filename)
-  zip(paste0(filename, ".zip"), filename, extras = '-j')
-  file.remove(filename)
 
   message("Copying projection summaries")
-  filename <- file.path(destination, "data", paste0(date,"_v9.csv"))
-  projections <- purrr::map_dfr(file.path(report_origins, "projections.csv"), ~readr::read_csv(.x, progress = FALSE, show_col_types = FALSE) %>% filter(scenario %in% c(
-    "Central",
-    "Optimistic",
-    "Pessimistic",
-    "Surged Central",
-    "Surged Optimistic",
-    "Surged Pessimistic"
-  ))) %>%
-    dplyr::mutate(version = "v9") %>%
-    dplyr::filter(.data$date > min(.data$date) + 250) %>%
+  filename <- file.path(destination, "data", paste0(date,"_v10.csv"))
+  projections <- purrr::map_dfr(file.path(report_origins, "projections.csv"), ~readr::read_csv(.x, progress = FALSE, show_col_types = FALSE)) %>%
+    dplyr::mutate(version = "v10") %>%
+    #dplyr::filter(.data$date > min(.data$date) + 250) %>%
     dplyr::ungroup()
   readr::write_csv(projections, filename)
   zip(paste0(filename, ".zip"), filename, extras = '-j')
@@ -114,7 +90,7 @@ update_gh_pages <- function(ids, date){
     "* **date** - ISO Date for the predicted number of infection/deaths/hospital burden",
     "* **compartment** - One of deaths, infections, hospital demand and ICU demand or Rt, Reff. Cumulatives are also given as well as prevalence - which is all active infections, which includes hospitilised and non-hopsitilised cases",
     "* **y_025, y_25, y_median, y_mean, y_75, y_975** - Summary statistics for the compartment. E.g. y_25 is the 25% quantile",
-    "* **scenario** - The intervention scenario explored. One of Maintain Status Quo, Optimistic, Pessimistic. Surged Maintain Status Quo also present in countries estimated to pass capacity in next 28 days. Additionally old scenarios still output in V8: One of Maintain Status Quo, Additional 50% Reduction, Relax Interventions 50%. Surged Maintain Status Quo also present in countries estimated to pass capacity in next 28 days.",
+    "* **fit_type** - If the data is based on excess mortality or reported deaths, if death_calibrated == TRUE then it is a placeholder based on an epidemic starting at the current date.",
     "* **country** - Country name",
     "* **iso3c** - Country ISO3C letter",
     "* **report_date** - ISO Date at which the reports were generated, i.e. what is the current date in the dataset",

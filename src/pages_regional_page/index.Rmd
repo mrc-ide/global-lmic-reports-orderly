@@ -243,7 +243,7 @@ summaries <- readRDS("summaries.rds")
 
 <br>
 
-This report uses data from The Economists Excess Deaths Model and the World Mortality Dataset, as well as the John Hopkin's Coronavirus Resouce Centre. Below is an overview of the cumulative number of estimated excess deaths in each continent as of `r base::format(date_0, "%Y-%m-%d")`
+This report uses data from The Economists Excess Deaths Model and the World Mortality Dataset, as well as the John Hopkin's Coronavirus Resouce Centre. Below is an overview of the cumulative number of estimated excess deaths in each continent as of `r base::format(date_0, "%Y-%m-%d")`. Our modelling outputs in this report utilise fits based on this estimated excess mortality and reported deaths if that is not available.
 
 <br>
 
