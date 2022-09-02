@@ -294,26 +294,31 @@ check_breached_capacity <- function(forwards_projection, country, start_date){
   any(na.omit(icu_28$i_tot > icu_cap)) || any(na.omit(icu_28$i_tot > icu_cap))
 }
 
+get_compartment_array <- function(output, compartment, end_date, replicate){
+  comp <- output[
+    lubridate::as_date(rownames(output)) > end_date - 30*3,
+    str_detect(colnames(output), compartment),
+    replicate
+  ]
+  #convert to 3d (date, age, vaccine status)
+  array_ <- array(NA, c(nrow(comp), 17, 7))
+  for(row in seq_len(17)){
+    array_[,row,] <- comp[, stringr::str_detect(colnames(comp), paste0(compartment,"\\[", row, ","))]
+  }
+  rownames(array_) <- rownames(comp)
+  array_
+}
+
 summarise_infection_types <- function(forwards_projection, end_date){
-  purrr::map_dfr(seq_along(forwards_projection$samples), function(replicate){
+  df <- purrr::map_dfr(seq_along(forwards_projection$samples), function(replicate){
     params <- squire.page:::setup_parameters(forwards_projection$squire_model,
                                              c(
                                                forwards_projection$parameters,
                                                forwards_projection$samples[[replicate]]
                                              )
     )
-    E2 <- forwards_projection$output[
-      lubridate::as_date(rownames(forwards_projection$output)) > end_date - 30*3,
-      str_detect(colnames(forwards_projection$output), "E2"),
-      replicate
-    ]
-    #convert to 3d (date, age, vaccine status)
-    E2_array <- array(NA, c(nrow(E2), 17, 7))
-    for(row in seq_len(17)){
-      E2_array[,row,] <- E2[, stringr::str_detect(colnames(E2), paste0("E2\\[", row, ","))]
-    }
-    dates <- lubridate::as_date(rownames(E2))
-    rm(E2)
+    E2_array <- get_compartment_array(forwards_projection$output, "E2", end_date, replicate)
+    dates <- lubridate::as_date(rownames(E2_array))
     #get just the transitions
     E2_array <- E2_array * params$gamma_E
     #get the time/vaccine varying proability of hopsitalisation
@@ -324,15 +329,55 @@ summarise_infection_types <- function(forwards_projection, end_date){
     ] * prob_hosp_multiplier
     new_Case <- E2_array * prob_hosp
     new_Mild <- E2_array * (1 - prob_hosp)
+    #get hospitalisations
+    ICase2_array <- get_compartment_array(forwards_projection$output, "ICase2", end_date, replicate)
+    new_hosp <- params$gamma_ICase * ICase2_array
     #sum over ages and vaccine status
     tibble(
       replicate = replicate,
-      date = dates,
-      new_Case = rowSums(new_Case),
-      new_Mild = rowSums(new_Mild)
+      date = unlist(map(dates, ~rep(.x, 17))),
+      age_group = rep(ordered(c(
+        "0-5",
+        "5-10",
+        "10-15",
+        "15-20",
+        "20-25",
+        "25-30",
+        "30-35",
+        "35-40",
+        "40-45",
+        "45-50",
+        "50-55",
+        "55-60",
+        "60-65",
+        "65-70",
+        "70-75",
+        "75-80",
+        "80+"
+      )), length(dates)),
+      new_Case = unlist(array_tree(rowSums(new_Case, dims = 2))),
+      new_Mild = unlist(array_tree(rowSums(new_Mild, dims = 2))),
+      new_hosp = unlist(array_tree(rowSums(new_hosp, dims = 2)))
     )
-  }) %>%
-    mutate(projection = date > end_date)
+  })
+  list(
+    total = df %>%
+      group_by(replicate, date) %>%
+      summarise(
+        new_Case = sum(new_Case),
+        new_Mild = sum(new_Mild),
+        .groups = "drop"
+      ) %>%
+      mutate(
+        date = lubridate::as_date(date),
+        projection = date > end_date
+      ),
+    age = df %>%
+      mutate(
+        date = lubridate::as_date(date),
+        projection = date > end_date
+      )
+  )
 }
 
 detected_cases_estimation <- function(cases_milds, cases){
@@ -429,4 +474,45 @@ update_distribution <- function(distribution, difference_in_t){
   purrr::map(distribution, function(parameters){
     update_parameters(parameters, difference_in_t)
   })
+}
+
+get_age_output <- function(out, date_0, end_date){
+  nimue_format(out,
+                     var_select = c("infections", "hospital_demand", "ICU_demand", "hospital_incidence", "ICU_incidence"),
+                     date_0 = date_0, reduce_age = FALSE) %>%
+    select(replicate, date, compartment, age_group, y) %>%
+    pivot_wider(names_from = compartment, values_from = y) %>%
+    mutate(age_group = ordered(as.character(age_group))) %>%
+    filter(date >= end_date)
+}
+
+estimate_cases_age <- function(age_cases_milds, cases_milds, end_date){
+  age_cases_milds %>%
+    left_join(
+      cases_milds %>%
+        group_by(replicate) %>%
+        summarise(
+          p_mild = p_mild[1],
+          p_case = p_case[1],
+        ),
+      by = "replicate"
+    ) %>%
+    mutate(
+      new_detected_Case = new_Case * p_case,
+      new_detected_Mild = new_Mild * p_mild,
+    ) %>%
+    select(!c(p_mild, p_case, projection))%>%
+    filter(date >= end_date) %>%
+    rename(non_hospitalised_cases = new_detected_Mild)
+}
+
+summarise_age_dependent <- function(df){
+  df %>%
+    group_by(date, age_group) %>%
+    summarise(
+      across(
+        !replicate,
+        mean,
+      )
+    )
 }

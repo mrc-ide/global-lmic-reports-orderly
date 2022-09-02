@@ -88,6 +88,7 @@ artefacts:
         - excess_out.Rds
         - excess_fitting.pdf
         - projections.csv
+        - age_stratified.csv
 
 # An optional name to describe the report in more detail than its
 # directory name (which must be short) but less detail than

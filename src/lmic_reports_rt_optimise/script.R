@@ -134,7 +134,7 @@ if(fit_excess | fit_reported){
 
   #load inputs
   vacc_inputs <- get_vaccine_inputs(iso3c)
-  tt_vaccine <- as.numeric(c(start_date, vacc_inputs$date_vaccine_change) - first_start_date)
+  tt_vaccine <- as.numeric(c(first_start_date, vacc_inputs$date_vaccine_change) - first_start_date)
 
   parameters$primary_doses <- c(0, vacc_inputs$primary_doses)
   parameters$tt_primary_doses <- tt_vaccine
@@ -157,7 +157,7 @@ if(fit_excess | fit_reported){
   variant_timings <- readRDS("variant_timings.Rds")[[iso3c]] %>%
     filter(variant %in% variants_to_model & !is.na(start_date)) %>%
     select(!mid_date) %>%
-    arrange(start_date) %>%
+    arrange(.data$start_date) %>%
     mutate(end_date = if_else(
       .data$end_date > lead(.data$start_date, n = 1, default = as_date(max(.data$end_date) + 1)),
       lead(.data$start_date, 1, default = as_date(max(.data$end_date) + 1)),
@@ -302,15 +302,38 @@ if(fit_excess){
 
     cases_milds_excess <- summarise_infection_types(forwards_projection_excess, end_date)
 
+    age_cases_milds <- cases_milds_excess$age
+    cases_milds_excess <- cases_milds_excess$total
+
     if(estimate_reported_cases){
       cases_milds_excess <- detected_cases_estimation(cases_milds_excess, cases)
+      age_cases_milds <- estimate_cases_age(age_cases_milds, cases_milds_excess, end_date)
     }
+
+    # age_split_excess <- get_age_output(forwards_projection_excess, excess_start_date, end_date) %>%
+    #   left_join(
+    #     age_cases_milds,
+    #     by = c("replicate", "date", "age_group")
+    #   ) %>%
+    #   summarise_age_dependent() %>%
+    #   mutate(
+    #     fit_type = "Excess Mortality"
+    #   )
+    age_split_excess <- age_cases_milds %>%
+      rename(non_hospitalised_infections = new_Mild,
+             hospitalisations = new_hosp) %>%
+      select(any_of(c("replicate", "date", "age_group", "non_hospitalised_infections", "non_hospitalised_cases", "hospitalisations")))%>%
+      summarise_age_dependent() %>%
+      mutate(
+        fit_type = "Excess Mortality"
+      )
+    rm(age_cases_milds)
   }
 } else {
   file.create(c("excess_fitting.pdf", "excess_out.Rds"))
 }
 
-## Excess deaths loop
+## Report deaths loop
 if(fit_reported){
   #ensure parameters are in correct format
   if(first_start_date != reported_start_date){
@@ -392,9 +415,33 @@ if(fit_reported){
 
     cases_milds_reported <- summarise_infection_types(forwards_projection_reported, end_date)
 
+    age_cases_milds <- cases_milds_reported$age
+    cases_milds_reported <- cases_milds_reported$total
+
     if(estimate_reported_cases){
       cases_milds_reported <- detected_cases_estimation(cases_milds_reported, cases)
+      age_cases_milds <- estimate_cases_age(age_cases_milds, cases_milds_reported, end_date)
     }
+
+    # age_split_reported <- get_age_output(forwards_projection_reported, reported_start_date, end_date) %>%
+    #   left_join(
+    #     age_cases_milds,
+    #     by = c("replicate", "date", "age_group")
+    #   ) %>%
+    #   summarise_age_dependent() %>%
+    #   mutate(
+    #     fit_type = "Reported Deaths"
+    #   )
+
+    age_split_reported <- age_cases_milds %>%
+      rename(non_hospitalised_infections = new_Mild,
+             hospitalisations = new_hosp) %>%
+      select(any_of(c("replicate", "date", "age_group", "non_hospitalised_infections", "non_hospitalised_cases", "hospitalisations")))%>%
+      summarise_age_dependent() %>%
+      mutate(
+        fit_type = "Reported Deaths"
+      )
+    rm(age_cases_milds)
   }
 } else {
   file.create(c("reported_fitting.pdf", "reported_out.Rds"))
@@ -445,19 +492,19 @@ if(document & (fit_excess | fit_reported)){
                                   "fit_reported" = fit_reported,
                                   "df_excess" = df_excess_deaths,
                                   "df_cases" = df_cases,
-                                  "date_0" = start_date,
+                                  "date_0" = first_start_date,
                                   "date" = date,
                                   "country" = country,
                                   "surging" = surging,
                                   "variants" = variant_timings),
                     output_options = list(pandoc_args = c(paste0("--metadata=title:",country," COVID-19 report "))))
 
+} else {
+  file.create("index.html", "index.pdf", "index.md", "summary_df.rds")
 }
 
 if(!fit_excess | !fit_reported){
   #ESFT loop for countries with no deaths,
-  ## THIS IS THE ESFT LOOP FOR COUNTRIES WITH NO DEATHS CURRENTLY
-  ## THIS COULD DO WITH UPDATING
 
   # What are the Rt values for each income group
   inc_R0s <- income_R0()
@@ -511,10 +558,6 @@ if(!fit_excess | !fit_reported){
     booster_doses =  as.integer(mean(tail(vacc_inputs$booster_doses,7))),
     vaccine_coverage_mat = vacc_inputs$vaccine_coverage_mat
   )
-  output_temp <- forwards_projection_esft$output
-  saveRDS(forwards_projection_esft, "grid_out.rds")
-  forwards_projection_esft$output <- output_temp
-  rm(output_temp)
 
   # And adjust their time variable so that we have t = 0 as today
   forwards_projection_esft <- lapply(list(forwards_projection_esft), function(x) {
@@ -525,17 +568,32 @@ if(!fit_excess | !fit_reported){
     return(x)
   })[[1]]
 
-  ## Lastly make up some outputs here to pass orderly
-  file.create("index.html", "index.pdf", "index.md",
-              "summary_df.rds",
-              "fitting.pdf")
-
   # major summaries
   r_forwards_projection_esft <- lapply(list(forwards_projection_esft), r_list_format, date)[[1]]
   rt_forwards_projection_esft <- lapply(
     list(forwards_projection_esft),
     rt_creation_simple_out_vaccine, date, date+89
   )[[1]]
+
+
+  cases_milds_esft <- map(list(forwards_projection_esft), function(x){
+    x$samples <- list(list())
+    x$squire_model <- squire.page::nimue_booster_model()
+    x$parameters$replicates <- x$parameters$seed <- x$parameters$use_dde <- NULL
+    x$inputs$start_date <- end_date
+    summarise_infection_types(x, end_date)
+  })[[1]]
+
+  age_cases_milds <- cases_milds_esft$age
+  cases_milds_esft <- cases_milds_esft$total
+
+  age_split_esft <- get_age_output(forwards_projection_esft, end_date, end_date) %>%
+    left_join(
+      age_cases_milds,
+      by = c("replicate", "date", "age_group")
+    ) %>%
+    summarise_age_dependent()
+  rm(age_cases_milds)
 }
 
 if(document){
@@ -624,6 +682,28 @@ if(document){
   ) %>% arrange(date, fit_type)
   rownames(data_sum) <- NULL
 
+  if(fit_excess){
+    age_stratified <- age_split_excess
+  } else {
+    age_stratified <- age_split_esft %>%
+      mutate(fit_type = "Excess Mortality")
+  }
+  if(fit_reported){
+    age_stratified <- rbind(
+      age_stratified,
+      age_split_reported
+    )
+  } else {
+    age_stratified <- rbind(
+      age_stratified,
+      age_split_esft %>%
+        mutate(fit_type = "Reported Deaths")
+    )
+  }
+  age_stratified$iso3c <- iso3c
+  age_stratified$age_group <- paste0("'", as.character(age_stratified$age_group), "'")
+  write.csv(age_stratified, "age_stratified.csv", row.names = FALSE, quote = FALSE)
+
   # catch for hong kong and taiwan country name
   if (iso3c == "HKG") {
     country <- "Hong Kong"
@@ -643,6 +723,6 @@ if(document){
 
   write.csv(data_sum, "projections.csv", row.names = FALSE, quote = FALSE)
 } else {
-  file.create("projections.csv")
+  file.create(c("projections.csv", "age_stratified.csv"))
 }
 

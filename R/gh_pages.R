@@ -63,6 +63,16 @@ update_gh_pages <- function(ids, date){
             filter(iso3c %in% purrr::map_chr(ids[!is_HIC & made_report], ~.x$iso3c)),
   file.path(repo, "src", "pages_regional_page", "all_data.rds"))
   rm(projections)
+
+  message("Copying age_stratified results")
+  filename <- file.path(destination, "data", paste0("age_stratified", date,"_v10.csv"))
+  age_projections <- purrr::map_dfr(file.path(report_origins, "age_stratified.csv"), ~readr::read_csv(.x, progress = FALSE, show_col_types = FALSE)) %>%
+    dplyr::ungroup()
+  readr::write_csv(age_projections, filename)
+  zip(paste0(filename, ".zip"), filename, extras = '-j')
+  file.remove(filename)
+  rm(age_projections)
+
   #run orderly tasks
   message("Running pages_ orderly tasks")
   pages_index_page_id <- suppressMessages(orderly::orderly_run("pages_index_page", list(date = date), echo = FALSE))
@@ -95,7 +105,18 @@ update_gh_pages <- function(ids, date){
     "* **iso3c** - Country ISO3C letter",
     "* **report_date** - ISO Date at which the reports were generated, i.e. what is the current date in the dataset",
     "* **version** - Report version. If not present means they were run with verion 1. See Methods page for more details.",
-    "* **death_calibrated** - Scenario calibrated to death data. In countries with no deaths to date, we provide scenario projections of what would happen if 5 imported cases occurred today with no future intervention changes. We assume three different R0s. For our upper estimate, we assume that R0 is equal to the mean R0 of countries in the same income classifcation (High, Upper Middle, Lower Middle, Low Income). For our lower estimate, we assume that R0 is equal to either 1.2 or the current Rt of countries in the same income classifcation (whichever is highest). Lastly, our central estimate is half way between the upper and lower estimate. These 3 scenarios are labelled as Relax Interventions 50%, Additional 50% Reduction and Maintain Status Quo in order to maintain consistency with the calibrated scenarios."
+    "* **death_calibrated** - Scenario calibrated to death data. In countries with no deaths to date, we provide scenario projections of what would happen if 5 imported cases occurred today with no future intervention changes. We assume three different R0s. For our upper estimate, we assume that R0 is equal to the mean R0 of countries in the same income classifcation (High, Upper Middle, Lower Middle, Low Income). For our lower estimate, we assume that R0 is equal to either 1.2 or the current Rt of countries in the same income classifcation (whichever is highest). Lastly, our central estimate is half way between the upper and lower estimate. These 3 scenarios are labelled as Relax Interventions 50%, Additional 50% Reduction and Maintain Status Quo in order to maintain consistency with the calibrated scenarios.",
+    "",
+    "## Age Stratified Data Schema",
+    "* **date** - ISO Date for the predicted number of infection/deaths/hospital burden",
+    "* **fit_type** - If the data is based on excess mortality or reported deaths, if death_calibrated == TRUE then it is a placeholder based on an epidemic starting at the current date.",
+    "* **iso3c** - Country ISO3C letter",
+    "* **version** - Report version. If not present means they were run with verion 1. See Methods page for more details.",
+    "* **age_group** - 5 year age-group that the value corresponds to.",
+    "* **non_hospitalised_infections** - Number of new infections that won't need hospitalisation, represents mild and asympotmatic. NOTE: Due to a limitation of the model these are taken after the latent period of an infection, whilst infections in the other data set are taken from the beginning of the latent period.",
+    "* **non_hospitalised_cases** - A proportion of non_hospitalised_infections that we estimate will be detected. Estimation is based on the last 3 months of reported cases compared to model outputs.",
+    "* **hospitalisations** - Number of new people needing hospitalisation over this day."
+
   )
   schema_loc <- file.path(destination, "data", "schema.md")
   file.create(schema_loc, showWarnings = FALSE)
