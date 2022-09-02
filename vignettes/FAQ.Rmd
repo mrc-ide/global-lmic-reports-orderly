@@ -26,53 +26,27 @@ A number of countries are not in the `countrycode` database but we don't current
 Some values were not matched unambiguously: Channel Islands, Micronesia, Saint Martin, St. Barth
 ```
 
-### 2. pars_init role
-
-`pars_init.rds` in the `lmic_reports_vaccine` task contains for each country:
-
-1. Initial conditions for each country that should provide the best fit from the last model run
-
-All the named parameters from `start_date` to `Rt_rw_xx` are the parameters that are
-being changed during the fitting.
-
-2. The scaling factor and covariance matrix for the parameters used as part of the fitting
-
-These two are the final values from the end of the mcmc chain and are stored here as they
-are used to initialise each run. This helps ensure that the mcmc chain can pick up where it
-left off when being rerun and should improve fitting speed dramatically as a result.
-
-3. Few other parameters specific to each country used in creation of Rt trend 
-
-These include: `date_Meff_change`, `Rt_shift_duration`, `Rt_shift_scale` and `Rt_rw_duration`. `date_Meff_change` are specific to each country and was previously estimated to be the rough date that mobility starts to increase again in each country. This determines when `Meff_pl` is used for calculating Rt. `Rt_rw_duration` specifies the length of the random walk parameters - this must stay as 14 to ensure that the fitted `Rt_rw_xx` parameters are correct, i.e. these are estimated assuming a 14 day random walk. `Rt_shift_duration`and `Rt_shift_scale` are parameters that were previously used in creating a one time shift in Rt after mobility started increasing, however, in the `lmic_reports_vaccine` script these are bounded so that the shift ~ 0 and so have no impact on the fitting, so ignore these.
-
-### 3. mcmc length and short run arguments
-
-There are 2 arguments to determine the length of the mcmc chain used:
-
-- `n_mcmc`: Length of mcmc chain 
-- `short_run`: Whether we just want to do a short run for testing
-
-If `short_run` is `TRUE` then the mcmc chain is run for just 20 iterations and we only draw 2 trajectories after the mcmc chain has finished. If `short_run` is `FALSE` then we run `n_mcmc` iterations and we draw 50 epidemic trajectories from the posterior. For information, we used to draw 100 trajectories but when we moved from running the `squire` model to the `nimue` model we ran out of RAM when running the model. 50 appears to be fine on the DIDE cluster but only through specifying the 24 Core template in `glodide` and if any errors are returned suggesting the there is insufficient memory, e.g. "Can't allocate vector of xB...", then recommend changing the number of trajectories drawn. 
-
-In general, 20000 is plenty to create good fits for each country. However, for new fits for a country or if we change it from mobility to splines (see FAQ on this below) then a longer mcmc chain is required and for this 100,000 will be more than plenty. 
-
-### 4. atol and rtol
+### 2. atol and rtol
 
 `rtol` and `atol` are the per-step relative and absolute tolerance of the ODE solver used. By default these are set to `1e-6` for all ruins (the default for `dde::dopri`, which is being called to run the nimue models). However, recently for some countries the solver fails to solve model runs for countries with long period without any deaths in, i.e. sustaining an epidemic with very low levels of infection. So far, this has happened for two countries (NZL and BRN), and for these countries there is a loop inside the `script.R` for the `lmic_reports_vaccine` task to set the tolerance for these countries to `1e-8` that seemd to fix this error. If any countries produce errors discussing "vanishing step sizes" or other solver issue, check whether the country has not reported any deaths for a long time (similar to NZL in August 2021) and if so then add these countries iso3cs to this internal loop. 
 
-### 5. Elongated summers
+### 3. Elongated summers
 
 Currently, the fitting process does not handle periods with no deaths very well as we cannot simulate new importations with the current model framework. For a few countries, there are periods over the summer of 2020 where there were no deaths but infections were still occurring in a pattern that suggested ongoing transmission. In these countries, due to the period of no deaths, when transmission increased at the end of 2020 it was impossible for the epidemic to rebound quick enough in response to increasing transmission. As a result, we artificially introduced a few deaths during the summer to ensure the correct level of infection in the community for the fitting and then post-hoc remove these artifically introduced deaths. These countries are specified with `elong_summer_isos <- c("EST", "ISL", "ATG")` and `elong_deaths_cont_trans <- c("VNM", "TZA", "FJI")` - the difference here being that the time in the calendar year when we artificially introduce new deaths is different. 
 
-### 6. Complete reintroduction handling 
+As of the move to excess mortality, this has been removed, though we may need to add it again in future.
+
+### 4. Complete reintroduction handling 
 
 As above, we cannot handle importation of new cases to seed new waves after period of no transmission. In some countries, there were initial waves that appear to have been fully waned with no community transmission. When new waves are triggered in these countries, we needed a way to have new transmission occurring. To do this, we remove all deaths associated with the first epidemic wave and start the epidemic at the beginning of the second wave. To account for the level of immunity that the first wave will have produced, we apply an IFR to the number of deaths that have occurred in the first wave and use this to start the second wave with thee right amount of people in the recovered and dead compartments. These countries are specified with `reintroduction_iso3cs <- c("MMR", "BLZ", "TTO", "BHS", "HKG", "ABW", "GUM", "ISL", "BRB", "MUS")`, and the correct initial state for these countries is set up using the `init <- init_state_nimue(deaths_removed, iso3c)`.
 
-### 7. Countries file
+As of the move to excess mortality, this has been removed, though we may need to add it again in future.
+
+### 5. Countries file
 
 The full list of countries that we model is specified in the `countries` file. This is not the full set of countries and territories that have COVID-19 deaths, however, but is the list that aligns with the countries that we model in `squire`. If any new requests for countries to be added appear (this has happened before) then you will need to `squire` and add the relevant country data for the country (population, hospital and ICU bed numbers) and then add them to the countries file to create your list of iso3cs to be run. 
 
-### 8. Splines vs Mobility
+### 6. Splines vs Mobility
 
 At the beginning of the pandemic we relied on different sources of data to understand how transmission was changing in the community. To begin with we used the timing of different interventions as specified in the Oxford GRT database, before in Version 2 relying on Google mobility data to infer changes in Rt, whereby we estimated the effect of mobility (`$M_{eff}$`) on Rt for each country. As countries came out of lockdowns it was clear that increases in mobility did not affect Rt in the same way as when mobility was falling and so we estimated a new parameter for the effect of mobility post lockdown (`$M_{eff,pl}$`). This worked for a time however it was clear that each countries `$R_0$` had also changed (better contact tracing, testing, human awareness etc.) and so we introduced a one time shift in Rt (the Rt_shift parameters) to accommodate this. However, this quickly was failing to be predictive at which point we removed this by setting the bounds for this shift ~0 (no shift to be inferred) and swapped to inferring changes in Rt every fortnight (`Rt_rw_x`). These inferred changes to Rt were assumed to be on top of any changes that could be explained by mobility, i.e. if mobility and Rt were still related then this would ideally explain the changes in tranmsission as opposed to the fortnightly changes in Rt. The reason for wanting this feature of the model fitting was such that in countries in which mobility was still informative we were then able to forecast what might happen if mobility returned to previous levels, whereas if mobility was not informative we have no information to explain future trajectories. A full overview of these method changes over time is in the methods described in the [News](https://mrc-ide.github.io/global-lmic-reports/News.html) and [Parameters](https://mrc-ide.github.io/global-lmic-reports/parameters.html).
 
@@ -80,37 +54,27 @@ The reason for explaining the above in depth is to set up the explanation of why
 
 `spline_iso3cs <- c("CHN","MAC","TWN","KOR", "RWA", "PNG", "DZA", "COD", "SYR", "TUN", "UGA","UZB", "BEL","IRN")`
 
-For these countries, we set mobility over time to be always 1 (i.e no mobility pattern), which then relies solely on the fortnightly changes in Rt. For the countries specified, we either 1) do not believe the mobility data to be informative/representative of the country as a whole (e.g. CHN), 2) do not believe the mobility data that we have inferred for the country using the boosted regression tree model (usually due to no new reports of interventions in the ACAPs database that was used to parameterise this) (e.g IRN), or 3) because the mobility data and the epidemic are uncoupled/delayed and as such the mobility data is not going to explain the dynamics of the epidemic sufficiently well (e.g. BEL). For these countries, we rely solely on the fortnightly shifts, which in general are much more reliable for fitting but do require a longer initial mcmc chain to estimate these. 
+For these countries, we set mobility over time to be always 1 (i.e no mobility pattern), which then relies solely on the fortnightly changes in Rt. For the countries specified, we either 1) do not believe the mobility data to be informative/representative of the country as a whole (e.g. CHN), 2) do not believe the mobility data that we have inferred for the country using the boosted regression tree model (usually due to no new reports of interventions in the ACAPs database that was used to parameterise this) (e.g IRN), or 3) because the mobility data and the epidemic are uncoupled/delayed and as such the mobility data is not going to explain the dynamics of the epidemic sufficiently well (e.g. BEL). For these countries, we rely solely on the fortnightly shifts, which in general are much more reliable for fitting but do require a longer initial mcmc chain to estimate these.
 
-### 9. Github file size issues 
+As of the new fitting method we soley use untransformed splines in the fitting process. Simply, this works with the new method better though may need adapting if we want to perform inference with these model fits.
+
+### 7. Github file size issues 
 
 When you push the Github pages from `gh-pages` the website repository, you will notice warnings about the file size of the data zip that is being pushed. The limit for this is 100Mb, which will be reached shortly with the size of the model projections. This zip file is generated in the `run/copy_reports_vaccine.R` script. One option to address this issue would be to combine half of the countries into one zip, e.g. `2021-09-01_a_v8.csv.zip` and `2021-09-01_b_v8.csv.zip`. If this option is taken, then it would be good to update the `gh-pages/data/schema.md` document to explain what has happened. 
 
-### 10. Data schema
+### 8. Data schema
 
-The `gh-pages/data/schema.md` file explains what information is exported in the data directory and what is included in the `projections.csv` files that are exported in the root of each country directory (e.g. https://github.com/mrc-ide/global-lmic-reports/blob/master/ATG/projections.csv). This `schema.md` document is written using the `run/write_data_scheme.R` function that is called within `run/copy_reports_vaccine.R`
+The `gh-pages/data/schema.md` file explains what information is exported in the data directory and what is included in the `projections.csv` files that are exported in the root of each country directory (e.g. https://github.com/mrc-ide/global-lmic-reports/blob/master/ATG/projections.csv). This `schema.md` document is written using the `R/gh_pages.R` function that is called within `vignettes/dide_run.Rmd`
 
-### 11. Old model run data 
+### 9. Old model run data 
 
-Github repositories can only store 10Gb of files. We often have hit this number, mostly due to the old model run data. As of last week, most of the old model run data has been moved to [https://mrcdata.dide.ic.ac.uk/global-lmic-reports/](https://mrcdata.dide.ic.ac.uk/global-lmic-reports/). This only needs to be done periodically when the Github website limit gets reached (Rich will likely email me/you about this when it happens). When this happens, simply zip up all the old data objects in the data directory into one object, copy it to the TMP directory (T:/) and message Wes, who will move it onto the mrc data directory above. 
+Github repositories can only store 10Gb of files. We often have hit this number, mostly due to the old model run data. As of last week, most of the old model run data has been moved to [https://mrcdata.dide.ic.ac.uk/global-lmic-reports/](https://mrcdata.dide.ic.ac.uk/global-lmic-reports/). This only needs to be done periodically when the Github website limit gets reached (Rich will likely email me/you about this when it happens). When this happens, simply zip up all the old data objects in the data directory into one object, copy it to the TMP directory (T:/) and message Wes, who will move it onto the mrc data directory above. It is probably not worth saving the age stratified data.
 
-### 12. Staging site
-
-We also have a staging site, so if you ever want to check that the pages etc look okay  then set the remote to there and push to there. You may have to the set the remote to there and push to there. N.B. The hyperlinks in the page build refer to the main site but the URLs are correct so you can check an individual page by going to the URL, e.g. with:
-
-```git remote set-url origin git@github.com:mrc-ide/global-lmic-reports-staging.git```
-
-In general, you should not need to use this but if you need to make changes and want to test this out have a look at this - this will not work immediately as I think the staging site repo is very off base for the commit tree for the main repo. So the staging repo may need to be wiped and started again - ask Rich about this as it is an mrc-ide repository and he will also likely have a better solution for this. For information, we used to handle the gh-pages repository in a way where we reinitialised the Github repository each time we made changes (see `scripts/publush_website_original` for this code). This was done so that the commit tree would not balloon in size. Unfortunately, that failed as an approach as the sum of all the data objects and web pages meant that the git pak object size became too large to be unpacked at the Github end and so we now commit new changes each time and push as one would normally do with a Github repository. 
-
-### 13. Late date_R0_change after data errors
+### 10. Late date_R0_change after data errors
 
 When you specify a date for the model fits to be done, ALWAYS pick a date that is 2 days earlier than the current date, e.g. if it is the 27th today then run a model fit for no later than the 25th. The reason for this is that the death data is only available across all data sources (JHU and worldometers) 2 days after the date asked due to delays in data collection. (In truth, what happens is the worldometers data that is reported is actually one day shifted from the JHU data, i.e the deaths reported on the 26th for worldometers actually correspond to the 25th in the JHU data but the dates are not the same so we have to set the date back for worldometers). If you do not do this you will get an error from the model fits that the last date in `date_R0_change` is after the last date in the data.  
 
-### 14. Model fit never finishes
-
-If the model fit for a country just never finishes, this will likely be because the data source being used has negative deaths in it. This happens when countries correct former incorrect death data. Check that the outputs of the `ecdc` task do not have negative deaths and if they do then you will need to correct for these these in the `ecdc` task.
-
-### 15. What do if there is an error/issue that is not explained by this FAQ?
+### 11. What do if there is an error/issue that is not explained by this FAQ?
 
 This will happen. This will happen as a) I have not remembered everything that has thrown a bug/error over the last 18 months and b) new errors and slight modelling peculiarities will pop up, e.g. the `atol` and `rtol` issue only occurred last week. A sensible approach for looking at new errors may look something like:
 
