@@ -456,12 +456,16 @@ detected_cases_estimation <- function(cases_milds, cases){
       select(!detected_infections)
 }
 
-update_parameters <- function(parameters, difference_in_t){
-  for(var in stringr::str_subset(names(parameters), "tt_")){
+update_parameters <- function(parameters, difference_in_t, squire_model){
+  tt_pars <- stringr::str_subset(names(parameters), "tt_")
+  for(var in tt_pars){
     parameters[[var]] <- parameters[[var]] - difference_in_t
     parameters[[var]][1] <- 0
     if(sum(parameters[[var]] < 0) > 0){
-      stop("parameters begin before epidemic, write adjustment here!")
+      if(stringr::str_detect(var, "(doses|max_vaccine)")){
+        parameters$prefit_vaccines <- TRUE
+      }
+      parameters[[var]][1] <- parameters[[var]][2] - 1
     }
   }
   if(!is.null(parameters$protection_delay_time)){
@@ -472,7 +476,45 @@ update_parameters <- function(parameters, difference_in_t){
 
 update_distribution <- function(distribution, difference_in_t){
   purrr::map(distribution, function(parameters){
-    update_parameters(parameters, difference_in_t)
+    pars <- update_parameters(parameters, difference_in_t)
+  })
+}
+
+prefit_vaccines <- function(parameters, distribution, squire_model){
+  warning("When pre-fitting vaccines, the compartments are hardcoded and so may need changing in future, if the underlying model changes structure!")
+  map(seq_along(distribution), function(i){
+    i_parameters <- c(parameters, distribution[[i]])
+    i_parameters$prefit_vaccines <- NULL
+    tt_pars <- stringr::str_subset(names(i_parameters), "tt_")
+    tt_pars_vaccine <- stringr::str_subset(tt_pars, "(doses|max_vaccine)")
+    #fix leading zeros
+    first_t <- min(unlist(i_parameters[tt_pars_vaccine]), na.rm = TRUE) - 1
+    i_parameters <- imap(i_parameters, function(x, par){
+      if(par %in% tt_pars){
+        x[1] <- first_t
+        x <- x - first_t
+      }
+      x
+    })
+
+    odin_pars <- squire.page:::setup_parameters(squire_model, i_parameters)
+    odin_pars$beta_set <- 0
+    odin_pars$tt_beta <- first_t
+    odin_pars$S_0 <- odin_pars$S_0 + odin_pars$E1_0
+    odin_pars$E1_0[,1] <- rep(0, length(odin_pars$E1_0[,1]))
+
+    model_instance <- squire_model$odin_model(odin_pars)
+    output <- model_instance$run(c(0, -first_t))[2,]
+
+    #extract the compartment values
+    S_array <- array(NA, c(17, 7))
+    for(age in seq_len(17)){
+      S_array[age, ] <- output[paste0("S[", age, ",", seq_len(7), "]")]
+    }
+
+    new_dist <- distribution[[i]]
+    new_dist$S_0 <- S_array
+    new_dist
   })
 }
 

@@ -117,6 +117,20 @@ if(fit_excess | fit_reported){
 
   pop <- squire::get_population(country)
   squire_model <- squire.page:::nimue_booster_model()
+  default_parameters_func <- squire_model$parameter_func
+  define_parameters_func <- function(default_parameters_func){
+    function(...){
+      args <- list(...)
+      S_0 <- args$S_0
+      args$S_0 <- NULL
+      odin_pars <- do.call(default_parameters_func, args)
+      if(!is.null(S_0)){
+        odin_pars$E1_0 <- array(0, dim = dim(odin_pars$E1_0))
+        odin_pars$S_0 <- S_0
+      }
+      odin_pars
+    }
+  }
   end_date <- date
   projection_period <- 365
 
@@ -223,15 +237,17 @@ if(fit_excess | fit_reported){
 ## Excess deaths loop
 if(fit_excess){
   #ensure parameters are in correct format
-  if(first_start_date != excess_start_date){
-    difference_in_t <- as.numeric(excess_start_date - first_start_date)
-    excess_parameters <- update_parameters(parameters, difference_in_t)
-    excess_distribution <- update_distribution(distribution, difference_in_t)
-  } else {
-    excess_parameters <- parameters
-    excess_distribution <- distribution
+  difference_in_t <- as.numeric(excess_start_date - first_start_date)
+  excess_parameters <- update_parameters(parameters, difference_in_t)
+  excess_distribution <- update_distribution(distribution, difference_in_t)
+  excess_squire_model <- squire_model
+  if(!is.null(excess_parameters$prefit_vaccines)){
+    #if vaccinations occur before epidemic, we run the model with just vaccinations
+    #to get the current state of vaccination status at the epidemic start
+    excess_distribution <- prefit_vaccines(excess_parameters, excess_distribution, excess_squire_model)
+    excess_parameters$prefit_vaccines <- FALSE
+    excess_squire_model$parameter_func <- define_parameters_func(default_parameters_func)
   }
-
   #fitting parameters
   #load in country specific default parameters
   fitting_params <- readRDS("fitting_params.Rds")[[iso3c]]$excess
@@ -259,7 +275,7 @@ if(fit_excess){
   excess_out <- rt_optimise(
     data = excess_deaths,
     distribution = excess_distribution,
-    squire_model = squire_model,
+    squire_model = excess_squire_model,
     parameters = excess_parameters,
     start_date = excess_start_date,
     parallel = parallel,
@@ -337,13 +353,16 @@ if(fit_excess){
 ## Report deaths loop
 if(fit_reported){
   #ensure parameters are in correct format
-  if(first_start_date != reported_start_date){
-    difference_in_t <- as.numeric(reported_start_date - first_start_date)
-    reported_parameters <- update_parameters(parameters, difference_in_t)
-    reported_distribution <- update_distribution(distribution, difference_in_t)
-  } else {
-    reported_parameters <- parameters
-    reported_distribution <- distribution
+  difference_in_t <- as.numeric(reported_start_date - first_start_date)
+  reported_parameters <- update_parameters(parameters, difference_in_t)
+  reported_distribution <- update_distribution(distribution, difference_in_t)
+  reported_squire_model <- squire_model
+  if(!is.null(reported_parameters$prefit_vaccines)){
+    #if vaccinations occur before epidemic, we run the model with just vaccinations
+    #to get the current state of vaccination status at the epidemic start
+    reported_distribution <- prefit_vaccines(reported_parameters, reported_distribution, reported_squire_model)
+    reported_parameters$prefit_vaccines <- NULL
+    reported_squire_model$parameter_func <- define_parameters_func(default_parameters_func)
   }
 
   #fitting parameters
@@ -373,7 +392,7 @@ if(fit_reported){
   reported_out <- rt_optimise(
     data = reported_deaths,
     distribution = reported_distribution,
-    squire_model = squire_model,
+    squire_model = reported_squire_model,
     parameters = reported_parameters,
     start_date = reported_start_date,
     parallel = parallel,
