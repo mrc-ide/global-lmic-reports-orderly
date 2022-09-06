@@ -214,7 +214,17 @@ which countries require rerunning and re-bundle those to be run again:
 
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
 # bundle the countries we need to rerun
-iso3cs_to_rerun <- c()
+iso3cs_to_rerun <- c("ARM", "AZE", "BEN", "BIH", "BLZ", "CPV", "CUB", "DJI", "DOM", 
+"EGY", "GEO", "KAZ", "KGZ", "LBR", "LBY", "MEX", "MKD", "MMR", 
+"NIC", "PRY", "PSE", "UZB", "BTN", "CAF", "FJI", "FSM", "GNQ", 
+"KHM", "KIR", "LAO", "MNG", "PRK", "RWA", "SLB", "SLE", "STP", 
+"SWZ", "TJK", "TKM", "TON", "VUT", "WSM", "GUF", "ATG", "BRN", 
+"ISL", "KWT", "LUX", "NCL", "OMN", "PYF", "QAT", "SYC", "ABW", 
+"CUW", "GUM", "MAC", "AFG", "AGO", "ARG", "BFA", "BGD", "BGR", "CIV", "COD", "DZA",
+                       "ETH", "GHA", "HTI", "IDN", "IND", "IRQ", "MLI", "MRT", "MWI",
+                       "NER", "NGA", "PAK", "RUS", "SDN", "SEN", "SOM", "SYR", "TUR",
+                       "ZMB", "ZWE", "COM", "MOZ", "NPL", "YEM", "ARE", "CAN", "CHE", 
+                       "FRA", "IRL", "ITA", "NLD")
 #change start date
 bundles_to_rerun <- lapply(
   iso3cs_to_rerun,
