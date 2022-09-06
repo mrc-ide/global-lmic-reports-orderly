@@ -73,7 +73,7 @@ what the `date` is that we are conducting model fits for, i.e. up to what date a
 we running.
 
 ```{r, eval = FALSE}
-date <- "2022-08-08"
+date <- "2022-09-01"
 
 glodide_loc <- "N:/lmic_fitting/glodide" ###Update if on a different drive!
 ```
@@ -181,7 +181,6 @@ After the tasks have all finished, we can check to see the fits to see if they a
 To do this we take the path of the finished tasks from our bundles
 
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
-
 # use the bundles paths to work out the path to the runs in derived
 paths <- gsub("raw", "derived", vapply(bundles, FUN = "[[", FUN.VALUE = character(1), "path"))
 
@@ -191,7 +190,7 @@ fits <- lapply(paths, function(x) {
   if(file.exists(x)){
     zip::unzip(
       zipfile = x, 
-      files = file.path(gsub("\\.zip", "", basename(x)), "pack/fitting.pdf"), 
+      files = file.path(gsub("\\.zip", "", basename(x)), c("pack/excess_fitting.pdf", "pack/reported_fitting.pdf")), 
       exdir = td
     )
   }
@@ -205,7 +204,7 @@ pdfs <- grep("fitting", list.files(td, full.names = TRUE, recursive = TRUE), val
 # created because it needs to be for orderly to finish the task
 qpdf::pdf_combine(
   input = pdfs[file.size(pdfs) > 0], 
-  output = file.path("fits", paste0("lmic_reports_rt_optimise_", date, ".pdf"))
+  output = here::here("fits", paste0("lmic_reports_rt_optimise_", date, ".pdf"))
 )
 ```
 
@@ -215,7 +214,7 @@ which countries require rerunning and re-bundle those to be run again:
 
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
 # bundle the countries we need to rerun
-iso3cs_to_rerun <-  c()
+iso3cs_to_rerun <- c()
 #change start date
 bundles_to_rerun <- lapply(
   iso3cs_to_rerun,
@@ -284,21 +283,17 @@ The Github pages repository is at [www.github.com:mrc-ide/global-lmic-reports](w
 contains all the outputs of model fits conducted to date and the web pages to describe the model fits for each country. It is
 cloned into `gh-pages`, which is where we collate the outputs of the model fits into.
 
-There is also a more streamlined [repo](https://github.com/mrc-ide/global_lmic_projections_esft)
-to collect the projections for use in the departments version of the ESFT, which
-we will clone into `gh-esft`.
-
 We also have a similar repo to collect the fitted model objects for other modelling work at, [https://github.com/mrc-ide/nimue_global_fits](https://github.com/mrc-ide/nimue_global_fits), which is stored in subdirectory `gh-fits`.
 
 If any of these are not in the repo, i.e. you have just clones `global-lmic-reports-orderly` down for example, then you need to run following in terminal (or from within this repo if the bash chunk tag is working correctly).
 
 ```{bash}
-# mkdir gh-pages
-# git clone git@github.com:mrc-ide/global-lmic-reports.git gh-pages
-# mkdir gh-fits
-# git clone git@github.com:mrc-ide/nimue_global_fits.git gh-fits
-# mkdir gh-esft
-# git clone git@github.com:mrc-ide/global_lmic_projections_esft.git gh-esft
+mkdir gh-pages
+git clone git@github.com:mrc-ide/global-lmic-reports.git gh-pages
+mkdir gh-fits
+git clone git@github.com:mrc-ide/nimue_global_fits.git gh-fits
+#mkdir gh-esft
+#git clone git@github.com:mrc-ide/global_lmic_projections_esft.git gh-esft
 ```
 
 ## Update the github fits
@@ -314,6 +309,7 @@ update_gh_fits(report_ids, "grid_out.Rds")
 #requires git bash be on the path and that the working directory is set correctly
 #shell(paste0(here::here("scripts/update_github_fits.sh"), " ", date), intern = TRUE, wait = TRUE, shell = "bash")
 #alternatively just copy this code into git bash
+message("Paste me into git bash!")
 dput(paste0("scripts/update_github_fits.sh", " ", date))
 ```
 
@@ -335,18 +331,6 @@ do this in two steps as the git pack size if all done at once is too big.
 update_gh_pages(report_ids, date)
 
 #requires git bash be on the path and that the working directory is set correctly
-log <- shell("scripts/update_github_pages.sh", intern = TRUE, wait = TRUE, shell = "bash")
-```
-
-## Update projections in `gh-esft`
-
-We also need to update the streamlined version of the outputs.
-
-```{r eval=FALSE, message=FALSE, warning = FALSE}
-#put projections into R format and trim
-update_gh_esft(here::here("gh-pages"), here::here("gh-esft"))
-
-#requires git bash be on the path and that the working directory is set correctly
-#shell(paste0("scripts/update_github_esft.sh", " ", date), intern = TRUE, wait = TRUE, shell = "bash")
-dput(paste0("scripts/update_github_esft.sh", " ", date))
+message("Paste me into git bash!")
+dput("scripts/update_github_pages.sh")
 ```

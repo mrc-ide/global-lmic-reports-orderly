@@ -65,7 +65,7 @@ fit_reported <- sum(reported_deaths$deaths) > death_limit
 cases <- readRDS("reported_covid.Rds") %>%
   rename(iso = iso3c, d_date = date) %>%
   filter(iso == iso3c & d_date > date - 30*3 & d_date <= date) %>%
-  transmute(date = d_date, detected_infections = cases) %>%
+  transmute(date = d_date, detected_infections = if_else(cases > 0, cases, 0)) %>%
   arrange(date)
 estimate_reported_cases <- sum(cases$detected_infections) > 0
 
@@ -248,6 +248,7 @@ if(fit_excess){
   if(identical(rt_interval, "NULL")){
     rt_interval <- fitting_params$rt_interval
   }
+  trimming <- fitting_params$trimming
 
   #run model
   #use parallel if asked for
@@ -269,7 +270,7 @@ if(fit_excess){
     rt_interval = rt_interval
   )
 
-  excess_out <- trim_output(excess_out)
+  excess_out <- trim_output(excess_out, trimming)
 
   #Stop using parallel, furrr doesn't like something (maybe model object)
   Sys.setenv(SQUIRE_PARALLEL_DEBUG = "TRUE")
@@ -361,6 +362,7 @@ if(fit_reported){
   if(identical(rt_interval, "NULL")){
     rt_interval <- fitting_params$rt_interval
   }
+  trimming <- fitting_params$trimming
 
   #run model
   #use parallel if asked for
@@ -382,7 +384,7 @@ if(fit_reported){
     rt_interval = rt_interval
   )
 
-  reported_out <- trim_output(reported_out)
+  reported_out <- trim_output(reported_out, trimming)
 
   #Stop using parallel, furrr doesn't like something (maybe model object)
   Sys.setenv(SQUIRE_PARALLEL_DEBUG = "TRUE")

@@ -218,8 +218,8 @@ summarise_fit <- function(file, out, country, iso3c, end_date, start_date){
          combined)
 }
 
-trim_output <- function(out){
-  out_trim <- squire.page::trim_rt_optimise(out, 0.5)
+trim_output <- function(out, trimming){
+  out_trim <- squire.page::trim_rt_optimise(out, trimming)
 
   if(length(out_trim$samples) == 0){
     warning("No suitable trajectories calculated")

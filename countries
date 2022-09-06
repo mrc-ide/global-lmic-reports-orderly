@@ -1,4 +1,3 @@
-# Countries to run over - see the bottom of the file for ignored countries.
 #
 # The only things that will be run are lines that match 3 upper case
 # letters with nothing else on the line
@@ -136,7 +135,6 @@ YEM
 CHL
 PAN
 URY
-CHN
 GUF
 # Other HICs:
 ARE
