@@ -53,7 +53,7 @@ update_gh_pages <- function(ids, date){
   filename <- file.path(destination, "data", paste0(date,"_v10.csv"))
   projections <- purrr::map_dfr(file.path(report_origins, "projections.csv"), ~readr::read_csv(.x, progress = FALSE, show_col_types = FALSE)) %>%
     dplyr::mutate(version = "v10") %>%
-    #dplyr::filter(.data$date > min(.data$date) + 250) %>%
+    dplyr::filter(.data$date > min(.data$date) + 250) %>%
     dplyr::ungroup()
   readr::write_csv(projections, filename)
   zip(paste0(filename, ".zip"), filename, extras = '-j')

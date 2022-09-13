@@ -41,6 +41,8 @@ parameters:
       default: FALSE
     document:
       default: TRUE
+    fit_cases:
+      default: TRUE
     parallel:
       default: FALSE
     initial_infections_interval:

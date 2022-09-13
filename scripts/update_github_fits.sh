@@ -16,9 +16,16 @@ git -C gh-fits config user.email "gregbarnsley@hotmail.co.uk"
 git -C gh-fits config user.name "GBarnsley"
 
 echo "*** Create Commits"
-git -C gh-fits add standard
-git -C gh-fits commit -m "Update fits for version ${DATE}"
+git -C gh-fits add reported_deaths
+git -C gh-fits commit -m "Update reported deaths for version ${DATE}"
 
 echo "*** Push to GitHub"
 git -C gh-fits push
 
+
+echo "*** Create Commits"
+git -C gh-fits add excess_mortality
+git -C gh-fits commit -m "Update excess mortality for version ${DATE}"
+
+echo "*** Push to GitHub"
+git -C gh-fits push

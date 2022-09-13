@@ -1,4 +1,4 @@
-gather_report_ids <- function(task){
+gather_report_ids <- function(task, iso3cs){
   #copy reports over
   repo <- here::here()
   destination <- file.path(
@@ -23,7 +23,9 @@ gather_report_ids <- function(task){
     dplyr::filter(.data$parameter %in% c("iso3c", "date")) %>%
     tidyr::pivot_wider(names_from = .data$parameter, values_from = .data$value) %>%
     dplyr::mutate(date = lubridate::as_date(.data$date)) %>%
+    dplyr::filter(.data$iso3c %in% iso3cs) %>%
     dplyr::group_by(.data$iso3c) %>%
     dplyr::filter(.data$date == max(.data$date)) %>%
+    dplyr::filter(.data$id == max(.data$id)) %>%
     purrr::transpose()
 }

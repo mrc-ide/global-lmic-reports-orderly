@@ -43,6 +43,15 @@ excess_deaths <- readRDS("excess_deaths.Rds") %>%
   rename(iso = iso3c) %>%
   filter(iso == iso3c) %>%
   arrange(date_start)
+if(nrow(excess_deaths) == 0){
+  excess_deaths <-
+    data.frame(
+      iso = iso3c,
+      date_start = seq(-7, 7, by = 7) + date,
+      date_end = seq(0, 14, by = 7) + date,
+      deaths = 0
+    )
+}
 
 ##Get the reported deaths
 reported_deaths <- readRDS("reported_covid.Rds") %>%
@@ -68,9 +77,12 @@ cases <- readRDS("reported_covid.Rds") %>%
   transmute(date = d_date, detected_infections = if_else(cases > 0, cases, 0)) %>%
   arrange(date)
 estimate_reported_cases <- sum(cases$detected_infections) > 0
+if(!fit_cases){
+  estimate_reported_cases <- FALSE
+}
 
 #setup model and parameters
-if(fit_excess | fit_reported){
+if(TRUE){
 
   #get model start dates
   if(fit_excess){
@@ -78,7 +90,7 @@ if(fit_excess | fit_reported){
       #remove starting deaths before major waves
       if(sum(cumsum(excess_deaths$deaths) < 40) > 15){
         excess_deaths <- excess_deaths %>%
-          filter(cumsum(excess_deaths) > 40)
+          filter(cumsum(deaths) > 40)
       }
     }
 
@@ -114,7 +126,9 @@ if(fit_excess | fit_reported){
   if(fit_excess & fit_reported){
     first_start_date <- min(c(reported_start_date, excess_start_date))
   }
-
+  if(!fit_excess & !fit_reported){
+    first_start_date <- date
+  }
   pop <- squire::get_population(country)
   squire_model <- squire.page:::nimue_booster_model()
   default_parameters_func <- squire_model$parameter_func
@@ -245,7 +259,7 @@ if(fit_excess){
     #if vaccinations occur before epidemic, we run the model with just vaccinations
     #to get the current state of vaccination status at the epidemic start
     excess_distribution <- prefit_vaccines(excess_parameters, excess_distribution, excess_squire_model)
-    excess_parameters$prefit_vaccines <- FALSE
+    excess_parameters$prefit_vaccines <- NULL
     excess_squire_model$parameter_func <- define_parameters_func(default_parameters_func)
   }
   #fitting parameters
@@ -297,7 +311,7 @@ if(fit_excess){
   #save fitting plot
   summarise_fit("excess_fitting.pdf", excess_out, country, iso3c, end_date, excess_start_date)
 
-  save_output(excess_out, "excess_out.Rds")
+  save_output(excess_out, "excess_out.Rds", default_parameters_func)
 
   if(document){
     #projections
@@ -414,7 +428,7 @@ if(fit_reported){
   #save fitting plot
   summarise_fit("reported_fitting.pdf", reported_out, country, iso3c, end_date, reported_start_date)
 
-  save_output(reported_out, "reported_out.Rds")
+  save_output(reported_out, "reported_out.Rds", default_parameters_func)
 
   if(document){
     #projections
@@ -608,11 +622,10 @@ if(!fit_excess | !fit_reported){
   age_cases_milds <- cases_milds_esft$age
   cases_milds_esft <- cases_milds_esft$total
 
-  age_split_esft <- get_age_output(forwards_projection_esft, end_date, end_date) %>%
-    left_join(
-      age_cases_milds,
-      by = c("replicate", "date", "age_group")
-    ) %>%
+  age_split_esft <- age_cases_milds %>%
+    select(!c(new_Case, projection)) %>%
+    rename(non_hospitalised_infections = new_Mild,
+           hospitalisations = new_hosp) %>%
     summarise_age_dependent()
   rm(age_cases_milds)
 }

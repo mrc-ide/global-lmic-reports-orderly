@@ -641,6 +641,8 @@ if(has_reported_case){
       new_detected_Infections = new_detected_Mild + new_detected_Case
     )
   )
+} else {
+  cases_milds <- params$list_cases_milds
 }
 plotting_df <- map(seq_along(cases_milds), ~cases_milds[[.x]] %>% 
   left_join(
