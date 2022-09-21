@@ -71,11 +71,12 @@ types_to_platforms <- function(vaccine_types){
     vaccine_types %in% c("Pfizer/BioNTech", "Moderna", "Moderna - Spikevax", "Pfizer BioNTech - Comirnaty", "Moderna - mRNA-1273",
                          "Zydus - ZyCov-D" ###REALLY DNA
                         ) ~ "mRNA",
-    vaccine_types %in% c("Medicago", "Abdala", "Novavax", "ZF2001", "Soberana02", "Soberana Plus", "Razi Cov Pars", "SpikoGen", "EpiVacCorona", "Medigen", "Abdala (Subunit like novavax)", "Anhui ZL (Recombinant Platform)", "Corbevax", "Novavax-NUVAXOVID", "Anhui ZL - Zifivax", "CIGB - CIGB-66", "Finlay - Soberana Plus", "Finlay - Soberana-02", "Biological E - Corbevax", "SII - Covovax", "Novavax - Covavax", "SRCVB - EpiVacCorona") ~ "Subunit",
+    vaccine_types %in% c("Medicago", "Abdala", "Novavax", "ZF2001", "Soberana02", "Soberana Plus", "Razi Cov Pars", "SpikoGen", "EpiVacCorona", "Medigen", "Abdala (Subunit like novavax)", "Anhui ZL (Recombinant Platform)", "Corbevax", "Novavax-NUVAXOVID", "Anhui ZL - Zifivax", "CIGB - CIGB-66",
+                         "Finlay - Soberana Plus", "Finlay - Soberana-02", "Biological E - Corbevax", "SII - Covovax", "Novavax - Covavax", "SRCVB - EpiVacCorona", "Sanofi/GSK","SKYCovione") ~ "Subunit",
     vaccine_types %in% c("Oxford/AstraZeneca", "Sputnik V", "Sputnik Light", "Gamaleya - Gam-Covid-Vac", "Gamaleya - Sputnik-Light", "CanSino", "Covishield", "AstraZeneca - Vaxzevria", "CanSino - Convidecia", "SII - Covishield", "AstraZeneca - AZD1222", "Gamaleya - Sputnik V",
                          "Shenzhen - LV-SMENP-DC" ###NOT REALLY AN ADENOVIRUS, but similar?
                          ) ~ "Adenovirus",
-    vaccine_types %in% c("Sinopharm/Wuhan", "Sinopharm/Beijing", "Sinovac", "Covaxin", "Bharat - Covaxin", "COVIran Barekat", "FAKHRAVAC", "QazVac", "Turkovac", "KoviVac/Chumakov", "IMBCAMS", "KCONVAC", "Beijing CNBG - BBIBP-CorV", "Sinovac - CoronaVac", "Wuhan CNBG - Inactivated", "Chumakov - Covi-Vac", "IMB - Covidful", "Shifa - COVIran Barakat", "RIBSP - QazVac", "Julphar - Hayat-Vax") ~ "Whole Virus",
+    vaccine_types %in% c("Sinopharm/Wuhan", "Sinopharm/Beijing", "Sinovac", "Covaxin", "Bharat - Covaxin", "COVIran Barekat", "FAKHRAVAC", "QazVac", "Turkovac", "KoviVac/Chumakov", "IMBCAMS", "KCONVAC", "Beijing CNBG - BBIBP-CorV", "Sinovac - CoronaVac", "Wuhan CNBG - Inactivated", "Chumakov - Covi-Vac", "IMB - Covidful", "Shifa - COVIran Barakat", "RIBSP - QazVac", "Julphar - Hayat-Vax", "Valneva") ~ "Whole Virus",
     vaccine_types %in% c("Janssen - Ad26.COV 2-S", "Johnson&Johnson") ~ "Single-Dose",
     vaccine_types %in% c("Unknown Vaccine") ~ as.character(NA),
     TRUE ~ vaccine_types
