@@ -311,7 +311,7 @@ if(fit_excess){
   #save fitting plot
   summarise_fit("excess_fitting.pdf", excess_out, country, iso3c, end_date, excess_start_date)
 
-  save_output(excess_out, "excess_out.Rds", default_parameters_func)
+  save_output(excess_out, "excess_out.Rds")
 
   if(document){
     #projections
@@ -428,7 +428,7 @@ if(fit_reported){
   #save fitting plot
   summarise_fit("reported_fitting.pdf", reported_out, country, iso3c, end_date, reported_start_date)
 
-  save_output(reported_out, "reported_out.Rds", default_parameters_func)
+  save_output(reported_out, "reported_out.Rds")
 
   if(document){
     #projections
