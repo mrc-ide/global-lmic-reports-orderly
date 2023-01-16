@@ -536,7 +536,7 @@ cases_plot <- function(df, data, date = Sys.Date(), date_0) {
     gg_cases + ggplot2::theme(legend.position = "top",
                               legend.justification = c(0,1),
                               legend.direction = "horizontal") +
-      facet_zoom2(ylim = c(0, max((data$cases)*1)), zoom.size = 0.5) +
+      facet_zoom(ylim = c(0, quantile(data$cases, 0.95)), zoom.size = 0.5) +
       ggtitle("Plot on right zoomed in on reported cases") +
       geom_vline(xintercept = date, linetype = "dashed")
   } else {

@@ -73,7 +73,7 @@ what the `date` is that we are conducting model fits for, i.e. up to what date a
 we running.
 
 ```{r, eval = FALSE}
-date <- "2022-09-01"
+date <- "2022-12-25"
 
 glodide_loc <- "N:/lmic_fitting/glodide" ###Update if on a different drive!
 ```
