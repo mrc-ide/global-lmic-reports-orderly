@@ -1,6 +1,6 @@
 get_platforms <- function(iso3cs, vacc_types, vdm, who_vacc, who_vacc_meta){
   #also get the ones scrape from OWID + other sources (i.e. UNICEF Dashboard)
-  unicef <- readRDS("dominant_vaccines.rds") %>%
+  unicef <- readRDS("dominant_vaccines.Rds") %>%
     mutate(iso3c = countrycode(country, "country.name", "iso3c")) %>%
     select(iso3c, dominant)
   owid_2 <- get_owid_types(iso3cs)
@@ -76,8 +76,9 @@ types_to_platforms <- function(vaccine_types){
     vaccine_types %in% c("Oxford/AstraZeneca", "Sputnik V", "Sputnik Light", "Gamaleya - Gam-Covid-Vac", "Gamaleya - Sputnik-Light", "CanSino", "Covishield", "AstraZeneca - Vaxzevria", "CanSino - Convidecia", "SII - Covishield", "AstraZeneca - AZD1222", "Gamaleya - Sputnik V",
                          "Shenzhen - LV-SMENP-DC" ###NOT REALLY AN ADENOVIRUS, but similar?
                          ) ~ "Adenovirus",
-    vaccine_types %in% c("Sinopharm/Wuhan", "Sinopharm/Beijing", "Sinovac", "Covaxin", "Bharat - Covaxin", "COVIran Barekat", "FAKHRAVAC", "QazVac", "Turkovac", "KoviVac/Chumakov", "IMBCAMS", "KCONVAC", "Beijing CNBG - BBIBP-CorV", "Sinovac - CoronaVac", "Wuhan CNBG - Inactivated", "Chumakov - Covi-Vac", "IMB - Covidful", "Shifa - COVIran Barakat", "RIBSP - QazVac", "Julphar - Hayat-Vax", "Valneva") ~ "Whole Virus",
+    vaccine_types %in% c("Sinopharm/Wuhan", "Sinopharm/Beijing", "Sinovac", "Covaxin", "Bharat - Covaxin", "COVIran Barekat", "FAKHRAVAC", "QazVac", "Turkovac", "KoviVac/Chumakov", "IMBCAMS", "KCONVAC", "Beijing CNBG - BBIBP-CorV", "Sinovac - CoronaVac", "Wuhan CNBG - Inactivated", "Chumakov - Covi-Vac", "IMB - Covidful", "Shifa - COVIran Barakat", "RIBSP - QazVac", "Julphar - Hayat-Vax", "Valneva", "Valneva - VLA2001") ~ "Whole Virus",
     vaccine_types %in% c("Janssen - Ad26.COV 2-S", "Johnson&Johnson") ~ "Single-Dose",
+    vaccine_types %in% c("Moderna – Spikevax Bivalent Original/Omicron BA.1", "Pfizer BioNTech - Comirnaty Bivalent Original/Omicron BA.1", "Pfizer BioNTech - Comirnaty Bivalent Original/Omicron BA.4/BA.5", "Moderna – Spikevax Bivalent Original/Omicron  - Generic", "Pfizer BioNTech - Comirnaty Bivalent Original/Omicron - Generic") ~ "mRNA", #for now but need to add new VEs #"mRNA - Omicron",
     vaccine_types %in% c("Unknown Vaccine") ~ as.character(NA),
     TRUE ~ vaccine_types
   )
