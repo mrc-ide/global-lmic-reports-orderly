@@ -112,7 +112,6 @@ resources:
   - index.Rmd
   - summaries.rds
   - all_data.rds
-  - sum_rt.rds
 
 global_resources:
   _navbar.html: _navbar.html
