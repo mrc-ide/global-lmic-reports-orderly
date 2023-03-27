@@ -9,7 +9,7 @@ update_gh_fits <- function(ids){
     repo, "gh-fits",
     "reported_deaths"
   )
-  reported_name <- "excess_out.Rds"
+  reported_name <- "reported_out.Rds"
   #upload to folder replacing existing files
   dir.create(destination_excess, recursive = TRUE, showWarnings = FALSE)
   dir.create(destination_reported, recursive = TRUE, showWarnings = FALSE)
