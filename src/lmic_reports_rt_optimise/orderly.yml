@@ -39,8 +39,6 @@ parameters:
     samples: ~
     seed:
       default: FALSE
-    document:
-      default: TRUE
     fit_cases:
       default: TRUE
     parallel:
@@ -81,16 +79,8 @@ artefacts:
   - report:
       description: Projections report for a single country
       filenames:
-        - index.html
-        - index.pdf
-        - index.md
-        - summary_df.rds
-        - reported_out.Rds
-        - reported_fitting.pdf
         - excess_out.Rds
         - excess_fitting.pdf
-        - projections.csv
-        - age_stratified.csv
 
 # An optional name to describe the report in more detail than its
 # directory name (which must be short) but less detail than
@@ -109,7 +99,6 @@ artefacts:
 # will make it easier to provision containers to run the orderly
 # reports.
 packages:
-  - knitr
   - squire
   - tidyr
   - ggplot2
@@ -117,7 +106,6 @@ packages:
   - magrittr
   - dplyr
   - lubridate
-  - rmarkdown
   - here
   - plotly
   - rvest
@@ -142,7 +130,6 @@ packages:
 sources:
   - R/plotting.R
   - R/misc.R
-  - R/no_deaths.R
   - R/vaccine.R
   - R/initialise.R
   - R/parameters_variants.R
@@ -158,20 +145,8 @@ sources:
 # referenced in "views" or "data"
 #
 resources:
-  - index.Rmd
   - gdp_income_group.csv
   - fitting_params.Rds
-
-global_resources:
-  _navbar.html: _navbar.html
-  _site.yml: _site.yml
-  styles.css: styles.css
-  footer.html: footer.html
-  footer.tex: footer.tex
-  logo.png: logo.png
-  header.html: header.html
-  ganalytics.html: ganalytics.html
-  ganalytics.txt: ganalytics.txt
 
 # Indicate which reports your report depends on.  You can use this to
 # pull in artefacts from previous reports.  You can depend in multiple
