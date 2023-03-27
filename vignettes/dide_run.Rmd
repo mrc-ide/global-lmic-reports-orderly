@@ -75,15 +75,15 @@ we running.
 ```{r, eval = FALSE}
 date <- "2022-12-25"
 
-glodide_loc <- "N:/lmic_fitting/glodide" ###Update if on a different drive!
+glodide_loc <- "Z:/lmic_fitting/glodide" ###Update if on a different drive!
 ```
 
 These arguments are then passed to our tasks:
 
 ```{r eval=FALSE, message=FALSE, warning=FALSE}
-# message("*** VE Parameters (Please check calibration.pdf)!")
-# parameters_vaccines_id <- orderly::orderly_run("parameters_vaccines", echo = FALSE)
-# orderly::orderly_commit(parameters_vaccines_id)
+message("*** VE Parameters (Please check calibration.pdf)!")
+parameters_vaccines_id <- orderly::orderly_run("parameters_vaccines", echo = FALSE)
+orderly::orderly_commit(parameters_vaccines_id)
 
 message("*** Reported COVID Deaths and Cases")
 input_jhu_id <- orderly::orderly_run("input_jhu", parameters = list(date=date), echo = FALSE)
@@ -126,16 +126,20 @@ parameters <- list(
   parallel = TRUE,
   #Should we build the required documentation+data for the fit
   document = TRUE,
-  fit_cases = FALSE #issues with this, don't have time to fix them.
-  # #Fitting parameters (leave as blank to use defaults in fitting_params.Rds)
-  # initial_infections_interval = c(5, 500),
-  # n_particles = 10,
-  # k = 14,
-  # rt_interval = c(0.5, 10)
-)
+  fit_cases = FALSE )#issues with this, don't have time to fix them.
+# #Fitting parameters (leave as blank to use defaults in fitting_params.Rds)
+# initial_infections_interval = c(5, 500),
+# n_particles = 10,
+# k = 14,
+# rt_interval = c(0.5, 10)
+
 
 # get the isos
 iso3cs <- grep('^[A-Z]{3}\\s*', readLines(file.path(here::here(), "countries")), value = TRUE)
+iso3cs <- c("CAN","DZA","HRV","MYS","LKA","TTO","ABW","BTN","BWA")
+
+#iso3cs <- sample (iso3cs, 25) #Testing batch
+
 # make the orderly bundles to be run on the cluster
 path_bundles <- file.path(
   glodide_loc, "analysis", "data", "raw", date
@@ -154,11 +158,11 @@ bundles <- lapply(
       parameters = parameters
     )
   }
- )
+)
 
 # now label these with the iso3cs and save the file paths
 names(bundles) <- iso3cs
-saveRDS(bundles, file.path(path_bundles, "bundles.rds"))
+saveRDS(bundles, file.path(path_bundles, "bundles_rerun.rds"))
 ```
 
 This will create an orderly task for each country that is then saved in the 
@@ -182,17 +186,21 @@ To do this we take the path of the finished tasks from our bundles
 
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
 # use the bundles paths to work out the path to the runs in derived
-paths <- gsub("raw", "derived", vapply(bundles, FUN = "[[", FUN.VALUE = character(1), "path"))
+#paths <- gsub("raw", "derived", vapply(bundles, FUN = "[[", FUN.VALUE = character(1), "path"))
+
+paths <-list.files(path = paste0("Z:/lmic_fitting/glodide/analysis/data/derived/",date), pattern = ".zip")
 
 # now extract the fitting.pdf files
 td <- tempdir(check = TRUE)
 fits <- lapply(paths, function(x) {
-  if(file.exists(x)){
-    zip::unzip(
-      zipfile = x, 
+  
+  y <- paste0("Z:/lmic_fitting/glodide/analysis/data/derived/",date,"/",x)
+  if(file.exists(paste0(y))){
+    tryCatch(zip::unzip(
+      zipfile = y, 
       files = file.path(gsub("\\.zip", "", basename(x)), c("pack/excess_fitting.pdf", "pack/reported_fitting.pdf")), 
-      exdir = td
-    )
+      exdir = td), error=function(e) NULL)
+    
   }
 })
 
@@ -248,7 +256,36 @@ First read in the paths of the original bundles
 
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
 # get the original bundles
-bundles <- readRDS(file.path(path_bundles, "bundles.rds"))
+bundles_real <- readRDS(file.path(path_bundles, "bundles.rds"))
+
+# If bundles file is lost: 
+
+paths <-list.files(path = paste0("Z:/lmic_fitting/glodide/analysis/data/derived/",date), pattern = ".zip") # Folder where all the .zip outputs file are located 
+bundles <- vector(mode = "list", length = length(paths))
+names <- vector(length=length(paths))
+
+for ( i in 1:length(bundles)){
+  
+  path <- paths[[i]]
+  
+  y <- paste0("Z:/lmic_fitting/glodide/analysis/data/derived/",date,"/",path)
+  id <- gsub("\\.zip", "", basename(path))
+  
+  unzip_file <- zip::unzip(
+    zipfile = y, 
+    files = file.path(id, "pack/excess_out.Rds"), exdir=td)
+  
+  obj <- read_rds(paste0(td,"/",id,"/pack/excess_out.Rds"))
+  
+  bundles[[i]]$id <- id
+  bundles[[i]]$path <- y
+  names[i] <- obj$inputs$data$iso[1]
+  
+}
+names(bundles) <- names #Naming each bundle with their ISO 
+
+iso3cs <- names
+
 ```
 
 Depending on whether any needed to be rerun, the below will be needed to 
