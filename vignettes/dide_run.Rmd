@@ -288,12 +288,8 @@ We also have a similar repo to collect the fitted model objects for other modell
 If any of these are not in the repo, i.e. you have just clones `global-lmic-reports-orderly` down for example, then you need to run following in terminal (or from within this repo if the bash chunk tag is working correctly).
 
 ```{bash}
-mkdir gh-pages
-git clone git@github.com:mrc-ide/global-lmic-reports.git gh-pages
 mkdir gh-fits
 git clone git@github.com:mrc-ide/nimue_global_fits.git gh-fits
-#mkdir gh-esft
-#git clone git@github.com:mrc-ide/global_lmic_projections_esft.git gh-esft
 ```
 
 ## Update the github fits
@@ -304,33 +300,11 @@ Potentially worth running the `.sh` script from the terminal or git bash to view
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
 #just takes the latest fit for each country, will take some time to keep RAM usage low
 report_ids <- gather_report_ids(task, iso3cs)
-update_gh_fits(report_ids)
+update_gh_fits(report_ids, task)
 
 #requires git bash be on the path and that the working directory is set correctly
 #shell(paste0(here::here("scripts/update_github_fits.sh"), " ", date), intern = TRUE, wait = TRUE, shell = "bash")
 #alternatively just copy this code into git bash
 message("Paste me into git bash!")
 dput(paste0("scripts/update_github_fits.sh", " ", date))
-```
-
-## The collation step for run_collate_vaccine
-
-Next we run the collation step, where the necessary outputs from the model fits are copied to gh-pages. It conducts the following steps:
-
-1. Fetches the latest run model fit for each country for the date argument provided. 
-2. Copies the pdfs/html files over to `gh-pages`
-3. Copies the projections from each model fit over and combines these into a combined data zip
-4. Copies model projections to the `index_page` and `regional_page` tasks
-5. Runs the remaining tasks needed to create the website (index, FAQ, regional pages)
-6. Copies the output from these remaining tasks to gh-pages. 
-
-Either execute this though the R code below, and push to the GitHub repo. We
-do this in two steps as the git pack size if all done at once is too big.
-
-```{r eval=FALSE, message=FALSE, warning = FALSE}
-update_gh_pages(report_ids, date)
-
-#requires git bash be on the path and that the working directory is set correctly
-message("Paste me into git bash!")
-dput("scripts/update_github_pages.sh")
 ```
