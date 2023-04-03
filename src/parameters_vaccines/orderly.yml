@@ -50,4 +50,5 @@ artefacts:
 packages:
   - tidyverse
   - odin
+  - dfoptim
 

@@ -1,3 +1,6 @@
+setwd("/home/gregbarnsley/Documents/imperial/cepi/new_fitting/global-lmic-reports-orderly/")
+orderly::orderly_develop_start("parameters_vaccines")
+setwd("/home/gregbarnsley/Documents/imperial/cepi/new_fitting/global-lmic-reports-orderly/src/parameters_vaccines")
 ##Set-up VEs for Vaccine Types
 ves_by_type <- read_csv("vaccine_efficacy_groups.csv") %>%
   mutate(dose = if_else(dose == "Partial", "First", "Second"))
@@ -37,7 +40,7 @@ changes_booster <- master_ves %>%
   transmute(
     variant = Variant,
     endpoint = Endpoint,
-    p_change = logit(Booster)/logit(Second)
+    p_change = logit(Booster) - logit(Second)
   )
 booster_efficacies <- ves_by_type %>%
   filter(dose == "Second" & vaccine_type %in% c("mRNA", "Whole Virus")) %>%
@@ -47,7 +50,7 @@ booster_efficacies <- ves_by_type %>%
   ) %>%
   mutate(
     dose = "Booster",
-    efficacy = inv_logit(logit(efficacy) * p_change)
+    efficacy = inv_logit(logit(efficacy) + p_change)
   ) %>%
   select(!p_change)
 ves_by_type <- ves_by_type %>%
@@ -83,6 +86,8 @@ ves_by_type <- ves_by_type %>%
 #overwrite with omicron data for boosters where possible
 ves_by_type <- ves_by_type %>%
   mutate(
+    start_period = 7, #what period of time does this VE cover (assume 1-5 weeks)
+    end_period = 7*6,
     efficacy = case_when(
       vaccine_type == "mRNA" & dose == "booster" & endpoint == "Infection" & variant == "Omicron" ~
         0.65, #https://www.nejm.org/doi/full/10.1056/NEJMoa2119451
@@ -99,36 +104,21 @@ ves_by_type <- ves_by_type %>%
 
 ##Fit Waning Curves
 simulate_time <- 2*365
-calc_eff_primary_gen <- odin({
-  initial(C1) <- 1
-  initial(C2) <- 0
-  deriv(C1) <- -w_p*C1
-  deriv(C2) <- w_p*C1
-  output(ve_d) <- C1 * fV_1_d + C2 * fV_2_d
-  output(ve_i) <- C1 * fV_1_i + C2 * fV_2_i
-  w_p <- user()
-  fV_1_d <- user()
-  fV_2_d <- user()
-  fV_1_i <- user()
-  fV_2_i <- user()
-})
-calc_eff_booster_gen <- odin({
+calc_eff_gen <- odin({
   initial(C1) <- 1
   initial(C2) <- 0
   initial(C3) <- 0
   deriv(C1) <- -w_1*C1
   deriv(C2) <- w_1*C1 - w_2*C2
   deriv(C3) <- w_2*C2
-  output(ve_d) <- C1 * bV_1_d + C2 * bV_2_d + C3 * bV_3_d
-  output(ve_i) <- C1 * bV_1_i + C2 * bV_2_i + C3 * bV_3_i
+  output(ve_d) <- (C1 * ved + C2 * ved_2 + C3 * ved_3)
+  output(ve_i) <- C1 * vei
   w_1 <- user()
   w_2 <- user()
-  bV_1_d <- user()
-  bV_2_d <- user()
-  bV_3_d <- user()
-  bV_1_i <- user()
-  bV_2_i <- user()
-  bV_3_i <- user()
+  ved <- user()
+  vei <- user()
+  ved_2 <- user()
+  ved_3 <- user()
 })
 fit_curve <- function(df) {
   parameter_infection <- df %>% filter(endpoint == "Infection") %>% pull(efficacy)
@@ -141,7 +131,7 @@ fit_curve <- function(df) {
 
   if(dose == "First"){
     out <- tibble(
-      parameter = c("pV_1_i", "pV_1_d"),
+      parameter = c("pV_i", "pV_d"),
       value = c(parameter_infection, parameter_hospitalisation),
       dose = dose,
       variant = variant,
@@ -182,187 +172,76 @@ fit_curve <- function(df) {
     ve_d <- 1/(1 + exp(-k*(log10(ab_d) - log10(n_50_d))))
     ve_i <- 1/(1 + exp(-k*(log10(ab_i) - log10(n_50_i))))
 
-    if(dose == "Second") {
-      calc_eff_primary <- calc_eff_primary_gen$new(user = list(
-        fV_1_d = parameter_hospitalisation,
-        fV_2_d = 0,
-        fV_1_i = parameter_infection,
-        fV_2_i = 0,
-        w_p = 0
-      ))
-      err_func <- function(pars) {
-        #detect if ve is 0
-        if(length(pars) < 3){
-          pars <- c(pars, 0)
-        }
-
-        calc_eff_primary$set_user(
-          user = list(
-            fV_1_d =  parameter_hospitalisation,
-            fV_1_i = parameter_infection,
-            w_p = pars[1],
-            fV_2_d = pars[2],
-            fV_2_i = pars[3]
-          )
-        )
-        mod_value <- calc_eff_primary$run(t = c(0, seq_len(simulate_time)))
-        (sum((ve_d - mod_value[, "ve_d"])^2) + sum((ve_i - mod_value[, "ve_i"])^2)) %>% sqrt %>% log
-      }
-      lower = list(w_p = 1/(3*365), fV_2_d = 0.001, fV_2_i = 0)
-      upper = list(w_p = 1/30, fV_2_d = parameter_hospitalisation, fV_2_i = parameter_infection)
-      par = list(w_p = 1/365, fV_2_d = parameter_hospitalisation/2, fV_2_i = parameter_infection/2)
-      if(parameter_infection == 0){
-        lower$fV_2_i <- NULL
-        upper$fV_2_i <- NULL
-        par$fV_2_i <- NULL
-      }
-      if((variant == "Wild" & platform == "mRNA") |
-         (variant == "Wild" & platform == "Adenovirus") |
-         (variant == "Delta" & platform %in% c("mRNA", "Johnson&Johnson"))){
-        lower$fV_2_i <- 0.0001
-      } else if (
-        (variant %in% c("Delta", "Omicron") & platform %in% c("Subunit")) |
-        (variant == "Omicron" & platform == "Whole Virus") |
-        (variant == "Wild" & platform == "Whole Virus")
-      ){
-        lower$fV_2_i <- 0.0001
-        lower$fV_2_d <- 0.0001
-      } else if (
-        variant %in% c("Wild") & platform %in% c("Subunit")
-      ){
-        lower$fV_2_i <- 0.1
-      }
-    } else {
-      calc_eff_booster <- calc_eff_booster_gen$new(user = list(
-        bV_1_d = parameter_hospitalisation,
-        bV_2_d = 0,
-        bV_3_d = 0,
-        bV_1_i = parameter_infection,
-        bV_2_i = 0,
-        bV_3_i = 0,
-        w_1 = 0,
-        w_2 = 0
-      ))
-      err_func <- function(pars) {
-        #detect if ve is 0
-        if(length(pars) < 6){
-          pars <- c(pars, rep(0, 2))
-        }
-        calc_eff_booster$set_user(
-          user = list(
-            w_1 = pars[1],
-            w_2 = pars[2],
-            bV_1_d = parameter_hospitalisation,
-            bV_1_i = parameter_infection,
-            bV_2_d = pars[3],
-            bV_3_d = pars[4],
-            bV_2_i = pars[5],
-            bV_3_i = pars[6]
-          )
-        )
-        mod_value <- calc_eff_booster$run(t = c(0, seq_len(simulate_time)))
-        (sum((ve_d - mod_value[, "ve_d"])^2) + sum((ve_i - mod_value[, "ve_i"])^2)) %>%
-          sqrt %>% log
-
-      }
-      lower = list(
-        w_1 = 1/(3*365),
-        w_2 = 1/(3*365),
-        bV_2_d = 0,
-        bV_3_d = 0,
-        bV_2_i = 0,
-        bV_3_i = 0
-      )
-      upper = list(
-        w_1 = 1/30,
-        w_2 = 1/30,
-        bV_2_d = parameter_hospitalisation,
-        bV_3_d = parameter_hospitalisation,
-        bV_2_i = parameter_infection,
-        bV_3_i = parameter_infection
-      )
-      par =  list(
-        w_1 = 1/365,
-        w_2 = 1/365,
-        bV_2_d = parameter_hospitalisation/2,
-        bV_3_d = parameter_hospitalisation/2,
-        bV_2_i = parameter_infection/2,
-        bV_3_i = parameter_infection/2
-      )
-      if(parameter_infection == 0){
-        lower$bV_2_i <- NULL
-        upper$bV_2_i <- NULL
-        par$bV_2_i <- NULL
-        lower$bV_3_i <- NULL
-        upper$bV_3_i <- NULL
-        par$bV_3_i <- NULL
-      }
-      if((variant == "Omicron" & platform == "Johnson&Johnson") |
-         (variant %in% c("Delta", "Wild") & platform == "mRNA") |
-         (variant == "Wild" & platform == "Adenovirus")){
-        lower$bV_3_i <- 0.00001
-      } else if(
-        (variant %in% c("Delta" ) & platform == "Whole Virus")
-      ){
-        lower$bV_2_i <- 0.001
-      }
+    calc_eff <- calc_eff_gen$new(user = list(
+      ved = parameter_hospitalisation,
+      vei = parameter_infection,
+      ved_2 = 1,
+      ved_3 = 1,
+      w_1 = 0,
+      w_2 = 0
+    ))
+    err_lines <- function(l1, l2){
+      sum((l1 - l2)^2/l1)
+      #scale it so the lower values have more weight
     }
-    res <- optim(unlist(par), fn = err_func, method = "L-BFGS-B", lower = lower, upper = upper)
+    err_func <- function(pars) {
+      calc_eff$set_user(
+        user = list(
+          w_1 = pars[1],
+          w_2 = pars[2],
+          ved_2 = pars[3] * parameter_hospitalisation,
+          ved_3 = pars[3] * parameter_hospitalisation * pars[4],
+          ved = parameter_hospitalisation,
+          vei = parameter_infection
+        )
+      )
+      mod_value <- calc_eff$run(t = c(0, seq_len(simulate_time)))
+
+      plot((ve_d - mod_value[, "ve_d"])^2/ve_d)
+
+      log(sqrt(err_lines(ve_d, mod_value[, "ve_d"]) + err_lines(ve_i, mod_value[, "ve_i"])))
+
+    }
+    lower = list(
+      w_1 = 1/(3*365),
+      w_2 = 1/(3*365),
+      ved_2 = 0,
+      ved_3 = 0
+    )
+    upper = list(
+      w_1 = 1/30,
+      w_2 = 1/30,
+      ved_2 = 1,
+      ved_3 = 1
+    )
+    par =  list(
+      w_1 = 1/365,
+      w_2 = 1/365,
+      ved_2 = 0.5,
+      ved_3 = 0.5
+    )
+    res <- dfoptim::nmkb(unlist(par), fn = err_func, lower = unlist(lower), upper = unlist(upper))
     if(res$convergence != 0){
       stop(res$message)
     }
-    if(dose == "Second" & variant %in% c("Wild") & platform %in% c("Subunit")){
-      lower$fV_2_i <- 0
-    } else if (dose == "Booster" & variant == c("Delta") & platform  == "Whole Virus") {
-      lower$bV_2_i <- 0
-    }
-    if(parameter_infection == 0){
-      if(dose == "Second"){
-        res$par[3] <- 0
-      } else {
-        res$par[6] <- 0
-      }
-    }
-    if(dose == "Booster"){
-      #ensure is decreasing
-      if(res$par[4] > res$par[3]){
-        res$par[4] <- res$par[3]
-      }
-      if(res$par[6] > res$par[5]){
-        res$par[6] <- res$par[5]
-      }
-    }
+    
+    V_d_2 <- res$par[3] * parameter_hospitalisation
+    V_d_3 <- res$par[3] * parameter_hospitalisation * res$par[4]
+
     #make plot
-    if(dose == "Second"){
-      calc_eff_primary$set_user(
-        user = list(
-          w_p = res$par[1],
-          fV_1_d =  parameter_hospitalisation,
-          fV_1_i = parameter_infection,
-          fV_2_d = res$par[2],
-          fV_2_i = res$par[3]
-        )
+    calc_eff$set_user(
+      user = list(
+        w_1 = res$par[1],
+        w_2 = res$par[2],
+        ved_2 = V_d_2,
+        ved_3 = V_d_3,
+        ved = parameter_hospitalisation,
+        vei = parameter_infection
       )
-      mod_value <- calc_eff_primary$run(t = c(0, seq_len(simulate_time)))
-      ve_f_d <- mod_value[, "ve_d"]
-      ve_f_i <- mod_value[, "ve_i"]
-    } else {
-      calc_eff_booster$set_user(
-        user = list(
-          w_1 = res$par[1],
-          w_2 = res$par[2],
-          bV_1_d = parameter_hospitalisation,
-          bV_1_i = parameter_infection,
-          bV_2_d = res$par[3],
-          bV_3_d = res$par[4],
-          bV_2_i = res$par[5],
-          bV_3_i = res$par[6]
-        )
-      )
-      mod_value <- calc_eff_booster$run(t = c(0, seq_len(simulate_time)))
-      ve_f_d <- mod_value[, "ve_d"]
-      ve_f_i <- mod_value[, "ve_i"]
-    }
+    )
+    mod_value <- calc_eff$run(t = c(0, seq_len(simulate_time)))
+    ve_f_d <- mod_value[, "ve_d"]
+    ve_f_i <- mod_value[, "ve_i"]
     p <- ggplot(
       tibble(
         t = rep(c(0, seq_len(simulate_time)), 4),
@@ -377,13 +256,22 @@ fit_curve <- function(df) {
       ggpubr::theme_pubclean()
 
     out <- as.data.frame(res$par)
-    out <- mutate(out, parameter = rownames(out),
-                  parameter = if_else(parameter == "", "fV_2_i", parameter)) %>%
+    out <- mutate(out, parameter = c("w_1", "w_2", "V_2_d", "V_3_d")) %>%
       rename(value = `res$par`) %>%
+      mutate(
+        value = case_when(
+          parameter == "V_2_d" ~ V_d_2,
+          parameter == "V_3_d" ~ V_d_3,
+          TRUE ~ value
+        )
+      ) %>% 
       rbind(tibble(
         value = c(parameter_hospitalisation, parameter_infection),
-        parameter = if_else(rep(dose == "Booster", 2), c("bV_1_d", "bV_1_i"), c("fV_1_d", "fV_1_i"))
-      ))
+        parameter = c("V_1_d", "V_i")
+      )) %>% 
+      mutate(
+        parameter = if_else(rep(dose == "Booster", 6), paste0("b", parameter), paste0("f", parameter))
+      )
     rownames(out) <- NULL
     out$dose <- dose
     out$variant <- variant
@@ -402,6 +290,7 @@ values <-
 #split into plots and data
 plots <- map(values, ~.x[[2]])
 efficacies <- map(values, ~.x[[1]])
+
 
 #add randomness (ideally we should add this at the start but fitting process is too sensitive)
 N_samples <- 100
