@@ -166,6 +166,13 @@ err_lines <- function(l1, l2){
   #scale it so the lower values have more weight
 }
 
+calculate_ve <- function(parameter_hospitalisation, p1, p2, p3) {
+  ved <- p1
+  ved_2 <- ved * p2
+  ved_3 <- ved_2 * p3
+  c(ved, ved_2, ved_3)
+}
+
 first_doses <- ves_by_type %>%
   filter(dose == "First") %>%
   group_by(vaccine_type, dose, variant) %>%
@@ -192,6 +199,9 @@ other_doses <- ves_by_type %>%
   map(function(df){
     parameter_infection <- df %>% filter(endpoint == "Infection") %>% pull(efficacy)
     parameter_hospitalisation <- df %>% filter(endpoint == "Hospitalisation") %>% pull(efficacy)
+    #scale for break through
+    parameter_hospitalisation <- (parameter_hospitalisation - parameter_infection)/(1 - parameter_infection)
+    
     dose <- unique(df$dose)
     variant <- unique(df$variant)
     platform <- unique(df$vaccine_type)
@@ -211,21 +221,16 @@ other_doses <- ves_by_type %>%
       w_2 = 0
     ))
 
-    calculate_ve <- function(parameter_hospitalisation, p1, p2, p3) {
-      ved <- parameter_hospitalisation + (1 - parameter_hospitalisation) * p1
-      ved_2 <- ved * p2
-      ved_3 <- ved_2 * p3
-      c(ved, ved_2, ved_3)
-    }
-
     #need to calculate initial dose level
     #assume ve is 30 days after dose
     t_measure <- 30
     #just assume the initia AB is 
     err_func <- function(initial_ab) {
       ab_t_measure <- simulate_ab(t_measure, initial_ab, ab_params$hl_s, ab_params$hl_l, ab_params$period_s)
-      err_lines(parameter_infection, ab_to_ve(ab_t_measure, ab_params$ni50, ab_params$k)) +
-        err_lines(parameter_hospitalisation, ab_to_ve(ab_t_measure, ab_params$ns50, ab_params$k))
+      ve_i <- ab_to_ve(ab_t_measure, ab_params$ni50, ab_params$k)
+      ve_d <- ab_to_ve(ab_t_measure, ab_params$ns50, ab_params$k)
+      err_lines(parameter_infection, ve_i) +
+        err_lines(parameter_hospitalisation, (ve_d - ve_i)/(1 - ve_i))
     }
     res <- optimize(err_func, interval = c(0, 10), maximum = FALSE)
     initial_ab <- res$minimum
@@ -233,6 +238,8 @@ other_doses <- ves_by_type %>%
     ve_i <- ab_to_ve(abs, ab_params$ni50, ab_params$k)
     ve_d <- ab_to_ve(abs, ab_params$ns50, ab_params$k)
     #scale for break through infection
+    ve_d <- (ve_d - ve_i)/(1 - ve_i)
+
     err_func <- function(pars) {
       veds <- calculate_ve(parameter_hospitalisation, pars[3], pars[4], pars[5])
       veis <- calculate_ve(parameter_infection, pars[6], pars[7], pars[8])
@@ -355,7 +362,7 @@ other_doses <- ves_by_type %>%
       ) %>% 
       ggplot(aes(x = t, y = value, color = endpoint, linetype = model, group = group_par, alpha = alpha)) +
         geom_line() +
-      geom_hline(data = NULL, yintercept = c(parameter_infection, (parameter_hospitalisation - parameter_infection)/(1-parameter_infection)), aes(color = c("Infection", "Hospitalisation")), linetype = "dashed") +
+      geom_hline(data = NULL, yintercept = c(parameter_infection, parameter_hospitalisation), aes(color = c("Infection", "Hospitalisation")), linetype = "dashed") +
       labs(y = "Vaccine Efficacy", x = "Days Since Dose", title = paste0("Dose: ", dose, ", Variant: ", variant, ", Type: ", df$vaccine_type[1]), linetype = "Model", colour = "Endpoint") +
       ggpubr::theme_pubclean() + scale_alpha(guide = 'none') + 
       ylim(c(0, 1))
@@ -371,7 +378,6 @@ other_doses <- ves_by_type %>%
       plot = p
     )
 })
-
 #split into plots and data
 plots <- map(other_doses, ~.x$plot)
 other_doses <- map(other_doses, ~.x$out)
