@@ -1,9 +1,19 @@
-setwd("/home/gregbarnsley/Documents/imperial/cepi/new_fitting/global-lmic-reports-orderly/")
-orderly::orderly_develop_start("parameters_vaccines")
-setwd("/home/gregbarnsley/Documents/imperial/cepi/new_fitting/global-lmic-reports-orderly/src/parameters_vaccines")
+set.seed(1000101)
+n_samples <- 50
 ##Set-up VEs for Vaccine Types
 ves_by_type <- read_csv("vaccine_efficacy_groups.csv") %>%
-  mutate(dose = if_else(dose == "Partial", "First", "Second"))
+  mutate(dose = if_else(dose == "Partial", "First", "Second")) %>% 
+  #ensure ve does not increase from Wild to Delta
+  pivot_wider(names_from = variant, values_from = efficacy) %>% 
+  mutate(
+    Delta = pmin(Delta, Wild)
+  ) %>% 
+  pivot_longer(
+    cols = c("Wild", "Delta"),
+    names_to = "variant",
+    values_to = "efficacy"
+  )
+
 #assumed numbers, booster restores efficacy NOTE Ideally we'd find better numbers, might be too many categories
 master_ves <- tribble(
   ~Variant, ~Dose, ~Endpoint, ~Efficacy,
@@ -41,12 +51,15 @@ changes_booster <- master_ves %>%
     variant = Variant,
     endpoint = Endpoint,
     p_change = logit(Booster) - logit(Second)
-  )
+  ) %>% #average across variants for simplicities sake
+  group_by(endpoint)  %>% 
+  summarise(p_change = mean(p_change))
+
 booster_efficacies <- ves_by_type %>%
   filter(dose == "Second" & vaccine_type %in% c("mRNA", "Whole Virus")) %>%
   left_join(
     changes_booster,
-    by = c("variant", "endpoint")
+    by = c("endpoint")
   ) %>%
   mutate(
     dose = "Booster",
@@ -57,6 +70,7 @@ ves_by_type <- ves_by_type %>%
   rbind(
     booster_efficacies
   )
+
 changes_omicron <- master_ves %>%
   filter(Variant != "Wild") %>%
   pivot_wider(names_from = Variant, values_from = Efficacy) %>%
@@ -86,8 +100,6 @@ ves_by_type <- ves_by_type %>%
 #overwrite with omicron data for boosters where possible
 ves_by_type <- ves_by_type %>%
   mutate(
-    start_period = 7, #what period of time does this VE cover (assume 1-5 weeks)
-    end_period = 7*6,
     efficacy = case_when(
       vaccine_type == "mRNA" & dose == "booster" & endpoint == "Infection" & variant == "Omicron" ~
         0.65, #https://www.nejm.org/doi/full/10.1056/NEJMoa2119451
@@ -100,7 +112,20 @@ ves_by_type <- ves_by_type %>%
       TRUE ~ efficacy
     )
   )
-#subvariant data where possible
+
+#ves_by_type %>% 
+#  pivot_wider(names_from = variant, values_from = efficacy) %>% 
+#  select(vaccine_type, endpoint, dose, Wild, Delta, Omicron) %>%
+#  filter(vaccine_type == "mRNA")
+#load parameter chains
+ab_params <- list(
+  ni50 = log10(0.052),
+  ns50 = log10(0.01),
+  k = 2.8,
+  hl_s = 33,
+  hl_l = 580,
+  period_s = 86
+)
 
 ##Fit Waning Curves
 simulate_time <- 2*365
@@ -112,391 +137,332 @@ calc_eff_gen <- odin({
   deriv(C2) <- w_1*C1 - w_2*C2
   deriv(C3) <- w_2*C2
   output(ve_d) <- (C1 * ved + C2 * ved_2 + C3 * ved_3)
-  output(ve_i) <- C1 * vei
+  output(ve_i) <- (C1 * vei + C2 * vei_2 + C3 * vei_3)
   w_1 <- user()
   w_2 <- user()
   ved <- user()
-  vei <- user()
   ved_2 <- user()
   ved_3 <- user()
+  vei <- user()
+  vei_2 <- user()
+  vei_3 <- user()
 })
-fit_curve <- function(df) {
-  parameter_infection <- df %>% filter(endpoint == "Infection") %>% pull(efficacy)
-  parameter_hospitalisation <- df %>% filter(endpoint == "Hospitalisation") %>% pull(efficacy)
-  dose <- unique(df$dose)
-  variant <- unique(df$variant)
-  platform <- unique(df$vaccine_type)
 
-  message(paste0(dose, "; ", variant, "; ", platform))
+simulate_ab <- function(t, initial_ab, h_s, h_l, t_s) {
+  pi1 <- -log(2)/h_s
+  pi2 <- -log(2)/h_l
+  initial_ab * (
+    (exp(pi1 * t + pi2 * t_s) + exp(pi1 * t_s + pi2 * t))/
+    (exp(pi1 * t_s) + exp(pi2 * t_s))
+  )
+}
 
-  if(dose == "First"){
-    out <- tibble(
+ab_to_ve <- function(ab, n50, k){
+  1/(1 + exp(-k * (log10(ab) - n50)))
+}
+
+err_lines <- function(l1, l2){
+  sum((l1 - l2)^2/l1)
+  #scale it so the lower values have more weight
+}
+
+first_doses <- ves_by_type %>%
+  filter(dose == "First") %>%
+  group_by(vaccine_type, dose, variant) %>%
+  group_split() %>% 
+  map(function(df){
+    parameter_infection <- df %>% filter(endpoint == "Infection") %>% pull(efficacy)
+    parameter_hospitalisation <- df %>% filter(endpoint == "Hospitalisation") %>% pull(efficacy)
+    dose <- unique(df$dose)
+    variant <- unique(df$variant)
+    platform <- unique(df$vaccine_type)
+    tibble(
       parameter = c("pV_i", "pV_d"),
-      value = c(parameter_infection, parameter_hospitalisation),
+      value = c(parameter_infection, (parameter_hospitalisation - parameter_infection)/(1 - parameter_infection)),
       dose = dose,
       variant = variant,
       platform = platform
     )
-    p <- NULL
-  } else {
-    #median values for now
-    k <- 2.9
-    h_s <- 69
-    h_l <- 431
-    t_s <- 95
-    t_l <- 365
-    #get scaling
-    n_50_d <- 0.027
-    n_50_i <- 0.113
-    #calculate initial AB value
-    ab_d <- c(10^((-log((1/parameter_hospitalisation) - 1)/k) + log10(n_50_d)),
-              rep(NA, simulate_time))
-    ab_i <- c(10^((-log((1/parameter_infection) - 1)/k) + log10(n_50_i)),
-              rep(NA, simulate_time))
-    #compute AB curve
-    for(t in seq_len(simulate_time)){
-      #get deacy rate
-      if(t < t_s){
-        decay <- 1/h_s
-      } else if(t < t_l){
-        along <- ((t - t_s)/(t_l - t_s))
-        decay <- (1/h_s)*(1-along) + (1/h_l) * along
-      } else {
-        decay <- 1/h_l
-      }
-      #update ab
-      ab_d[t + 1] <- ab_d[t] * exp(-decay)
-      ab_i[t + 1] <- ab_i[t] * exp(-decay)
-    }
-    #convert to efficacy curve
-    ve_d <- 1/(1 + exp(-k*(log10(ab_d) - log10(n_50_d))))
-    ve_i <- 1/(1 + exp(-k*(log10(ab_i) - log10(n_50_i))))
+  })
+
+other_doses <- ves_by_type %>%
+  filter(dose != "First") %>%
+  group_by(vaccine_type, dose, variant) %>%
+  group_split() %>% 
+  map(function(df){
+    parameter_infection <- df %>% filter(endpoint == "Infection") %>% pull(efficacy)
+    parameter_hospitalisation <- df %>% filter(endpoint == "Hospitalisation") %>% pull(efficacy)
+    dose <- unique(df$dose)
+    variant <- unique(df$variant)
+    platform <- unique(df$vaccine_type)
+
+    message(paste0(dose, "; ", variant, "; ", platform))
+
+    t_plot <- seq(0, simulate_time, length.out = 100)
 
     calc_eff <- calc_eff_gen$new(user = list(
       ved = parameter_hospitalisation,
       vei = parameter_infection,
       ved_2 = 1,
       ved_3 = 1,
+      vei_2 = 1,
+      vei_3 = 1,
       w_1 = 0,
       w_2 = 0
     ))
-    err_lines <- function(l1, l2){
-      sum((l1 - l2)^2/l1)
-      #scale it so the lower values have more weight
+
+    calculate_ve <- function(parameter_hospitalisation, p1, p2, p3) {
+      ved <- parameter_hospitalisation + (1 - parameter_hospitalisation) * p1
+      ved_2 <- ved * p2
+      ved_3 <- ved_2 * p3
+      c(ved, ved_2, ved_3)
     }
+
+    #need to calculate initial dose level
+    #assume ve is 30 days after dose
+    t_measure <- 30
+    #just assume the initia AB is 
+    err_func <- function(initial_ab) {
+      ab_t_measure <- simulate_ab(t_measure, initial_ab, ab_params$hl_s, ab_params$hl_l, ab_params$period_s)
+      err_lines(parameter_infection, ab_to_ve(ab_t_measure, ab_params$ni50, ab_params$k)) +
+        err_lines(parameter_hospitalisation, ab_to_ve(ab_t_measure, ab_params$ns50, ab_params$k))
+    }
+    res <- optimize(err_func, interval = c(0, 10), maximum = FALSE)
+    initial_ab <- res$minimum
+    abs <- simulate_ab(0:simulate_time, initial_ab,  ab_params$hl_s,  ab_params$hl_l,  ab_params$period_s)
+    ve_i <- ab_to_ve(abs, ab_params$ni50, ab_params$k)
+    ve_d <- ab_to_ve(abs, ab_params$ns50, ab_params$k)
+    #scale for break through infection
     err_func <- function(pars) {
+      veds <- calculate_ve(parameter_hospitalisation, pars[3], pars[4], pars[5])
+      veis <- calculate_ve(parameter_infection, pars[6], pars[7], pars[8])
       calc_eff$set_user(
         user = list(
           w_1 = pars[1],
           w_2 = pars[2],
-          ved_2 = pars[3] * parameter_hospitalisation,
-          ved_3 = pars[3] * parameter_hospitalisation * pars[4],
-          ved = parameter_hospitalisation,
-          vei = parameter_infection
+          ved = veds[1],
+          ved_2 = veds[2],
+          ved_3 = veds[3],
+          vei = veis[1],
+          vei_2 = veis[2],
+          vei_3 = veis[3]
         )
       )
-      mod_value <- calc_eff$run(t = c(0, seq_len(simulate_time)))
-
-      plot((ve_d - mod_value[, "ve_d"])^2/ve_d)
-
+      mod_value <- calc_eff$run(t = seq(0, simulate_time))
       log(sqrt(err_lines(ve_d, mod_value[, "ve_d"]) + err_lines(ve_i, mod_value[, "ve_i"])))
-
     }
     lower = list(
       w_1 = 1/(3*365),
       w_2 = 1/(3*365),
+      ved_1 = 0,
       ved_2 = 0,
-      ved_3 = 0
+      ved_3 = 0,
+      vei_1 = 0,
+      vei_2 = 0,
+      vei_3 = 0
     )
     upper = list(
       w_1 = 1/30,
       w_2 = 1/30,
+      ved_1 = 1,
       ved_2 = 1,
-      ved_3 = 1
+      ved_3 = 1,
+      vei_1 = 1,
+      vei_2 = 1,
+      vei_3 = 1
     )
     par =  list(
       w_1 = 1/365,
       w_2 = 1/365,
+      ved_1 = 0.5,
       ved_2 = 0.5,
-      ved_3 = 0.5
+      ved_3 = 0.5,
+      vei_1 = 0.5,
+      vei_2 = 0.5,
+      vei_3 = 0.5
     )
-    res <- dfoptim::nmkb(unlist(par), fn = err_func, lower = unlist(lower), upper = unlist(upper))
+    res <- dfoptim::nmkb(unlist(par), fn = err_func, lower = unlist(lower), upper = unlist(upper), control = list(maxfeval = 5000))
     if(res$convergence != 0){
       stop(res$message)
     }
-    
-    V_d_2 <- res$par[3] * parameter_hospitalisation
-    V_d_3 <- res$par[3] * parameter_hospitalisation * res$par[4]
 
-    #make plot
-    calc_eff$set_user(
-      user = list(
-        w_1 = res$par[1],
-        w_2 = res$par[2],
-        ved_2 = V_d_2,
-        ved_3 = V_d_3,
-        ved = parameter_hospitalisation,
-        vei = parameter_infection
-      )
-    )
-    mod_value <- calc_eff$run(t = c(0, seq_len(simulate_time)))
-    ve_f_d <- mod_value[, "ve_d"]
-    ve_f_i <- mod_value[, "ve_i"]
-    p <- ggplot(
+    #add randomness (should do it in fitting really) 
+    out <- map(seq_len(n_samples), function(i){
+      pars <- res$par
+      if(i != 1){
+        pars[1:2] <- 1/pars[1:2]
+        pars <- pars + runif(length(pars), -0.05, 0.05)
+        pars[1:2] <- 1/pars[1:2]
+        pars[pars < 0] <- 0
+        pars[pars > 1] <- 1
+      }
+      veds <- calculate_ve(parameter_hospitalisation, pars[3], pars[4], pars[5])
+      veis <- calculate_ve(parameter_infection, pars[6], pars[7], pars[8])
       tibble(
-        t = rep(c(0, seq_len(simulate_time)), 4),
-        `Protection:` = c(rep("Disease", (simulate_time + 1)*2), rep("Infection", (simulate_time + 1)*2)),
-        `Version:` = rep(c(rep("AB Process", simulate_time + 1), rep("Booster Model", simulate_time + 1)), 2),
-        `Vaccine Efficacy` = c(ve_d, ve_f_d, ve_i, ve_f_i)
+        value = c(pars[1:2], veds, veis),
+        parameter = names(par),
+        iteration = i
       )
-      , aes(x = t, y = `Vaccine Efficacy`, colour = `Protection:`, linetype = `Version:`)
-    ) +
-      geom_line() +
-      labs(y = "Vaccine Efficacy", x = "Days Since Dose", title = paste0("Dose: ", dose, ", Variant: ", variant, ", Type: ", df$vaccine_type[1])) +
-      ggpubr::theme_pubclean()
+    })
 
-    out <- as.data.frame(res$par)
-    out <- mutate(out, parameter = c("w_1", "w_2", "V_2_d", "V_3_d")) %>%
-      rename(value = `res$par`) %>%
+    #plot
+    t_plot <- 0:simulate_time
+    p <- map_dfr(out, function(pars){
+      calc_eff$set_user(
+        user = list(
+          w_1 = pars$value[1],
+          w_2 = pars$value[2],
+          ved = pars$value[3],
+          ved_2 = pars$value[4],
+          ved_3 = pars$value[5],
+          vei = pars$value[6],
+          vei_2 = pars$value[7],
+          vei_3 = pars$value[8]
+        )
+      )
+      mod_value <- calc_eff$run(t = t_plot)
+      tibble(
+        t = rep(t_plot, 2),
+        value = c(mod_value[, "ve_d"], mod_value[, "ve_i"]),
+        endpoint = c(rep("Hospitalisation", length(t_plot)), rep("Infection", length(t_plot))),
+        iteration = pars$iteration[1]
+      )
+    }) %>% 
       mutate(
-        value = case_when(
-          parameter == "V_2_d" ~ V_d_2,
-          parameter == "V_3_d" ~ V_d_3,
-          TRUE ~ value
+        model = "Booster Model"
+      ) %>% 
+      rbind(
+        tibble(
+          t = t_plot,
+          value = ve_d,
+          endpoint = "Hospitalisation",
+          iteration = 0,
+          model = "AB Process"
         )
       ) %>% 
-      rbind(tibble(
-        value = c(parameter_hospitalisation, parameter_infection),
-        parameter = c("V_1_d", "V_i")
-      )) %>% 
+      rbind(
+        tibble(
+          t = t_plot,
+          value = ve_i,
+          endpoint = "Infection",
+          iteration = 0,
+          model = "AB Process"
+        )
+      ) %>% 
       mutate(
-        parameter = if_else(rep(dose == "Booster", 6), paste0("b", parameter), paste0("f", parameter))
-      )
-    rownames(out) <- NULL
+        group_par = paste0(endpoint, "_", iteration, "_", model),
+        alpha = ifelse(model == "AB Process", 1, 0.25)
+      ) %>% 
+      ggplot(aes(x = t, y = value, color = endpoint, linetype = model, group = group_par, alpha = alpha)) +
+        geom_line() +
+      geom_hline(data = NULL, yintercept = c(parameter_infection, (parameter_hospitalisation - parameter_infection)/(1-parameter_infection)), aes(color = c("Infection", "Hospitalisation")), linetype = "dashed") +
+      labs(y = "Vaccine Efficacy", x = "Days Since Dose", title = paste0("Dose: ", dose, ", Variant: ", variant, ", Type: ", df$vaccine_type[1]), linetype = "Model", colour = "Endpoint") +
+      ggpubr::theme_pubclean() + scale_alpha(guide = 'none') + 
+      ylim(c(0, 1))
+
+    out <- map_dfr(out, ~.x)
+
     out$dose <- dose
     out$variant <- variant
     out$platform <- platform
-  }
-  #return parameters
-  return(list(out, p))
-}
-set.seed(1000100001)
-values <-
-  ves_by_type %>%
-  group_by(vaccine_type, dose, variant) %>%
-  group_split() %>%
-  map(fit_curve)
+
+    list(
+      out = out,
+      plot = p
+    )
+})
 
 #split into plots and data
-plots <- map(values, ~.x[[2]])
-efficacies <- map(values, ~.x[[1]])
-
-
-#add randomness (ideally we should add this at the start but fitting process is too sensitive)
-N_samples <- 100
-random_efficacies <- map(efficacies, function(x){
-  message(paste0(x$dose[1], "; ", x$variant[1], "; ", x$platform[1]))
-  map_dfr(seq_len(N_samples), function(it){
-    gamma_var <- 10
-    beta_var <- 0.005
-    percentage_zero <- 0.5
-    min_value <- beta_var * 1.1
-    min_value <- beta_var * 1.2
-    max_value <- 0.99
-    zero_inf_beta <- function(n, alpha, beta, p_0){
-      zero <- as.numeric(runif(n) < p_0)
-      rbeta(n, alpha, beta)*abs(zero - 1)
-    }
-    calculate_alpha_beta <- function(mean){
-      mean <- case_when(
-        mean < min_value ~ min_value,
-        mean > max_value ~ max_value,
-        TRUE ~ mean)
-      (mean)*((mean)*(1-(mean))/beta_var - 1)
-    }
-    calculate_beta_beta <- function(mean, alpha){
-      mean <- case_when(
-        mean < min_value ~ min_value,
-        mean > max_value ~ max_value,
-        TRUE ~ mean)
-      (alpha - mean*alpha)/mean
-    }
-    samples <- x %>%
-      mutate(
-        zero_inflation_percentage = if_else(value == 0, percentage_zero, 0),
-        alpha = case_when(
-          parameter %in% c("w_1", "w_2", "w_p") ~ (1/value) * (1/value)/gamma_var,
-          value == 0 ~ calculate_alpha_beta(value),
-          TRUE ~ calculate_alpha_beta(value)
-        ),
-        beta = case_when(
-          parameter %in% c("w_1", "w_2", "w_p") ~ (1/value)/gamma_var,
-          value == 0 ~ calculate_beta_beta(value, alpha),
-          TRUE ~ calculate_beta_beta(value, alpha)
-        ),
-        distribution = case_when(
-          parameter %in% c("w_1", "w_2", "w_p") ~ "gamma",
-          value == 0 ~ "zero inflated beta",
-          TRUE ~ "beta"
-        ),
-        value = case_when(
-          parameter %in% c("w_1", "w_2", "w_p") ~ 1/rgamma(n(), alpha, beta),
-          value == 0 ~ zero_inf_beta(n(), alpha, beta, zero_inflation_percentage),
-          TRUE ~ rbeta(n(), alpha, beta)
-        ),
-        sample = it
-      )
-    #correct so not increasing in full dose protection,ISSUE: should adjust for this
-    #earlier
-    samples %>%
-      mutate(
-        temp = str_remove(parameter, "\\d")
-      ) %>%
-      group_by(temp) %>%
-      arrange(temp, parameter) %>%
-      mutate(
-        value = if_else(
-          !str_detect(temp, "w") & value < lead(value, 1, default = 0),
-          lead(value, 1, default = 0),
-          value
-        ),
-        value = if_else(
-          !str_detect(temp, "w") & value < lead(value, 1, default = 0),
-          lead(value, 1, default = 0),
-          value
-        )
-      ) %>%
-      ungroup() %>%
-      select(!temp)
-  })
-})
+plots <- map(other_doses, ~.x$plot)
+other_doses <- map(other_doses, ~.x$out)
 
 ##Calibration plots
 
-pdf("calibration.pdf")
-map(seq_along(plots), function(x){
-  message(x)
-  if(random_efficacies[[x]]$dose[1] == "First"){
-    NULL
-  } else {
-
-    plot <- plots[[x]]
-    #generate curves for random efficacies
-    generate_curve <- function(df){
-      user <- as.list(pull(df, value, parameter))
-      if (df$dose[1] == "Second") {
-        mod <- calc_eff_primary_gen$new(user = user)
-      } else {
-        mod <- calc_eff_booster_gen$new(user = user)
+platform <- map_chr(other_doses, ~.x$platform[1])
+platforms <- unique(platform)
+variant <- map_chr(other_doses, ~.x$variant[1])
+variants <- c("Wild", "Delta", "Omicron")
+dose <- map_chr(other_doses, ~.x$dose[1])
+doses <- unique(dose)
+p <- map(platforms, function(plat){
+  dose_list <- map(doses, function(dos){
+    var_list <- map(variants, function(vari){
+      index <- detect_index(other_doses, ~.x$platform[1] == plat & .x$variant[1] == vari & .x$dose[1] == dos)
+      if(index > 0){
+        plots[[index]]
       }
-      tt <- c(0, seq_len(simulate_time))
-      mod$run(t = c(0, seq_len(simulate_time))) %>%
-        as_tibble() %>%
-        select(t, ve_d, ve_i) %>%
-        mutate(sample = df$sample[1],
-               t = as.integer(t),
-               ve_d = as.numeric(ve_d),
-               ve_i = as.numeric(ve_i))
+    })
+    if(every(var_list, is.null)){
+      return(NULL)
+    } else {
+      return(ggarrange(plotlist = var_list, nrow = 1, common.legend = TRUE))
     }
-    random_bounds <- random_efficacies[[x]] %>%
-      group_by(sample) %>%
-      group_split %>%
-      map_dfr(generate_curve) %>%
-      group_by(t) %>%
-      summarise(
-        ve_d_025 = quantile(ve_d, 0.025),
-        ve_d_975 = quantile(ve_d, 0.975),
-        ve_i_025 = quantile(ve_i, 0.025),
-        ve_i_975 = quantile(ve_i, 0.975),
-        .groups = "drop"
-      ) %>%
-      pivot_longer(!t, names_to = "temp", values_to = "y") %>%
-      mutate(
-        `Protection:` = if_else(str_detect(temp, "_i_"), "Infection", "Disease"),
-        bound = if_else(str_detect(temp, "_025"), "lower", "upper")
-      ) %>%
-      select(!temp) %>%
-      pivot_wider(names_from = bound, values_from = y)
-    print(plot + geom_ribbon(data = random_bounds, aes(
-      x = t, ymin = lower , ymax = upper, fill = `Protection:`
-    ), inherit.aes = FALSE, alpha = 0.1))
-  }
+  }) %>% 
+    compact()
+  ggarrange(plotlist = dose_list, ncol = 1, common.legend = TRUE)
 })
+
+pdf("calibration.pdf", width = 20, height = 10)
+p
 dev.off()
 
-##Create Sampling Function
-random_efficacies <- map_dfr(random_efficacies, ~.x)
+rm(p, plots)
+
+first_doses <- map_dfr(first_doses, ~.x)
+other_doses <- map_dfr(other_doses, ~.x)
+
 #add first dose eff for J&J
-random_efficacies <- random_efficacies %>%
+first_doses <- first_doses %>%
   rbind(
-    random_efficacies %>% filter(platform == "mRNA" & dose == "First") %>%
+    first_doses %>% filter(platform == "mRNA") %>%
       mutate(platform = "Johnson&Johnson", value = 0)
   )
-#correct so not decreasing with more vaccinations
-random_efficacies <- random_efficacies %>%
-  group_by(variant, platform, sample) %>%
-  select(variant, platform, sample, parameter, value) %>%
-  pivot_wider(names_from = parameter, values_from = value) %>%
+#sense check so that first < second < booster
+silent <- other_doses %>% 
+  rbind(first_doses %>% 
+  mutate(iteration = 0)) %>% 
+  group_by(platform, variant) %>% 
+  group_split() %>% 
+  map(function(df){
+    map(c("i", "d"), function(type){
+      first <- df %>% filter(iteration == 0, parameter == paste0("pV_", type)) %>% pull(value)
+      second <- df %>% filter(iteration != 0, parameter == paste0("ve", type, "_", 1), dose == "Second") %>% pull(value)
+      if(any(second < first)){
+        warning(paste0("Second dose is less than first dose in ", type, " for ", df$platform[1], " ", df$variant[1]))
+      }
+      if("Booster" %in% df$dose){
+        booster <- df %>% filter(iteration != 0, parameter == paste0("ve", type, "_", 1), dose == "Booster") %>% pull(value)
+        if(any(unlist(map(booster, ~.x <= second)))){
+          warning(paste0("Booster dose is less than second dose in ", type, " for ", df$platform[1], " ", df$variant[1]))
+        }
+      }
+    })
+  })
+
+other_doses <- other_doses %>%
   mutate(
-    fV_1_d = if_else(
-      fV_1_d < pV_1_d, pV_1_d, fV_1_d
-    ),
-    bV_1_d = if_else(
-      bV_1_d < fV_1_d, fV_1_d, bV_1_d
-    ),
-    fV_1_i = if_else(
-      fV_1_i < pV_1_i, pV_1_i, fV_1_i
-    ),
-    bV_1_i = if_else(
-      bV_1_i < fV_1_i, fV_1_i, bV_1_i
+    parameter = case_when(
+      parameter == "w_1" & dose == "Second" ~ "fw_1",
+      parameter == "w_2" & dose == "Second"~ "fw_2",
+      parameter == "ved_1" & dose == "Second" ~ "fV_d_1",
+      parameter == "ved_2" & dose == "Second" ~ "fV_d_2",
+      parameter == "ved_3" & dose == "Second" ~ "fV_d_3",
+      parameter == "vei_1" & dose == "Second" ~ "fV_i_1",
+      parameter == "vei_2" & dose == "Second" ~ "fV_i_2",
+      parameter == "vei_3" & dose == "Second" ~ "fV_i_3",
+      parameter == "w_1" & dose == "Booster" ~ "bw_1",
+      parameter == "w_2" & dose == "Booster"~ "bw_2",
+      parameter == "ved_1" & dose == "Booster" ~ "bV_d_1",
+      parameter == "ved_2" & dose == "Booster" ~ "bV_d_2",
+      parameter == "ved_3" & dose == "Booster" ~ "bV_d_3",
+      parameter == "vei_1" & dose == "Booster" ~ "bV_i_1",
+      parameter == "vei_2" & dose == "Booster" ~ "bV_i_2",
+      parameter == "vei_3" & dose == "Booster" ~ "bV_i_3",
+      TRUE ~ parameter
     )
-  ) %>%
-  pivot_longer(!c(variant, platform, sample), names_to = "parameter", values_to = "value") %>%
-  left_join(
-    random_efficacies %>% select(!value),
-    by = c("variant", "platform", "sample", "parameter")
-  ) %>%
-  ungroup() %>%
-  filter(!is.na(dose))
-
-
-#add Omicron sub unit efficacies
-random_efficacies <- random_efficacies %>%
-  rbind(
-    random_efficacies %>% filter(variant == "Omicron") %>% mutate(variant = "Omicron Sub-Variant")
-  ) %>%
-  arrange(
-    sample, platform, variant, dose, parameter
-  ) %>%
-  mutate(
-    platform = if_else(platform == "Johnson&Johnson", "Single-Dose", platform)
   )
-
-#Scale for breakthrough infections
-random_efficacies <- random_efficacies %>%
-  filter(str_detect(parameter, "V")) %>%
-  mutate(temp_1 = str_remove(parameter, "[di]"),
-         temp_2 = str_sub(parameter, -1, -1)) %>%
-  select(dose, variant, platform, sample, temp_1, temp_2, value) %>%
-  pivot_wider(names_from = temp_2, values_from = value) %>%
-  mutate(
-    d = (d - i)/(1 - i),
-    d = if_else(d < 0, 0, d)
-  ) %>%
-  pivot_longer(c(d, i), names_to = "temp_2", values_to = "value_new") %>%
-  mutate(parameter = paste0(temp_1, temp_2)) %>%
-  select(!c(temp_1, temp_2)) %>%
-  right_join(
-    random_efficacies,
-    by = c("dose", "variant", "platform", "sample", "parameter")
-  ) %>%
-  mutate(
-    value = if_else(is.na(value_new), value, value_new)
-  ) %>%
-  select(!value_new)
-
 #empty environment of everything not relevant
-rm(list = setdiff(ls(), c("N_samples", "random_efficacies")))
+rm(list = setdiff(ls(), c("first_doses", "other_doses", "n_samples")))
 
 sample_vaccine_efficacies <- function(n, platforms){
   if("mRNA" %in% platforms){
@@ -506,15 +472,20 @@ sample_vaccine_efficacies <- function(n, platforms){
   }
   #uniformly sample
   platforms <- sample(platforms, n, replace = TRUE)
+  its_primary <- sample(n_samples, n, replace = TRUE)
+  its_booster <- sample(n_samples, n, replace = TRUE)
   #now for each platform draw a random sample from the df
   output <- map_dfr(seq_along(platforms),
-      ~random_efficacies %>%
-        filter(platform == platforms[.x], sample == sample(N_samples, 1), dose != "Booster") %>%
-        select(dose, variant, parameter, value) %>% #add booster sample
+      ~first_doses %>% 
+        filter(platform == platforms[.x]) %>% 
         rbind(
-          random_efficacies %>%
-            filter(platform == booster_platform, sample == sample(N_samples, 1), dose == "Booster") %>%
-            select(dose, variant, parameter, value)
+          other_doses %>%
+            filter(platform == platforms[.x], iteration == its_primary[.x], dose == "Second") %>% 
+            rbind(
+              other_doses %>%
+                filter(platform == platforms[.x], iteration == its_booster[.x], dose == "Booster")
+            ) %>% 
+            select(!iteration)
         ) %>%
         mutate(sample = .x)
   )
@@ -527,9 +498,9 @@ sample_vaccine_efficacies <- function(n, platforms){
         pull(value, parameter))
       #convert to format
       list(
-        dur_V = 1/c(values$w_p, values$w_1, values$w_2),
-        vaccine_efficacy_infection = c(values$pV_1_i, values$fV_1_i, values$fV_2_i, values$bV_1_i, values$bV_2_i, values$bV_3_i),
-        vaccine_efficacy_disease = c(values$pV_1_d, values$fV_1_d, values$fV_2_d, values$bV_1_d, values$bV_2_d, values$bV_3_d)
+        dur_V = 1/c(values$fw_1, values$fw_2, values$bw_1, values$bw_2),
+        vaccine_efficacy_infection = c(values$pV_i, values$fV_i_1, values$fV_i_2, values$fV_i_3, values$bV_i_1, values$bV_i_2, values$bV_i_3),
+        vaccine_efficacy_disease = c(values$pV_d, values$fV_d_1, values$fV_d_2, values$fV_d_3, values$bV_d_1, values$bV_d_2, values$bV_d_3)
       )
     })
     #reformat so easier to use
