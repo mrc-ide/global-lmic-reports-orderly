@@ -15,30 +15,21 @@ get_vaccine_inputs <- function(iso3c) {
 vaccine_eff_over_time <- function(variant_timings, variant_ve, x, start_date) {
   variant_timings <- arrange(variant_timings, start_date)
 
-  change_tt <- map(transpose(variant_timings), function(l){
-    period <- as.numeric(as_date(c(l$start_date, l$end_date)) - start_date)
-    tt <- seq(period[1], period[2], by = 1)
-    list(
-      change = seq(0, 1, length.out = length(tt) + 1)[-1],
-      tt = tt
-    )
-  })
-  tt <- map(change_tt, ~.x$tt) %>% unlist()
+  tt <- map(transpose(variant_timings), function(l){
+    as.numeric(as_date(c(l$start_date, l$end_date)) - start_date)
+  }) %>% unlist()
+
   vars <- c("dur_V", "vaccine_efficacy_infection", "vaccine_efficacy_disease")
   names(vars) <- vars
   vars <- map(vars, function(var){
-    per_variant <- map(seq_along(change_tt), function(i){
+    per_variant <- map(seq_len(nrow(variant_timings)), function(i){
       if(i == 1){
         start_values <- variant_ve$Wild[[var]][[x]]
       } else {
         start_values <- variant_ve[[variant_timings$variant[i-1]]][[var]][[x]]
       }
       end_values <- variant_ve[[variant_timings$variant[i]]][[var]][[x]]
-      map(
-        seq_along(start_values),
-        ~start_values[.x] * (1 - change_tt[[i]]$change) + end_values[.x] * change_tt[[i]]$change
-      ) %>% transpose() %>%
-        map(unlist)
+      list(start_values, end_values)
     })
     #now append these togther
     unlist(per_variant, recursive = FALSE)

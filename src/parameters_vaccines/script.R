@@ -12,7 +12,11 @@ ves_by_type <- read_csv("vaccine_efficacy_groups.csv") %>%
     cols = c("Wild", "Delta"),
     names_to = "variant",
     values_to = "efficacy"
+  ) %>% 
+  mutate(
+    vaccine_type = if_else(vaccine_type == "Johnson&Johnson", "Single-Dose", vaccine_type)
   )
+
 
 #assumed numbers, booster restores efficacy NOTE Ideally we'd find better numbers, might be too many categories
 master_ves <- tribble(
@@ -421,7 +425,7 @@ other_doses <- map_dfr(other_doses, ~.x)
 first_doses <- first_doses %>%
   rbind(
     first_doses %>% filter(platform == "mRNA") %>%
-      mutate(platform = "Johnson&Johnson", value = 0)
+      mutate(platform = "Single-Dose", value = 0)
   )
 #sense check so that first < second < booster
 silent <- other_doses %>% 
@@ -481,7 +485,7 @@ sample_vaccine_efficacies <- function(n, platforms){
   its_primary <- sample(n_samples, n, replace = TRUE)
   its_booster <- sample(n_samples, n, replace = TRUE)
   #now for each platform draw a random sample from the df
-  output <- map_dfr(seq_along(platforms),
+  output <- map_dfr(seq_len(n),
       ~first_doses %>% 
         filter(platform == platforms[.x]) %>% 
         rbind(
@@ -489,7 +493,7 @@ sample_vaccine_efficacies <- function(n, platforms){
             filter(platform == platforms[.x], iteration == its_primary[.x], dose == "Second") %>% 
             rbind(
               other_doses %>%
-                filter(platform == platforms[.x], iteration == its_booster[.x], dose == "Booster")
+                filter(platform == booster_platform, iteration == its_booster[.x], dose == "Booster")
             ) %>% 
             select(!iteration)
         ) %>%

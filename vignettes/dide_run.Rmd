@@ -73,7 +73,7 @@ what the `date` is that we are conducting model fits for, i.e. up to what date a
 we running.
 
 ```{r, eval = FALSE}
-date <- "2022-12-25"
+date <- "2023-01-01"
 
 glodide_loc <- "N:/lmic_fitting/glodide" ###Update if on a different drive!
 ```
@@ -121,18 +121,20 @@ message("*** Creating country task bundles")
 task <- "lmic_reports_rt_optimise"
 parameters <- list(
   date = date,
-  samples = 32*3, #how many random samples to generate and fit
+  samples = 100, #how many random samples to generate and fit
   seed = FALSE, #Set a seed, useful for debugging
-  parallel = TRUE,
-  #Should we build the required documentation+data for the fit
-  document = TRUE,
-  fit_cases = FALSE #issues with this, don't have time to fix them.
+  parallel = TRUE
   # #Fitting parameters (leave as blank to use defaults in fitting_params.Rds)
   # initial_infections_interval = c(5, 500),
   # n_particles = 10,
   # k = 14,
   # rt_interval = c(0.5, 10)
 )
+
+parameters$iso3c <- "IND"
+orderly::orderly_commit(orderly::orderly_run(task, parameters = parameters, echo = FALSE))
+
+
 
 # get the isos
 iso3cs <- grep('^[A-Z]{3}\\s*', readLines(file.path(here::here(), "countries")), value = TRUE)

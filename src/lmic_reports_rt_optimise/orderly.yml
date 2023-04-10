@@ -39,8 +39,6 @@ parameters:
     samples: ~
     seed:
       default: FALSE
-    fit_cases:
-      default: TRUE
     parallel:
       default: FALSE
     initial_infections_interval:

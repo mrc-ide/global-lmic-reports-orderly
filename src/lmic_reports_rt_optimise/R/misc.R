@@ -48,23 +48,18 @@ multiplier_changes_over_time <- function(variant_timings, variable, x, start_dat
 }
 
 variant_par_changes_over_time <- function(variant_timings, variable, start_date) {
-  change_tt <- map(transpose(variant_timings), function(l){
-    period <- as.numeric(as_date(c(l$start_date, l$end_date)) - start_date)
-    tt <- seq(period[1], period[2], by = 1)
-    list(
-      change = seq(0, 1, length.out = length(tt) + 1)[-1],
-      tt = tt
-    )
-  })
-  tt <- map(change_tt, ~.x$tt) %>% unlist()
-  var <- map(seq_along(change_tt), function(i){
+  tt <- map(transpose(variant_timings), function(l){
+    as.numeric(as_date(c(l$start_date, l$end_date)) - start_date)
+  }) %>% unlist()
+
+  var <- map(seq_len(nrow(variant_timings)), function(i){
     if(i == 1){
       start_value <- variable[["Wild"]]
     } else {
       start_value <- variable[[variant_timings$variant[i - 1]]]
     }
     end_value <- variable[[variant_timings$variant[i]]]
-    start_value * (1 - change_tt[[i]]$change) + end_value * change_tt[[i]]$change
+    c(start_value, end_value)
   }) %>% unlist()
 
   #add the zero entry if needed
@@ -301,7 +296,7 @@ get_compartment_array <- function(output, compartment, end_date, replicate){
     replicate
   ]
   #convert to 3d (date, age, vaccine status)
-  array_ <- array(NA, c(nrow(comp), 17, 7))
+  array_ <- array(NA, c(nrow(comp), 17, 8))
   for(row in seq_len(17)){
     array_[,row,] <- comp[, stringr::str_detect(colnames(comp), paste0(compartment,"\\[", row, ","))]
   }
@@ -509,7 +504,7 @@ prefit_vaccines <- function(parameters, distribution, squire_model){
     #extract the compartment values
     S_array <- array(NA, c(17, 7))
     for(age in seq_len(17)){
-      S_array[age, ] <- output[paste0("S[", age, ",", seq_len(7), "]")]
+      S_array[age, ] <- output[paste0("S[", age, ",", seq_len(8), "]")]
     }
 
     new_dist <- distribution[[i]]

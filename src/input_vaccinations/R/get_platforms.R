@@ -78,7 +78,7 @@ types_to_platforms <- function(vaccine_types){
                          ) ~ "Adenovirus",
     vaccine_types %in% c("Sinopharm/Wuhan", "Sinopharm/Beijing", "Sinovac", "Covaxin", "Bharat - Covaxin", "COVIran Barekat", "FAKHRAVAC", "QazVac", "Turkovac", "KoviVac/Chumakov", "IMBCAMS", "KCONVAC", "Beijing CNBG - BBIBP-CorV", "Sinovac - CoronaVac", "Wuhan CNBG - Inactivated", "Chumakov - Covi-Vac", "IMB - Covidful", "Shifa - COVIran Barakat", "RIBSP - QazVac", "Julphar - Hayat-Vax", "Valneva", "Valneva - VLA2001") ~ "Whole Virus",
     vaccine_types %in% c("Janssen - Ad26.COV 2-S", "Johnson&Johnson") ~ "Single-Dose",
-    vaccine_types %in% c("Moderna – Spikevax Bivalent Original/Omicron BA.1", "Pfizer BioNTech - Comirnaty Bivalent Original/Omicron BA.1", "Pfizer BioNTech - Comirnaty Bivalent Original/Omicron BA.4/BA.5", "Moderna – Spikevax Bivalent Original/Omicron  - Generic", "Pfizer BioNTech - Comirnaty Bivalent Original/Omicron - Generic") ~ "mRNA", #for now but need to add new VEs #"mRNA - Omicron",
+    vaccine_types %in% c("Moderna – Spikevax Bivalent Original/Omicron BA.1", "Pfizer BioNTech - Comirnaty Bivalent Original/Omicron BA.1", "Pfizer BioNTech - Comirnaty Bivalent Original/Omicron BA.4/BA.5", "Moderna – Spikevax Bivalent Original/Omicron  - Generic", "Pfizer BioNTech - Comirnaty Bivalent Original/Omicron - Generic", "Moderna – Spikevax Bivalent Original/Omicron BA.4/BA.5") ~ "mRNA", #for now but need to add new VEs #"mRNA - Omicron",
     vaccine_types %in% c("Unknown Vaccine") ~ as.character(NA),
     TRUE ~ vaccine_types
   )

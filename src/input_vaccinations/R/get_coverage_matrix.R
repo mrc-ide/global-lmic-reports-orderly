@@ -68,7 +68,7 @@ get_vaccine_uptake <- function(iso3cs, dose_df, default_uptake, strategy){
       by = "iso3c"
     ) %>%
     group_by(iso3c) %>%
-    summarise(
+    mutate(
       pop = if_else(
         strat %in% c("All", "Elderly"),
         #use all pop for these strategies
