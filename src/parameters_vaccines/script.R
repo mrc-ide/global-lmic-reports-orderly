@@ -2,17 +2,17 @@ set.seed(1000101)
 n_samples <- 50
 ##Set-up VEs for Vaccine Types
 ves_by_type <- read_csv("vaccine_efficacy_groups.csv") %>%
-  mutate(dose = if_else(dose == "Partial", "First", "Second")) %>% 
+  mutate(dose = if_else(dose == "Partial", "First", "Second")) %>%
   #ensure ve does not increase from Wild to Delta
-  pivot_wider(names_from = variant, values_from = efficacy) %>% 
+  pivot_wider(names_from = variant, values_from = efficacy) %>%
   mutate(
     Delta = pmin(Delta, Wild)
-  ) %>% 
+  ) %>%
   pivot_longer(
     cols = c("Wild", "Delta"),
     names_to = "variant",
     values_to = "efficacy"
-  ) %>% 
+  ) %>%
   mutate(
     vaccine_type = if_else(vaccine_type == "Johnson&Johnson", "Single-Dose", vaccine_type)
   )
@@ -56,7 +56,7 @@ changes_booster <- master_ves %>%
     endpoint = Endpoint,
     p_change = logit(Booster) - logit(Second)
   ) %>% #average across variants for simplicities sake
-  group_by(endpoint)  %>% 
+  group_by(endpoint)  %>%
   summarise(p_change = mean(p_change))
 
 booster_efficacies <- ves_by_type %>%
@@ -117,8 +117,8 @@ ves_by_type <- ves_by_type %>%
     )
   )
 
-#ves_by_type %>% 
-#  pivot_wider(names_from = variant, values_from = efficacy) %>% 
+#ves_by_type %>%
+#  pivot_wider(names_from = variant, values_from = efficacy) %>%
 #  select(vaccine_type, endpoint, dose, Wild, Delta, Omicron) %>%
 #  filter(vaccine_type == "mRNA")
 #load parameter chains
@@ -180,7 +180,7 @@ calculate_ve <- function(parameter_hospitalisation, p1, p2, p3) {
 first_doses <- ves_by_type %>%
   filter(dose == "First") %>%
   group_by(vaccine_type, dose, variant) %>%
-  group_split() %>% 
+  group_split() %>%
   map(function(df){
     parameter_infection <- df %>% filter(endpoint == "Infection") %>% pull(efficacy)
     parameter_hospitalisation <- df %>% filter(endpoint == "Hospitalisation") %>% pull(efficacy)
@@ -199,13 +199,13 @@ first_doses <- ves_by_type %>%
 other_doses <- ves_by_type %>%
   filter(dose != "First") %>%
   group_by(vaccine_type, dose, variant) %>%
-  group_split() %>% 
+  group_split() %>%
   map(function(df){
     parameter_infection <- df %>% filter(endpoint == "Infection") %>% pull(efficacy)
     parameter_hospitalisation <- df %>% filter(endpoint == "Hospitalisation") %>% pull(efficacy)
     #scale for break through
     parameter_hospitalisation <- (parameter_hospitalisation - parameter_infection)/(1 - parameter_infection)
-    
+
     dose <- unique(df$dose)
     variant <- unique(df$variant)
     platform <- unique(df$vaccine_type)
@@ -228,7 +228,7 @@ other_doses <- ves_by_type %>%
     #need to calculate initial dose level
     #assume ve is 30 days after dose
     t_measure <- 30
-    #just assume the initia AB is 
+    #just assume the initia AB is
     err_func <- function(initial_ab) {
       ab_t_measure <- simulate_ab(t_measure, initial_ab, ab_params$hl_s, ab_params$hl_l, ab_params$period_s)
       ve_i <- ab_to_ve(ab_t_measure, ab_params$ni50, ab_params$k)
@@ -297,7 +297,7 @@ other_doses <- ves_by_type %>%
       stop(res$message)
     }
 
-    #add randomness (should do it in fitting really) 
+    #add randomness (should do it in fitting really)
     out <- map(seq_len(n_samples), function(i){
       pars <- res$par
       if(i != 1){
@@ -338,10 +338,10 @@ other_doses <- ves_by_type %>%
         endpoint = c(rep("Hospitalisation", length(t_plot)), rep("Infection", length(t_plot))),
         iteration = pars$iteration[1]
       )
-    }) %>% 
+    }) %>%
       mutate(
         model = "Booster Model"
-      ) %>% 
+      ) %>%
       rbind(
         tibble(
           t = t_plot,
@@ -350,7 +350,7 @@ other_doses <- ves_by_type %>%
           iteration = 0,
           model = "AB Process"
         )
-      ) %>% 
+      ) %>%
       rbind(
         tibble(
           t = t_plot,
@@ -359,16 +359,16 @@ other_doses <- ves_by_type %>%
           iteration = 0,
           model = "AB Process"
         )
-      ) %>% 
+      ) %>%
       mutate(
         group_par = paste0(endpoint, "_", iteration, "_", model),
         alpha = ifelse(model == "AB Process", 1, 0.25)
-      ) %>% 
+      ) %>%
       ggplot(aes(x = t, y = value, color = endpoint, linetype = model, group = group_par, alpha = alpha)) +
         geom_line() +
       geom_hline(data = NULL, yintercept = c(parameter_infection, parameter_hospitalisation), aes(color = c("Infection", "Hospitalisation")), linetype = "dashed") +
       labs(y = "Vaccine Efficacy", x = "Days Since Dose", title = paste0("Dose: ", dose, ", Variant: ", variant, ", Type: ", df$vaccine_type[1]), linetype = "Model", colour = "Endpoint") +
-      ggpubr::theme_pubclean() + scale_alpha(guide = 'none') + 
+      ggpubr::theme_pubclean() + scale_alpha(guide = 'none') +
       ylim(c(0, 1))
 
     out <- map_dfr(out, ~.x)
@@ -407,13 +407,13 @@ p <- map(platforms, function(plat){
     } else {
       return(ggarrange(plotlist = var_list, nrow = 1, common.legend = TRUE))
     }
-  }) %>% 
+  }) %>%
     compact()
   ggarrange(plotlist = dose_list, ncol = 1, common.legend = TRUE)
 })
 
 pdf("calibration.pdf", width = 20, height = 10)
-p
+print(p)
 dev.off()
 
 rm(p, plots)
@@ -428,11 +428,11 @@ first_doses <- first_doses %>%
       mutate(platform = "Single-Dose", value = 0)
   )
 #sense check so that first < second < booster
-silent <- other_doses %>% 
-  rbind(first_doses %>% 
-  mutate(iteration = 0)) %>% 
-  group_by(platform, variant) %>% 
-  group_split() %>% 
+silent <- other_doses %>%
+  rbind(first_doses %>%
+  mutate(iteration = 0)) %>%
+  group_by(platform, variant) %>%
+  group_split() %>%
   map(function(df){
     map(c("i", "d"), function(type){
       first <- df %>% filter(iteration == 0, parameter == paste0("pV_", type)) %>% pull(value)
@@ -486,15 +486,15 @@ sample_vaccine_efficacies <- function(n, platforms){
   its_booster <- sample(n_samples, n, replace = TRUE)
   #now for each platform draw a random sample from the df
   output <- map_dfr(seq_len(n),
-      ~first_doses %>% 
-        filter(platform == platforms[.x]) %>% 
+      ~first_doses %>%
+        filter(platform == platforms[.x]) %>%
         rbind(
           other_doses %>%
-            filter(platform == platforms[.x], iteration == its_primary[.x], dose == "Second") %>% 
+            filter(platform == platforms[.x], iteration == its_primary[.x], dose == "Second") %>%
             rbind(
               other_doses %>%
                 filter(platform == booster_platform, iteration == its_booster[.x], dose == "Booster")
-            ) %>% 
+            ) %>%
             select(!iteration)
         ) %>%
         mutate(sample = .x)
