@@ -140,7 +140,7 @@ orderly::orderly_commit(orderly::orderly_run(task, parameters = parameters, echo
 iso3cs <- grep('^[A-Z]{3}\\s*', readLines(file.path(here::here(), "countries")), value = TRUE)
 # make the orderly bundles to be run on the cluster
 path_bundles <- file.path(
-  glodide_loc, "analysis", "data", "raw", date
+  "hpc", "raw"
 )
 dir.create(path_bundles, showWarnings = FALSE, recursive = TRUE)
 
@@ -161,6 +161,8 @@ bundles <- lapply(
 # now label these with the iso3cs and save the file paths
 names(bundles) <- iso3cs
 saveRDS(bundles, file.path(path_bundles, "bundles.rds"))
+map_dfr(bundles, ~tibble::tibble(id = paste0(.x$id, ".zip")), .id = "iso3c") %>%
+  write_csv(file.path("hpc", "bundles.csv"), col_names = FALSE)
 ```
 
 This will create an orderly task for each country that is then saved in the 
