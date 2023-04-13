@@ -27,6 +27,7 @@ excess_deaths <- readRDS("excess_deaths.Rds") %>%
   filter(iso == iso3c) %>%
   arrange(date_start) %>%
   filter(date_end <= date)
+
 if(nrow(excess_deaths) == 0){
   excess_deaths <-
     data.frame(

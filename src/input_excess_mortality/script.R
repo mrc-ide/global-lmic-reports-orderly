@@ -2,7 +2,7 @@ date_0 <- as.Date(date, "%Y-%m-%d")
 
 ##Get most recent fit from github repo
 excess_deaths_raw <- read.csv(
-  "https://raw.githubusercontent.com/TheEconomist/covid-19-the-economist-global-excess-deaths-model/main/output-data/export_country.csv"
+  "https://github.com/TheEconomist/covid-19-the-economist-global-excess-deaths-model/blob/ebe6e978995ea2ade199930cb976e48a8a2ff833/output-data/export_country.csv?raw=true"
   ) %>%
   mutate(date = as_date(date)) %>%
   filter(date <= date_0)
