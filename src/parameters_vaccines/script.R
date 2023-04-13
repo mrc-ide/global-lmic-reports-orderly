@@ -32,13 +32,7 @@ master_ves <- tribble(
   "Delta", "Booster", "Infection", 0.85,
   "Delta", "First", "Hospitalisation", 0.75,
   "Delta", "Second", "Hospitalisation", 0.94,
-  "Delta", "Booster", "Hospitalisation", 0.98,
-  "Omicron", "First", "Infection", 0,
-  "Omicron", "Second", "Infection", 0.1,
-  "Omicron", "Booster", "Infection", 0.55,
-  "Omicron", "First", "Hospitalisation", 0.1557433,
-  "Omicron", "Second", "Hospitalisation", 0.449152542372881,
-  "Omicron", "Booster", "Hospitalisation", 0.90
+  "Delta", "Booster", "Hospitalisation", 0.98
 )
 
 #calculate omicron changes based on the changes from delta in the old generalised ves
@@ -73,49 +67,8 @@ booster_efficacies <- ves_by_type %>%
 ves_by_type <- ves_by_type %>%
   rbind(
     booster_efficacies
-  )
-
-changes_omicron <- master_ves %>%
-  filter(Variant != "Wild") %>%
-  pivot_wider(names_from = Variant, values_from = Efficacy) %>%
-  transmute(
-    dose = Dose,
-    endpoint = Endpoint,
-    p_change = Omicron/Delta,
-  )
-omicron_efficacies <- ves_by_type %>%
-  filter(variant == "Delta") %>%
-  left_join(
-    changes_omicron,
-    by = c("dose", "endpoint")
-  ) %>%
-  mutate(
-    variant = "Omicron",
-    efficacy = efficacy * p_change
-  ) %>%
-  select(!p_change)
-
-ves_by_type <- ves_by_type %>%
-  rbind(
-    omicron_efficacies
   ) %>%
   arrange(vaccine_type, variant, endpoint, dose)
-
-#overwrite with omicron data for boosters where possible
-ves_by_type <- ves_by_type %>%
-  mutate(
-    efficacy = case_when(
-      vaccine_type == "mRNA" & dose == "booster" & endpoint == "Infection" & variant == "Omicron" ~
-        0.65, #https://www.nejm.org/doi/full/10.1056/NEJMoa2119451
-      vaccine_type == "mRNA" & dose == "booster" & endpoint == "Hospitalisation" & variant == "Omicron" ~
-        0.82, #https://www.sciencedirect.com/science/article/pii/S0264410X22005230
-      vaccine_type == "Whole Virus" & dose == "booster" & endpoint == "Hospitalisation" & variant == "Omicron" ~
-        0.80, #evidence suggest that its similar to mRNA so we'll keep them the same
-      #https://doi.org/10.1016/S2214-109X(22)00112-7 #Not the right variant but presumably will be lower?
-      #some evidence that it's much higher https://www.medrxiv.org/content/10.1101/2022.03.22.22272769v1#:~:text=Two%20doses%20of%20either%20vaccine,%3A%2067.8%25%2C%2079.2%25).
-      TRUE ~ efficacy
-    )
-  )
 
 #ves_by_type %>%
 #  pivot_wider(names_from = variant, values_from = efficacy) %>%
@@ -166,7 +119,8 @@ ab_to_ve <- function(ab, n50, k){
 }
 
 err_lines <- function(l1, l2){
-  sum((l1 - l2)^2/l1)
+  #sum((l1 - l2)^2/l1)
+  sum(((l1 - l2)/l1)^2)
   #scale it so the lower values have more weight
 }
 
@@ -389,7 +343,7 @@ other_doses <- ves_by_type %>%
       ylim(c(0, 1))
 
     p <- ggarrange(
-      p, initial_ab_plot, ncol = 1, heights = c(0.6, 0.4)
+      p, initial_ab_plot, ncol = 1, heights = c(0.6, 0.2)
     )
 
     out <- map_dfr(out, ~.x)
@@ -412,7 +366,7 @@ other_doses <- map(other_doses, ~.x$out)
 platform <- map_chr(other_doses, ~.x$platform[1])
 platforms <- unique(platform)
 variant <- map_chr(other_doses, ~.x$variant[1])
-variants <- c("Wild", "Delta", "Omicron")
+variants <- c("Wild", "Delta")
 dose <- map_chr(other_doses, ~.x$dose[1])
 doses <- unique(dose)
 p <- map(platforms, function(plat){
