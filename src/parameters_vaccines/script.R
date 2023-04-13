@@ -170,7 +170,7 @@ err_lines <- function(l1, l2){
   #scale it so the lower values have more weight
 }
 
-calculate_ve <- function(parameter_hospitalisation, p1, p2, p3) {
+calculate_ve <- function(p1, p2, p3) {
   ved <- p1
   ved_2 <- ved * p2
   ved_3 <- ved_2 * p3
@@ -203,8 +203,6 @@ other_doses <- ves_by_type %>%
   map(function(df){
     parameter_infection <- df %>% filter(endpoint == "Infection") %>% pull(efficacy)
     parameter_hospitalisation <- df %>% filter(endpoint == "Hospitalisation") %>% pull(efficacy)
-    #scale for break through
-    parameter_hospitalisation <- (parameter_hospitalisation - parameter_infection)/(1 - parameter_infection)
 
     dose <- unique(df$dose)
     variant <- unique(df$variant)
@@ -234,19 +232,39 @@ other_doses <- ves_by_type %>%
       ve_i <- ab_to_ve(ab_t_measure, ab_params$ni50, ab_params$k)
       ve_d <- ab_to_ve(ab_t_measure, ab_params$ns50, ab_params$k)
       err_lines(parameter_infection, ve_i) +
-        err_lines(parameter_hospitalisation, (ve_d - ve_i)/(1 - ve_i))
+        err_lines(parameter_hospitalisation, ve_d)
     }
     res <- optimize(err_func, interval = c(0, 10), maximum = FALSE)
     initial_ab <- res$minimum
     abs <- simulate_ab(0:simulate_time, initial_ab,  ab_params$hl_s,  ab_params$hl_l,  ab_params$period_s)
     ve_i <- ab_to_ve(abs, ab_params$ni50, ab_params$k)
     ve_d <- ab_to_ve(abs, ab_params$ns50, ab_params$k)
+    #plot for diagnostics
+    initial_ab_plot <- tibble(
+      t = 0:(2*t_measure),
+      Hospitalisation = ve_d[1:(2*t_measure + 1)],
+      Infection = ve_i[1:(2*t_measure + 1)]
+    ) %>% 
+      pivot_longer(cols = -t, names_to = "Endpoint", values_to = "Efficacy") %>%
+      ggplot(aes(x = t, y = Efficacy, colour = Endpoint)) + 
+      geom_line(show.legend = FALSE) +
+      geom_point(data = tibble(
+        t = t_measure,
+        Efficacy = c(parameter_infection, parameter_hospitalisation),
+        Endpoint = c("Infection", "Hospitalisation")
+      ), shape = "x", size = 5, show.legend = FALSE) +
+      ggpubr::theme_pubclean() +
+      labs(
+        title = "Fit of initial Immune Response level, X shows the input efficacies",
+        y = "Vaccine Efficacy", x = "Days Since Dose"
+      )
+
     #scale for break through infection
     ve_d <- (ve_d - ve_i)/(1 - ve_i)
 
     err_func <- function(pars) {
-      veds <- calculate_ve(parameter_hospitalisation, pars[3], pars[4], pars[5])
-      veis <- calculate_ve(parameter_infection, pars[6], pars[7], pars[8])
+      veds <- calculate_ve(pars[3], pars[4], pars[5])
+      veis <- calculate_ve(pars[6], pars[7], pars[8])
       calc_eff$set_user(
         user = list(
           w_1 = pars[1],
@@ -307,8 +325,8 @@ other_doses <- ves_by_type %>%
         pars[pars < 0] <- 0
         pars[pars > 1] <- 1
       }
-      veds <- calculate_ve(parameter_hospitalisation, pars[3], pars[4], pars[5])
-      veis <- calculate_ve(parameter_infection, pars[6], pars[7], pars[8])
+      veds <- calculate_ve(pars[3], pars[4], pars[5])
+      veis <- calculate_ve(pars[6], pars[7], pars[8])
       tibble(
         value = c(pars[1:2], veds, veis),
         parameter = names(par),
@@ -366,10 +384,13 @@ other_doses <- ves_by_type %>%
       ) %>%
       ggplot(aes(x = t, y = value, color = endpoint, linetype = model, group = group_par, alpha = alpha)) +
         geom_line() +
-      geom_hline(data = NULL, yintercept = c(parameter_infection, parameter_hospitalisation), aes(color = c("Infection", "Hospitalisation")), linetype = "dashed") +
       labs(y = "Vaccine Efficacy", x = "Days Since Dose", title = paste0("Dose: ", dose, ", Variant: ", variant, ", Type: ", df$vaccine_type[1]), linetype = "Model", colour = "Endpoint") +
       ggpubr::theme_pubclean() + scale_alpha(guide = 'none') +
       ylim(c(0, 1))
+
+    p <- ggarrange(
+      p, initial_ab_plot, ncol = 1, heights = c(0.6, 0.4)
+    )
 
     out <- map_dfr(out, ~.x)
 
