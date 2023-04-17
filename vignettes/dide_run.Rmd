@@ -81,9 +81,9 @@ glodide_loc <- "N:/lmic_fitting/glodide" ###Update if on a different drive!
 These arguments are then passed to our tasks:
 
 ```{r eval=FALSE, message=FALSE, warning=FALSE}
-# message("*** VE Parameters (Please check calibration.pdf)!")
-# parameters_vaccines_id <- orderly::orderly_run("parameters_vaccines", echo = FALSE)
-# orderly::orderly_commit(parameters_vaccines_id)
+#message("*** VE Parameters (Please check calibration.pdf)!")
+#parameters_vaccines_id <- orderly::orderly_run("parameters_vaccines", echo = FALSE)
+#orderly::orderly_commit(parameters_vaccines_id)
 
 message("*** Reported COVID Deaths and Cases")
 input_jhu_id <- orderly::orderly_run("input_jhu", parameters = list(date=date), echo = FALSE)
@@ -114,8 +114,6 @@ submit these tasks.
 
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
 
-message("*** Creating country task bundles")
-
 # main input parameters
 
 task <- "lmic_reports_rt_optimise"
@@ -131,11 +129,6 @@ parameters <- list(
   # rt_interval = c(0.5, 10)
 )
 
-parameters$iso3c <- "IND"
-orderly::orderly_commit(orderly::orderly_run(task, parameters = parameters, echo = FALSE))
-
-
-
 # get the isos
 iso3cs <- grep('^[A-Z]{3}\\s*', readLines(file.path(here::here(), "countries")), value = TRUE)
 # make the orderly bundles to be run on the cluster
@@ -143,6 +136,11 @@ path_bundles <- file.path(
   "hpc", "raw"
 )
 dir.create(path_bundles, showWarnings = FALSE, recursive = TRUE)
+```
+
+```{r eval=FALSE, message=FALSE, warning = FALSE}
+
+message("*** Creating country task bundles")
 
 # bundle these up - this will take like 10 mins to create all the zips. 
 bundles <- lapply(
@@ -194,7 +192,7 @@ fits <- lapply(paths, function(x) {
   if(file.exists(x)){
     zip::unzip(
       zipfile = x, 
-      files = file.path(gsub("\\.zip", "", basename(x)), c("pack/excess_fitting.pdf", "pack/reported_fitting.pdf")), 
+      files = file.path(gsub("\\.zip", "", basename(x)), "pack/excess_fitting.pdf"), 
       exdir = td
     )
   }
@@ -293,7 +291,7 @@ If any of these are not in the repo, i.e. you have just clones `global-lmic-repo
 
 ```{bash}
 mkdir gh-fits
-git clone git@github.com:mrc-ide/nimue_global_fits.git gh-fits
+git clone git@github.com:GBarnsley/booster_model_fits.git gh-fits
 ```
 
 ## Update the github fits
@@ -305,10 +303,4 @@ Potentially worth running the `.sh` script from the terminal or git bash to view
 #just takes the latest fit for each country, will take some time to keep RAM usage low
 report_ids <- gather_report_ids(task, iso3cs)
 update_gh_fits(report_ids, task)
-
-#requires git bash be on the path and that the working directory is set correctly
-#shell(paste0(here::here("scripts/update_github_fits.sh"), " ", date), intern = TRUE, wait = TRUE, shell = "bash")
-#alternatively just copy this code into git bash
-message("Paste me into git bash!")
-dput(paste0("scripts/update_github_fits.sh", " ", date))
 ```

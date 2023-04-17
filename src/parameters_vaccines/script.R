@@ -387,7 +387,7 @@ p <- map(platforms, function(plat){
   ggarrange(plotlist = dose_list, ncol = 1, common.legend = TRUE)
 })
 
-pdf("calibration.pdf", width = 20, height = 10)
+pdf("calibration.pdf", width = 20, height = 20)
 print(p)
 dev.off()
 

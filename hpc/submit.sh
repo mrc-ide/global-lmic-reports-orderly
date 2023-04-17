@@ -2,8 +2,8 @@ email=$1
 
 n_countries=$(wc -l < "bundles.csv")
 
-ncpu=8
-mem_free=10
+ncpu=10
+mem_free=8
 
 mkdir -p derived
 

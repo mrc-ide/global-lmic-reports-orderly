@@ -1,8 +1,7 @@
 update_gh_fits <- function(ids, task) {
   repo <- here::here()
   destination_excess <- file.path(
-    repo, "gh-fits",
-    "excess_mortality"
+    repo, "gh-fits"
   )
   excess_name <- "excess_out.Rds"
   #upload to folder replacing existing files
