@@ -113,7 +113,7 @@ parameters$protection_delay_shape <- 2
 parameters$protection_delay_time <- as.numeric(date - first_start_date)
 parameters$time_period <- as.numeric(date - first_start_date) + 1
 #Variant dependant parameters
-variants_to_model <- c("Delta", "Omicron")
+variants_to_model <- c("Delta")
 #load inputs
 sample_vaccine_efficacies <- readRDS("vaccine_params.Rds")$sample_vaccine_efficacies
 variant_timings <- readRDS("variant_timings.Rds")[[iso3c]] %>%
