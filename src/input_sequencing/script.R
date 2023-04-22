@@ -195,6 +195,16 @@ can_fit_to <- function(df){
     day(two_months) <- 28
   }
   month(two_months) <- month(two_months) - 2
+
+  sum_delta_df <- df %>%
+    filter(variant == "Delta") %>%
+    mutate(week = floor_date(date, "week")) %>%
+    group_by(week, .add = TRUE) %>%
+    summarise(count = sum(count), .groups = "drop_last") %>%
+    summarise(passes = any(count >= 20)) %>%
+    filter(passes) %>%
+    select(!passes)
+
   inner_join(
     sum_df %>%
       filter(count > 20) %>%
@@ -207,7 +217,11 @@ can_fit_to <- function(df){
       filter(count > 2) %>%
       select(!count),
     by = group_vars(df)
-  )
+  ) %>%
+    inner_join(
+      sum_delta_df,
+      by = group_vars(df)
+    )
 }
 
 #Determine which countries have enough data to fit

@@ -54,3 +54,5 @@ packages:
   - squire
   - readr
   - stringr
+  - tidyr
+  - purrr
