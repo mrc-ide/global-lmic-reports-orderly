@@ -1,4 +1,10 @@
 set.seed(1000101)
+
+#setup colours
+library(scales)
+colours <- hue_pal()(3)
+names(colours) <- c("Hospitalisation", "Hospitalisation\n(Scaled for Breakthrough)", "Infection")
+
 n_samples <- 50
 ##Set-up VEs for Vaccine Types
 ves_by_type <- read_csv("vaccine_efficacy_groups.csv") %>%
@@ -200,14 +206,21 @@ other_doses <- ves_by_type %>%
       Infection = ve_i[1:(2*t_measure + 1)]
     ) %>% 
       pivot_longer(cols = -t, names_to = "Endpoint", values_to = "Efficacy") %>%
-      ggplot(aes(x = t, y = Efficacy, colour = Endpoint)) + 
+      mutate(
+        Endpoint = factor(Endpoint, levels = c("Infection", "Hospitalisation", "Hospitalisation\n(Scaled for Breakthrough)"))
+      ) %>%
+      ggplot(aes(x = t, y = Efficacy, colour = Endpoint)) +
       geom_line(show.legend = FALSE) +
       geom_point(data = tibble(
         t = t_measure,
         Efficacy = c(parameter_infection, parameter_hospitalisation),
         Endpoint = c("Infection", "Hospitalisation")
-      ), shape = "x", size = 5, show.legend = FALSE) +
+      ) %>%
+        mutate(
+          Endpoint = factor(Endpoint, levels = c("Infection", "Hospitalisation", "Hospitalisation\n(Scaled for Breakthrough)"))
+        ), shape = "x", size = 5, show.legend = FALSE) +
       ggpubr::theme_pubclean() +
+      scale_colour_manual(values = colours) +
       labs(
         title = "Fit of initial Immune Response level, X shows the input efficacies",
         y = "Vaccine Efficacy", x = "Days Since Dose"
@@ -307,7 +320,7 @@ other_doses <- ves_by_type %>%
       tibble(
         t = rep(t_plot, 2),
         value = c(mod_value[, "ve_d"], mod_value[, "ve_i"]),
-        endpoint = c(rep("Hospitalisation", length(t_plot)), rep("Infection", length(t_plot))),
+        Endpoint = c(rep("Hospitalisation\n(Scaled for Breakthrough)", length(t_plot)), rep("Infection", length(t_plot))),
         iteration = pars$iteration[1]
       )
     }) %>%
@@ -318,7 +331,7 @@ other_doses <- ves_by_type %>%
         tibble(
           t = t_plot,
           value = ve_d,
-          endpoint = "Hospitalisation",
+          Endpoint = "Hospitalisation\n(Scaled for Breakthrough)",
           iteration = 0,
           model = "AB Process"
         )
@@ -327,23 +340,31 @@ other_doses <- ves_by_type %>%
         tibble(
           t = t_plot,
           value = ve_i,
-          endpoint = "Infection",
+          Endpoint = "Infection",
           iteration = 0,
           model = "AB Process"
         )
       ) %>%
       mutate(
-        group_par = paste0(endpoint, "_", iteration, "_", model),
+        group_par = paste0(Endpoint, "_", iteration, "_", model),
         alpha = ifelse(model == "AB Process", 1, 0.25)
       ) %>%
-      ggplot(aes(x = t, y = value, color = endpoint, linetype = model, group = group_par, alpha = alpha)) +
+      mutate(
+        Endpoint = factor(Endpoint, levels = c("Infection", "Hospitalisation", "Hospitalisation\n(Scaled for Breakthrough)"))
+      ) %>%
+      ggplot(aes(x = t, y = value, color = Endpoint, linetype = model, group = group_par, alpha = alpha)) +
         geom_line() +
       labs(y = "Vaccine Efficacy", x = "Days Since Dose", title = paste0("Dose: ", dose, ", Variant: ", variant, ", Type: ", df$vaccine_type[1]), linetype = "Model", colour = "Endpoint") +
-      ggpubr::theme_pubclean() + scale_alpha(guide = 'none') +
+      ggpubr::theme_pubclean() + scale_alpha(guide = 'none') + 
+      scale_colour_manual(values = colours, drop = FALSE) +
       ylim(c(0, 1))
 
-    p <- ggarrange(
-      p, initial_ab_plot, ncol = 1, heights = c(0.6, 0.2)
+    #p <- ggarrange(
+    #  p, initial_ab_plot, ncol = 1, heights = c(0.6, 0.2), common.legend = TRUE
+    #)
+    legend <<- get_legend(p, position = "top") #only need one, all identical
+    p <- list(
+      p = p, ab = initial_ab_plot
     )
 
     out <- map_dfr(out, ~.x)
@@ -369,27 +390,42 @@ variant <- map_chr(other_doses, ~.x$variant[1])
 variants <- c("Wild", "Delta")
 dose <- map_chr(other_doses, ~.x$dose[1])
 doses <- unique(dose)
+
+legend <- ggarrange(
+  as_ggplot(legend$grobs[[1]]),
+  as_ggplot(legend$grobs[[2]]),
+  nrow = 1
+)
+
 p <- map(platforms, function(plat){
   dose_list <- map(doses, function(dos){
     var_list <- map(variants, function(vari){
       index <- detect_index(other_doses, ~.x$platform[1] == plat & .x$variant[1] == vari & .x$dose[1] == dos)
       if(index > 0){
-        plots[[index]]
+        ggarrange(plots[[index]]$p + theme(legend.position = "none"), plots[[index]]$ab, ncol = 1, heights = c(0.6, 0.2))
       }
     })
     if(every(var_list, is.null)){
       return(NULL)
     } else {
-      return(ggarrange(plotlist = var_list, nrow = 1, common.legend = TRUE))
+      return(ggarrange(plotlist = var_list, nrow = 1))
     }
   }) %>%
     compact()
-  ggarrange(plotlist = dose_list, ncol = 1, common.legend = TRUE)
+  list(
+    height = (length(dose_list) + 0.1)/(0.1 + 2),
+    plot = ggarrange(plotlist = c(list(legend), dose_list), heights = c(0.1, rep(1, length(dose_list))), ncol = 1)
+  )
 })
 
-pdf("calibration.pdf", width = 20, height = 20)
-print(p)
-dev.off()
+dir.create("plots", showWarnings = FALSE)
+iwalk(p, \(x, idx) {
+  ggsave(paste0("plots/", idx, ".png"), x$plot, width = 20, height = 15 * x$height, bg = "white", scale = 2)
+})
+
+zip("plots.zip", file.path("plots", list.files("plots")))
+
+unlink("plots", recursive = TRUE)
 
 rm(p, plots)
 

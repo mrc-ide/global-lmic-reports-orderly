@@ -41,7 +41,7 @@ artefacts:
       filenames: vaccine_params.Rds
   - staticgraph:
       description: pdfs so the fitting can be checked
-      filenames: calibration.pdf
+      filenames: plots.zip
 
 # Packages that should be loaded before the script is run.  Use this
 # in preference to explicit library() calls in your script because it

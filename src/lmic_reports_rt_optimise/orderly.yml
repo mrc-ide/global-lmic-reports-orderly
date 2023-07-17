@@ -117,6 +117,7 @@ packages:
   - squire.page
   - purrr
   - stringr
+  - abind
 
 # Source files, in addition to the script.  Typically these will
 # contain function definitions.  These will be sourced after loading

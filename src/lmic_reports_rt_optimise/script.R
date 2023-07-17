@@ -130,46 +130,48 @@ parameters <-
   append(parameters, estimate_healthcare_durations(variant_timings, first_start_date))
 #Sample from random parameter
 #generate samples
-dur_R <- sample_duration_natural_immunity(samples)
-ifr <- sample_ifr(samples, iso3c)
-immune_escape <- sample_variant_immune_escape(samples, variants_to_model)
-prob_hosp_multiplier <- sample_variant_prob_hosp(samples, variants_to_model)
-prob_severe_multiplier <- sample_variant_prob_severe(samples, variants_to_model)
-variant_ve <- sample_vaccine_efficacies(samples, names(vacc_inputs$platforms)[as.logical(vacc_inputs$platforms[1,])])
-#format into correct setup
-distribution <- map(seq_len(samples), function(x){
-  pars <- list()
-  ## disease parameters:
-  pars$prob_hosp <- ifr$prob_hosp[[x]]
-  pars$prob_severe <- ifr$prob_severe[[x]]
-  pars$prob_non_severe_death_treatment <- ifr$prob_non_severe_death_treatment[[x]]
-  pars$prob_severe_death_treatment <- ifr$prob_severe_death_treatment[[x]]
-  pars$prob_severe_death_no_treatment <- ifr$prob_severe_death_no_treatment[[x]]
-  pars$prob_non_severe_death_no_treatment <- ifr$prob_non_severe_death_no_treatment[[x]]
-  ## variant parameters:
-  dur_R_change <- variant_immune_escape(variant_timings, immune_escape, x,
-                                        dur_R, first_start_date)
-  pars$dur_R <- dur_R_change$var
-  pars$tt_dur_R <- dur_R_change$tt
-  prob_hosp_multiplier_change <- multiplier_changes_over_time(variant_timings,
-                                                              prob_hosp_multiplier, x, first_start_date)
-  pars$prob_hosp_multiplier <- prob_hosp_multiplier_change$var
-  pars$tt_prob_hosp_multiplier <- prob_hosp_multiplier_change$tt
-  prob_severe_multiplier_change <- multiplier_changes_over_time(variant_timings,
-                                                                prob_severe_multiplier, x, first_start_date)
-  pars$prob_severe_multiplier <- prob_severe_multiplier_change$var
-  pars$tt_prob_severe_multiplier <- prob_severe_multiplier_change$tt
-  #Vaccine Efficacies
-  vacc_inputs <- vaccine_eff_over_time(variant_timings, variant_ve, x, first_start_date)
-  pars$dur_V <- vacc_inputs$dur_V
-  pars$vaccine_efficacy_infection <- vacc_inputs$vaccine_efficacy_infection
-  pars$vaccine_efficacy_disease <- vacc_inputs$vaccine_efficacy_disease
-  pars$tt_dur_V <- pars$tt_vaccine_efficacy_infection <-
-    pars$tt_vaccine_efficacy_disease <- vacc_inputs$tt
-  pars
-})
-
-
+sample_parameters <- function(samples, iso3c, variants_to_model, vacc_inputs) {
+  dur_R <- sample_duration_natural_immunity(samples)
+  ifr <- sample_ifr(samples, iso3c)
+  immune_escape <- sample_variant_immune_escape(samples, variants_to_model)
+  prob_hosp_multiplier <- sample_variant_prob_hosp(samples, variants_to_model)
+  prob_severe_multiplier <- sample_variant_prob_severe(samples, variants_to_model)
+  variant_ve <- sample_vaccine_efficacies(samples, names(vacc_inputs$platforms)[as.logical(vacc_inputs$platforms[1,])])
+  #format into correct setup
+  distribution <- map(seq_len(samples), function(x){
+    pars <- list()
+    ## disease parameters:
+    pars$prob_hosp <- ifr$prob_hosp[[x]]
+    pars$prob_severe <- ifr$prob_severe[[x]]
+    pars$prob_non_severe_death_treatment <- ifr$prob_non_severe_death_treatment[[x]]
+    pars$prob_severe_death_treatment <- ifr$prob_severe_death_treatment[[x]]
+    pars$prob_severe_death_no_treatment <- ifr$prob_severe_death_no_treatment[[x]]
+    pars$prob_non_severe_death_no_treatment <- ifr$prob_non_severe_death_no_treatment[[x]]
+    ## variant parameters:
+    dur_R_change <- variant_immune_escape(variant_timings, immune_escape, x,
+                                          dur_R, first_start_date)
+    pars$dur_R <- dur_R_change$var
+    pars$tt_dur_R <- dur_R_change$tt
+    prob_hosp_multiplier_change <- multiplier_changes_over_time(variant_timings,
+                                                                prob_hosp_multiplier, x, first_start_date)
+    pars$prob_hosp_multiplier <- prob_hosp_multiplier_change$var
+    pars$tt_prob_hosp_multiplier <- prob_hosp_multiplier_change$tt
+    prob_severe_multiplier_change <- multiplier_changes_over_time(variant_timings,
+                                                                  prob_severe_multiplier, x, first_start_date)
+    pars$prob_severe_multiplier <- prob_severe_multiplier_change$var
+    pars$tt_prob_severe_multiplier <- prob_severe_multiplier_change$tt
+    #Vaccine Efficacies
+    vacc_inputs <- vaccine_eff_over_time(variant_timings, variant_ve, x, first_start_date)
+    pars$dur_V <- vacc_inputs$dur_V
+    pars$vaccine_efficacy_infection <- vacc_inputs$vaccine_efficacy_infection
+    pars$vaccine_efficacy_disease <- vacc_inputs$vaccine_efficacy_disease
+    pars$tt_dur_V <- pars$tt_vaccine_efficacy_infection <-
+      pars$tt_vaccine_efficacy_disease <- vacc_inputs$tt
+    pars
+  })
+  return(distribution)
+}
+distribution <- sample_parameters(samples, iso3c, variants_to_model, vacc_inputs)
 ## Excess deaths loop
 if(fit_excess){
   #ensure parameters are in correct format
@@ -223,6 +225,37 @@ if(fit_excess){
   )
 
   excess_out <- trim_output(excess_out, trimming)
+
+  while (length(excess_out$samples) <= round(samples/2)) {
+    new_samples <- samples - length(excess_out$samples)
+    new_distribution <- sample_parameters(new_samples, iso3c, variants_to_model, vacc_inputs)
+    new_excess_distribution <- update_distribution(new_distribution, difference_in_t)
+    if(!is.null(excess_parameters$prefit_vaccines)){
+      #if vaccinations occur before epidemic, we run the model with just vaccinations
+      #to get the current state of vaccination status at the epidemic start
+      new_excess_distribution <- prefit_vaccines(excess_parameters, new_excess_distribution, excess_squire_model)
+    }
+
+    new_excess_out <- rt_optimise(
+      data = excess_deaths,
+      distribution = new_excess_distribution,
+      squire_model = excess_squire_model,
+      parameters = excess_parameters,
+      start_date = excess_start_date,
+      parallel = parallel,
+      rt_spacing = 14,
+      initial_infections_interval = initial_infections_interval,
+      n_particles = n_particles,
+      k = k,
+      rt_interval = rt_interval
+    )
+
+    new_excess_out <- trim_output(new_excess_out, trimming)
+
+    excess_out$samples <- c(excess_out$samples, new_excess_out$samples)
+    excess_out$output <- abind::abind(excess_out$output, new_excess_out$output, along = 3)
+
+  }
 
   #Stop using parallel, furrr doesn't like something (maybe model object)
   Sys.setenv(SQUIRE_PARALLEL_DEBUG = "TRUE")
