@@ -155,7 +155,7 @@ first_doses <- ves_by_type %>%
       platform = platform
     )
   })
-
+plot_legend <- NULL
 other_doses <- ves_by_type %>%
   filter(dose != "First") %>%
   group_by(vaccine_type, dose, variant) %>%
@@ -359,10 +359,10 @@ other_doses <- ves_by_type %>%
       scale_colour_manual(values = colours, drop = FALSE) +
       ylim(c(0, 1))
 
-    #p <- ggarrange(
-    #  p, initial_ab_plot, ncol = 1, heights = c(0.6, 0.2), common.legend = TRUE
-    #)
-    legend <<- get_legend(p, position = "top") #only need one, all identical
+    if(is.null(plot_legend)){
+      plot_legend <<- get_legend(p, position = "top") #only need one, all identical
+      dev.off() #don't know why it does this
+    }
     p <- list(
       p = p, ab = initial_ab_plot
     )
@@ -391,12 +391,6 @@ variants <- c("Wild", "Delta")
 dose <- map_chr(other_doses, ~.x$dose[1])
 doses <- unique(dose)
 
-legend <- ggarrange(
-  as_ggplot(legend$grobs[[1]]),
-  as_ggplot(legend$grobs[[2]]),
-  nrow = 1
-)
-
 p <- map(platforms, function(plat){
   dose_list <- map(doses, function(dos){
     var_list <- map(variants, function(vari){
@@ -414,13 +408,13 @@ p <- map(platforms, function(plat){
     compact()
   list(
     height = (length(dose_list) + 0.1)/(0.1 + 2),
-    plot = ggarrange(plotlist = c(list(legend), dose_list), heights = c(0.1, rep(1, length(dose_list))), ncol = 1)
+    plot = ggarrange(plotlist = c(list(legend), dose_list), heights = c(0.1, rep(1, length(dose_list))), ncol = 1, legend.grob = plot_legend)
   )
 })
 
 dir.create("plots", showWarnings = FALSE)
 iwalk(p, \(x, idx) {
-  ggsave(paste0("plots/", idx, ".png"), x$plot, width = 20, height = 15 * x$height, bg = "white", scale = 2)
+  ggsave(paste0("plots/", idx, ".png"), x$plot, width = 15, height = 20 * x$height, bg = "white")
 })
 
 zip("plots.zip", file.path("plots", list.files("plots")))
