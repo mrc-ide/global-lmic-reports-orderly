@@ -475,7 +475,7 @@ update_distribution <- function(distribution, difference_in_t){
   })
 }
 
-prefit_vaccines <- function(parameters, distribution, squire_model){
+prefit_vaccines <- function(parameters, distribution, squire_model) {
   warning("When pre-fitting vaccines, the compartments are hardcoded and so may need changing in future, if the underlying model changes structure!")
   map(seq_along(distribution), function(i){
     i_parameters <- c(parameters, distribution[[i]])
@@ -494,7 +494,7 @@ prefit_vaccines <- function(parameters, distribution, squire_model){
 
     odin_pars <- squire.page:::setup_parameters(squire_model, i_parameters)
     odin_pars$beta_set <- 0
-    odin_pars$tt_beta <- first_t
+    #odin_pars$tt_beta <- first_t
     odin_pars$S_0 <- odin_pars$S_0 + odin_pars$E1_0
     odin_pars$E1_0[,1] <- rep(0, length(odin_pars$E1_0[,1]))
 
@@ -502,7 +502,7 @@ prefit_vaccines <- function(parameters, distribution, squire_model){
     output <- model_instance$run(c(0, -first_t))[2,]
 
     #extract the compartment values
-    S_array <- array(NA, c(17, 7))
+    S_array <- array(NA, c(17, 8))
     for(age in seq_len(17)){
       S_array[age, ] <- output[paste0("S[", age, ",", seq_len(8), "]")]
     }

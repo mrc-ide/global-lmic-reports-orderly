@@ -61,9 +61,10 @@ if(fit_excess){
       excess_deaths <- excess_deaths[-to_remove,]
     }
   }
-  excess_start_date <-  excess_deaths$date_start[1] - 30
-  first_start_date <- excess_start_date
 }
+
+excess_start_date <-  excess_deaths$date_start[1] - 30
+first_start_date <- excess_start_date
 
 pop <- squire::get_population(country)
 squire_model <- squire.page:::nimue_booster_min_model()
@@ -176,7 +177,7 @@ if(fit_excess){
   excess_parameters <- update_parameters(parameters, difference_in_t)
   excess_distribution <- update_distribution(distribution, difference_in_t)
   excess_squire_model <- squire_model
-  if(!is.null(excess_parameters$prefit_vaccines)){
+  if(!is.null(excess_parameters$prefit_vaccines)) {
     #if vaccinations occur before epidemic, we run the model with just vaccinations
     #to get the current state of vaccination status at the epidemic start
     excess_distribution <- prefit_vaccines(excess_parameters, excess_distribution, excess_squire_model)

@@ -20,20 +20,11 @@ if(gisaid){
       stop("Failed to down load gisaid data, please check your credentials or wait a day if over the request limits.")
     })
 
-  #get omicron sub variant (lineage really)
-  omicron_sequences <- sequence_df %>%
-    filter(type == "Lineage") %>%
-    filter(stringr::str_detect("BA.4", clade) | stringr::str_detect("BA.5", clade)) %>%
-    group_by(date, country) %>%
-    summarise(count = sum(count),
-              clade = "Omicron Sub-Variant",
-              .groups = "drop")
   sequence_df <- sequence_df %>%
     filter(type == "Variant") %>%
     select(!type) %>%
-    rbind(omicron_sequences) %>%
     mutate(date = as.character(date))
-  rm(omicron_sequences)
+  
 } else {
   #get open data from next strain
   download.file("https://data.nextstrain.org/files/ncov/open/metadata.tsv.gz",
@@ -55,14 +46,23 @@ if(gisaid){
 }
 
 #convert clades to variants
-clade_to_variant <- function(clades){
-  variants <- case_when(
-    clades == "recombinant" | is.na(clades) ~ as.character(NA),
-    clades == "22A (Omicron)" | clades == "22B (Omicron)" | clades == "Omicron Sub-Variant" ~ "Omicron Sub-Variant",
-    stringr::str_detect(clades, "VO") ~ purrr::map_chr(str_split(clades, " "), ~.x[2]),
-    TRUE ~ stringr::str_sub(clades, 5, -1) %>%
-      stringr::str_remove_all("[\\(\\)V\\d, ]")
-  )
+clade_to_variant <- function(clades) {
+  variants <- rep(as.character(NA), length(clades))
+
+  #get VoI
+  which_voi <- stringr::str_detect(clades, "Former VO")
+  variants[which_voi] <- clades[which_voi]
+
+  #format
+  variants <- stringr::str_split_i(variants, " ", 3)
+
+  #add in omicron  sub strains
+  which_omi <- stringr::str_detect(clades, "GRA") & (!which_voi)
+  variants[which_omi] <- "Omicron Sub-Variant"
+
+  #set other to wild
+  variants[clades == "Other"] <- "Wild"
+
   #restrict to the who variants
   who_variants <- c("Alpha", "Beta", "Gamma", "Delta", "Omicron", "Omicron Sub-Variant")
 
@@ -79,23 +79,6 @@ variants_df <- sequence_df %>%
   group_by(date, country, variant) %>%
   summarise(count = sum(count),
             .groups = "drop")
-
-if(gisaid){
-  #remove omicron sub variants from omicron
-  variants_df <- variants_df %>%
-    left_join(
-      variants_df %>%
-        filter(variant == "Omicron Sub-Variant") %>%
-        transmute(
-          date = date, country = country, variant = "Omicron", sub_seq = count
-        ),
-      by = c("date", "country", "variant")
-    ) %>%
-    mutate(
-      count = if_else(is.na(sub_seq), count, count - sub_seq)
-    ) %>%
-    select(!sub_seq)
-}
 
 #format data
 iso3cs <- unique(squire::population$iso3c)
