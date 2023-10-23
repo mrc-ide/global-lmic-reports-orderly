@@ -16,9 +16,6 @@ if(!identical(seed, FALSE)){
 # format user provided arguments correctly
 date <- as.Date(date)
 
-#set real end date to 2022-01-01
-date <- as.Date("2022-01-01")
-
 country <- squire::population$country[match(iso3c, squire::population$iso3c)[1]]
 
 ## Get the excess mortality estimates from the economist

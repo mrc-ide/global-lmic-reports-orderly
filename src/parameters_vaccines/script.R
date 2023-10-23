@@ -82,12 +82,12 @@ ves_by_type <- ves_by_type %>%
 #  filter(vaccine_type == "mRNA")
 #load parameter chains
 ab_params <- list(
-  ni50 = log10(0.052),
-  ns50 = log10(0.01),
-  k = 2.8,
-  hl_s = 33,
-  hl_l = 580,
-  period_s = 86
+  ni50 = -1.040957,
+  ns50 = -1.675559,
+  k = 3.182298,
+  hl_s = 34.53602,
+  hl_l = 573.5029,
+  period_s = 75.1927
 )
 
 ##Fit Waning Curves

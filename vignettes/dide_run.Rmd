@@ -81,9 +81,9 @@ glodide_loc <- "N:/lmic_fitting/glodide" ###Update if on a different drive!
 These arguments are then passed to our tasks:
 
 ```{r eval=FALSE, message=FALSE, warning=FALSE}
-#message("*** VE Parameters (Please check calibration.pdf)!")
-#parameters_vaccines_id <- orderly::orderly_run("parameters_vaccines", echo = FALSE)
-#orderly::orderly_commit(parameters_vaccines_id)
+message("*** VE Parameters (Please check calibration.pdf)!")
+parameters_vaccines_id <- orderly::orderly_run("parameters_vaccines", echo = FALSE)
+orderly::orderly_commit(parameters_vaccines_id)
 
 message("*** Reported COVID Deaths and Cases")
 input_jhu_id <- orderly::orderly_run("input_jhu", parameters = list(date=date), echo = FALSE)
@@ -183,6 +183,7 @@ After the tasks have all finished, we can check to see the fits to see if they a
 To do this we take the path of the finished tasks from our bundles
 
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
+bundles <- readRDS(file.path(path_bundles, "bundles.rds"))
 # use the bundles paths to work out the path to the runs in derived
 paths <- gsub("raw", "derived", vapply(bundles, FUN = "[[", FUN.VALUE = character(1), "path"))
 
@@ -198,7 +199,7 @@ fits <- lapply(paths, function(x) {
   }
 })
 
-# get the filepaths for these 
+# get the filepaths for these
 pdfs <- grep("fitting", list.files(td, full.names = TRUE, recursive = TRUE), value = TRUE)
 
 # combine the files that are larger than 0b. Ob files are for countries that have
@@ -216,7 +217,7 @@ which countries require rerunning and re-bundle those to be run again:
 
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
 # bundle the countries we need to rerun
-iso3cs_to_rerun <- c()
+iso3cs_to_rerun <- c("HKG", "FRA")
 #change start date
 bundles_to_rerun <- lapply(
   iso3cs_to_rerun,
@@ -272,7 +273,7 @@ Now that we have updated with the rerun bundles, we know import these back into
 our local `orderly` archive:
 
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
-import <- map(tasks, ~tryCatch(orderly::orderly_bundle_import(.x), error = function(e){NULL}))
+import <- purrr::map(tasks, ~tryCatch(orderly::orderly_bundle_import(.x), error = function(e){NULL}))
 # just double check they all imported
 all(unlist(import))
 ```
