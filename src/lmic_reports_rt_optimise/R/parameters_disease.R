@@ -93,6 +93,6 @@ sample_ifr <- function(n, iso3c){
   out
 }
 
-sample_duration_natural_immunity <- function(n){
-  rgamma(n, 20, 4/73)
+sample_duration_natural_immunity <- function(n) {
+  rtruncnorm(n, a = 365, b = 2*365, mean = 365*3/2, sd = 75)
 }

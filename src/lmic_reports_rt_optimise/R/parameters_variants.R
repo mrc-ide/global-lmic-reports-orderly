@@ -31,14 +31,14 @@ sample_variant_immune_escape <- function(n, variants){
 sample_variant_prob_hosp <- function(n, variants){
   parameters <- tribble(
     ~variant, ~p1, ~p2,
-    "Delta", log(1.45), 0.15,
-    "Omicron", log(0.59), 0.08,
-    "Omicron Sub-Variant", log(1), 0.08 #ISSUE:: GET A REAL NUMBER
+    "Delta", log(1.45), 0.15#,
+    #"Omicron", log(0.59), 0.08,
+    #"Omicron Sub-Variant", log(1), 0.08 #ISSUE:: GET A REAL NUMBER
   ) %>%
     filter(variant %in% variants)
   out <- map(seq_len(n), function(it){
     #generate values
-    prob_multipliers <- map(transpose(parameters), ~rlnorm(1, .x$p1, .x$p2))
+    prob_multipliers <- map(transpose(parameters), ~rlnormTrunc(1, .x$p1, .x$p2, 1, 2))
     names(prob_multipliers) <- parameters$variant
     #convert against wild type, assume the order in parameters is the correct order
     for(i in seq_along(prob_multipliers)[-1]){
@@ -49,6 +49,7 @@ sample_variant_prob_hosp <- function(n, variants){
   output <- map(names(out[[1]]), function(x){map_dbl(out, ~.x[[x]])})
   names(output) <- names(out[[1]])
   output
+  
 }
 
 sample_variant_prob_severe <- function(n, variants){

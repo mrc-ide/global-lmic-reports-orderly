@@ -110,8 +110,10 @@ parameters$protection_delay_rate <- 1/7
 parameters$protection_delay_shape <- 2
 parameters$protection_delay_time <- as.numeric(date - first_start_date)
 parameters$time_period <- as.numeric(date - first_start_date) + 1
+parameters$prob_severe_multiplier <- 1
+parameters$tt_prob_severe_multiplier <- 0
 #Variant dependant parameters
-variants_to_model <- c("Delta", "Omicron", "Omicron Sub-Variant")
+variants_to_model <- c("Delta")
 #load inputs
 sample_vaccine_efficacies <- readRDS("vaccine_params.Rds")$sample_vaccine_efficacies
 variant_timings <- readRDS("variant_timings.Rds")[[iso3c]] %>%
@@ -133,25 +135,7 @@ sample_parameters <- function(samples, iso3c, variants_to_model, vacc_inputs) {
   ifr <- sample_ifr(samples, iso3c)
   immune_escape <- sample_variant_immune_escape(samples, variants_to_model)
   prob_hosp_multiplier <- sample_variant_prob_hosp(samples, variants_to_model)
-  prob_severe_multiplier <- sample_variant_prob_severe(samples, variants_to_model)
   variant_ve <- sample_vaccine_efficacies(samples, names(vacc_inputs$platforms)[as.logical(vacc_inputs$platforms[1,])])
-  #add omicron ve (booster same as delta primary series no protection against infection)
-  variant_ve$Omicron <- variant_ve$Delta #set to same as delta
-  variant_ve$Omicron$vaccine_efficacy_disease <- map(seq_along(variant_ve$Omicron$vaccine_efficacy_disease), function(x) {
-    new_eff <- variant_ve$Omicron$vaccine_efficacy_disease[[x]]
-    new_eff[1:4] <- variant_ve$Omicron$vaccine_efficacy_disease[[x]][1:4] * (
-      1 - variant_ve$Omicron$vaccine_efficacy_infection[[x]][1:4]
-    ) + variant_ve$Omicron$vaccine_efficacy_infection[[x]][1:4]
-    new_eff
-  }) #reverse scaling for breakthrough infections
-  variant_ve$Omicron$vaccine_efficacy_infection <- map(seq_along(variant_ve$Omicron$vaccine_efficacy_infection), function(x) {
-    new_eff <- variant_ve$Omicron$vaccine_efficacy_infection[[x]]
-    new_eff[1:4] <- 0
-    new_eff
-  }) #set non booster VE against infection to 0
-  prob_hosp_multiplier$`Omicron Sub-Variant` <- prob_hosp_multiplier$Omicron
-  prob_severe_multiplier$`Omicron Sub-Variant` <- prob_severe_multiplier$Omicron
-  variant_ve$`Omicron Sub-Variant` <- variant_ve$Omicron
   #format into correct setup
   distribution <- map(seq_len(samples), function(x) {
     pars <- list()
@@ -171,10 +155,6 @@ sample_parameters <- function(samples, iso3c, variants_to_model, vacc_inputs) {
                                                                 prob_hosp_multiplier, x, first_start_date)
     pars$prob_hosp_multiplier <- prob_hosp_multiplier_change$var
     pars$tt_prob_hosp_multiplier <- prob_hosp_multiplier_change$tt
-    prob_severe_multiplier_change <- multiplier_changes_over_time(variant_timings,
-                                                                  prob_severe_multiplier, x, first_start_date)
-    pars$prob_severe_multiplier <- prob_severe_multiplier_change$var
-    pars$tt_prob_severe_multiplier <- prob_severe_multiplier_change$tt
     #Vaccine Efficacies
     vacc_inputs <- vaccine_eff_over_time(variant_timings, variant_ve, x, first_start_date)
     pars$dur_V <- vacc_inputs$dur_V
