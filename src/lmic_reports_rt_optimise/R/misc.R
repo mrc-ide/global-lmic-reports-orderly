@@ -218,7 +218,7 @@ trim_output <- function(out, trimming){
 
   if(length(out_trim$samples) == 0){
     warning("No suitable trajectories calculated")
-    out
+    out_trim
   } else {
     out_trim
   }
@@ -494,7 +494,7 @@ prefit_vaccines <- function(parameters, distribution, squire_model) {
 
     odin_pars <- squire.page:::setup_parameters(squire_model, i_parameters)
     odin_pars$beta_set <- 0
-    #odin_pars$tt_beta <- first_t
+    odin_pars$tt_beta <- 0
     odin_pars$S_0 <- odin_pars$S_0 + odin_pars$E1_0
     odin_pars$E1_0[,1] <- rep(0, length(odin_pars$E1_0[,1]))
 

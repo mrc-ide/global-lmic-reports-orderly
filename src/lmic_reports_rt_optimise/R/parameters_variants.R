@@ -16,10 +16,10 @@ sample_variant_immune_escape <- function(n, variants){
     immune_escapes <- map(transpose(parameters), ~rbeta(1, .x$p1, .x$p2))
     names(immune_escapes) <- parameters$variant
     #convert to escape against wild type, assume the order in parameters is the correct order
-    for(i in seq_along(immune_escapes)[-1]){
-      immune_escapes[[i]] <- (1-immune_escapes[[i-1]]) * immune_escapes[[i]] +
-        immune_escapes[[i-1]]
-    }
+    #for(i in seq_along(immune_escapes)[-1]){
+    #  immune_escapes[[i]] <- (1-immune_escapes[[i-1]]) * immune_escapes[[i]] +
+    #    immune_escapes[[i-1]]
+    #}
     immune_escapes
   })
   output <- map(names(out[[1]]), function(x){map_dbl(out, ~.x[[x]])})

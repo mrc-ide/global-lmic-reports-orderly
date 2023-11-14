@@ -111,7 +111,7 @@ parameters$protection_delay_shape <- 2
 parameters$protection_delay_time <- as.numeric(date - first_start_date)
 parameters$time_period <- as.numeric(date - first_start_date) + 1
 #Variant dependant parameters
-variants_to_model <- c("Delta")
+variants_to_model <- c("Delta", "Omicron", "Omicron Sub-Variant")
 #load inputs
 sample_vaccine_efficacies <- readRDS("vaccine_params.Rds")$sample_vaccine_efficacies
 variant_timings <- readRDS("variant_timings.Rds")[[iso3c]] %>%
@@ -135,8 +135,25 @@ sample_parameters <- function(samples, iso3c, variants_to_model, vacc_inputs) {
   prob_hosp_multiplier <- sample_variant_prob_hosp(samples, variants_to_model)
   prob_severe_multiplier <- sample_variant_prob_severe(samples, variants_to_model)
   variant_ve <- sample_vaccine_efficacies(samples, names(vacc_inputs$platforms)[as.logical(vacc_inputs$platforms[1,])])
+  #add omicron ve (booster same as delta primary series no protection against infection)
+  variant_ve$Omicron <- variant_ve$Delta #set to same as delta
+  variant_ve$Omicron$vaccine_efficacy_disease <- map(seq_along(variant_ve$Omicron$vaccine_efficacy_disease), function(x) {
+    new_eff <- variant_ve$Omicron$vaccine_efficacy_disease[[x]]
+    new_eff[1:4] <- variant_ve$Omicron$vaccine_efficacy_disease[[x]][1:4] * (
+      1 - variant_ve$Omicron$vaccine_efficacy_infection[[x]][1:4]
+    ) + variant_ve$Omicron$vaccine_efficacy_infection[[x]][1:4]
+    new_eff
+  }) #reverse scaling for breakthrough infections
+  variant_ve$Omicron$vaccine_efficacy_infection <- map(seq_along(variant_ve$Omicron$vaccine_efficacy_infection), function(x) {
+    new_eff <- variant_ve$Omicron$vaccine_efficacy_infection[[x]]
+    new_eff[1:4] <- 0
+    new_eff
+  }) #set non booster VE against infection to 0
+  prob_hosp_multiplier$`Omicron Sub-Variant` <- prob_hosp_multiplier$Omicron
+  prob_severe_multiplier$`Omicron Sub-Variant` <- prob_severe_multiplier$Omicron
+  variant_ve$`Omicron Sub-Variant` <- variant_ve$Omicron
   #format into correct setup
-  distribution <- map(seq_len(samples), function(x){
+  distribution <- map(seq_len(samples), function(x) {
     pars <- list()
     ## disease parameters:
     pars$prob_hosp <- ifr$prob_hosp[[x]]
@@ -171,7 +188,7 @@ sample_parameters <- function(samples, iso3c, variants_to_model, vacc_inputs) {
 }
 distribution <- sample_parameters(samples, iso3c, variants_to_model, vacc_inputs)
 ## Excess deaths loop
-if(fit_excess){
+if(fit_excess) {
   #ensure parameters are in correct format
   difference_in_t <- as.numeric(excess_start_date - first_start_date)
   excess_parameters <- update_parameters(parameters, difference_in_t)
@@ -224,11 +241,11 @@ if(fit_excess){
 
   excess_out <- trim_output(excess_out, trimming)
 
-  while (length(excess_out$samples) <= round(samples/2)) {
+  while (length(excess_out$samples) < samples) {
     new_samples <- samples - length(excess_out$samples)
     new_distribution <- sample_parameters(new_samples, iso3c, variants_to_model, vacc_inputs)
     new_excess_distribution <- update_distribution(new_distribution, difference_in_t)
-    if(!is.null(excess_parameters$prefit_vaccines)){
+    if(!is.null(excess_parameters$prefit_vaccines)) {
       #if vaccinations occur before epidemic, we run the model with just vaccinations
       #to get the current state of vaccination status at the epidemic start
       new_excess_distribution <- prefit_vaccines(excess_parameters, new_excess_distribution, excess_squire_model)
