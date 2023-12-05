@@ -43,9 +43,9 @@ fit_excess <- sum(excess_deaths$deaths) > death_limit
 
 #get model start dates
 if(fit_excess){
-  if(iso3c == "TKM"){
+  if(iso3c == "TKM" ){
     #remove starting deaths before major waves
-    if(sum(cumsum(excess_deaths$deaths) < 40) > 15){
+    if(sum(cumsum(excess_deaths$deaths) < 40) > 15) {
       excess_deaths <- excess_deaths %>%
         filter(cumsum(deaths) > 40)
     }
@@ -67,7 +67,8 @@ excess_start_date <-  excess_deaths$date_start[1] - 30
 first_start_date <- excess_start_date
 
 pop <- squire::get_population(country)
-squire_model <- squire.page:::nimue_booster_min_model()
+model_func <- squire.page:::nimue_booster_min_model
+squire_model <- model_func()
 default_parameters_func <- squire_model$parameter_func
 define_parameters_func <- function(default_parameters_func){
   function(...){
@@ -219,7 +220,7 @@ if(fit_excess) {
     rt_interval = rt_interval
   )
 
-  excess_out <- trim_output(excess_out, trimming)
+  excess_out <- trim_output(excess_out, trimming, strict = TRUE)
 
   while (length(excess_out$samples) < samples) {
     new_samples <- samples - length(excess_out$samples)
@@ -245,7 +246,7 @@ if(fit_excess) {
       rt_interval = rt_interval
     )
 
-    new_excess_out <- trim_output(new_excess_out, trimming)
+    new_excess_out <- trim_output(new_excess_out, trimming, strict = FALSE)
 
     excess_out$samples <- c(excess_out$samples, new_excess_out$samples)
     excess_out$output <- abind::abind(excess_out$output, new_excess_out$output, along = 3)
@@ -258,10 +259,13 @@ if(fit_excess) {
     future::plan(future::sequential())
   }
 
+  #sub sample failed fits if large
+  excess_out <- subsample_fits(excess_out, 15)
+
   #save fitting plot
   summarise_fit("excess_fitting.pdf", excess_out, country, iso3c, end_date, excess_start_date)
 
-  save_output(excess_out, "excess_out.Rds")
+  save_output(excess_out, "excess_out.Rds", model_func)
 } else {
   file.create(c("excess_fitting.pdf", "excess_out.Rds"))
 }

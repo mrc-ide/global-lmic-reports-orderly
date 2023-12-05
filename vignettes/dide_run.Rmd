@@ -73,7 +73,7 @@ what the `date` is that we are conducting model fits for, i.e. up to what date a
 we running.
 
 ```{r, eval = FALSE}
-date <- "2023-01-01"
+date <- "2022-01-01"
 
 glodide_loc <- "N:/lmic_fitting/glodide" ###Update if on a different drive!
 ```
@@ -115,7 +115,6 @@ submit these tasks.
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
 
 # main input parameters
-
 task <- "lmic_reports_rt_optimise"
 parameters <- list(
   date = date,
@@ -131,6 +130,7 @@ parameters <- list(
 
 # get the isos
 iso3cs <- grep('^[A-Z]{3}\\s*', readLines(file.path(here::here(), "countries")), value = TRUE)
+
 # make the orderly bundles to be run on the cluster
 path_bundles <- file.path(
   "hpc", "raw"
@@ -184,16 +184,17 @@ To do this we take the path of the finished tasks from our bundles
 
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
 bundles <- readRDS(file.path(path_bundles, "bundles.rds"))
+
 # use the bundles paths to work out the path to the runs in derived
 paths <- gsub("raw", "derived", vapply(bundles, FUN = "[[", FUN.VALUE = character(1), "path"))
 
 # now extract the fitting.pdf files
 td <- tempdir(check = TRUE)
 fits <- lapply(paths, function(x) {
-  if(file.exists(x)){
+  if(file.exists(x)) {
     zip::unzip(
-      zipfile = x, 
-      files = file.path(gsub("\\.zip", "", basename(x)), "pack/excess_fitting.pdf"), 
+      zipfile = x,
+      files = file.path(gsub("\\.zip", "", basename(x)), "pack/excess_fitting.pdf"),
       exdir = td
     )
   }
@@ -209,6 +210,9 @@ qpdf::pdf_combine(
   input = pdfs[file.size(pdfs) > 0], 
   output = here::here("fits", paste0("lmic_reports_rt_optimise_", date, ".pdf"))
 )
+
+#also check that they've all run
+failed_iso3cs <- names(paths)[!file.exists(paths)]
 ```
 
 Now we can view these to work out if they look good. See the troubleshoot for more
@@ -217,13 +221,13 @@ which countries require rerunning and re-bundle those to be run again:
 
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
 # bundle the countries we need to rerun
-iso3cs_to_rerun <- c("HKG", "FRA")
+iso3cs_to_rerun <- c()
 #change start date
 bundles_to_rerun <- lapply(
   iso3cs_to_rerun,
   function(x) {
     #set country in parameters
-    parameters$iso3c = x
+    parameters$iso3c <- x
     orderly::orderly_bundle_pack(
       path = path_bundles,
       name = task,

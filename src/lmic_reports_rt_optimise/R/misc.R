@@ -213,10 +213,12 @@ summarise_fit <- function(file, out, country, iso3c, end_date, start_date){
          combined)
 }
 
-trim_output <- function(out, trimming){
+trim_output <- function(out, trimming, strict) {
   out_trim <- squire.page::trim_rt_optimise(out, trimming)
 
-  if(length(out_trim$samples) == 0){
+  if(length(out_trim$samples) == 0 & strict) {
+    stop("No suitable trajectories calculated, please recalibrate Rt optimisation")
+  } else if (length(out_trim$samples) == 0) {
     warning("No suitable trajectories calculated")
     out_trim
   } else {
@@ -224,12 +226,20 @@ trim_output <- function(out, trimming){
   }
 }
 
-save_output <- function(out, file){
-  ## now let's trim the output for saving
+subsample_fits <- function(fit, threshold){
+  if (length(fit$excluded$samples) > threshold) {
+      fit$excluded$samples <- sample(fit$excluded$samples, threshold)
+  }
+  fit
+}
+
+save_output <- function(out, file, model_func) {
+  ## now s's trim the output for saving
   out$output <- NULL
-  if(inherits(out, "rt_optimised_trimmed")){
+  if(inherits(out, "rt_optimised_trimmed")) {
     out$excluded$output <- NULL
   }
+  out$squire_model <- model_func()
   saveRDS(out, file)
 }
 
