@@ -563,3 +563,53 @@ summarise_age_dependent <- function(df){
       )
     )
 }
+
+trim_leading_deaths <- function(excess_deaths, limit) {
+  if(sum(cumsum(excess_deaths$deaths) < limit) > 15) {
+      excess_deaths <- excess_deaths %>%
+        filter(cumsum(deaths) > limit)
+    }
+  return(excess_deaths)
+}
+
+clean_excess <- function(iso3c, excess_deaths) {
+  if(iso3c == "TKM" ){
+    #remove starting deaths before major waves
+    excess_deaths <- trim_leading_deaths(excess_deaths, 40)
+  } else if (iso3c == "BEN") {
+    #remove starting deaths before major waves
+    excess_deaths <- trim_leading_deaths(excess_deaths, 40)
+    #also filter weird outlier
+    if(any(excess_deaths$deaths > 300)) {
+      excess_deaths <- excess_deaths %>%
+        mutate(
+          deaths = if_else(deaths > 300, round(rowMeans(matrix(c(lead(excess_deaths$deaths, 1), lag(excess_deaths$deaths, 1)), ncol = 2))), deaths)
+        )
+    }
+  } else if (iso3c == "GHA") {
+    #remove starting deaths before major waves
+    excess_deaths <- trim_leading_deaths(excess_deaths, 150)
+  } else if (iso3c == "SLE") {
+    #remove starting deaths before major waves
+    excess_deaths <- trim_leading_deaths(excess_deaths, 20)
+  } else if (iso3c == "AUS") {
+    #remove starting deaths before major waves
+    excess_deaths <- trim_leading_deaths(excess_deaths, 1050) #most iffy, come back to this
+  } else if (iso3c == "BRN") {
+    #remove starting deaths before major waves
+    excess_deaths <- trim_leading_deaths(excess_deaths, 40)
+  } else if (iso3c == "NZL") {
+    #remove starting deaths before major waves
+    excess_deaths <- trim_leading_deaths(excess_deaths, 100)
+  } else if (iso3c == "PYF") {
+    #remove starting deaths before major waves
+    excess_deaths <- trim_leading_deaths(excess_deaths, 11)
+  } else if (iso3c == "TWN") {
+    #remove starting deaths before major waves
+    excess_deaths <- trim_leading_deaths(excess_deaths, 1000) #most iffy, come back to this
+  } else if (iso3c == "MAC") {
+    #remove starting deaths before major waves
+    excess_deaths <- trim_leading_deaths(excess_deaths, 5)
+  }
+  return(excess_deaths)
+}

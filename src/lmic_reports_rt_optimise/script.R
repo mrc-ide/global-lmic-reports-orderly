@@ -35,21 +35,15 @@ if(nrow(excess_deaths) == 0){
     )
 }
 
-death_limit <- 10
+death_limit <- 100
 
 fit_excess <- sum(excess_deaths$deaths) > death_limit
 
 #setup model and parameters
 
 #get model start dates
-if(fit_excess){
-  if(iso3c == "TKM" ){
-    #remove starting deaths before major waves
-    if(sum(cumsum(excess_deaths$deaths) < 40) > 15) {
-      excess_deaths <- excess_deaths %>%
-        filter(cumsum(deaths) > 40)
-    }
-  }
+if(fit_excess) {
+  excess_deaths <- clean_excess(iso3c, excess_deaths)
 
   first_report <- which(excess_deaths$deaths>0)[1]
   missing <- which(excess_deaths$deaths == 0 | is.na(excess_deaths$deaths))
@@ -219,7 +213,7 @@ if(fit_excess) {
     k = k,
     rt_interval = rt_interval
   )
-
+  
   excess_out <- trim_output(excess_out, trimming, strict = TRUE)
 
   while (length(excess_out$samples) < samples) {

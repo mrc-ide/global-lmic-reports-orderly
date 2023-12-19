@@ -208,21 +208,21 @@ pdfs <- grep("fitting", list.files(td, full.names = TRUE, recursive = TRUE), val
 # created because it needs to be for orderly to finish the task
 qpdf::pdf_combine(
   input = pdfs[file.size(pdfs) > 0], 
-  output = here::here("fits", paste0("lmic_reports_rt_optimise_", date, ".pdf"))
+  output = here::here("fits", paste0("lmic_reports_rt_optimise_8_", date, ".pdf"))
 )
 
 #also check that they've all run
 failed_iso3cs <- names(paths)[!file.exists(paths)]
+dput(failed_iso3cs)
 ```
 
-Now we can view these to work out if they look good. See the troubleshoot for more
-info on what to look out for etc. If some countries need to be rerun, then work out
-which countries require rerunning and re-bundle those to be run again:
-
+```
+iso3cs_to_rerun
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
 # bundle the countries we need to rerun
-iso3cs_to_rerun <- c()
-#change start date
+iso3cs_to_rerun <- c(
+)
+
 bundles_to_rerun <- lapply(
   iso3cs_to_rerun,
   function(x) {
@@ -237,7 +237,9 @@ bundles_to_rerun <- lapply(
 )
 
 names(bundles_to_rerun) <- iso3cs_to_rerun
-saveRDS(bundles_to_rerun, file.path(path_bundles, "bundles_to_rerun.rds"))
+saveRDS(bundles_to_rerun, file.path(path_bundles, "bundles.rds"))
+map_dfr(bundles_to_rerun, ~tibble::tibble(id = paste0(.x$id, ".zip")), .id = "iso3c") %>%
+  write_csv(file.path("hpc", "bundles.csv"), col_names = FALSE)
 ```
 
 Then go to `glodide` and resubmit these and repeat above to see the fits. If they
@@ -308,4 +310,20 @@ Potentially worth running the `.sh` script from the terminal or git bash to view
 #just takes the latest fit for each country, will take some time to keep RAM usage low
 report_ids <- gather_report_ids(task, iso3cs)
 update_gh_fits(report_ids, task)
+
+#need to check for file size issues
+file_names <- list.files("gh-fits", full.names = TRUE)
+problematic <- file_names[file.size(file_names) > 300000]
+if(length(problematic) > 0) {
+  #get non-large model
+  squire_model <- setdiff(file_names, problematic)[1] %>%
+    readRDS()
+  squire_model <- squire_model$squire_model
+  walk(problematic, function(x){
+    fit <- readRDS(x)
+    fit$squire_model <- squire_model
+    saveRDS(fit, x)
+  })
+}
 ```
+
