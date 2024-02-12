@@ -139,7 +139,6 @@ dir.create(path_bundles, showWarnings = FALSE, recursive = TRUE)
 ```
 
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
-
 message("*** Creating country task bundles")
 
 # bundle these up - this will take like 10 mins to create all the zips. 
@@ -308,9 +307,9 @@ Potentially worth running the `.sh` script from the terminal or git bash to view
 
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
 #just takes the latest fit for each country, will take some time to keep RAM usage low
-report_ids <- gather_report_ids(task, iso3cs)
+report_ids <- gather_report_ids(task, iso3cs, date)
 update_gh_fits(report_ids, task)
-
+detect(report_ids, ~.x$iso3c == "STP")
 #need to check for file size issues
 file_names <- list.files("gh-fits", full.names = TRUE)
 problematic <- file_names[file.size(file_names) > 300000]
