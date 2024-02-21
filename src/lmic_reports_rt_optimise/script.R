@@ -111,15 +111,35 @@ parameters$tt_prob_severe_multiplier <- 0
 variants_to_model <- c("Delta")
 #load inputs
 sample_vaccine_efficacies <- readRDS("vaccine_params.Rds")$sample_vaccine_efficacies
-variant_timings <- readRDS("variant_timings.Rds")[[iso3c]] %>%
-  filter(variant %in% variants_to_model & !is.na(start_date)) %>%
-  select(!mid_date) %>%
-  arrange(.data$start_date) %>%
-  mutate(end_date = if_else(
-    .data$end_date > lead(.data$start_date, n = 1, default = as_date(max(.data$end_date) + 1)),
-    lead(.data$start_date, 1, default = as_date(max(.data$end_date) + 1)),
-    .data$end_date
-  ))
+if (iso3c == "CUB") { #some of these didn't estimate delta, update with regional averages from a previous version
+  variant_timings <- tibble(
+    variant = "Delta",
+    start_date = as_date("2021-07-04"),
+    end_date = as_date("2021-09-02")
+  )
+} else if (iso3c == "SAU") {
+  variant_timings <- tibble(
+    variant = "Delta",
+    start_date = as_date("2021-05-05"),
+    end_date = as_date("2021-07-04")
+  )
+} else if (iso3c == "TWN") {
+  variant_timings <- tibble(
+    variant = "Delta",
+    start_date = as_date("2021-06-12"),
+    end_date = as_date("2021-08-11")
+  )
+} else {
+  variant_timings <- readRDS("variant_timings.Rds")[[iso3c]] %>%
+    filter(variant %in% variants_to_model & !is.na(start_date)) %>%
+    select(!mid_date) %>%
+    arrange(.data$start_date) %>%
+    mutate(end_date = if_else(
+      .data$end_date > lead(.data$start_date, n = 1, default = as_date(max(.data$end_date) + 1)),
+      lead(.data$start_date, 1, default = as_date(max(.data$end_date) + 1)),
+      .data$end_date
+    ))
+}
 variants_to_model <- variant_timings$variant
 parameters <-
   append(parameters, estimate_healthcare_durations(variant_timings, first_start_date))
