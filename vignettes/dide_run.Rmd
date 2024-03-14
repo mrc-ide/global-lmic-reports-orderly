@@ -131,6 +131,8 @@ parameters <- list(
 
 # get the isos
 iso3cs <- grep('^[A-Z]{3}\\s*', readLines(file.path(here::here(), "countries")), value = TRUE)
+iso3cs <- setdiff(read_csv("Status_runs_March13.csv")$country, "TOTAL COVERED")
+iso3cs <- setdiff(iso3cs, str_remove(list.files("gh-fits"), ".Rds"))
 # make the orderly bundles to be run on the cluster
 path_bundles <- file.path(
   "hpc", "raw"
