@@ -224,12 +224,13 @@ trim_output <- function(out, trimming){
   }
 }
 
-save_output <- function(out, file){
+save_output <- function(out, file, model_func) {
   ## now let's trim the output for saving
   out$output <- NULL
   if(inherits(out, "rt_optimised_trimmed")){
     out$excluded$output <- NULL
   }
+  out$squire_model <- model_func()
   saveRDS(out, file)
 }
 

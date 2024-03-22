@@ -67,7 +67,8 @@ excess_start_date <-  excess_deaths$date_start[1] - 30
 first_start_date <- excess_start_date
 
 pop <- squire::get_population(country)
-squire_model <- squire.page:::nimue_booster_min_model()
+model_func <- squire.page:::nimue_booster_min_model
+squire_model <- model_func()
 default_parameters_func <- squire_model$parameter_func
 define_parameters_func <- function(default_parameters_func){
   function(...){
@@ -281,7 +282,7 @@ if(fit_excess) {
   #save fitting plot
   summarise_fit("excess_fitting.pdf", excess_out, country, iso3c, end_date, excess_start_date)
 
-  save_output(excess_out, "excess_out.Rds")
+  save_output(excess_out, "excess_out.Rds", model_func)
 } else {
   file.create(c("excess_fitting.pdf", "excess_out.Rds"))
 }
