@@ -303,7 +303,8 @@ These scripts update the fits in `gh-fits` and pushes the `gh-fits` changes to G
 Potentially worth running the `.sh` script from the terminal or git bash to view the log.
 
 ```{r eval=FALSE, message=FALSE, warning = FALSE}
+iso3cs <- names(bundles)[purrr::map_lgl(bundles, ~file.exists(stringr::str_replace(.x$path, "raw", "derived")))]
 #just takes the latest fit for each country, will take some time to keep RAM usage low
-report_ids <- gather_report_ids(task, iso3cs)
+report_ids <- gather_report_ids(task, iso3cs, date)
 update_gh_fits(report_ids, task)
 ```
